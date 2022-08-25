@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+import sql_connect
 
 # environmental variables
 load_dotenv(verbose=True)
@@ -40,4 +41,5 @@ async def joined(ctx: discord.ApplicationContext, member: discord.Member = None)
 
 
 bot.load_extension("button_roles")
+sql_connect.connect()
 bot.run(TOKEN)
