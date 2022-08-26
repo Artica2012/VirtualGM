@@ -17,14 +17,14 @@ def importDisease(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Name': data[1],
+                'Title': data[1],
                 'Level': data[2],
                 'Source': data[3],
                 'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
             }
             #print(data_dict)
             data_cache.append(data_dict)
-    index = ['Type', 'ID', 'Name', 'Level', 'Source', 'URL']
+    index = ['Type', 'ID', 'Title', 'Level', 'Source', 'URL']
     return (data_cache, index, prefix)
 
 def importFeat(filename):
@@ -44,14 +44,14 @@ def importFeat(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Name': data[1],
+                'Title': data[1],
                 'Tier': data[5],
                 'Source': data[4],
                 'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
             }
             #print(data_dict)
             data_cache.append(data_dict)
-    index = ['Type', 'ID', 'Name', 'Tier', 'Source', 'URL']
+    index = ['Type', 'ID', 'Title', 'Tier', 'Source', 'URL']
     return (data_cache, index, prefix)
 
 def importItem(filename):
@@ -71,7 +71,7 @@ def importItem(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Name': data[1],
+                'Title': data[1],
                 'Cost': data[2],
                 'Level': data[4],
                 'Category': data[5],
@@ -81,7 +81,7 @@ def importItem(filename):
             }
             #print(data_dict)
             data_cache.append(data_dict)
-            index = ['Type', 'ID', 'Name', 'Cost', 'Level', 'Category', 'Source', 'URL']
+            index = ['Type', 'ID', 'Title', 'Cost', 'Level', 'Category', 'Source', 'URL']
     return (data_cache, index, prefix)
 
 def importPower(filename):
@@ -101,7 +101,7 @@ def importPower(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Name': data[1],
+                'Title': data[1],
                 'Level': data[2],
                 'Action': data[3],
                 'Class': data[7],
@@ -111,6 +111,6 @@ def importPower(filename):
             #print(data_dict)
             data_cache.append(data_dict)
 
-    index = ['Type', 'ID', 'Name', 'Level', 'Action', 'Class', "Source", 'URL']
+    index = ['Type', 'ID', 'Title', 'Level', 'Action', 'Class', "Source", 'URL']
 
     return (data_cache, index, prefix)
