@@ -5,18 +5,17 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
-import sql_connect
+from initialize import connect_test
 
 # environmental variables
 load_dotenv(verbose=True)
 TOKEN = os.getenv('TOKEN')
 GUILD = os.getenv('GUILD')
+DATABASE = os.getenv("DATABASE")
 
 # set up the bot/intents
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents)
-
-
 
 @bot.event
 async def on_ready():
@@ -39,7 +38,6 @@ async def joined(ctx: discord.ApplicationContext, member: discord.Member = None)
     user = member or ctx.author
     await ctx.respond(f"{user.name} joined at {discord.utils.format_dt(user.joined_at)}")
 
-
+connect_test(DATABASE)
 bot.load_extension("button_roles")
-sql_connect.connect()
 bot.run(TOKEN)
