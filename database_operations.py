@@ -34,5 +34,5 @@ def query_database(conn, table, query):
         cur = conn.cursor()
         res = cur.execute(f"SELECT * FROM {table} WHERE Title LIKE '%{query}%' ORDER By ID")
 
-        data = res.fetchmany(20)
+        data = res.fetchmany(10)
     return data
