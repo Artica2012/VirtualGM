@@ -1,3 +1,5 @@
+#database_operations.py
+
 # imports
 import sqlite3
 import os
@@ -20,7 +22,8 @@ def create_connection(database):
 
     return conn
 
-
+# Standard Database query for the 4e search
+# May need updated if we switch off of Sqlite3
 def query_database(conn, table, query):
     """
     Query tasks
@@ -33,6 +36,6 @@ def query_database(conn, table, query):
     with conn:
         cur = conn.cursor()
         res = cur.execute(f"SELECT * FROM {table} WHERE Title LIKE '%{query}%' ORDER By ID")
-
+        #Only return the first 10 results
         data = res.fetchmany(10)
     return data

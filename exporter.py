@@ -14,3 +14,4 @@ def export_to_sql(data, database):
         df.to_sql(f"{data[2]}",conn)
         conn.commit()
     conn.close()
+

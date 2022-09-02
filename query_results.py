@@ -1,3 +1,5 @@
+import datetime
+
 import discord
 from discord.ext import commands
 
@@ -14,7 +16,31 @@ DATABASE = os.getenv("DATABASE")
 # These are custom from the server. Would probably need to set up the bot to create the roles if
 # you were doing this for real
 
-class QueryButton(discord.ui.Button):
+class QuerySelectButton(discord.ui.Button):
+    def __init__(self, name:str, id:str, link:str):
+        self.link = link
+        super().__init__(
+            label=name,
+            style=discord.ButtonStyle.primary,
+            custom_id=id,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        #Called when button is pressed
+        user = interaction.user
+        message = interaction.message
+        await message.delete()
+        embed = discord.Embed(
+            title= self.label,
+            timestamp=datetime.datetime.now(),
+            description=self.link
+        )
+        await interaction.response.send_message(
+            embed=embed
+        )
+
+
+class QueryLinkButton(discord.ui.Button):
     def __init__(self,name: str,  link: str):
         """A button for one role."""
         super().__init__(
@@ -39,8 +65,8 @@ class PowerQueryButtonCog(commands.Cog):
             return
         for result in results:
             name = f"{result[2]}, Level:{result[3]}"
-            link = result[7]
-            view.add_item(QueryButton(name, link))
+            link = result[8]
+            view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Powers - {query}", view=view)
 
 
@@ -59,8 +85,8 @@ class FeatQueryButtonCog(commands.Cog):
             return
         for result in results:
             name = f"{result[2]}"
-            link = result[5]
-            view.add_item(QueryButton(name, link))
+            link = result[6]
+            view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Feat - {query}", view=view)
 
 
@@ -79,8 +105,8 @@ class DiseaseQueryButtonCog(commands.Cog):
             return
         for result in results:
             name = f"{result[2]}"
-            link = result[5]
-            view.add_item(QueryButton(name, link))
+            link = result[6]
+            view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Disease - {query}", view=view)
 
 def setup(bot):

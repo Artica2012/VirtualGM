@@ -29,7 +29,7 @@ class DiceRoller:
         try:
             text = text_parse[1]
         except:
-            text = ''
+            text = 'Roll'
         return dice_string, text
 
 

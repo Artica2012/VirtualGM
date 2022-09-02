@@ -19,8 +19,14 @@ class DiceRollerCog(commands.Cog):
 
     @commands.slash_command(guild_ids=[GUILD], name="r", description="Dice Roller")
     async def post(self, ctx: discord.ApplicationContext, roll_string: str):
-        roller = dice_roller.DiceRoller(roll_string)
-        await ctx.respond(f"_{roll_string}_\n{roller.roll_dice()}")
+        try:
+            roller = dice_roller.DiceRoller(roll_string)
+            await ctx.respond(f"_{roll_string}_\n{roller.roll_dice()}")
+        except:
+            await ctx.send_response(
+                f'Invalid syntax: {roll_string}. \nPlease phrase in ```XdY Label``` format',
+                ephemeral=True
+            )
 
 
 def setup(bot):
