@@ -1,3 +1,6 @@
+# dice_roller_cog.py
+
+# imports
 import discord
 from discord.ext import commands
 import dice_roller
@@ -17,6 +20,7 @@ class DiceRollerCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # Takes a string and then parses out the string and rolls the dice
     @commands.slash_command(guild_ids=[GUILD], name="r", description="Dice Roller")
     async def post(self, ctx: discord.ApplicationContext, roll_string: str):
         try:
