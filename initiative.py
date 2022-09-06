@@ -6,17 +6,13 @@ import discord
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
-from sqlalchemy import insert
-import database_models
-import database_operations
-import sqlite3
 import sqlalchemy as db
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy import create_engine
-from database_models import Global, ConditionTable, TrackerTable, Base
+from database_models import Global, Base
 from sqlalchemy.orm import Session, Query
 from sqlalchemy import select, update, delete, insert
 
@@ -95,7 +91,6 @@ def setup_tracker(server: discord.Guild):
 # Add a player to the database
 def add_player(name: str, user: int, server: discord.Guild, HP: int):
     engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    tablename = f'Tracker_{server.id}'
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -121,7 +116,6 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int):
 # Add an NPC to the database
 def add_npc(name: str, user: int, server: discord.Guild, HP: int):
     engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    tablename = f'Tracker_{server.id}'
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -143,7 +137,7 @@ def add_npc(name: str, user: int, server: discord.Guild, HP: int):
         print(e)
         return False
 
-
+# Set the initiative
 def set_init(server: discord.Guild, name: str, init: int):
     engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
     metadata = db.MetaData()
@@ -156,6 +150,8 @@ def set_init(server: discord.Guild, name: str, init: int):
         with engine.connect() as conn:
             result = conn.execute(stmt)
             conn.commit()
+            if result.rowcount == 0:
+                return False
         return True
     except Exception as e:
         print(e)
@@ -189,6 +185,12 @@ def get_init_list(server: discord.Guild):
             data.append(row)
         print(data)
         return data
+
+def parse_init_list(server: discord.Guild, init_list:list):
+    parsed_list = []
+    for row in init_list:
+        parsed_list.append(row[1])
+    return str(parsed_list)
 
 
 def display_init(init_list: list, selected: int):
@@ -279,6 +281,7 @@ class InitiativeCog(commands.Cog):
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             guild.initiative = 0
+            guild.saved_order = parse_init_list(init_list)
             session.commit()
         display_string = display_init(init_list, 0)
         await ctx.respond(display_string)
@@ -295,16 +298,17 @@ class InitiativeCog(commands.Cog):
             initiative = int(init)
             success = set_init(ctx.guild, character, initiative)
             if success:
-                await ctx.respond(f"Iniative: {initiative}")
+                await ctx.respond(f"Initiative set to {initiative} for {character}")
             else:
                 await ctx.respond("Failed to set initiative.", ephemeral=True)
         except:
             roll = dice.plain_roll(init)
             success = set_init(ctx.guild, character, roll[1])
             if success:
-                await ctx.respond(f"Iniative: {roll[0]} = {roll[1]}")
+                await ctx.respond(f"Initiative set to {roll[0]} = {roll[1]} for {character}")
             else:
                 await ctx.respond("Failed to set initiative.", ephemeral=True)
+
 
 def setup(bot):
     bot.add_cog(InitiativeCog(bot))

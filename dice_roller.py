@@ -69,7 +69,7 @@ class DiceRoller:
         dice_string = ""
         dice_string = ' '.join(map(str, dice))
         return f'{text}: {dice_string} = **{total}**'
-    # the
+
     def roll_dice(self):
         parsed_text = self._text_parse(self.input_string)
         parsed_dice = self._dice_parse(parsed_text[0])
@@ -79,4 +79,6 @@ class DiceRoller:
     def plain_roll(self, dice: str):
         parsed_dice = self._dice_parse(dice)
         calculated_total = self._math_equation(parsed_dice)
-        return parsed_dice, calculated_total
+        dice_string = ""
+        dice_string = ' '.join(map(str, parsed_dice))
+        return dice_string, calculated_total
