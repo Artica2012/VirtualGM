@@ -75,3 +75,8 @@ class DiceRoller:
         parsed_dice = self._dice_parse(parsed_text[0])
         calculated_total = self._math_equation(parsed_dice)
         return self._format_output(parsed_text[1], parsed_dice, calculated_total)
+
+    def plain_roll(self, dice: str):
+        parsed_dice = self._dice_parse(dice)
+        calculated_total = self._math_equation(parsed_dice)
+        return parsed_dice, calculated_total
