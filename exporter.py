@@ -5,6 +5,7 @@ import sqlite3
 def export_to_sql(data, database):
     df = pd.DataFrame.from_records(data[0], index=data[1])
     conn = sqlite3.connect(f'../discordSlashBot/{database}.db')
+
     c = conn.cursor()
     try:
         df.to_sql(f"{data[2]}",conn)

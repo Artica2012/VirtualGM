@@ -1,11 +1,22 @@
 #database_operations.py
 
 # imports
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy_utils import database_exists, create_database
 import sqlite3
 import os
 from dotenv import load_dotenv
 
 DATABASE = os.getenv("DATABASE")
+
+def get_tracker_engine(user, password, host, port, db):
+    url = f'postgresql://{user}:{str(password)}@{host}:{port}/{db}'
+    if not database_exists(url):
+        create_database(url)
+    engine = create_engine(url, pool_size=50, echo=False)
+    return engine
+
 
 
 def create_connection(database):
