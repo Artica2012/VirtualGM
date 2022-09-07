@@ -294,12 +294,47 @@ def calculate_hp(chp, maxhp):
         hp_string = 'Injured'
     elif hp >= .1:
         hp_string = 'Bloodied'
-    else:
+    elif chp >0:
         hp_string = 'Critical'
+    else:
+        hp_string = 'Dead'
 
     return hp_string
 
-def heal(server: discord.Guild, name: str, ammount: int):
+
+def add_thp(server: discord.Guild, name: str, ammount: int):
+    engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+    metadata = db.MetaData()
+    try:
+        emp = tracker_table(server, metadata)
+        stmt = emp.select().where(emp.c.name == name)
+        compiled = stmt.compile()
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+
+
+        thp = data[0][7]
+        new_thp = thp + ammount
+
+        stmt = update(emp).where(emp.c.name == name).values(
+            temp_hp=new_thp
+        )
+        compiled = stmt.compile()
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+            conn.commit()
+            if result.rowcount == 0:
+                return False
+        return True
+
+    except Exception as e:
+        print(e)
+        return False
+
+
+def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
     engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
     metadata = db.MetaData()
     try:
@@ -313,12 +348,31 @@ def heal(server: discord.Guild, name: str, ammount: int):
 
         chp = data[0][5]
         maxhp = data[0][6]
-        new_hp = chp+ammount
-        if new_hp > maxhp:
-            new_hp = maxhp
+        thp = data[0][7]
+        new_thp = 0
+
+        if heal:
+            new_hp = chp+ammount
+            if new_hp > maxhp:
+                new_hp = maxhp
+        if not heal:
+            if thp == 0:
+                new_hp = chp-ammount
+                if new_hp <0:
+                    new_hp - 0
+            else:
+                if thp > ammount:
+                    new_thp = thp-ammount
+                    new_hp = chp
+                else:
+                    new_thp = 0
+                    new_hp = chp-ammount+thp
+                    if new_hp <0:
+                        new_hp = 0
 
         stmt = update(emp).where(emp.c.name == name).values(
-            current_hp=new_hp
+            current_hp=new_hp,
+            temp_hp=new_thp
         )
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -453,13 +507,26 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond(f'{character} deleted', ephemeral=True)
 
 
-#TODO Finish this
     @initiative.command(guild_ids=[GUILD])
     @option('name', description="Character Name")
-    @option('mode', choices=['Damage', 'Heal'])
+    @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def heal_harm(self, ctx: discord.ApplicationContext, name: str, mode: str, ammount: int):
-        response = heal(ctx.guild, name, ammount)
-        await ctx.respond("Healed")
+        response = False
+        if mode == 'Heal':
+            response = change_hp(ctx.guild, name, ammount, True)
+            if response:
+                await ctx.respond(f"{name} healed for {ammount}.")
+        elif mode == 'Damage':
+            response = change_hp(ctx.guild, name, ammount, False)
+            if response:
+                await ctx.respond(f"{name} damaged for {ammount}.")
+        elif mode == 'Temporary HP':
+            response = add_thp(ctx.guild, name, ammount)
+            if response:
+                await ctx.respond(f"{ammount} Temporary HP added to {name}.")
+        if not response:
+            await ctx.respond("Failed", ephemeral=True)
+
 
 def setup(bot):
     bot.add_cog(InitiativeCog(bot))
