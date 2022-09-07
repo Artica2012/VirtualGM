@@ -307,10 +307,12 @@ def heal(server: discord.Guild, name: str, ammount: int):
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
-            data = conn.execute(stmt)[0]
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
 
-        chp = data[5]
-        maxhp = data[6]
+        chp = data[0][5]
+        maxhp = data[0][6]
         new_hp = chp+ammount
         if new_hp > maxhp:
             new_hp = maxhp
@@ -450,6 +452,8 @@ class InitiativeCog(commands.Cog):
                 delete_character(ctx.guild, character)
                 await ctx.respond(f'{character} deleted', ephemeral=True)
 
+
+#TODO Finish this
     @initiative.command(guild_ids=[GUILD])
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal'])
