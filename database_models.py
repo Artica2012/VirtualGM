@@ -17,4 +17,6 @@ class Global(Base):
     time = Column(Integer(), default=0, nullable=False)
     initiative = Column(Integer())
     saved_order = Column(String())
+    gm = Column(String())
+
 

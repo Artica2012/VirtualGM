@@ -1,0 +1,8 @@
+VirtualGM Documentation
+
+Intoduction:
+  VirtualGM is a tool suite for GMing ttRPG games via discord.
+
+Basics:
+  The bot treats any user with the 'manage messages' permission as an administrator. They have unrestricted access to
+   commands such as setting up and initializing combat as well as deleting characters and NPCs
