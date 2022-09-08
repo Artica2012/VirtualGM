@@ -18,18 +18,17 @@ from sqlalchemy.orm import Session, Query
 from sqlalchemy import select, update, delete, insert
 
 from dice_roller import DiceRoller
-from database_operations import get_tracker_engine
+from database_operations import get_db_engine
 
 import os
 from dotenv import load_dotenv
 
 # define global variables
-role_ids = [1011880400513151058, 1011880477298278461, 1011880538199556176]
 load_dotenv(verbose=True)
 TOKEN = os.getenv('TOKEN')
 GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
-USER = os.getenv('Username')
+USERNAME = os.getenv('Username')
 PASSWORD = os.getenv('Password')
 HOSTNAME = os.getenv('Hostname')
 PORT = os.getenv('PGPort')
@@ -49,7 +48,7 @@ def tracker_table(server: discord.Guild, metadata):
                    db.Column('name', db.String(255), nullable=False, unique=True),
                    db.Column('init', db.INTEGER(), default=0),
                    db.Column('player', db.BOOLEAN, default=False),
-                   db.Column('user', db.INTEGER(), nullable=False),
+                   db.Column('user', db.BigInteger(), nullable=False),
                    db.Column('current_hp', db.INTEGER(), default=0),
                    db.Column('max_hp', db.INTEGER(), default=1),
                    db.Column('temp_hp', db.INTEGER(), default=0),
@@ -72,36 +71,36 @@ def condition_table(server: discord.Guild, metadata):
 
 # Set up the tracker if it does not exit.db
 def setup_tracker(server: discord.Guild, user: discord.User):
-    # try:
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    conn = engine.connect()
-    metadata = db.MetaData()
-    emp = tracker_table(server, metadata)
-    con = condition_table(server, metadata)
-    metadata.create_all(engine)
-    Base.metadata.create_all(engine)
+    try:
+        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        conn = engine.connect()
+        metadata = db.MetaData()
+        emp = tracker_table(server, metadata)
+        con = condition_table(server, metadata)
+        metadata.create_all(engine)
+        Base.metadata.create_all(engine)
 
-    with Session(engine) as session:
-        guild = Global(
-            guild_id=server.id,
-            time=0,
-            gm=user.id
-        )
-        session.add(guild)
-        session.commit()
+        with Session(engine) as session:
+            guild = Global(
+                guild_id=server.id,
+                time=0,
+                gm=user.id
+            )
+            session.add(guild)
+            session.commit()
 
-    return True
+        return True
 
+    except Exception as e:
+        print(e)
+        return False
 
-# except Exception as e:
-#     print(e)
-#     return False
 
 def set_gm(server: discord.Guild, new_gm: discord.User):
     try:
         # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-        engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         conn = engine.connect()
         Base.metadata.create_all(engine)
 
@@ -119,7 +118,7 @@ def set_gm(server: discord.Guild, new_gm: discord.User):
 # Add a player to the database
 def add_player(name: str, user: int, server: discord.Guild, HP: int):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -135,7 +134,7 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
         return True
     except Exception as e:
         print(e)
@@ -145,7 +144,7 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int):
 # Add an NPC to the database
 def add_npc(name: str, user: int, server: discord.Guild, HP: int):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -161,7 +160,7 @@ def add_npc(name: str, user: int, server: discord.Guild, HP: int):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
         return True
     except Exception as e:
         print(e)
@@ -170,7 +169,7 @@ def add_npc(name: str, user: int, server: discord.Guild, HP: int):
 
 def delete_character(server: discord.Guild, name: str):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -178,7 +177,7 @@ def delete_character(server: discord.Guild, name: str):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
         return True
     except Exception as e:
         print(e)
@@ -188,7 +187,7 @@ def delete_character(server: discord.Guild, name: str):
 # Set the initiative
 def set_init(server: discord.Guild, name: str, init: int):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -198,7 +197,7 @@ def set_init(server: discord.Guild, name: str, init: int):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
             if result.rowcount == 0:
                 return False
         return True
@@ -217,7 +216,7 @@ def init_integrity_check(server: discord.Guild, init_pos: int, current_character
 
 def advance_initiative(server: discord.Guild):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     with Session(engine) as session:
         # get current position in the initiative
         guild = session.execute(select(Global).filter_by(guild_id=server.id)).scalar_one()
@@ -245,7 +244,7 @@ def advance_initiative(server: discord.Guild):
 
 def get_init_list(server: discord.Guild):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     emp = tracker_table(server, metadata)
     stmt = emp.select().order_by(emp.c.init.desc())
@@ -320,7 +319,7 @@ def calculate_hp(chp, maxhp):
 
 def add_thp(server: discord.Guild, name: str, ammount: int):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -340,7 +339,7 @@ def add_thp(server: discord.Guild, name: str, ammount: int):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
             if result.rowcount == 0:
                 return False
         return True
@@ -352,7 +351,7 @@ def add_thp(server: discord.Guild, name: str, ammount: int):
 
 def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
     # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_tracker_engine(user=USER, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
         emp = tracker_table(server, metadata)
@@ -394,7 +393,7 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
         compiled = stmt.compile()
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            conn.commit()
+            # conn.commit()
             if result.rowcount == 0:
                 return False
         return True
@@ -420,14 +419,14 @@ class InitiativeCog(commands.Cog):
         if response:
             await ctx.respond("Server Setup", ephemeral=True)
         else:
-            await ctx.respond("Server Failed", ephemeral=True)
+            await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
 
     @initiative.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         response = set_gm(ctx.guild, new_gm)
         if response:
-            await ctx.respond(f"GM Permissions trasferred to {new_gm.mention}")
+            await ctx.respond(f"GM Permissions transferred to {new_gm.mention}")
         else:
             await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
@@ -455,7 +454,9 @@ class InitiativeCog(commands.Cog):
 
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            if guild.gm != ctx.user.id:
+            print(guild.gm)
+            print(ctx.user.id)
+            if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             guild.initiative = 0

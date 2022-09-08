@@ -7,8 +7,8 @@ import os
 from dotenv import load_dotenv
 
 import exporter
-from initialize import connect_test
 import database_operations
+import parse
 
 # environmental variables
 load_dotenv(verbose=True)
@@ -27,7 +27,7 @@ async def on_ready():
     print(f"{bot.user} is connected.")
 
 # Initialize the database
-connect_test(DATABASE)
+parse.parser(database)
 conn = database_operations.create_connection(DATABASE)
 
 # Load the bot
