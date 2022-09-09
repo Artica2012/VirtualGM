@@ -27,6 +27,8 @@ async def on_ready():
     print(f"{bot.user} is connected.")
 
 # Initialize the database
+
+
 parse.parser()
 # conn = database_operations.create_connection(DATABASE)
 
