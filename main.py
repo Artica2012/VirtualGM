@@ -18,7 +18,7 @@ DATABASE = os.getenv("DATABASE")
 
 # set up the bot/intents
 intents = discord.Intents.all()
-bot = discord.Bot(intents=intents, debug_guilds=[GUILD])
+bot = discord.Bot(intents=intents)
 
 
 # Print Status on Connected - Plan to update this to an email or something else once hosted remotely.

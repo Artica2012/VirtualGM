@@ -71,7 +71,7 @@ class QueryCog(commands.Cog):
 
     query = SlashCommandGroup("query", "Fourth Edition Lookup")
 
-    @query.command(guild_ids=[GUILD], description="Power Query")
+    @query.command(description="Power Query")
     async def power(self, ctx: discord.ApplicationContext, query: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         metadata = db.MetaData()
@@ -94,7 +94,7 @@ class QueryCog(commands.Cog):
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Powers - {query}", view=view)
 
-    @query.command(guild_ids=[GUILD], description="Power Query")
+    @query.command(description="Power Query")
     async def disease(self, ctx: discord.ApplicationContext, query: str):
         # conn = database_operations.create_connection(DATABASE)
         # results = database_operations.query_database(conn, "power", query)
@@ -122,7 +122,7 @@ class QueryCog(commands.Cog):
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Powers - {query}", view=view)
 
-    @query.command(guild_ids=[GUILD], description="Feat Query")
+    @query.command(description="Feat Query")
     async def feat(self, ctx: discord.ApplicationContext, query: str):
         # conn = database_operations.create_connection(DATABASE)
         # results = database_operations.query_database(conn, "power", query)
