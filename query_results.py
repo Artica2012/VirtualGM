@@ -2,6 +2,11 @@ import datetime
 
 import discord
 from discord.ext import commands
+from discord.commands import SlashCommandGroup
+
+import sqlalchemy as db
+from database_models import disease_table, feat_table, power_table
+from database_operations import get_db_engine
 
 import os
 from dotenv import load_dotenv
@@ -12,9 +17,14 @@ load_dotenv(verbose=True)
 TOKEN = os.getenv('TOKEN')
 GUILD = os.getenv('GUILD')
 DATABASE = os.getenv("DATABASE")
+USERNAME = os.getenv('Username')
+PASSWORD = os.getenv('Password')
+HOSTNAME = os.getenv('Hostname')
+PORT = os.getenv('PGPort')
 
-# These are custom from the server. Would probably need to set up the bot to create the roles if
-# you were doing this for real
+
+# The Tables:
+
 
 class QuerySelectButton(discord.ui.Button):
     def __init__(self, name:str, id:str, link:str):
@@ -49,67 +59,100 @@ class QueryLinkButton(discord.ui.Button):
             url= link
         )
 
-class PowerQueryButtonCog(commands.Cog):
+
+#############################################################################
+#############################################################################
+# SLASH COMMANDS
+# The Query Cog
+class QueryCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.guild = None
 
-    @commands.slash_command(name="power", guild_ids=[GUILD], description="Power Query")
-    async def post(self, ctx: discord.ApplicationContext, query: str):
-        conn = database_operations.create_connection(DATABASE)
-        results = database_operations.query_database(conn, "power", query)
+    query = SlashCommandGroup("query", "Fourth Edition Lookup")
+
+    @query.command(guild_ids=[GUILD], description="Power Query")
+    async def power(self, ctx: discord.ApplicationContext, query: str):
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        metadata = db.MetaData()
+        emp = power_table(metadata)
+        stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
+        compile = stmt.compile()
+        with engine.connect() as conn:
+            results = []
+            for row in conn.execute(stmt):
+                results.append(row)
+
         self.guild = ctx.guild
         view = discord.ui.View(timeout=None)  # Keep it persistent
         if not results:
             await ctx.respond(("No Results Found"))
             return
-        for result in results:
+        for result in results[0:10]:
             name = f"{result[2]}, Level:{result[3]}"
             link = result[8]
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
         await ctx.respond(f"Query Results: Powers - {query}", view=view)
 
+    @query.command(guild_ids=[GUILD], description="Power Query")
+    async def disease(self, ctx: discord.ApplicationContext, query: str):
+        # conn = database_operations.create_connection(DATABASE)
+        # results = database_operations.query_database(conn, "power", query)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        metadata = db.MetaData()
+        emp = disease_table(metadata)
+        stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
+        compile = stmt.compile()
+        print(compile)
+        with engine.connect() as conn:
+            results = []
+            # print(conn.execute(stmt))
+            for row in conn.execute(stmt):
+                results.append(row)
+                # print(row)
 
-class FeatQueryButtonCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.slash_command(name="feat", guild_ids=[GUILD], description="Feat Query")
-    async def post(self, ctx: discord.ApplicationContext, query: str):
-        conn = database_operations.create_connection(DATABASE)
-        results = database_operations.query_database(conn, "feat", query)
         self.guild = ctx.guild
         view = discord.ui.View(timeout=None)  # Keep it persistent
         if not results:
             await ctx.respond(("No Results Found"))
             return
-        for result in results:
-            name = f"{result[2]}"
+        for result in results[0:10]:
+            name = f"{result[2]}, Level: {result[3]}"
             link = result[6]
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
-        await ctx.respond(f"Query Results: Feat - {query}", view=view)
+        await ctx.respond(f"Query Results: Powers - {query}", view=view)
 
+    @query.command(guild_ids=[GUILD], description="Feat Query")
+    async def feat(self, ctx: discord.ApplicationContext, query: str):
+        # conn = database_operations.create_connection(DATABASE)
+        # results = database_operations.query_database(conn, "power", query)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        metadata = db.MetaData()
+        emp = feat_table(metadata)
+        stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
+        # stmt = emp.select()
+        compile = stmt.compile()
+        # print(compile)
+        with engine.connect() as conn:
+            results = []
+            # print(conn.execute(stmt))
+            for row in conn.execute(stmt):
+                results.append(row)
+                # print(row)
 
-class DiseaseQueryButtonCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.slash_command(name="disease", guild_ids=[GUILD], description="Disease Query")
-    async def post(self, ctx: discord.ApplicationContext, query: str):
-        conn = database_operations.create_connection(DATABASE)
-        results = database_operations.query_database(conn, "feat", query)
         self.guild = ctx.guild
         view = discord.ui.View(timeout=None)  # Keep it persistent
         if not results:
+            # print(results)
             await ctx.respond(("No Results Found"))
             return
-        for result in results:
+        for result in results[0:10]:
             name = f"{result[2]}"
             link = result[6]
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
-        await ctx.respond(f"Query Results: Disease - {query}", view=view)
+        await ctx.respond(f"Query Results: Powers - {query}", view=view)
+
+
 
 def setup(bot):
-    bot.add_cog(FeatQueryButtonCog(bot))
-    bot.add_cog(PowerQueryButtonCog(bot))
-    bot.add_cog(DiseaseQueryButtonCog(bot))
+    bot.add_cog(QueryCog(bot))

@@ -8,14 +8,10 @@ from discord.commands import SlashCommandGroup
 from discord import option
 
 import sqlalchemy as db
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from sqlalchemy import create_engine
-from database_models import Global, Base
-from sqlalchemy.orm import Session, Query
-from sqlalchemy import select, update, delete, insert
+from database_models import Global, Base, tracker_table, condition_table
+from sqlalchemy.orm import Session
+from sqlalchemy import select, update, delete
 
 from dice_roller import DiceRoller
 from database_operations import get_db_engine
@@ -37,37 +33,6 @@ PORT = os.getenv('PGPort')
 #################################################################
 #################################################################
 # FUNCTIONS
-
-# Tables - These will allow a central place for changes, also saves a ton of lines of code
-
-# The tracker table
-def tracker_table(server: discord.Guild, metadata):
-    tablename = f"Tracker_{server.id}"
-    emp = db.Table(tablename, metadata,
-                   db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                   db.Column('name', db.String(255), nullable=False, unique=True),
-                   db.Column('init', db.INTEGER(), default=0),
-                   db.Column('player', db.BOOLEAN, default=False),
-                   db.Column('user', db.BigInteger(), nullable=False),
-                   db.Column('current_hp', db.INTEGER(), default=0),
-                   db.Column('max_hp', db.INTEGER(), default=1),
-                   db.Column('temp_hp', db.INTEGER(), default=0),
-                   )
-    return emp
-
-
-# The condition table
-def condition_table(server: discord.Guild, metadata):
-    tablename = f"Condition_{server.id}"
-    con = db.Table(tablename, metadata,
-                   db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                   db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{server.id}.id')),
-                   db.Column('condition', db.String(255), nullable=False),
-                   db.Column('duration', db.INTEGER()),
-                   db.Column('beginning', db.BOOLEAN, default=False)
-                   )
-    return con
-
 
 # Set up the tracker if it does not exit.db
 def setup_tracker(server: discord.Guild, user: discord.User):

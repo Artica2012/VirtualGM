@@ -27,18 +27,19 @@ def importDisease(filename):
             text = soup.get_text()
             text = text.strip(r'\r')
             text = text.strip(r'\n')
-            print(text)
+            # print(text)
 
             # Export the data from the line into a dictionary
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
                 'Title': data[1],
-                'Level': data[2],
+                'Level': data[2].strip("'"),
                 'Source': data[3],
                 'Data': data[5],
                 'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
             }
+
             # print(data[5])
             data_cache.append(data_dict) # add that dict to the list of dicts
     index = ['Type', 'ID', 'Title', 'Level', 'Source', 'Data', 'URL'] # the index
@@ -63,8 +64,8 @@ def importFeat(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
-                'Tier': data[5],
+                'Title': data[1].strip("'"),
+                'Tier': data[5].strip("'"),
                 'Source': data[4],
                 'Data': data[7],
                 'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
@@ -92,7 +93,7 @@ def importItem(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
+                'Title': data[1].strip("'"),
                 'Cost': data[2],
                 'Level': data[4],
                 'Category': data[5],
@@ -123,9 +124,9 @@ def importPower(filename):
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
-                'Level': data[2],
-                'Action': data[3],
+                'Title': data[1].strip("'"),
+                'Level': data[2].strip("'"),
+                'Action': data[3].strip("'"),
                 'Class': data[7],
                 'Source': data[6],
                 'Data': data[9],
