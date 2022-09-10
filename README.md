@@ -1,4 +1,4 @@
-# discordSlashBot
+# VirtualGM
 
 A discord bot focused in enhancing the play by Post ttRPG experience.
 
