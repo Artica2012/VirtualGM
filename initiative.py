@@ -383,33 +383,36 @@ class InitiativeCog(commands.Cog):
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
-    @i.command(guild_ids=[GUILD], description="Administrative Commands")
+    @i.command(description="Administrative Commands")
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'delete'])
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        if mode == 'setup':
+            response = setup_tracker(ctx.guild, ctx.user)
+            if response:
+                await ctx.respond("Server Setup", ephemeral=True)
+                return
+            else:
+                await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+                return
+
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
-            if mode == 'setup':
-                response = setup_tracker(ctx.guild, ctx.user)
-                if response:
-                    await ctx.respond("Server Setup", ephemeral=True)
-                else:
-                    await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
-            elif mode == 'delete':
+            if mode == 'delete':
                 if argument == guild.saved_order:
                     await ctx.respond(f"Please wait until {argument} is not the active character in initiative before "
-                                      f"deleting it.", ephemeral=True)
+                                          f"deleting it.", ephemeral=True)
                 else:
                     delete_character(ctx.guild, argument)
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
             else:
                 await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
-    @i.command(guild_ids=[GUILD], description="Transfer GM duties to a new player")
+    @i.command(description="Transfer GM duties to a new player")
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -424,7 +427,7 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
-    @i.command(guild_ids=[GUILD], description="Add PC on NPC")
+    @i.command(description="Add PC on NPC")
     @option('name', description="Character Name")
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
@@ -444,7 +447,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond('Failed.', ephemeral=True)
 
-    @i.command(guild_ids=[GUILD], description="Start/Stop Initiative")
+    @i.command(description="Start/Stop Initiative")
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['start', 'stop'])
     async def manage(self, ctx: discord.ApplicationContext, mode: str):
@@ -468,12 +471,12 @@ class InitiativeCog(commands.Cog):
                 session.commit()
                 await ctx.respond("Initiative Ended.")
 
-    @i.command(guild_ids=[GUILD], description="Advance Initiative")
+    @i.command(description="Advance Initiative")
     async def next(self, ctx: discord.ApplicationContext):
         display_string = advance_initiative(ctx.guild)
         await ctx.respond(display_string)
 
-    @i.command(guild_ids=[GUILD], description="Set Init (Number of XdY+Z")
+    @i.command(description="Set Init (Number of XdY+Z")
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -499,7 +502,7 @@ class InitiativeCog(commands.Cog):
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
 
-    @i.command(guild_ids=[GUILD], description="Heal, Damage or add Temp HP")
+    @i.command(description="Heal, Damage or add Temp HP")
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, ammount: int):
