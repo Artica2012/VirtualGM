@@ -381,18 +381,36 @@ class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    initiative = SlashCommandGroup("initiative", "Initiative Tracker")
+    i = SlashCommandGroup("i", "Initiative Tracker")
 
-    @initiative.command(guild_ids=[GUILD])
+    @i.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
-    async def setup(self, ctx: discord.ApplicationContext):
-        response = setup_tracker(ctx.guild, ctx.user)
-        if response:
-            await ctx.respond("Server Setup", ephemeral=True)
-        else:
-            await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+    @option('mode', choices=['setup','delete'])
+    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str):
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            if int(guild.gm) != int(ctx.user.id):
+                await ctx.respond("GM Restricted Command", ephemeral=True)
+                return
+            if mode == 'setup':
+                response = setup_tracker(ctx.guild, ctx.user)
+                if response:
+                    await ctx.respond("Server Setup", ephemeral=True)
+                else:
+                    await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+            elif mode == 'delete':
+                if argument == guild.saved_order:
+                    await ctx.respond(f"Please wait until {argument} is not the active character in initiative before "
+                                      f"deleting it.", ephemeral=True)
+                else:
+                    delete_character(ctx.guild, argument)
+                    await ctx.respond(f'{argument} deleted', ephemeral=True)
+            else:
+                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
-    @initiative.command(guild_ids=[GUILD])
+
+    @i.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         response = set_gm(ctx.guild, new_gm)
@@ -401,62 +419,56 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
-    @initiative.command(guild_ids=[GUILD])
-    async def add_character(self, ctx: discord.ApplicationContext, name: str, hp: int):
-        response = add_player(name, ctx.user.id, ctx.guild, hp)
-        if response:
-            await ctx.respond(f"Character {name} added successfully", ephemeral=True)
+    @i.command(guild_ids=[GUILD])
+    @option('name', description="Character Name")
+    @option('hp', description='Total HP')
+    @option('player', choices=['player', 'npc'])
+    async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str):
+        if player == 'player':
+            response = add_player(name, ctx.user.id, ctx.guild, hp)
+            if response:
+                await ctx.respond(f"Character {name} added successfully", ephemeral=True)
+            else:
+                await ctx.respond(f"Error Adding Character", ephemeral=True)
+        elif player == 'npc':
+            response = add_npc(name, ctx.user.id, ctx.guild, hp)
+            if response:
+                await ctx.respond(f"Character {name} added successfully", ephemeral=True)
+            else:
+                await ctx.respond(f"Error Adding Character", ephemeral=True)
         else:
-            await ctx.respond(f"Error Adding Character", ephemeral=True)
+            await ctx.respond('Failed.', ephemeral=True)
 
-    @initiative.command(guild_ids=[GUILD])
-    async def add_npc(self, ctx: discord.ApplicationContext, name: str, hp: int):
-        response = add_npc(name, ctx.user.id, ctx.guild, hp)
-        if response:
-            await ctx.respond(f"Character {name} added successfully", ephemeral=True)
-        else:
-            await ctx.respond(f"Error Adding Character", ephemeral=True)
-
-    @initiative.command(guild_ids=[GUILD])
+    @i.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
-    async def manage_initiative(self, ctx: discord.ApplicationContext):
-        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+    @option('mode', choices=['start', 'stop'])
+    async def start_stop(self, ctx: discord.ApplicationContext, mode:str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         init_list = get_init_list(ctx.guild)
 
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            print(guild.gm)
-            print(ctx.user.id)
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
-            guild.initiative = 0
-            guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
-            session.commit()
-        display_string = display_init(init_list, 0)
-        await ctx.respond(display_string)
+            if mode == 'start':
+                guild.initiative = 0
+                guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
+                session.commit()
+                display_string = display_init(init_list, 0)
+                await ctx.respond(display_string)
+            elif mode == 'stop':
+                guild.initiative = None
+                guild.saved_order = ''
+                session.commit()
+                await ctx.respond("Initiative Ended.")
 
-    @initiative.command(guild_ids=[GUILD])
-    async def end_initiative(self, ctx: discord.ApplicationContext):
-        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            if guild.gm != ctx.user.id:
-                await ctx.respond("GM Restricted Command", ephemeral=True)
-                return
-            guild.initiative = None
-            guild.saved_order = None
-            session.commit()
-        await ctx.respond("Initiative Ended.")
-
-    @initiative.command(guild_ids=[GUILD])
+    @i.command(guild_ids=[GUILD])
     async def next(self, ctx: discord.ApplicationContext):
         display_string = advance_initiative(ctx.guild)
         await ctx.respond(display_string)
 
-    @initiative.command(guild_ids=[GUILD])
+    @i.command(guild_ids=[GUILD])
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -482,26 +494,11 @@ class InitiativeCog(commands.Cog):
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
 
-    @initiative.command(guild_ids=[GUILD])
-    @discord.default_permissions(manage_messages=True)
-    async def delete_character(self, ctx: discord.ApplicationContext, character: str):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
-            if guild.gm != ctx.user.id:
-                await ctx.respond("GM Restricted Command", ephemeral=True)
-                return
-            if character == guild.saved_order:
-                await ctx.respond(f"Please wait until {character} is not the active character in initiative before "
-                                  f"deleting it.", ephemeral=True)
-            else:
-                delete_character(ctx.guild, character)
-                await ctx.respond(f'{character} deleted', ephemeral=True)
 
-    @initiative.command(guild_ids=[GUILD])
+    @i.command(guild_ids=[GUILD])
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
-    async def heal_harm(self, ctx: discord.ApplicationContext, name: str, mode: str, ammount: int):
+    async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, ammount: int):
         response = False
         if mode == 'Heal':
             response = change_hp(ctx.guild, name, ammount, True)
