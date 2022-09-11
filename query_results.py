@@ -69,7 +69,7 @@ class QueryCog(commands.Cog):
         self.bot = bot
         self.guild = None
 
-    query = SlashCommandGroup("query", "Fourth Edition Lookup")
+    query = SlashCommandGroup("q", "Fourth Edition Lookup")
 
     @query.command(description="Power Query", guild_ids=[GUILD])
     async def power(self, ctx: discord.ApplicationContext, query: str):
