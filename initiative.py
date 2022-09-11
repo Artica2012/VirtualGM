@@ -50,7 +50,7 @@ def setup_tracker(server: discord.Guild, user: discord.User):
             guild = Global(
                 guild_id=server.id,
                 time=0,
-                gm=user.id
+                gm=user.id,
             )
             session.add(guild)
             session.commit()
@@ -185,8 +185,14 @@ def advance_initiative(server: discord.Guild):
     with Session(engine) as session:
         # get current position in the initiative
         guild = session.execute(select(Global).filter_by(guild_id=server.id)).scalar_one()
-        init_pos = int(guild.initiative)
-        current_character = guild.saved_order
+        if guild.initiative == None:
+            init_pos = 0
+        else:
+            init_pos = int(guild.initiative)
+        if guild.saved_order == '':
+            current_character = get_init_list(server, 0)
+        else:
+            current_character = guild.saved_order
         # make sure that the current character is at the same place in initiative as it was before
 
         # if its not, set the init position to the position of the current character before advancing it
@@ -414,7 +420,8 @@ class InitiativeCog(commands.Cog):
     @initiative.command()
     @discord.default_permissions(manage_messages=True)
     async def start_initiative(self, ctx: discord.ApplicationContext):
-        engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         init_list = get_init_list(ctx.guild)
 
         with Session(engine) as session:
@@ -432,7 +439,8 @@ class InitiativeCog(commands.Cog):
 
     @initiative.command()
     async def end_initiative(self, ctx: discord.ApplicationContext):
-        engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             if guild.gm != ctx.user.id:
@@ -450,9 +458,10 @@ class InitiativeCog(commands.Cog):
 
     @initiative.command()
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
-        engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            # print(guild)
             if character == guild.saved_order:
                 await ctx.respond(f"Please wait until {character} is not the active character in initiative before "
                                   f"resetting its initiative.", ephemeral=True)
@@ -476,7 +485,7 @@ class InitiativeCog(commands.Cog):
     @initiative.command()
     @discord.default_permissions(manage_messages=True)
     async def delete_character(self, ctx: discord.ApplicationContext, character: str):
-        engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
             if guild.gm != ctx.user.id:

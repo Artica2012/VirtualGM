@@ -16,7 +16,7 @@ class Global(Base):
     guild_id = Column(BigInteger(), primary_key=True, autoincrement=False)
     time = Column(BigInteger(), default=0, nullable=False)
     initiative = Column(Integer())
-    saved_order = Column(String())
+    saved_order = Column(String(), default='')
     gm = Column(String())
 
 
