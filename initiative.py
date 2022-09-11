@@ -383,7 +383,7 @@ class InitiativeCog(commands.Cog):
 
     initiative = SlashCommandGroup("initiative", "Initiative Tracker")
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
     async def setup(self, ctx: discord.ApplicationContext):
         response = setup_tracker(ctx.guild, ctx.user)
@@ -392,7 +392,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         response = set_gm(ctx.guild, new_gm)
@@ -401,7 +401,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     async def add_character(self, ctx: discord.ApplicationContext, name: str, hp: int):
         response = add_player(name, ctx.user.id, ctx.guild, hp)
         if response:
@@ -409,7 +409,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond(f"Error Adding Character", ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     async def add_npc(self, ctx: discord.ApplicationContext, name: str, hp: int):
         response = add_npc(name, ctx.user.id, ctx.guild, hp)
         if response:
@@ -417,9 +417,9 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond(f"Error Adding Character", ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
-    async def start_initiative(self, ctx: discord.ApplicationContext):
+    async def manage_initiative(self, ctx: discord.ApplicationContext):
         # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         init_list = get_init_list(ctx.guild)
@@ -437,7 +437,7 @@ class InitiativeCog(commands.Cog):
         display_string = display_init(init_list, 0)
         await ctx.respond(display_string)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     async def end_initiative(self, ctx: discord.ApplicationContext):
         # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -451,12 +451,12 @@ class InitiativeCog(commands.Cog):
             session.commit()
         await ctx.respond("Initiative Ended.")
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     async def next(self, ctx: discord.ApplicationContext):
         display_string = advance_initiative(ctx.guild)
         await ctx.respond(display_string)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -482,7 +482,7 @@ class InitiativeCog(commands.Cog):
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
     async def delete_character(self, ctx: discord.ApplicationContext, character: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -498,7 +498,7 @@ class InitiativeCog(commands.Cog):
                 delete_character(ctx.guild, character)
                 await ctx.respond(f'{character} deleted', ephemeral=True)
 
-    @initiative.command()
+    @initiative.command(guild_ids=[GUILD])
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def heal_harm(self, ctx: discord.ApplicationContext, name: str, mode: str, ammount: int):
