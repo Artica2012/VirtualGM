@@ -385,8 +385,8 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Administrative Commands")
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'delete'])
-    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str):
+    @option('mode', choices=['setup', 'delete', 'tracker'])
+    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if mode == 'setup':
             response = setup_tracker(ctx.guild, ctx.user)
@@ -409,6 +409,17 @@ class InitiativeCog(commands.Cog):
                 else:
                     delete_character(ctx.guild, argument)
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
+            elif mode == 'tracker':
+                init_pos = int(guild.initiative)
+                display_string = display_init(get_init_list(ctx.guild), init_pos)
+                # interaction = await ctx.respond(display_string)
+                interaction = await ctx.channel.send(display_string)
+                await ctx.defer()
+                await interaction.pin()
+                guild.tracker = interaction.id
+                guild.tracker_channel = ctx.channel.id
+                session.commit()
+                ctx.followup
             else:
                 await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
@@ -474,6 +485,14 @@ class InitiativeCog(commands.Cog):
     @i.command(description="Advance Initiative")
     async def next(self, ctx: discord.ApplicationContext):
         display_string = advance_initiative(ctx.guild)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            tracker = guild.tracker
+            tracker_channel = guild.tracker_channel
+            channel = self.bot.get_channel(tracker_channel)
+            message = await channel.fetch_message(tracker)
+            await message.edit(display_string)
         await ctx.respond(display_string)
 
     @i.command(description="Set Init (Number of XdY+Z")

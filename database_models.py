@@ -17,9 +17,11 @@ class Global(Base):
     time = Column(BigInteger(), default=0, nullable=False)
     initiative = Column(Integer())
     saved_order = Column(String(), default='')
-    gm = Column(String()),
-    tracker = Column(BigInteger(), nullable=True),
+    gm = Column(String())
+    tracker = Column(BigInteger(), nullable=True)
+    tracker_channel = Column(BigInteger(), nullable=True)
     gm_tracker = Column(BigInteger(), nullable=True)
+    gm_tracker_channel = Column(BigInteger(), nullable=True)
 
 
 def tracker_table(server: discord.Guild, metadata):
