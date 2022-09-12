@@ -237,6 +237,13 @@ def parse_init_list(server: discord.Guild, init_list: list):
 
 
 def display_init(init_list: list, selected: int):
+    data = display_tracker(init_list, selected)
+    output_string = data[0]
+    output_string += f"<@{data[1][selected]['user']}>, it's your turn."
+    # print(output_string)
+    return output_string
+
+def display_tracker(init_list: list, selected: int):
     row_data = []
     for row in init_list:
         row_data.append({'id': row[0],
@@ -265,11 +272,10 @@ def display_init(init_list: list, selected: int):
             hp_string = calculate_hp(row['chp'], row['maxhp'])
             string = f"{selector}  {row['init']} {str(row['name']).title()}: {hp_string} \n"
         output_string += string
-    output_string += f"```\n<@{row_data[selected]['user']}>, it's your turn."
+    output_string += f"```\n"
 
     # print(output_string)
-    return output_string
-
+    return output_string, row_data
 
 def calculate_hp(chp, maxhp):
     hp_string = ''
@@ -409,9 +415,20 @@ class InitiativeCog(commands.Cog):
                 else:
                     delete_character(ctx.guild, argument)
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
+                    try:
+                        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+                        tracker = guild.tracker
+                        tracker_channel = guild.tracker_channel
+                        init_pos = int(guild.initiative)
+                        tracker_display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
+                        channel = self.bot.get_channel(tracker_channel)
+                        message = await channel.fetch_message(tracker)
+                        await message.edit(tracker_display_string)
+                    except Exception as e:
+                        pass
             elif mode == 'tracker':
                 init_pos = int(guild.initiative)
-                display_string = display_init(get_init_list(ctx.guild), init_pos)
+                display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
                 # interaction = await ctx.respond(display_string)
                 interaction = await ctx.channel.send(display_string)
                 await ctx.defer()
@@ -457,6 +474,20 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond(f"Error Adding Character", ephemeral=True)
         else:
             await ctx.respond('Failed.', ephemeral=True)
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        with Session(engine) as session:
+            try:
+                guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+                tracker = guild.tracker
+                tracker_channel = guild.tracker_channel
+                init_pos = int(guild.initiative)
+                tracker_display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
+                channel = self.bot.get_channel(tracker_channel)
+                message = await channel.fetch_message(tracker)
+                await message.edit(tracker_display_string)
+            except Exception as e:
+                pass
+
 
     @i.command(description="Start/Stop Initiative")
     @discord.default_permissions(manage_messages=True)
@@ -481,18 +512,33 @@ class InitiativeCog(commands.Cog):
                 guild.saved_order = ''
                 session.commit()
                 await ctx.respond("Initiative Ended.")
+            try:
+                tracker = guild.tracker
+                tracker_channel = guild.tracker_channel
+                init_pos = int(guild.initiative)
+                tracker_display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
+                channel = self.bot.get_channel(tracker_channel)
+                message = await channel.fetch_message(tracker)
+                await message.edit(tracker_display_string)
+            except Exception as e:
+                pass
 
     @i.command(description="Advance Initiative")
     async def next(self, ctx: discord.ApplicationContext):
         display_string = advance_initiative(ctx.guild)
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            tracker = guild.tracker
-            tracker_channel = guild.tracker_channel
-            channel = self.bot.get_channel(tracker_channel)
-            message = await channel.fetch_message(tracker)
-            await message.edit(display_string)
+            try:
+                guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+                tracker = guild.tracker
+                tracker_channel = guild.tracker_channel
+                init_pos = int(guild.initiative)
+                tracker_display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
+                channel = self.bot.get_channel(tracker_channel)
+                message = await channel.fetch_message(tracker)
+                await message.edit(tracker_display_string)
+            except Exception as e:
+                pass
         await ctx.respond(display_string)
 
     @i.command(description="Set Init (Number of XdY+Z")
