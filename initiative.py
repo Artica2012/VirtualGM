@@ -453,6 +453,35 @@ def set_condition(server: discord.Guild, character: str, title: str, counter: bo
 def edit_condition(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
+    # Get the data from the database
+    try:
+        emp = TrackerTable(ctx.guild.id, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+        return False
+    try:
+        con = ConditionTable(ctx.guild.id, metadata).condition_table()
+        stmt = con.select().where(con.c.character_id == data[0][0])
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+        return False
+
+    # Format the Data and Build the View
 
 
 async def update_pinned_tracker(ctx, engine, bot):
