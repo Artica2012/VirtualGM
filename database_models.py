@@ -88,8 +88,9 @@ class ConditionTable():
         con = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
                        db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.server.id}.id')),
-                       db.Column('condition', db.String(255), nullable=False),
-                       db.Column('duration', db.INTEGER()),
+                       db.Column('counter', db.BOOLEAN(), default=False),
+                       db.Column('title', db.String(255), nullable=False),
+                       db.Column('number', db.INTEGER(), nullable=True, default=None),
                        db.Column('beginning', db.BOOLEAN, default=False)
                        )
         return con

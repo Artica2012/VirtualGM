@@ -9,7 +9,7 @@ from discord import option
 from discord.ext import tasks
 
 import sqlalchemy as db
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, insert
 from database_models import Global, Base, TrackerTable, ConditionTable, DatabaseListener
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
@@ -414,7 +414,43 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
         return False
 
 
-def set_condition(server: discord.Guild, name: str, condition: str, number: int):
+def set_condition(server: discord.Guild, character: str, title: str, counter: bool, number: int):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    # Get the Character's data
+    try:
+        emp = TrackerTable(server, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        # print(e)
+        return False
+
+    try:
+        con = ConditionTable(server, metadata).condition_table()
+        stmt = con.insert().values(
+            character_id=data[0][0],
+            title=title,
+            number=number,
+            counter=counter
+        )
+        complied = stmt.compile()
+        print(complied)
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def edit_condition(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
 
@@ -432,6 +468,7 @@ async def update_pinned_tracker(ctx, engine, bot):
         except Exception as e:
             pass
 
+
 async def post_init(ctx: discord.ApplicationContext, engine):
     # Query the initiative position for the tracker and post it
     with Session(engine) as session:
@@ -439,6 +476,7 @@ async def post_init(ctx: discord.ApplicationContext, engine):
         init_list = get_init_list(ctx.guild)
         await ctx.respond(f"{get_tracker(init_list, guild.initiative)}\n"
                           f"{ping_player_on_init(init_list, guild.initiative)}")
+
 
 #############################################################################
 #############################################################################
@@ -477,7 +515,7 @@ class InitiativeCog(commands.Cog):
                 else:
                     delete_character(ctx.guild, argument)
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
-                    update_pinned_tracker(ctx, engine, self.bot)
+                    await update_pinned_tracker(ctx, engine, self.bot)
             elif mode == 'tracker':
                 init_pos = int(guild.initiative)
                 display_string = get_tracker(get_init_list(ctx.guild), init_pos)
@@ -527,7 +565,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond('Failed.', ephemeral=True)
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        update_pinned_tracker(ctx, engine, self.bot)
+        await update_pinned_tracker(ctx, engine, self.bot)
 
     @i.command(description="Start/Stop Initiative", guild_ids=[GUILD])
     @discord.default_permissions(manage_messages=True)
@@ -566,7 +604,7 @@ class InitiativeCog(commands.Cog):
 
         # Query the initiative position for the tracker and post it
         await post_init(ctx, engine)
-        await update_pinned_tracker(ctx, engine, self.bot) # update the pinned tracker
+        await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
 
     @i.command(description="Set Init (Number of XdY+Z", guild_ids=[GUILD])
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
@@ -615,11 +653,17 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond(f"{amount} Temporary HP added to {name}.")
         if not response:
             await ctx.respond("Failed", ephemeral=True)
-        update_pinned_tracker(ctx, engine, self.bot)
+        await update_pinned_tracker(ctx, engine, self.bot)
 
+    @option('type', choices=['Condition', 'Counter'])
     @i.command(description="Add or remove conditions and counters", guild_ids=[GUILD])
-    async def condition(self, ctx: discord.ApplicationContext, name: str, condition: str, number: int = None):
-        set_condition(ctx.guild, name, condition, number)
+    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, counter: str, number: int = None):
+        if counter == "Condition":
+            counter_bool = False
+        else:
+            counter_bool = True
+
+        set_condition(ctx.guild, character, title, counter_bool, number)
 
 
 def setup(bot):
