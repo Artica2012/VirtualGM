@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 import sqlalchemy as db
 from sqlalchemy import create_engine, inspect
-from database_models import Global, Base, tracker_table, condition_table
+from database_models import Global, Base, TrackerTable, ConditionTable
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
 from database_models import disease_table, feat_table, power_table

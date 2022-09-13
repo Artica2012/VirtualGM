@@ -3,12 +3,37 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.event import listens_for
 from sqlalchemy.orm import relationship
 import sqlalchemy as db
 
 import discord
 
+import os
+from dotenv import load_dotenv
+
+# define global variables
+from database_operations import get_db_engine
+
+load_dotenv(verbose=True)
+TOKEN = os.getenv('TOKEN')
+GUILD = os.getenv('GUILD')
+SERVER_DATA = os.getenv('SERVERDATA')
+USERNAME = os.getenv('Username')
+PASSWORD = os.getenv('Password')
+HOSTNAME = os.getenv('Hostname')
+PORT = os.getenv('PGPort')
+
 Base = declarative_base()
+
+
+class DatabaseListener:
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+    @listens_for(engine, 'after_cursor_execute')
+    async def flushed(self, session, flush_context, instances):
+        print('Flushed')
+
 
 class Global(Base):
     __tablename__ = "global_manager"
@@ -23,32 +48,51 @@ class Global(Base):
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True)
 
-
-def tracker_table(server: discord.Guild, metadata):
-    tablename = f"Tracker_{server.id}"
-    emp = db.Table(tablename, metadata,
-                   db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                   db.Column('name', db.String(255), nullable=False, unique=True),
-                   db.Column('init', db.INTEGER(), default=0),
-                   db.Column('player', db.BOOLEAN, default=False),
-                   db.Column('user', db.BigInteger(), nullable=False),
-                   db.Column('current_hp', db.INTEGER(), default=0),
-                   db.Column('max_hp', db.INTEGER(), default=1),
-                   db.Column('temp_hp', db.INTEGER(), default=0),
-                   )
-    return emp
+@listens_for(Global.initiative, "modified")
+def receive_modified(target, initiator):
+    print('Modified Global')
 
 
-def condition_table(server: discord.Guild, metadata):
-    tablename = f"Condition_{server.id}"
-    con = db.Table(tablename, metadata,
-                   db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                   db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{server.id}.id')),
-                   db.Column('condition', db.String(255), nullable=False),
-                   db.Column('duration', db.INTEGER()),
-                   db.Column('beginning', db.BOOLEAN, default=False)
-                   )
-    return con
+class TrackerTable():
+    def __init__(self, server: discord.Guild, metadata):
+        self.server = server
+        self.metadata = metadata
+
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+    @listens_for(engine, 'after_cursor_execute')
+    def flushed(self, session, flush_context, instances):
+        print('Flushed')
+
+    def tracker_table(self):
+        tablename = f"Tracker_{self.server.id}"
+        emp = db.Table(tablename, self.metadata,
+                       db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
+                       db.Column('name', db.String(255), nullable=False, unique=True),
+                       db.Column('init', db.INTEGER(), default=0),
+                       db.Column('player', db.BOOLEAN, default=False),
+                       db.Column('user', db.BigInteger(), nullable=False),
+                       db.Column('current_hp', db.INTEGER(), default=0),
+                       db.Column('max_hp', db.INTEGER(), default=1),
+                       db.Column('temp_hp', db.INTEGER(), default=0),
+                       )
+        return emp
+
+class ConditionTable():
+    def __init__(self, server: discord.Guild, metadata):
+        self.server = server
+        self.metadata = metadata
+
+    def condition_table(self,):
+        tablename = f"Condition_{self.server.id}"
+        con = db.Table(tablename, self.metadata,
+                       db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
+                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.server.id}.id')),
+                       db.Column('condition', db.String(255), nullable=False),
+                       db.Column('duration', db.INTEGER()),
+                       db.Column('beginning', db.BOOLEAN, default=False)
+                       )
+        return con
 
 
 def disease_table(metadata):
