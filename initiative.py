@@ -210,7 +210,6 @@ def advance_initiative(server: discord.Guild):
             guild.saved_order = str(get_init_list(server)[init_pos][1])
             session.commit()
 
-        display_string = display_init(get_init_list(server), init_pos)
         return True
     except Exception as e:
         return False
@@ -237,14 +236,6 @@ def parse_init_list(server: discord.Guild, init_list: list):
     for row in init_list:
         parsed_list.append(row[1])
     return parsed_list
-
-
-def display_init(init_list: list, selected: int):
-    data = display_tracker(init_list, selected)
-    output_string = data[0]
-    output_string += f"<@{data[1][selected]['user']}>, it's your turn."
-    # print(output_string)
-    return output_string
 
 
 def ping_player_on_init(init_list: list, selected: int):
@@ -489,7 +480,7 @@ class InitiativeCog(commands.Cog):
                     update_pinned_tracker(ctx, engine, self.bot)
             elif mode == 'tracker':
                 init_pos = int(guild.initiative)
-                display_string = display_tracker(get_init_list(ctx.guild), init_pos)[0]
+                display_string = get_tracker(get_init_list(ctx.guild), init_pos)
                 # interaction = await ctx.respond(display_string)
                 interaction = await ctx.channel.send(display_string)
                 await ctx.respond("Tracker Placed",
