@@ -414,89 +414,88 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
         print(e)
         return False
 
-#
-# def set_condition(server: discord.Guild, character: str, title: str, counter: bool, number: int):
-#     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-#     metadata = db.MetaData()
-#     # Get the Character's data
-#     try:
-#         emp = TrackerTable(server, metadata).tracker_table()
-#         stmt = emp.select().where(emp.c.name == character)
-#         compiled = stmt.compile()
-#         # print(compiled)
-#         with engine.connect() as conn:
-#             data = []
-#             for row in conn.execute(stmt):
-#                 data.append(row)
-#                 # print(row)
-#     except Exception as e:
-#         # print(e)
-#         return False
-#
-#     try:
-#         con = ConditionTable(server, metadata).condition_table()
-#         stmt = con.insert().values(
-#             character_id=data[0][0],
-#             title=title,
-#             number=number,
-#             counter=counter
-#         )
-#         complied = stmt.compile()
-#         print(complied)
-#         with engine.connect() as conn:
-#             result = conn.execute(stmt)
-#         return True
-#     except Exception as e:
-#         print(e)
-#         return False
-#
-#
-# def edit_condition(ctx: discord.ApplicationContext, bot, character: str, title: str, counter: bool, number: int):
-#     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-#     metadata = db.MetaData()
-#     # Get the data from the database
-#     try:
-#         emp = TrackerTable(ctx.guild, metadata).tracker_table()
-#         stmt = emp.select().where(emp.c.name == character)
-#         compiled = stmt.compile()
-#         # print(compiled)
-#         with engine.connect() as conn:
-#             data = []
-#             for row in conn.execute(stmt):
-#                 data.append(row)
-#                 # print(row)
-#     except Exception as e:
-#         print(e)
-#         return False
-#     try:
-#         con = ConditionTable(ctx.guild, metadata).condition_table()
-#         stmt = con.select().where(con.c.character_id == data[0][0])
-#         compiled = stmt.compile()
-#         # print(compiled)
-#         with engine.connect() as conn:
-#             data = []
-#             for row in conn.execute(stmt):
-#                 data.append(row)
-#                 # print(row)
-#     except Exception as e:
-#         print(e)
-#         return False
+
+def set_condition(server: discord.Guild, character: str, title: str, counter: bool, number: int):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    # Get the Character's data
+    try:
+        emp = TrackerTable(server, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        # print(e)
+        return False
+
+    try:
+        con = ConditionTable(server, metadata).condition_table()
+        stmt = con.insert().values(
+            character_id=data[0][0],
+            title=title,
+            number=number,
+            counter=counter
+        )
+        complied = stmt.compile()
+        print(complied)
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def edit_condition(ctx: discord.ApplicationContext, bot, character: str):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    # Get the data from the database
+    try:
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+        # return False
+    try:
+        con = ConditionTable(ctx.guild, metadata).condition_table()
+        stmt = con.select().where(con.c.character_id == data[0][0])
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+        # return False
 
     # Format the Data and Build the View
     view = discord.ui.View(timeout=None)
     options_list = []
-    if not data:
-        await ctx.respond('No Conditions Found', ephemeral=True)
-        return
+    # if not data:
+    #     await ctx.respond('No Conditions Found', ephemeral=True)
+    #     return
     for result in data:
-        option = discord.SelectOption(label=result[3], description=result[4], value=result[0])
-        options_list.append(option)
+        print(result)
+        print(result[3])
+        option_item = discord.SelectOption(label=result[3], description=f"Value: {result[4]}", value=f"{result[0]}")
+        options_list.append(option_item)
 
     view.add_item(ConditionDropdown(bot_=bot, options=options_list))
-
-    await ctx.respond(f"{character}", view=view)
-
-
+    return view
 
 
 async def update_pinned_tracker(ctx, engine, bot):
@@ -698,16 +697,24 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    # @option('type', choices=['Condition', 'Counter'])
-    # @i.command(description="Add or remove conditions and counters", guild_ids=[GUILD])
-    # async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, counter: str, number: int = None):
-    #     if counter == "Condition":
-    #         counter_bool = False
-    #     else:
-    #         counter_bool = True
-    #
-    #     set_condition(ctx.guild, character, title, counter_bool, number)
-    #     await ctx.respond('Complete', ephemeral=True)
+    @option('mode', choices=['Condition', 'Counter'])
+    @i.command(description="Add or remove conditions and counters", guild_ids=[GUILD])
+    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, mode: str, number: int = None):
+        if mode == "Condition":
+            counter_bool = False
+        else:
+            counter_bool = True
+
+        response = set_condition(ctx.guild, character, title, counter_bool, number)
+        if response:
+            await ctx.respond("Success", ephemeral=True)
+        else:
+            await ctx.respond('Failed', ephemeral=True)
+
+    @i.command(description="Edit or Delete Conditions or Counters", guild_ids=[GUILD])
+    async def edit_cc(self, ctx: discord.ApplicationContext, character: str):
+        response = edit_condition(ctx, self.bot, character)
+        await ctx.respond(f"Conditions and Counters for {character}", view=response, ephemeral=True)
 
 
 def setup(bot):
