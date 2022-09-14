@@ -671,5 +671,6 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failure")
 
 
+
 def setup(bot):
     bot.add_cog(InitiativeCog(bot))
