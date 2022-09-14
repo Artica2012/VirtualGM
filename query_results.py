@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 
 # define global variables
-from ui_buttons import QuerySelectButton
+from ui_components import QuerySelectButton
 
 load_dotenv(verbose=True)
 TOKEN = os.getenv('TOKEN')
