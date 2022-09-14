@@ -655,15 +655,20 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @option('type', choices=['Condition', 'Counter'])
+
     @i.command(description="Add or remove conditions and counters", guild_ids=[GUILD])
-    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, counter: str, number: int = None):
-        if counter == "Condition":
+    @option('type', choices=['Condition', 'Counter'])
+    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None):
+        if type == "Condition":
             counter_bool = False
         else:
             counter_bool = True
 
-        set_condition(ctx.guild, character, title, counter_bool, number)
+        response = set_condition(ctx.guild, character, title, counter_bool, number)
+        if response:
+            await ctx.respond("Success")
+        else:
+            await ctx.respond("Failure")
 
 
 def setup(bot):
