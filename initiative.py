@@ -446,7 +446,7 @@ def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter:
     metadata = db.MetaData()
     # Get the Character's data
     try:
-        emp = TrackerTable(ctx.guild.id, metadata).tracker_table()
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -460,7 +460,7 @@ def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter:
         return False
 
     try:
-        con = ConditionTable(ctx.guild.id, metadata).condition_table()
+        con = ConditionTable(ctx.guild, metadata).condition_table()
         stmt = con.insert().values(
             character_id=data[0][0],
             title=title,
@@ -472,16 +472,86 @@ def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter:
         print(complied)
         with engine.connect() as conn:
             result = conn.execute(stmt)
-        return True
         update_pinned_tracker(ctx, engine, bot)
+        return True
     except Exception as e:
         print(e)
         return False
 
 
-def edit_condition(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int):
+def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, value: int, bot):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
+    try:
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+        return False
+    try:
+        con = ConditionTable(ctx.guild, metadata).condition_table()
+        stmt = update(con).where(con.e.character_id == data[0][0]).where(con.c.title == condition).values(
+            number=value
+        )
+        complied = stmt.compile()
+        # print(complied)
+        con_data = []
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+        update_pinned_tracker(ctx, engine, bot)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def delete_cc(ctx: discord.ApplicationContext, character: str, condition, bot):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    try:
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        # print(e)
+        return False
+
+    try:
+        con = ConditionTable(ctx.guild, metadata).condition_table()
+        stmt = con.select().where(con.c.character_id == data[0][0])
+        complied = stmt.compile()
+        print(complied)
+        con_data = []
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+            for con_row in result:
+                con_data.append(con_row)
+    except Exception as e:
+        print(e)
+        return False
+    try:
+        for row in con_data:
+            if row[4] == condition:
+                stmt = delete(con).where(con.c.id == row[0])
+                with engine.connect() as conn:
+                    result = conn.execute(stmt)
+        update_pinned_tracker(ctx, engine, bot)
+    except Exception as e:
+        print(e)
+        return False
 
 
 async def update_pinned_tracker(ctx, engine, bot):
@@ -688,7 +758,7 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Add or remove conditions and counters", guild_ids=[GUILD])
+    @i.command(description="Add conditions and counters", guild_ids=[GUILD])
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
@@ -702,11 +772,29 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = set_cc(ctx, character, title, counter_bool, number, self.bot)
+        response = set_cc(ctx, character, title, counter_bool, number, auto_bool, self.bot)
         if response:
             await ctx.respond("Success")
         else:
             await ctx.respond("Failure")
+
+    @i.command(description="Edit or remove conditions and counters", guild_ids=[GUILD])
+    @option('mode', choices=['edit', 'delete'])
+    async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
+                      new_value: int = 0):
+        result = False
+        if mode == 'delete':
+            result = delete_cc(ctx, character, condition, self.bot)
+            await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
+        elif mode == 'edit':
+            result = edit_cc(ctx, character, condition, new_value, self.bot)
+            await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
+        else:
+            await ctx.respond("Failed", ephemeral=True)
+
+        if not result:
+            await ctx.respond("Failed", ephemeral=True)
+
 
 
 def setup(bot):
