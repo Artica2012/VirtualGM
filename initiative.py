@@ -580,7 +580,7 @@ class InitiativeCog(commands.Cog):
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
-    @i.command(description="Administrative Commands", guild_ids=[GUILD])
+    @i.command(description="Administrative Commands")
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'delete', 'tracker'])
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
@@ -621,7 +621,7 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
-    @i.command(description="Transfer GM duties to a new player", guild_ids=[GUILD])
+    @i.command(description="Transfer GM duties to a new player")
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -636,7 +636,7 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
-    @i.command(description="Add PC on NPC", guild_ids=[GUILD])
+    @i.command(description="Add PC on NPC")
     @option('name', description="Character Name")
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
@@ -658,7 +658,7 @@ class InitiativeCog(commands.Cog):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Start/Stop Initiative", guild_ids=[GUILD])
+    @i.command(description="Start/Stop Initiative")
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['start', 'stop'])
     async def manage(self, ctx: discord.ApplicationContext, mode: str):
@@ -684,7 +684,7 @@ class InitiativeCog(commands.Cog):
                 await update_pinned_tracker(ctx, engine, self.bot)
                 await ctx.respond("Initiative Ended.")
 
-    @i.command(description="Advance Initiative", guild_ids=[GUILD])
+    @i.command(description="Advance Initiative")
     async def next(self, ctx: discord.ApplicationContext):
         # Initialize engine
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -699,7 +699,7 @@ class InitiativeCog(commands.Cog):
         await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
         # await ctx.respond("New Turn")
 
-    @i.command(description="Set Init (Number of XdY+Z", guild_ids=[GUILD])
+    @i.command(description="Set Init (Number of XdY+Z")
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -726,7 +726,7 @@ class InitiativeCog(commands.Cog):
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Heal, Damage or add Temp HP", guild_ids=[GUILD])
+    @i.command(description="Heal, Damage or add Temp HP")
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
@@ -748,7 +748,7 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Add conditions and counters", guild_ids=[GUILD])
+    @i.command(description="Add conditions and counters")
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
@@ -768,7 +768,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond("Failure")
 
-    @i.command(description="Edit or remove conditions and counters", guild_ids=[GUILD])
+    @i.command(description="Edit or remove conditions and counters")
     @option('mode', choices=['edit', 'delete'])
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
