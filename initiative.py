@@ -10,7 +10,7 @@ from discord.ext import tasks
 
 import sqlalchemy as db
 from sqlalchemy import create_engine, event, insert
-from database_models import Global, Base, TrackerTable, ConditionTable, DatabaseListener
+from database_models import Global, Base, TrackerTable, ConditionTable
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
 
@@ -152,19 +152,20 @@ def delete_character(server: discord.Guild, name: str):
 
 # Set the initiative
 def set_init(server: discord.Guild, name: str, init: int):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(server, metadata)
-        stmt = update(emp.tracker_table()).where(emp.tracker_table().c.name == name).values(
+        emp = TrackerTable(server, metadata).tracker_table()
+        stmt = update(emp).where(emp.c.name == name).values(
             init=init
         )
         compiled = stmt.compile()
+        print(compiled)
         with engine.connect() as conn:
             result = conn.execute(stmt)
             # conn.commit()
             if result.rowcount == 0:
+                print("RowCount = 0")
                 return False
         return True
     except Exception as e:
@@ -285,13 +286,13 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
     for row in init_list:
         stmt = con.select().where(con.c.character_id == row[0])
         compiled = stmt.compile()
-        print(compiled)
+        # print(compiled)
         with engine.connect() as conn:
             con_data = []
-            print(conn.execute)
+            # print(conn.execute)
             for con_row in conn.execute(stmt):
                 con_data.append(con_row)
-                print(con_row)
+                # print(con_row)
 
         row_data.append({'id': row[0],
                          'name': row[1],
@@ -576,11 +577,12 @@ async def post_init(ctx: discord.ApplicationContext, engine):
 class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.listener = DatabaseListener
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
-    @i.command(description="Administrative Commands")
+    @i.command(description="Administrative Commands",
+               # guild_ids=[GUILD]
+               )
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'delete', 'tracker'])
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
@@ -608,7 +610,10 @@ class InitiativeCog(commands.Cog):
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
                     await update_pinned_tracker(ctx, engine, self.bot)
             elif mode == 'tracker':
-                init_pos = int(guild.initiative)
+                try:
+                    init_pos = int(guild.initiative)
+                except Exception as e:
+                    init_pos = None
                 display_string = get_tracker(get_init_list(ctx.guild), init_pos, ctx)
                 # interaction = await ctx.respond(display_string)
                 interaction = await ctx.channel.send(display_string)
@@ -621,7 +626,9 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
-    @i.command(description="Transfer GM duties to a new player")
+    @i.command(description="Transfer GM duties to a new player",
+               # guild_ids=[GUILD]
+)
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -636,7 +643,9 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
-    @i.command(description="Add PC on NPC")
+    @i.command(description="Add PC on NPC",
+               # guild_ids=[GUILD]
+)
     @option('name', description="Character Name")
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
@@ -658,7 +667,9 @@ class InitiativeCog(commands.Cog):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Start/Stop Initiative")
+    @i.command(description="Start/Stop Initiative",
+               # guild_ids=[GUILD]
+)
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['start', 'stop'])
     async def manage(self, ctx: discord.ApplicationContext, mode: str):
@@ -684,7 +695,9 @@ class InitiativeCog(commands.Cog):
                 await update_pinned_tracker(ctx, engine, self.bot)
                 await ctx.respond("Initiative Ended.")
 
-    @i.command(description="Advance Initiative")
+    @i.command(description="Advance Initiative",
+               # guild_ids=[GUILD]
+)
     async def next(self, ctx: discord.ApplicationContext):
         # Initialize engine
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -699,7 +712,9 @@ class InitiativeCog(commands.Cog):
         await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
         # await ctx.respond("New Turn")
 
-    @i.command(description="Set Init (Number of XdY+Z")
+    @i.command(description="Set Init (Number of XdY+Z",
+               # guild_ids=[GUILD]
+)
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -711,6 +726,7 @@ class InitiativeCog(commands.Cog):
             else:
                 dice = DiceRoller('')
                 try:
+                    print(f"Init: {init}")
                     initiative = int(init)
                     success = set_init(ctx.guild, character, initiative)
                     if success:
@@ -726,7 +742,9 @@ class InitiativeCog(commands.Cog):
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Heal, Damage or add Temp HP")
+    @i.command(description="Heal, Damage or add Temp HP",
+               # guild_ids=[GUILD]
+)
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
@@ -748,7 +766,9 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)
 
-    @i.command(description="Add conditions and counters")
+    @i.command(description="Add conditions and counters",
+               # guild_ids=[GUILD]
+)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
@@ -768,7 +788,9 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond("Failure")
 
-    @i.command(description="Edit or remove conditions and counters")
+    @i.command(description="Edit or remove conditions and counters",
+               # guild_ids=[GUILD]
+)
     @option('mode', choices=['edit', 'delete'])
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):

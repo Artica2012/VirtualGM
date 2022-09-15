@@ -27,14 +27,6 @@ PORT = os.getenv('PGPort')
 Base = declarative_base()
 
 
-class DatabaseListener:
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    @listens_for(engine, 'after_cursor_execute')
-    async def flushed(self, session, flush_context, instances):
-        print('Flushed')
-
-
 class Global(Base):
     __tablename__ = "global_manager"
 
