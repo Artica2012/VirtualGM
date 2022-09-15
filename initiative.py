@@ -182,6 +182,7 @@ def init_integrity_check(server: discord.Guild, init_pos: int, current_character
 
 def advance_initiative(server: discord.Guild):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
     # try:
     with Session(engine) as session:
         # get current position in the initiative
@@ -196,6 +197,38 @@ def advance_initiative(server: discord.Guild):
         else:
             current_character = guild.saved_order
         # make sure that the current character is at the same place in initiative as it was before
+
+        # decrement any conditions with the decrement flag
+        try:
+            emp = TrackerTable(server, metadata).tracker_table()
+            stmt = emp.select().where(emp.c.name == current_character)
+            compiled = stmt.compile()
+            # print(compiled)
+            with engine.connect() as conn:
+                data = []
+                for row in conn.execute(stmt):
+                    data.append(row)
+                    # print(row)
+        except Exception as e:
+            # print(e)
+            return False
+
+        try:
+            con = ConditionTable(server, metadata).condition_table()
+            stmt = con.select().where(con.c.character_id == data[0][0])
+            compiled = stmt.compile()
+            with engine.connect() as conn:
+                for con_row in conn.execute(stmt):
+                    if con_row[5]:
+                        if con_row[4] >= 2:
+                            new_stmt = update(con).where(con.c.id == con_row[0]).values(
+                                number=con_row[4] - 1
+                            )
+                        else:
+                            new_stmt = delete(con).where(con.c.id == con_row[0])
+                    result = conn.execute(new_stmt)
+        except Exception as e:
+            print(e)
 
         # if its not, set the init position to the position of the current character before advancing it
         if not init_integrity_check(server, init_pos, current_character):
@@ -290,7 +323,10 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
 
         for con_row in row['cc']:
             if not con_row[2]:
-                con_string = f"      {con_row[3]}: {con_row[4]}\n"
+                if con_row[4] != None:
+                    con_string = f"      {con_row[3]}: {con_row[4]}\n"
+                else:
+                    con_string = f"      {con_row[3]}\n"
 
             elif con_row[2] == True and x == selected:
                 con_string = f"      {con_row[3]}: {con_row[4]}\n"
@@ -469,8 +505,9 @@ async def post_init(ctx: discord.ApplicationContext, engine):
         init_list = get_init_list(ctx.guild)
         tracker_string = get_tracker(init_list, guild.initiative, ctx)
         ping_string = ping_player_on_init(init_list, guild.initiative)
-    await ctx.send_response(f"{tracker_string}\n"
-                      f"{ping_string}")
+    await ctx.send_followup(f"{tracker_string}\n"
+                            f"{ping_string}")
+
 
 #############################################################################
 #############################################################################
@@ -597,7 +634,7 @@ class InitiativeCog(commands.Cog):
         result = advance_initiative(ctx.guild)  # Advance the init
 
         # Query the initiative position for the tracker and post it
-        # await ctx.response.defer()
+        await ctx.response.defer()
         await post_init(ctx, engine)
         await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
         # await ctx.respond("New Turn")
