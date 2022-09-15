@@ -440,7 +440,7 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
         return False
 
 
-def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int,
+async def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int,
            auto_decrement: bool, bot):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
@@ -472,14 +472,14 @@ def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter:
         print(complied)
         with engine.connect() as conn:
             result = conn.execute(stmt)
-        update_pinned_tracker(ctx, engine, bot)
+        await update_pinned_tracker(ctx, engine, bot)
         return True
     except Exception as e:
         print(e)
         return False
 
 
-def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, value: int, bot):
+async def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, value: int, bot):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
@@ -497,7 +497,7 @@ def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, val
         return False
     try:
         con = ConditionTable(ctx.guild, metadata).condition_table()
-        stmt = update(con).where(con.e.character_id == data[0][0]).where(con.c.title == condition).values(
+        stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
             number=value
         )
         complied = stmt.compile()
@@ -505,14 +505,14 @@ def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, val
         con_data = []
         with engine.connect() as conn:
             result = conn.execute(stmt)
-        update_pinned_tracker(ctx, engine, bot)
+        await update_pinned_tracker(ctx, engine, bot)
         return True
     except Exception as e:
         print(e)
         return False
 
 
-def delete_cc(ctx: discord.ApplicationContext, character: str, condition, bot):
+async def delete_cc(ctx: discord.ApplicationContext, character: str, condition, bot):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     try:
@@ -531,24 +531,14 @@ def delete_cc(ctx: discord.ApplicationContext, character: str, condition, bot):
 
     try:
         con = ConditionTable(ctx.guild, metadata).condition_table()
-        stmt = con.select().where(con.c.character_id == data[0][0])
+        stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
         complied = stmt.compile()
         print(complied)
-        con_data = []
         with engine.connect() as conn:
             result = conn.execute(stmt)
-            for con_row in result:
-                con_data.append(con_row)
-    except Exception as e:
-        print(e)
-        return False
-    try:
-        for row in con_data:
-            if row[4] == condition:
-                stmt = delete(con).where(con.c.id == row[0])
-                with engine.connect() as conn:
-                    result = conn.execute(stmt)
-        update_pinned_tracker(ctx, engine, bot)
+            # print(result)
+        await update_pinned_tracker(ctx, engine, bot)
+        return True
     except Exception as e:
         print(e)
         return False
@@ -772,7 +762,7 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = set_cc(ctx, character, title, counter_bool, number, auto_bool, self.bot)
+        response = await set_cc(ctx, character, title, counter_bool, number, auto_bool, self.bot)
         if response:
             await ctx.respond("Success")
         else:
@@ -784,10 +774,10 @@ class InitiativeCog(commands.Cog):
                       new_value: int = 0):
         result = False
         if mode == 'delete':
-            result = delete_cc(ctx, character, condition, self.bot)
+            result = await delete_cc(ctx, character, condition, self.bot)
             await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
         elif mode == 'edit':
-            result = edit_cc(ctx, character, condition, new_value, self.bot)
+            result = await edit_cc(ctx, character, condition, new_value, self.bot)
             await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
         else:
             await ctx.respond("Failed", ephemeral=True)
