@@ -1,5 +1,3 @@
-import datetime
-
 import discord
 from discord.ext import commands
 from discord.commands import SlashCommandGroup
@@ -10,9 +8,10 @@ from database_operations import get_db_engine
 
 import os
 from dotenv import load_dotenv
-import database_operations
 
 # define global variables
+from ui_components import QuerySelectButton
+
 load_dotenv(verbose=True)
 TOKEN = os.getenv('TOKEN')
 GUILD = os.getenv('GUILD')
@@ -24,40 +23,6 @@ PORT = os.getenv('PGPort')
 
 
 # The Tables:
-
-
-class QuerySelectButton(discord.ui.Button):
-    def __init__(self, name:str, id:str, link:str):
-        self.link = link
-        super().__init__(
-            label=name,
-            style=discord.ButtonStyle.primary,
-            custom_id=id,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        #Called when button is pressed
-        user = interaction.user
-        message = interaction.message
-        await message.delete()
-        embed = discord.Embed(
-            title= self.label,
-            timestamp=datetime.datetime.now(),
-            description=self.link
-        )
-        await interaction.response.send_message(
-            embed=embed
-        )
-
-
-class QueryLinkButton(discord.ui.Button):
-    def __init__(self,name: str,  link: str):
-        """A button for one role."""
-        super().__init__(
-            label=name,
-            style=discord.ButtonStyle.link,
-            url= link
-        )
 
 
 #############################################################################
