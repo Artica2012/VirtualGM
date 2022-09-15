@@ -91,7 +91,7 @@ class ConditionTable():
                        db.Column('counter', db.BOOLEAN(), default=False),
                        db.Column('title', db.String(255), nullable=False),
                        db.Column('number', db.INTEGER(), nullable=True, default=None),
-                       db.Column('beginning', db.BOOLEAN, default=False)
+                       db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False)
                        )
         return con
 
