@@ -712,18 +712,18 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             if mode == 'start':
+                await ctx.response.defer()
                 guild.initiative = 0
                 guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
                 session.commit()
-                await ctx.response.defer()
                 await post_init(ctx, engine)
                 await update_pinned_tracker(ctx, engine, self.bot)
                 # await ctx.respond('Initiative Started', ephemeral=True)
             elif mode == 'stop':
+                await ctx.response.defer()
                 guild.initiative = None
                 guild.saved_order = ''
                 session.commit()
-                await ctx.response.defer()
                 await update_pinned_tracker(ctx, engine, self.bot)
                 await ctx.send_followup("Initiative Ended.")
 
@@ -842,14 +842,13 @@ class InitiativeCog(commands.Cog):
     @i.command(description = "Show Custom Counters")
     async def cc_show(self, ctx: discord.ApplicationContext, character: str):
         #TODO - Make this GM only for NPCs
-        #TODO - Consider making this ephemeral
-        ctx.response.defer()
+        await ctx.response.defer()
         cc_list = get_cc(ctx, character)
         output_string = f'{character}:\n'
         for row in cc_list:
             counter_string = f'{row[3]}: {row[4]}'
             output_string += counter_string
-        await ctx.send_followup(output_string)
+        await ctx.send_followup(output_string, ephemeral=True)
 
 
 
