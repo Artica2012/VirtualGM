@@ -442,7 +442,7 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
 
 
 async def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int,
-           auto_decrement: bool, bot):
+                 auto_decrement: bool, bot):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     # Get the Character's data
@@ -628,7 +628,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Transfer GM duties to a new player",
                # guild_ids=[GUILD]
-)
+               )
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -645,7 +645,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
-)
+               )
     @option('name', description="Character Name")
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
@@ -669,7 +669,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Start/Stop Initiative",
                # guild_ids=[GUILD]
-)
+               )
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['start', 'stop'])
     async def manage(self, ctx: discord.ApplicationContext, mode: str):
@@ -685,6 +685,7 @@ class InitiativeCog(commands.Cog):
                 guild.initiative = 0
                 guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
                 session.commit()
+                await ctx.response.defer()
                 await post_init(ctx, engine)
                 await update_pinned_tracker(ctx, engine, self.bot)
                 # await ctx.respond('Initiative Started', ephemeral=True)
@@ -692,12 +693,13 @@ class InitiativeCog(commands.Cog):
                 guild.initiative = None
                 guild.saved_order = ''
                 session.commit()
+                await ctx.response.defer()
                 await update_pinned_tracker(ctx, engine, self.bot)
-                await ctx.respond("Initiative Ended.")
+                await ctx.send_followup("Initiative Ended.")
 
     @i.command(description="Advance Initiative",
                # guild_ids=[GUILD]
-)
+               )
     async def next(self, ctx: discord.ApplicationContext):
         # Initialize engine
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -714,7 +716,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Set Init (Number of XdY+Z",
                # guild_ids=[GUILD]
-)
+               )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         with Session(engine) as session:
@@ -744,7 +746,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Heal, Damage or add Temp HP",
                # guild_ids=[GUILD]
-)
+               )
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
@@ -768,7 +770,7 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
-)
+               )
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
@@ -784,13 +786,13 @@ class InitiativeCog(commands.Cog):
 
         response = await set_cc(ctx, character, title, counter_bool, number, auto_bool, self.bot)
         if response:
-            await ctx.respond("Success")
+            await ctx.respond("Success", ephemeral=True)
         else:
-            await ctx.respond("Failure")
+            await ctx.respond("Failure", ephemeral=True)
 
     @i.command(description="Edit or remove conditions and counters",
                # guild_ids=[GUILD]
-)
+               )
     @option('mode', choices=['edit', 'delete'])
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
@@ -806,7 +808,6 @@ class InitiativeCog(commands.Cog):
 
         if not result:
             await ctx.respond("Failed", ephemeral=True)
-
 
 
 def setup(bot):
