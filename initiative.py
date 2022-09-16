@@ -841,6 +841,8 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description = "Show Custom Counters")
     async def cc_show(self, ctx: discord.ApplicationContext, character: str):
+        #TODO - Make this GM only for NPCs
+        #TODO - Consider making this ephemeral
         ctx.response.defer()
         cc_list = get_cc(ctx, character)
         output_string = f'{character}:\n'
