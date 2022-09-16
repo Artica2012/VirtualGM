@@ -309,7 +309,7 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
                     "Initiative:\n"
     for x, row in enumerate(row_data):
         if x == selected:
-            selector = '>>>'
+            selector = '>>'
         else:
             selector = ''
         if row['player']:
@@ -325,12 +325,12 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
         for con_row in row['cc']:
             if not con_row[2]:
                 if con_row[4] != None:
-                    con_string = f"      {con_row[3]}: {con_row[4]}\n"
+                    con_string = f"       {con_row[3]}: {con_row[4]}\n"
                 else:
-                    con_string = f"      {con_row[3]}\n"
+                    con_string = f"       {con_row[3]}\n"
 
-            elif con_row[2] == True and x == selected:
-                con_string = f"      {con_row[3]}: {con_row[4]}\n"
+            elif con_row[2] == True and x == selected and row['player']:
+                con_string = f"       {con_row[3]}: {con_row[4]}\n"
             else:
                 con_string = ''
             output_string += con_string
@@ -543,6 +543,36 @@ async def delete_cc(ctx: discord.ApplicationContext, character: str, condition, 
     except Exception as e:
         print(e)
         return False
+
+def get_cc(ctx: discord.ApplicationContext, character: str):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    try:
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+                # print(row)
+    except Exception as e:
+        print(e)
+    try:
+        con = ConditionTable(ctx.guild, metadata).condition_table()
+        stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
+        complied = stmt.compile()
+        # print(complied)
+        con_data = []
+        with engine.connect() as conn:
+            result = conn.execute(stmt)
+            for row in result:
+                con_data.append(row)
+        return con_data
+    except Exception as e:
+        print(e)
+
 
 
 async def update_pinned_tracker(ctx, engine, bot):
@@ -808,6 +838,17 @@ class InitiativeCog(commands.Cog):
 
         if not result:
             await ctx.respond("Failed", ephemeral=True)
+
+    @i.command(description = "Show Custom Counters")
+    async def cc_show(self, ctx: discord.ApplicationContext, character: str):
+        ctx.response.defer()
+        cc_list = get_cc(ctx, character)
+        output_string = f'{character}:\n'
+        for row in cc_list:
+            counter_string = f'{row[3]}: {row[4]}'
+            output_string += counter_string
+        await ctx.send_followup(output_string)
+
 
 
 def setup(bot):
