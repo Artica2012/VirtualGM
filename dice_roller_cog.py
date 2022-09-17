@@ -26,7 +26,7 @@ class DiceRollerCog(commands.Cog):
         try:
             roller = dice_roller.DiceRoller(roll_string)
             await ctx.respond(f"_{roll_string}_\n{roller.roll_dice()}")
-        except:
+        except Exception as e: # If the parser doesn't work, assume the format was wrong
             await ctx.send_response(
                 f'Invalid syntax: {roll_string}. \nPlease phrase in ```XdY Label``` format',
                 ephemeral=True

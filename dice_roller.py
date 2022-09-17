@@ -1,9 +1,10 @@
-# dice roller
+# dice_roller.py
 # dice roller module
 
 # imports
 import random
 import re
+
 
 # Dice Roller Class
 class DiceRoller:
@@ -46,14 +47,12 @@ class DiceRoller:
                 parsed_dice[x] = self.roller(item)
         return parsed_dice
 
-    # Does the additioin and subtraction between the dice rolls
+    # Does the addition and subtraction between the dice rolls
     def _math_equation(self, equation: list):
-        total = 0
-        add = True
+        total = 0 # Set the initial total to zero
+        add = True # Default it to add
         for item in equation:
-            if type(item) is list:
-                total += sum(item)
-            if type(item) is  str:
+            if type(item) is str: # If its a string it should be either a +/- or a number
                 if item == '+':
                     add = True
                 elif item == '-':
@@ -61,9 +60,19 @@ class DiceRoller:
                 else:
                     if add:
                         total += int(item)
-                    else:
+                    else: # subtract it if the previous operator was a -
                         total -= int(item)
+                        add = True # once you subtract, reset the add variable to true
+            # Hand the lists (set of die) separately since they need to be summed
+            if type(item) is list:
+                if add:
+                    total += sum(item)
+                else:
+                    total -= sum(item)
+                    add = True
+
         return total
+
     # formats the output
     def _format_output(self, text: str, dice, total):
         dice_string = ""
@@ -71,8 +80,11 @@ class DiceRoller:
         return f'{text}: {dice_string} = **{total}**'
 
     def roll_dice(self):
+        print('parsing Text')
         parsed_text = self._text_parse(self.input_string)
+        print('Parsing Dice')
         parsed_dice = self._dice_parse(parsed_text[0])
+        print('Doing math')
         calculated_total = self._math_equation(parsed_dice)
         return self._format_output(parsed_text[1], parsed_dice, calculated_total)
 
