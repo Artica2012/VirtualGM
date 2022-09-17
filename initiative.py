@@ -36,10 +36,8 @@ PORT = os.getenv('PGPort')
 # FUNCTIONS
 
 # Set up the tracker if it does not exit.db
-def setup_tracker(server: discord.Guild, user: discord.User):
+def setup_tracker(server: discord.Guild, user: discord.User, engine):
     try:
-        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         conn = engine.connect()
         metadata = db.MetaData()
         emp = TrackerTable(server, metadata).tracker_table()
@@ -63,10 +61,8 @@ def setup_tracker(server: discord.Guild, user: discord.User):
         return False
 
 
-def set_gm(server: discord.Guild, new_gm: discord.User):
+def set_gm(server: discord.Guild, new_gm: discord.User, engine):
     try:
-        # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         conn = engine.connect()
         Base.metadata.create_all(engine)
 
@@ -82,9 +78,7 @@ def set_gm(server: discord.Guild, new_gm: discord.User):
 
 
 # Add a player to the database
-def add_player(name: str, user: int, server: discord.Guild, HP: int):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def add_player(name: str, user: int, server: discord.Guild, HP: int, engine):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -108,9 +102,7 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int):
 
 
 # Add an NPC to the database
-def add_npc(name: str, user: int, server: discord.Guild, HP: int):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def add_npc(name: str, user: int, server: discord.Guild, HP: int, engine):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -133,9 +125,7 @@ def add_npc(name: str, user: int, server: discord.Guild, HP: int):
         return False
 
 
-def delete_character(server: discord.Guild, name: str):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def delete_character(server: discord.Guild, name: str, engine):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -151,8 +141,7 @@ def delete_character(server: discord.Guild, name: str):
 
 
 # Set the initiative
-def set_init(server: discord.Guild, name: str, init: int):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def set_init(server: discord.Guild, name: str, init: int, engine):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -173,16 +162,15 @@ def set_init(server: discord.Guild, name: str, init: int):
         return False
 
 
-def init_integrity_check(server: discord.Guild, init_pos: int, current_character: str):
-    init_list = get_init_list(server)
+def init_integrity_check(server: discord.Guild, init_pos: int, current_character: str, engine):
+    init_list = get_init_list(server, engine)
     if init_list[init_pos][1] == current_character:
         return True
     else:
         return False
 
 
-def advance_initiative(server: discord.Guild):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def advance_initiative(server: discord.Guild, engine):
     metadata = db.MetaData()
     # try:
     with Session(engine) as session:
@@ -194,7 +182,7 @@ def advance_initiative(server: discord.Guild):
             init_pos = int(guild.initiative)
 
         if guild.saved_order == '':
-            current_character = get_init_list(server)[0]
+            current_character = get_init_list(server, engine)[0]
         else:
             current_character = guild.saved_order
         # make sure that the current character is at the same place in initiative as it was before
@@ -232,17 +220,17 @@ def advance_initiative(server: discord.Guild):
             print(e)
 
         # if its not, set the init position to the position of the current character before advancing it
-        if not init_integrity_check(server, init_pos, current_character):
-            for pos, row in enumerate(get_init_list(server)):
+        if not init_integrity_check(server, init_pos, current_character, engine):
+            for pos, row in enumerate(get_init_list(server, engine)):
                 if row[1] == current_character:
                     init_pos = pos
 
         init_pos += 1
-        if init_pos >= len(get_init_list(server)):
+        if init_pos >= len(get_init_list(server, engine)):
             init_pos = 0
         guild.initiative = init_pos
-        print(get_init_list(server)[init_pos])
-        guild.saved_order = str(get_init_list(server)[init_pos][1])
+        print(get_init_list(server, engine)[init_pos])
+        guild.saved_order = str(get_init_list(server, engine)[init_pos][1])
         session.commit()
 
         return True
@@ -250,8 +238,7 @@ def advance_initiative(server: discord.Guild):
     #     return False
 
 
-def get_init_list(server: discord.Guild):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def get_init_list(server: discord.Guild, engine):
     metadata = db.MetaData()
     emp = TrackerTable(server, metadata).tracker_table()
     stmt = emp.select().order_by(emp.c.init.desc())
@@ -278,8 +265,7 @@ def ping_player_on_init(init_list: list, selected: int):
     return f"<@{user}>, it's your turn."
 
 
-def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, gm: bool = False):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, gm: bool = False):
     metadata = db.MetaData()
     con = ConditionTable(ctx.guild, metadata).condition_table()
     row_data = []
@@ -356,9 +342,7 @@ def calculate_hp(chp, maxhp):
     return hp_string
 
 
-def add_thp(server: discord.Guild, name: str, ammount: int):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def add_thp(server: discord.Guild, engine, name: str, ammount: int):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -388,9 +372,7 @@ def add_thp(server: discord.Guild, name: str, ammount: int):
         return False
 
 
-def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
-    # engine = create_engine(f'sqlite:///{SERVER_DATA}.db', future=True)
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def change_hp(server: discord.Guild, engine, name: str, ammount: int, heal: bool):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
@@ -441,9 +423,8 @@ def change_hp(server: discord.Guild, name: str, ammount: int, heal: bool):
         return False
 
 
-async def set_cc(ctx: discord.ApplicationContext, character: str, title: str, counter: bool, number: int,
+async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
                  auto_decrement: bool, bot):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     metadata = db.MetaData()
     # Get the Character's data
     try:
@@ -480,8 +461,7 @@ async def set_cc(ctx: discord.ApplicationContext, character: str, title: str, co
         return False
 
 
-async def edit_cc(ctx: discord.ApplicationContext, character: str, condition: str, value: int, bot):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def edit_cc(ctx: discord.ApplicationContext, engine,  character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(ctx.guild, metadata).tracker_table()
@@ -513,8 +493,7 @@ async def edit_cc(ctx: discord.ApplicationContext, character: str, condition: st
         return False
 
 
-async def delete_cc(ctx: discord.ApplicationContext, character: str, condition, bot):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(ctx.guild, metadata).tracker_table()
@@ -544,8 +523,7 @@ async def delete_cc(ctx: discord.ApplicationContext, character: str, condition, 
         print(e)
         return False
 
-def get_cc(ctx: discord.ApplicationContext, character: str):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+def get_cc(ctx: discord.ApplicationContext, engine, character: str):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(ctx.guild, metadata).tracker_table()
@@ -581,7 +559,7 @@ async def update_pinned_tracker(ctx, engine, bot):
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             tracker = guild.tracker
             tracker_channel = guild.tracker_channel
-            tracker_display_string = get_tracker(get_init_list(ctx.guild), guild.initiative, ctx)
+            tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine)
             channel = bot.get_channel(tracker_channel)
             message = await channel.fetch_message(tracker)
             await message.edit(tracker_display_string)
@@ -593,9 +571,13 @@ async def post_init(ctx: discord.ApplicationContext, engine):
     # Query the initiative position for the tracker and post it
     with Session(engine) as session:
         guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
-        init_list = get_init_list(ctx.guild)
-        tracker_string = get_tracker(init_list, guild.initiative, ctx)
-        ping_string = ping_player_on_init(init_list, guild.initiative)
+        init_list = get_init_list(ctx.guild, engine)
+        tracker_string = get_tracker(init_list, guild.initiative, ctx, engine)
+        try:
+            ping_string = ping_player_on_init(init_list, guild.initiative)
+        except Exception as e:
+            print(e)
+            ping_string = ''
     await ctx.send_followup(f"{tracker_string}\n"
                             f"{ping_string}")
 
@@ -607,6 +589,8 @@ async def post_init(ctx: discord.ApplicationContext, engine):
 class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
@@ -616,9 +600,8 @@ class InitiativeCog(commands.Cog):
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'delete', 'tracker'])
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if mode == 'setup':
-            response = setup_tracker(ctx.guild, ctx.user)
+            response = setup_tracker(ctx.guild, ctx.user, self.engine)
             if response:
                 await ctx.respond("Server Setup", ephemeral=True)
                 return
@@ -626,7 +609,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
                 return
 
-        with Session(engine) as session:
+        with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
@@ -636,15 +619,15 @@ class InitiativeCog(commands.Cog):
                     await ctx.respond(f"Please wait until {argument} is not the active character in initiative before "
                                       f"deleting it.", ephemeral=True)
                 else:
-                    delete_character(ctx.guild, argument)
+                    delete_character(ctx.guild, argument, self.engine)
                     await ctx.respond(f'{argument} deleted', ephemeral=True)
-                    await update_pinned_tracker(ctx, engine, self.bot)
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
             elif mode == 'tracker':
                 try:
                     init_pos = int(guild.initiative)
                 except Exception as e:
                     init_pos = None
-                display_string = get_tracker(get_init_list(ctx.guild), init_pos, ctx)
+                display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine)
                 # interaction = await ctx.respond(display_string)
                 interaction = await ctx.channel.send(display_string)
                 await ctx.respond("Tracker Placed",
@@ -661,13 +644,12 @@ class InitiativeCog(commands.Cog):
                )
     @discord.default_permissions(manage_messages=True)
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        with Session(engine) as session:
+        with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
-            response = set_gm(ctx.guild, new_gm)
+            response = set_gm(ctx.guild, new_gm, self.engine)
             if response:
                 await ctx.respond(f"GM Permissions transferred to {new_gm.mention}")
             else:
@@ -681,21 +663,20 @@ class InitiativeCog(commands.Cog):
     @option('player', choices=['player', 'npc'])
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str):
         if player == 'player':
-            response = add_player(name, ctx.user.id, ctx.guild, hp)
+            response = add_player(name, ctx.user.id, ctx.guild, hp, self.engine)
             if response:
                 await ctx.respond(f"Character {name} added successfully", ephemeral=True)
             else:
                 await ctx.respond(f"Error Adding Character", ephemeral=True)
         elif player == 'npc':
-            response = add_npc(name, ctx.user.id, ctx.guild, hp)
+            response = add_npc(name, ctx.user.id, ctx.guild, hp, self.engine)
             if response:
                 await ctx.respond(f"Character {name} added successfully", ephemeral=True)
             else:
                 await ctx.respond(f"Error Adding Character", ephemeral=True)
         else:
             await ctx.respond('Failed.', ephemeral=True)
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await update_pinned_tracker(ctx, engine, self.bot)
+            await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Start/Stop Initiative",
                # guild_ids=[GUILD]
@@ -703,10 +684,9 @@ class InitiativeCog(commands.Cog):
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['start', 'stop'])
     async def manage(self, ctx: discord.ApplicationContext, mode: str):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        init_list = get_init_list(ctx.guild)
+        init_list = get_init_list(ctx.guild, self.engine)
 
-        with Session(engine) as session:
+        with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
@@ -716,15 +696,15 @@ class InitiativeCog(commands.Cog):
                 guild.initiative = 0
                 guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
                 session.commit()
-                await post_init(ctx, engine)
-                await update_pinned_tracker(ctx, engine, self.bot)
+                await post_init(ctx, self.engine)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
                 # await ctx.respond('Initiative Started', ephemeral=True)
             elif mode == 'stop':
                 await ctx.response.defer()
                 guild.initiative = None
                 guild.saved_order = ''
                 session.commit()
-                await update_pinned_tracker(ctx, engine, self.bot)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
                 await ctx.send_followup("Initiative Ended.")
 
     @i.command(description="Advance Initiative",
@@ -732,24 +712,21 @@ class InitiativeCog(commands.Cog):
                )
     async def next(self, ctx: discord.ApplicationContext):
         # Initialize engine
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         result = False  # set fail state
-
         # Advance Init and Display
-        result = advance_initiative(ctx.guild)  # Advance the init
+        result = advance_initiative(ctx.guild, self.engine)  # Advance the init
 
         # Query the initiative position for the tracker and post it
         await ctx.response.defer()
-        await post_init(ctx, engine)
-        await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
+        await post_init(ctx, self.engine)
+        await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
         # await ctx.respond("New Turn")
 
     @i.command(description="Set Init (Number of XdY+Z",
                # guild_ids=[GUILD]
                )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        with Session(engine) as session:
+       with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             # print(guild)
             if character == guild.saved_order:
@@ -760,19 +737,19 @@ class InitiativeCog(commands.Cog):
                 try:
                     print(f"Init: {init}")
                     initiative = int(init)
-                    success = set_init(ctx.guild, character, initiative)
+                    success = set_init(ctx.guild, character, initiative, self.engine)
                     if success:
                         await ctx.respond(f"Initiative set to {initiative} for {character}")
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
                 except:
                     roll = dice.plain_roll(init)
-                    success = set_init(ctx.guild, character, roll[1])
+                    success = set_init(ctx.guild, character, roll[1], self.engine)
                     if success:
                         await ctx.respond(f"Initiative set to {roll[0]} = {roll[1]} for {character}")
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
-        await update_pinned_tracker(ctx, engine, self.bot)
+            await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Heal, Damage or add Temp HP",
                # guild_ids=[GUILD]
@@ -780,23 +757,22 @@ class InitiativeCog(commands.Cog):
     @option('name', description="Character Name")
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
-        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         if mode == 'Heal':
-            response = change_hp(ctx.guild, name, amount, True)
+            response = change_hp(ctx.guild, self.enginename, amount, True)
             if response:
                 await ctx.respond(f"{name} healed for {amount}.")
         elif mode == 'Damage':
-            response = change_hp(ctx.guild, name, amount, False)
+            response = change_hp(ctx.guild, self.engine, name, amount, False)
             if response:
                 await ctx.respond(f"{name} damaged for {amount}.")
         elif mode == 'Temporary HP':
-            response = add_thp(ctx.guild, name, amount)
+            response = add_thp(ctx.guild, self.engine, name, amount)
             if response:
                 await ctx.respond(f"{amount} Temporary HP added to {name}.")
         if not response:
             await ctx.respond("Failed", ephemeral=True)
-        await update_pinned_tracker(ctx, engine, self.bot)
+        await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
@@ -814,7 +790,7 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = await set_cc(ctx, character, title, counter_bool, number, auto_bool, self.bot)
+        response = await set_cc(ctx, self.engine, character, title, counter_bool, number, auto_bool, self.bot)
         if response:
             await ctx.respond("Success", ephemeral=True)
         else:
@@ -828,10 +804,10 @@ class InitiativeCog(commands.Cog):
                       new_value: int = 0):
         result = False
         if mode == 'delete':
-            result = await delete_cc(ctx, character, condition, self.bot)
+            result = await delete_cc(ctx, self.engine, character, condition, self.bot)
             await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
         elif mode == 'edit':
-            result = await edit_cc(ctx, character, condition, new_value, self.bot)
+            result = await edit_cc(ctx, self.engine, character, condition, new_value, self.bot)
             await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
         else:
             await ctx.respond("Failed", ephemeral=True)
@@ -844,7 +820,7 @@ class InitiativeCog(commands.Cog):
 
         #TODO - Make this GM only for NPCs
         await ctx.response.defer()
-        cc_list = get_cc(ctx, character)
+        cc_list = get_cc(ctx, self.engine, character)
         output_string = f'{character}:\n'
         for row in cc_list:
             counter_string = f'{row[3]}: {row[4]}'
