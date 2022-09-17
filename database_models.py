@@ -1,10 +1,11 @@
+# database_models.py
+
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.event import listens_for
-from sqlalchemy.orm import relationship
 import sqlalchemy as db
 
 import discord
@@ -27,6 +28,8 @@ PORT = os.getenv('PGPort')
 Base = declarative_base()
 
 
+# Database Models
+
 class Global(Base):
     __tablename__ = "global_manager"
 
@@ -40,21 +43,11 @@ class Global(Base):
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True)
 
-@listens_for(Global.initiative, "modified")
-def receive_modified(target, initiator):
-    print('Modified Global')
 
-
-class TrackerTable():
+class TrackerTable:
     def __init__(self, server: discord.Guild, metadata):
         self.server = server
         self.metadata = metadata
-
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    @listens_for(engine, 'after_cursor_execute')
-    def flushed(self, session, flush_context, instances):
-        print('Flushed')
 
     def tracker_table(self):
         tablename = f"Tracker_{self.server.id}"
@@ -70,12 +63,13 @@ class TrackerTable():
                        )
         return emp
 
-class ConditionTable():
+
+class ConditionTable:
     def __init__(self, server: discord.Guild, metadata):
         self.server = server
         self.metadata = metadata
 
-    def condition_table(self,):
+    def condition_table(self, ):
         tablename = f"Condition_{self.server.id}"
         con = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),

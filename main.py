@@ -1,13 +1,11 @@
 # main.py
 
+import os
+
 # imports
 import discord
-from discord.ext import commands
-import os
 from dotenv import load_dotenv
 
-import exporter
-import database_operations
 import parse
 
 # environmental variables
@@ -19,20 +17,17 @@ DATABASE = os.getenv("DATABASE")
 # set up the bot/intents
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents,
-                  # debug_guilds=[GUILD]
+                  debug_guilds=[GUILD]
                   )
 
 
-# Print Status on Connected - Plan to update this to an email or something else once hosted remotely.
+# Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
     print(f"{bot.user} is connected.")
 
 # Initialize the database
-
-
 parse.parser()
-# conn = database_operations.create_connection(DATABASE)
 
 # Load the bot
 bot.load_extension("query_results")
