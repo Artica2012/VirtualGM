@@ -22,13 +22,13 @@ class DiceRollerCog(commands.Cog):
 
     # Takes a string and then parses out the string and rolls the dice
     @commands.slash_command(name="r", description="Dice Roller")
-    async def post(self, ctx: discord.ApplicationContext, roll_string: str):
+    async def post(self, ctx: discord.ApplicationContext, roll: str):
         try:
-            roller = dice_roller.DiceRoller(roll_string)
-            await ctx.respond(f"_{roll_string}_\n{roller.roll_dice()}")
+            roller = dice_roller.DiceRoller(roll)
+            await ctx.respond(f"_{roll}_\n{roller.roll_dice()}")
         except Exception as e: # If the parser doesn't work, assume the format was wrong
             await ctx.send_response(
-                f'Invalid syntax: {roll_string}. \nPlease phrase in ```XdY Label``` format',
+                f'Invalid syntax: {roll}. \nPlease phrase in ```XdY Label``` format',
                 ephemeral=True
             )
 

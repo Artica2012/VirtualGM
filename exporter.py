@@ -25,16 +25,9 @@ HOSTNAME = os.getenv('Hostname')
 PORT = os.getenv('PGPort')
 
 
-
-
-
-def export_to_sql(data):
-    df = pd.DataFrame.from_records(data[0], index=data[1])
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-    try:
-        df.to_sql(f"{str(data[2])}", engine)
-    except:
-        print('Table Already Exits')
+#######################################################################
+#######################################################################
+# Export function for each database table
 
 def disease_export(data):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
@@ -42,7 +35,7 @@ def disease_export(data):
     emp = disease_table(metadata)
     if not inspect(engine).has_table(emp):
         metadata.create_all(engine)
-        for row in data[0]:
+        for row in data:
             try:
                 stmt = emp.insert().values(
                     Type=row['Type'],
@@ -56,10 +49,11 @@ def disease_export(data):
                 compiled = stmt.compile()
                 with engine.connect() as conn:
                     result = conn.execute(stmt)
-                print(f"{row['Title']} Written")
+                # print(f"{row['Title']} Written")
             except Exception as e:
                 print(e)
     return
+
 
 def feat_export(data):
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
@@ -67,7 +61,7 @@ def feat_export(data):
     emp = feat_table(metadata)
     if not inspect(engine).has_table(emp):
         metadata.create_all(engine)
-        for row in data[0]:
+        for row in data:
             # print(f"Type: {row['Type']}, ID: {row['ID']}, Title: {row['Title']}, URL: {row['URL']}")
 
             try:
@@ -83,7 +77,7 @@ def feat_export(data):
                 compiled = stmt.compile()
                 with engine.connect() as conn:
                     result = conn.execute(stmt)
-                print(f"{row['Title']} Written")
+                # print(f"{row['Title']} Written")
             except Exception as e:
                 print(e)
     return
@@ -95,7 +89,7 @@ def power_export(data):
     emp = power_table(metadata)
     if not inspect(engine).has_table(emp):
         metadata.create_all(engine)
-        for row in data[0]:
+        for row in data:
             try:
                 stmt = emp.insert().values(
                     Type=row['Type'],
@@ -111,7 +105,7 @@ def power_export(data):
                 compiled = stmt.compile()
                 with engine.connect() as conn:
                     result = conn.execute(stmt)
-                print(f"{row['Title']} Written")
+                # print(f"{row['Title']} Written")
             except Exception as e:
                 print(e)
     return

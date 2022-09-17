@@ -6,7 +6,7 @@ import os
 import discord
 from dotenv import load_dotenv
 
-import parse
+import lookup_parser
 
 # environmental variables
 load_dotenv(verbose=True)
@@ -27,7 +27,7 @@ async def on_ready():
     print(f"{bot.user} is connected.")
 
 # Initialize the database
-parse.parser()
+lookup_parser.parser()
 
 # Load the bot
 bot.load_extension("query_results")

@@ -3,8 +3,9 @@
 # imports
 from bs4 import BeautifulSoup
 
-#import the disease database
-def importDisease(filename):
+
+# import the disease database
+def import_disease(filename):
     with open(f'data/{filename}', 'r', encoding='utf-8') as file:  # open the file
         data_cache = []
         for line in file.readlines():
@@ -21,12 +22,11 @@ def importDisease(filename):
             # print(editedtext)
             # print(data)
 
-            #attempt at using beautiful soup to get data from the last cell
-            #TODO - Parse data with Beautiful Soup
-            soup = BeautifulSoup(data[5], "html.parser")
-            text = soup.get_text()
-            text = text.strip(r'\r')
-            text = text.strip(r'\n')
+            # attempt at using beautiful soup to get data from the last cell
+            # soup = BeautifulSoup(data[5], "html.parser")
+            # text = soup.get_text()
+            # text = text.strip(r'\r')
+            # text = text.strip(r'\n')
             # print(text)
 
             # Export the data from the line into a dictionary
@@ -41,13 +41,12 @@ def importDisease(filename):
             }
 
             # print(data[5])
-            data_cache.append(data_dict) # add that dict to the list of dicts
-    index = ['Type', 'ID', 'Title', 'Level', 'Source', 'Data', 'URL'] # the index
-    return (data_cache, index, prefix) # return a tuple with the data, the index and the database title to be read by
+            data_cache.append(data_dict)  # add that dict to the list of dicts
+    return data_cache  # return a tuple with the data, the index and the database title to be read by
     # the exporter
 
 
-def importFeat(filename):
+def import_feat(filename):
     with open(f'data/{filename}', 'r', encoding='utf8') as file:
         data_cache = []
         for line in file.readlines():
@@ -72,11 +71,12 @@ def importFeat(filename):
             }
             # print(data_dict)
             data_cache.append(data_dict)
-    index = ['Type', 'ID', 'Title', 'Tier', 'Source', 'Data', 'URL']
-    return (data_cache, index, prefix)
+
+    return data_cache
+
 
 # TODO - Fix the item URL. Need to manually check URLs to figure out who it builds it.
-def importItem(filename):
+def import_item(filename):
     with open(f'data/{filename}', 'r', encoding='utf8') as file:
         data_cache = []
         for line in file.readlines():
@@ -104,10 +104,10 @@ def importItem(filename):
             # print(data[9])
             data_cache.append(data_dict)
             index = ['Type', 'ID', 'Title', 'Cost', 'Level', 'Category', 'Source', 'URL']
-    return (data_cache, index, prefix)
+    return data_cache, index, prefix
 
 
-def importPower(filename):
+def import_power(filename):
     with open(f'data/{filename}', 'r', encoding='utf8') as file:
         data_cache = []
         for line in file.readlines():
@@ -117,7 +117,7 @@ def importPower(filename):
             prefix = linedata[0].split()[0].strip("`")
             # print(prefix)
             # print(linedata[1])
-            data = linedata[1].split(',',9)
+            data = linedata[1].split(',', 9)
             ID = data[0].removeprefix('(').strip("'")
             # print(editedtext)
             # print(data)
@@ -135,6 +135,4 @@ def importPower(filename):
             # print(data[9])
             data_cache.append(data_dict)
 
-    index = ['Type', 'ID', 'Title', 'Level', 'Action', 'Class', "Source", 'Data', 'URL']
-
-    return (data_cache, index, prefix)
+    return data_cache
