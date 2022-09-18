@@ -461,7 +461,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
 
-async def edit_cc(ctx: discord.ApplicationContext, engine,  character: str, condition: str, value: int, bot):
+async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(ctx.guild, metadata).tracker_table()
@@ -523,6 +523,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         print(e)
         return False
 
+
 def get_cc(ctx: discord.ApplicationContext, engine, character: str):
     metadata = db.MetaData()
     try:
@@ -550,7 +551,6 @@ def get_cc(ctx: discord.ApplicationContext, engine, character: str):
         return con_data
     except Exception as e:
         print(e)
-
 
 
 async def update_pinned_tracker(ctx, engine, bot):
@@ -590,7 +590,6 @@ class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
@@ -711,22 +710,33 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     async def next(self, ctx: discord.ApplicationContext):
-        # Initialize engine
         result = False  # set fail state
-        # Advance Init and Display
-        result = advance_initiative(ctx.guild, self.engine)  # Advance the init
 
-        # Query the initiative position for the tracker and post it
-        await ctx.response.defer()
-        await post_init(ctx, self.engine)
-        await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
-        # await ctx.respond("New Turn")
+        init_list = get_init_list(ctx.guild, self.engine)
+        with Session(self.engine) as session:
+            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            # If initiative has not been started, start it, if not advance the init
+            if guild.initiative is None:
+                await ctx.response.defer()
+                guild.initiative = 0
+                guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
+                session.commit()
+                await post_init(ctx, self.engine)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
+            else:
+                # Advance Init and Display
+                result = advance_initiative(ctx.guild, self.engine)  # Advance the init
+
+                # Query the initiative position for the tracker and post it
+                await ctx.response.defer()
+                await post_init(ctx, self.engine)
+                await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
 
     @i.command(description="Set Init (Number of XdY+Z",
                # guild_ids=[GUILD]
                )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
-       with Session(self.engine) as session:
+        with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             # print(guild)
             if character == guild.saved_order:
@@ -815,10 +825,10 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.respond("Failed", ephemeral=True)
 
-    @i.command(description = "Show Custom Counters")
+    @i.command(description="Show Custom Counters")
     async def cc_show(self, ctx: discord.ApplicationContext, character: str):
 
-        #TODO - Make this GM only for NPCs
+        # TODO - Make this GM only for NPCs
         await ctx.response.defer()
         cc_list = get_cc(ctx, self.engine, character)
         output_string = f'{character}:\n'
@@ -826,7 +836,6 @@ class InitiativeCog(commands.Cog):
             counter_string = f'{row[3]}: {row[4]}'
             output_string += counter_string
         await ctx.send_followup(output_string, ephemeral=True)
-
 
 
 def setup(bot):
