@@ -11,9 +11,13 @@ import database_operations
 
 # define global variables
 load_dotenv(verbose=True)
-TOKEN = os.getenv('TOKEN')
+if os.environ['PRODUCTION'] == 'True':
+    TOKEN = os.getenv('TOKEN')
+else:
+    TOKEN = os.getenv('BETA_TOKEN')
+
 GUILD = os.getenv('GUILD')
-DATABASE = os.getenv("DATABASE")
+SERVER_DATA = os.getenv('SERVERDATA')
 
 
 class DiceRollerCog(commands.Cog):

@@ -21,14 +21,25 @@ import os
 from dotenv import load_dotenv
 
 # define global variables
+
 load_dotenv(verbose=True)
-TOKEN = os.getenv('TOKEN')
+if os.environ['PRODUCTION'] == 'True':
+    TOKEN = os.getenv('TOKEN')
+    USERNAME = os.getenv('Username')
+    PASSWORD = os.getenv('Password')
+    HOSTNAME = os.getenv('Hostname')
+    PORT = os.getenv('PGPort')
+else:
+    TOKEN = os.getenv('BETA_TOKEN')
+    USERNAME = os.getenv('BETA_Username')
+    PASSWORD = os.getenv('BETA_Password')
+    HOSTNAME = os.getenv('BETA_Hostname')
+    PORT = os.getenv('BETA_PGPort')
+
 GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
-USERNAME = os.getenv('Username')
-PASSWORD = os.getenv('Password')
-HOSTNAME = os.getenv('Hostname')
-PORT = os.getenv('PGPort')
+DATABASE = os.getenv('DATABASE')
+
 
 
 #################################################################
@@ -298,7 +309,7 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
             selector = '>>'
         else:
             selector = ''
-        if row['player']:
+        if row['player'] or gm:
             if row['thp'] != 0:
                 string = f"{selector} {row['init']} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
             else:
@@ -309,7 +320,7 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
         output_string += string
 
         for con_row in row['cc']:
-            if not con_row[2]:
+            if gm or not con_row[2]:
                 if con_row[4] != None:
                     con_string = f"       {con_row[3]}: {con_row[4]}\n"
                 else:
@@ -559,10 +570,22 @@ async def update_pinned_tracker(ctx, engine, bot):
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
             tracker = guild.tracker
             tracker_channel = guild.tracker_channel
+            gm_tracker = guild.gm_tracker
+            gm_tracker_channel = guild.gm_tracker_channel
+
+            #Update the tracker
             tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine)
             channel = bot.get_channel(tracker_channel)
             message = await channel.fetch_message(tracker)
             await message.edit(tracker_display_string)
+
+            #Update the GM tracker
+            gm_tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine, gm=True)
+            gm_channel = bot.get_channel(gm_tracker_channel)
+            gm_message = await gm_channel.fetch_message(gm_tracker)
+            await gm_message.edit(gm_tracker_display_string)
+
+
         except Exception as e:
             pass
 
@@ -597,7 +620,7 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'delete', 'tracker'])
+    @option('mode', choices=['setup', 'delete', 'tracker', 'gm tracker'])
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
         if mode == 'setup':
             response = setup_tracker(ctx.guild, ctx.user, self.engine)
@@ -634,6 +657,19 @@ class InitiativeCog(commands.Cog):
                 await interaction.pin()
                 guild.tracker = interaction.id
                 guild.tracker_channel = ctx.channel.id
+                session.commit()
+            elif mode == 'gm tracker':
+                try:
+                    init_pos = int(guild.initiative)
+                except Exception as e:
+                    init_pos = None
+                display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine, gm=True)
+                interaction = await ctx.channel.send(display_string)
+                await ctx.respond("Tracker Placed",
+                                  ephemeral=True)
+                await interaction.pin()
+                guild.gm_tracker = interaction.id
+                guild.gm_tracker_channel = ctx.channel.id
                 session.commit()
             else:
                 await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
