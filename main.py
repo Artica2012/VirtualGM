@@ -5,19 +5,24 @@ import os
 # imports
 import discord
 from dotenv import load_dotenv
-
+import os
 import lookup_parser
 
 # environmental variables
+print(os.environ['PRODUCTION'])
 load_dotenv(verbose=True)
-TOKEN = os.getenv('TOKEN')
+if os.environ['PRODUCTION'] == 'True':
+    TOKEN = os.getenv('TOKEN')
+else:
+    TOKEN = os.getenv('BETA_TOKEN')
 GUILD = os.getenv('GUILD')
 DATABASE = os.getenv("DATABASE")
+
 
 # set up the bot/intents
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents,
-                  # debug_guilds=[GUILD]
+                  debug_guilds=[GUILD]
                   )
 
 
