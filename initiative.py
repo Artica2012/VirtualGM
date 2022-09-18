@@ -769,7 +769,7 @@ class InitiativeCog(commands.Cog):
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
         response = False
         if mode == 'Heal':
-            response = change_hp(ctx.guild, self.enginename, amount, True)
+            response = change_hp(ctx.guild, self.engine, name, amount, True)
             if response:
                 await ctx.respond(f"{name} healed for {amount}.")
         elif mode == 'Damage':
