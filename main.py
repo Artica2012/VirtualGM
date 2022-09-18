@@ -22,7 +22,7 @@ DATABASE = os.getenv("DATABASE")
 # set up the bot/intents
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents,
-                  debug_guilds=[GUILD]
+                  # debug_guilds=[GUILD]
                   )
 
 
