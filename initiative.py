@@ -905,19 +905,21 @@ class InitiativeCog(commands.Cog):
 
     @i.command(description="Show Custom Counters")
     async def cc_show(self, ctx: discord.ApplicationContext, character: str):
-
-        # TODO - Make this GM only for NPCs
-        await ctx.response.defer()
-        if not player_check(ctx, self.engine) and not gm_check(ctx, self.engine):
-            cc_list = get_cc(ctx, self.engine, character)
-            output_string = f'```{character}:\n'
-            for row in cc_list:
-                counter_string = f'{row[3]}: {row[4]}'
-                output_string += counter_string
-            output_string += "```"
-            await ctx.send_followup(output_string, ephemeral=True)
-        else:
-            await ctx.send_followup(f'Viewing NPC counters is restricted to the GM only.')
+        await ctx.response.defer(ephemeral=True)
+        try:
+            if not player_check(ctx, self.engine, character) and not gm_check(ctx, self.engine):
+                await ctx.send_followup(f'Viewing NPC counters is restricted to the GM only.', ephemeral=True)
+            else:
+                cc_list = get_cc(ctx, self.engine, character)
+                output_string = f'```{character}:\n'
+                for row in cc_list:
+                    counter_string = f'{row[3]}: {row[4]}'
+                    output_string += counter_string
+                output_string += "```"
+                await ctx.send_followup(output_string, ephemeral=True)
+        except Exception as e:
+            print(f'cc_show: {e}')
+            await ctx.send_followup(f'Failed: Ensure that {character} is a valid character', ephemeral=True)
 
 
 def setup(bot):
