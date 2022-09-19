@@ -881,10 +881,11 @@ class InitiativeCog(commands.Cog):
         # TODO - Make this GM only for NPCs
         await ctx.response.defer()
         cc_list = get_cc(ctx, self.engine, character)
-        output_string = f'{character}:\n'
+        output_string = f'```{character}:\n'
         for row in cc_list:
             counter_string = f'{row[3]}: {row[4]}'
             output_string += counter_string
+        output_string += "```"
         await ctx.send_followup(output_string, ephemeral=True)
 
 
