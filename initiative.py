@@ -624,7 +624,7 @@ def gm_check(ctx: discord.ApplicationContext, engine):
         else:
             return True
 
-def player_check(ctx: discord.ApplicationContext, engine, character: str)
+def player_check(ctx: discord.ApplicationContext, engine, character: str):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(ctx.guild, metadata).tracker_table()
