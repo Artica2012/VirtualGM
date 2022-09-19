@@ -136,25 +136,29 @@ def add_npc(name: str, user: int, server: discord.Guild, HP: int, engine):
         return False
 
 
-def delete_character(server: discord.Guild, name: str, engine):
+def delete_character(server: discord.Guild, character: str, engine):
     metadata = db.MetaData()
-    try:
-        emp = TrackerTable(server, metadata).tracker_table()
-        con = ConditionTable(server, metadata).condition_table()
-        stmt = emp.select().where(emp.c.name == name)
-        with engine.connect() as conn:
-            data = []
-            for row in conn.execute(stmt):
-                data.append(row)
-            primary_id = data[0][0]
-            con_del_stmt = delete(con).where(con.c.character_id == primary_id)
-            conn.execute(con_del_stmt)
-            stmt = delete(emp).where(emp.c.id == primary_id)
-            conn.execute(stmt)
-        return True
-    except Exception as e:
-        print(e)
-        return False
+    # try:
+    emp = TrackerTable(server, metadata).tracker_table()
+    con = ConditionTable(server, metadata).condition_table()
+    stmt = emp.select().where(emp.c.name == character)
+    compiled = stmt.compile()
+    print(compiled)
+    with engine.connect() as conn:
+        data = []
+        for row in conn.execute(stmt):
+            print(row)
+            data.append(row)
+        print(data)
+        primary_id = data[0][0]
+        con_del_stmt = delete(con).where(con.c.character_id == primary_id)
+        conn.execute(con_del_stmt)
+        stmt = delete(emp).where(emp.c.id == primary_id)
+        conn.execute(stmt)
+    return True
+    # except Exception as e:
+    #     print(e)
+    #     return False
 
 
 # Set the initiative
