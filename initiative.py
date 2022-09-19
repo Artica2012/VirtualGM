@@ -725,7 +725,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond(f"Error Adding Character", ephemeral=True)
         else:
             await ctx.respond('Failed.', ephemeral=True)
-            await update_pinned_tracker(ctx, self.engine, self.bot)
+        await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Start/Stop Initiative",
                # guild_ids=[GUILD]
