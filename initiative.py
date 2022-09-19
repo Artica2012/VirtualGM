@@ -129,11 +129,17 @@ def delete_character(server: discord.Guild, name: str, engine):
     metadata = db.MetaData()
     try:
         emp = TrackerTable(server, metadata).tracker_table()
-        stmt = delete(emp).where(emp.c.name == name)
-        compiled = stmt.compile()
+        con = ConditionTable(server, metadata).condition_table()
+        stmt = emp.select().where(emp.c.name == name)
         with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+            primary_id = data[0][0]
+            con_del_stmt = delete(con).where(con.c.character_id == primary_id)
+            conn.execute(con_del_stmt)
+            stmt = delete(emp).where(emp.c.id == primary_id)
+            conn.execute(stmt)
         return True
     except Exception as e:
         print(e)
@@ -618,9 +624,13 @@ class InitiativeCog(commands.Cog):
                     await ctx.respond(f"Please wait until {argument} is not the active character in initiative before "
                                       f"deleting it.", ephemeral=True)
                 else:
-                    delete_character(ctx.guild, argument, self.engine)
-                    await ctx.respond(f'{argument} deleted', ephemeral=True)
-                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                    await ctx.response.defer()
+                    result = delete_character(ctx.guild, argument, self.engine)
+                    if result:
+                        await ctx.send_followup(f'{argument} deleted', ephemeral=True)
+                        await update_pinned_tracker(ctx, self.engine, self.bot)
+                    else:
+                        await ctx.send_followup('Delete Operation Failed')
             elif mode == 'tracker':
                 try:
                     init_pos = int(guild.initiative)
