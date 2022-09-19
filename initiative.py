@@ -67,7 +67,7 @@ def setup_tracker(server: discord.Guild, user: discord.User, engine):
         return True
 
     except Exception as e:
-        print(e)
+        print(f'setup_tracker: {e}')
         return False
 
 
@@ -83,7 +83,7 @@ def set_gm(server: discord.Guild, new_gm: discord.User, engine):
 
         return True
     except Exception as e:
-        print(e)
+        print(f'set_gm: {e}')
         return False
 
 
@@ -107,7 +107,7 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int, engine):
             # conn.commit()
         return True
     except Exception as e:
-        print(e)
+        print(f'add_player: {e}')
         return False
 
 
