@@ -130,6 +130,24 @@ def delete_character(server: discord.Guild, character: str, engine):
             conn.execute(con_del_stmt)
             stmt = delete(emp).where(emp.c.id == primary_id)
             conn.execute(stmt)
+
+        # Fix initiative position after delete:
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter_by(guild_id=server.id)).scalar_one()
+            if guild.initiative is None:
+                return True
+            elif guild.saved_order == '':
+                return True
+            else:
+                init_pos = int(guild.initiative)
+                current_character = guild.saved_order
+                if not init_integrity_check(server, init_pos, current_character, engine):
+                    for pos, row in enumerate(get_init_list(server, engine)):
+                        if row[1] == current_character:
+                            init_pos = pos
+                guild.initiative = init_pos
+                session.commit()
+
         return True
     except Exception as e:
         print(f"delete_character: {e}")
@@ -522,7 +540,6 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return True
     except Exception as e:
         print(f'delete_cc: {e}')
-
         return False
 
 
