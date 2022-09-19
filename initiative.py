@@ -637,8 +637,8 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'delete', 'tracker', 'gm tracker'])
-    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = ''):
+    @option('mode', choices=['setup', 'delete', 'transfer gm', 'tracker', 'gm tracker'])
+    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = '', new_gm: discord.User = discord.ApplicationContext.user):
         if mode == 'setup':
             response = setup_tracker(ctx.guild, ctx.user, self.engine)
             if response:
@@ -697,24 +697,15 @@ class InitiativeCog(commands.Cog):
                     guild.gm_tracker = interaction.id
                     guild.gm_tracker_channel = ctx.channel.id
                     session.commit()
+                elif mode == 'transfer gm':
+                    response = set_gm(ctx.guild, new_gm, self.engine)
+                    if response:
+                        await ctx.respond(f"GM Permissions transferred to {new_gm.mention}")
+                    else:
+                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
                 else:
                     await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
-    @i.command(description="Transfer GM duties to a new player",
-               # guild_ids=[GUILD]
-               )
-    @discord.default_permissions(manage_messages=True)
-    async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
-        with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            if not gm_check(ctx, self.engine):
-                await ctx.respond("GM Restricted Command", ephemeral=True)
-                return
-            response = set_gm(ctx.guild, new_gm, self.engine)
-            if response:
-                await ctx.respond(f"GM Permissions transferred to {new_gm.mention}")
-            else:
-                await ctx.respond("Permission Transfer Failed", ephemeral=True)
 
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
