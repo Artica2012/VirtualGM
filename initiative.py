@@ -707,7 +707,7 @@ class InitiativeCog(commands.Cog):
     async def transfer_gm(self, ctx: discord.ApplicationContext, new_gm: discord.User):
         with Session(self.engine) as session:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            if int(guild.gm) != int(ctx.user.id):
+            if not gm_check(ctx, self.engine):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             response = set_gm(ctx.guild, new_gm, self.engine)
