@@ -624,6 +624,19 @@ def gm_check(ctx: discord.ApplicationContext, engine):
         else:
             return True
 
+def player_check(ctx: discord.ApplicationContext, engine, character: str)
+    metadata = db.MetaData()
+    try:
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        stmt = select(emp.c.player).where(emp.c.name == character)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                data.append(row)
+        return data[0]
+    except Exception as e:
+        print(f'player_check: {e}')
+
 
 #############################################################################
 #############################################################################
@@ -895,13 +908,16 @@ class InitiativeCog(commands.Cog):
 
         # TODO - Make this GM only for NPCs
         await ctx.response.defer()
-        cc_list = get_cc(ctx, self.engine, character)
-        output_string = f'```{character}:\n'
-        for row in cc_list:
-            counter_string = f'{row[3]}: {row[4]}'
-            output_string += counter_string
-        output_string += "```"
-        await ctx.send_followup(output_string, ephemeral=True)
+        if not player_check(ctx, self.engine) and not gm_check(ctx, self.engine):
+            cc_list = get_cc(ctx, self.engine, character)
+            output_string = f'```{character}:\n'
+            for row in cc_list:
+                counter_string = f'{row[3]}: {row[4]}'
+                output_string += counter_string
+            output_string += "```"
+            await ctx.send_followup(output_string, ephemeral=True)
+        else:
+            await ctx.send_followup(f'Viewing NPC counters is restricted to the GM only.')
 
 
 def setup(bot):
