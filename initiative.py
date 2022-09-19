@@ -87,18 +87,18 @@ def set_gm(server: discord.Guild, new_gm: discord.User, engine):
         return False
 
 
-# Add a player to the database
-def add_player(name: str, user: int, server: discord.Guild, HP: int, engine):
+# Add a character to the database
+def add_character(ctx: discord.ApplicationContext, engine, name: str, hp: int, player_bool: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(server, metadata).tracker_table()
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
         stmt = emp.insert().values(
             name=name,
             init=0,
-            player=True,
-            user=user,
-            current_hp=HP,
-            max_hp=HP,
+            player=player_bool,
+            user=ctx.user.id,
+            current_hp=hp,
+            max_hp=hp,
             temp_hp=0
         )
         compiled = stmt.compile()
@@ -107,57 +107,33 @@ def add_player(name: str, user: int, server: discord.Guild, HP: int, engine):
             # conn.commit()
         return True
     except Exception as e:
-        print(f'add_player: {e}')
-        return False
-
-
-# Add an NPC to the database
-def add_npc(name: str, user: int, server: discord.Guild, HP: int, engine):
-    metadata = db.MetaData()
-    try:
-        emp = TrackerTable(server, metadata).tracker_table()
-        stmt = emp.insert().values(
-            name=name,
-            init=0,
-            player=False,
-            user=user,
-            current_hp=HP,
-            max_hp=HP,
-            temp_hp=0
-        )
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
-        return True
-    except Exception as e:
-        print(e)
+        print(f'add_character: {e}')
         return False
 
 
 def delete_character(server: discord.Guild, character: str, engine):
     metadata = db.MetaData()
-    # try:
-    emp = TrackerTable(server, metadata).tracker_table()
-    con = ConditionTable(server, metadata).condition_table()
-    stmt = emp.select().where(emp.c.name == character)
-    compiled = stmt.compile()
-    print(compiled)
-    with engine.connect() as conn:
-        data = []
-        for row in conn.execute(stmt):
-            print(row)
-            data.append(row)
-        print(data)
-        primary_id = data[0][0]
-        con_del_stmt = delete(con).where(con.c.character_id == primary_id)
-        conn.execute(con_del_stmt)
-        stmt = delete(emp).where(emp.c.id == primary_id)
-        conn.execute(stmt)
-    return True
-    # except Exception as e:
-    #     print(e)
-    #     return False
+    try:
+        emp = TrackerTable(server, metadata).tracker_table()
+        con = ConditionTable(server, metadata).condition_table()
+        stmt = emp.select().where(emp.c.name == character)
+        compiled = stmt.compile()
+        # print(compiled)
+        with engine.connect() as conn:
+            data = []
+            for row in conn.execute(stmt):
+                # print(row)
+                data.append(row)
+            # print(data)
+            primary_id = data[0][0]
+            con_del_stmt = delete(con).where(con.c.character_id == primary_id)
+            conn.execute(con_del_stmt)
+            stmt = delete(emp).where(emp.c.id == primary_id)
+            conn.execute(stmt)
+        return True
+    except Exception as e:
+        print(f"delete_character: {e}")
+        return False
 
 
 # Set the initiative
@@ -169,19 +145,19 @@ def set_init(server: discord.Guild, name: str, init: int, engine):
             init=init
         )
         compiled = stmt.compile()
-        print(compiled)
+        # print(compiled)
         with engine.connect() as conn:
             result = conn.execute(stmt)
             # conn.commit()
             if result.rowcount == 0:
-                print("RowCount = 0")
+                # print("RowCount = 0")
                 return False
         return True
     except Exception as e:
-        print(e)
+        print(f'set_init: {e}')
         return False
 
-
+#Check to make sure that the character is in the right place in initiative
 def init_integrity_check(server: discord.Guild, init_pos: int, current_character: str, engine):
     init_list = get_init_list(server, engine)
     if init_list[init_pos][1] == current_character:
@@ -219,7 +195,7 @@ def advance_initiative(server: discord.Guild, engine):
                     data.append(row)
                     # print(row)
         except Exception as e:
-            # print(e)
+            print(f'advance_initiative: {e}')
             return False
 
         try:
@@ -237,7 +213,7 @@ def advance_initiative(server: discord.Guild, engine):
                             new_stmt = delete(con).where(con.c.id == con_row[0])
                     result = conn.execute(new_stmt)
         except Exception as e:
-            print(e)
+            print(f'advance_initiative: {e}')
 
         # if its not, set the init position to the position of the current character before advancing it
         if not init_integrity_check(server, init_pos, current_character, engine):
@@ -249,13 +225,11 @@ def advance_initiative(server: discord.Guild, engine):
         if init_pos >= len(get_init_list(server, engine)):
             init_pos = 0
         guild.initiative = init_pos
-        print(get_init_list(server, engine)[init_pos])
+        # print(get_init_list(server, engine)[init_pos])
         guild.saved_order = str(get_init_list(server, engine)[init_pos][1])
         session.commit()
 
         return True
-    # except Exception as e:
-    #     return False
 
 
 def get_init_list(server: discord.Guild, engine):
@@ -285,6 +259,7 @@ def ping_player_on_init(init_list: list, selected: int):
     return f"<@{user}>, it's your turn."
 
 
+# Build the tracker string
 def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, gm: bool = False):
     metadata = db.MetaData()
     con = ConditionTable(ctx.guild, metadata).condition_table()
@@ -341,7 +316,7 @@ def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext,
                 con_string = ''
             output_string += con_string
     output_string += f"```"
-    print(output_string)
+    # print(output_string)
     return output_string
 
 
@@ -388,7 +363,8 @@ def add_thp(server: discord.Guild, engine, name: str, ammount: int):
         return True
 
     except Exception as e:
-        print(e)
+        print(f'add_thp: {e}')
+
         return False
 
 
@@ -439,7 +415,8 @@ def change_hp(server: discord.Guild, engine, name: str, ammount: int, heal: bool
                 return False
         return True
     except Exception as e:
-        print(e)
+        print(f'change_hp: {e}')
+
         return False
 
 
@@ -458,7 +435,8 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                 data.append(row)
                 # print(row)
     except Exception as e:
-        # print(e)
+        print(f'set_cc: {e}')
+
         return False
 
     try:
@@ -471,13 +449,13 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             auto_increment=auto_decrement
         )
         complied = stmt.compile()
-        print(complied)
+        # print(complied)
         with engine.connect() as conn:
             result = conn.execute(stmt)
         await update_pinned_tracker(ctx, engine, bot)
         return True
     except Exception as e:
-        print(e)
+        print(f'set_cc: {e}')
         return False
 
 
@@ -494,7 +472,8 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
                 data.append(row)
                 # print(row)
     except Exception as e:
-        print(e)
+        print(f'edit_cc: {e}')
+
         return False
     try:
         con = ConditionTable(ctx.guild, metadata).condition_table()
@@ -509,7 +488,8 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await update_pinned_tracker(ctx, engine, bot)
         return True
     except Exception as e:
-        print(e)
+        print(f'edit_cc: {e}')
+
         return False
 
 
@@ -526,21 +506,23 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
                 data.append(row)
                 # print(row)
     except Exception as e:
-        # print(e)
+        print(f'delete_cc: {e}')
+
         return False
 
     try:
         con = ConditionTable(ctx.guild, metadata).condition_table()
         stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
         complied = stmt.compile()
-        print(complied)
+        # print(complied)
         with engine.connect() as conn:
             result = conn.execute(stmt)
             # print(result)
         await update_pinned_tracker(ctx, engine, bot)
         return True
     except Exception as e:
-        print(e)
+        print(f'delete_cc: {e}')
+
         return False
 
 
@@ -557,7 +539,8 @@ def get_cc(ctx: discord.ApplicationContext, engine, character: str):
                 data.append(row)
                 # print(row)
     except Exception as e:
-        print(e)
+        print(f'get_cc: {e}')
+
     try:
         con = ConditionTable(ctx.guild, metadata).condition_table()
         stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
@@ -570,7 +553,7 @@ def get_cc(ctx: discord.ApplicationContext, engine, character: str):
                 con_data.append(row)
         return con_data
     except Exception as e:
-        print(e)
+        print(f'get_cc: {e}')
 
 
 async def update_pinned_tracker(ctx, engine, bot):
@@ -597,7 +580,7 @@ async def update_pinned_tracker(ctx, engine, bot):
 
 
         except Exception as e:
-            pass
+            print(f'update_pinned_tracker: {e}')
 
 
 async def post_init(ctx: discord.ApplicationContext, engine):
@@ -609,7 +592,7 @@ async def post_init(ctx: discord.ApplicationContext, engine):
         try:
             ping_string = ping_player_on_init(init_list, guild.initiative)
         except Exception as e:
-            print(e)
+            print(f'post_init: {e}')
             ping_string = ''
     await ctx.send_followup(f"{tracker_string}\n"
                             f"{ping_string}")
@@ -623,6 +606,7 @@ def gm_check(ctx: discord.ApplicationContext, engine):
             return False
         else:
             return True
+
 
 def player_check(ctx: discord.ApplicationContext, engine, character: str):
     metadata = db.MetaData()
@@ -708,7 +692,7 @@ class InitiativeCog(commands.Cog):
                                                  gm=True)
                     interaction = await ctx.channel.send(display_string)
                     await ctx.send_followup("Tracker Placed",
-                                      ephemeral=True)
+                                            ephemeral=True)
                     await interaction.pin()
                     guild.gm_tracker = interaction.id
                     guild.gm_tracker_channel = ctx.channel.id
@@ -739,20 +723,19 @@ class InitiativeCog(commands.Cog):
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str):
+        response = False
+        player_bool = False
         if player == 'player':
-            response = add_player(name, ctx.user.id, ctx.guild, hp, self.engine)
-            if response:
-                await ctx.respond(f"Character {name} added successfully", ephemeral=True)
-            else:
-                await ctx.respond(f"Error Adding Character", ephemeral=True)
+            player_bool = True
         elif player == 'npc':
-            response = add_npc(name, ctx.user.id, ctx.guild, hp, self.engine)
-            if response:
-                await ctx.respond(f"Character {name} added successfully", ephemeral=True)
-            else:
-                await ctx.respond(f"Error Adding Character", ephemeral=True)
+            player_bool = False
+
+        response = add_character(ctx, self.engine, name, hp, player_bool)
+        if response:
+            await ctx.respond(f"Character {name} added successfully", ephemeral=True)
         else:
-            await ctx.respond('Failed.', ephemeral=True)
+            await ctx.respond(f"Error Adding Character", ephemeral=True)
+
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Start/Stop Initiative",
@@ -823,7 +806,7 @@ class InitiativeCog(commands.Cog):
             else:
                 dice = DiceRoller('')
                 try:
-                    print(f"Init: {init}")
+                    # print(f"Init: {init}")
                     initiative = int(init)
                     success = set_init(ctx.guild, character, initiative, self.engine)
                     if success:
