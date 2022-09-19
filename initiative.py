@@ -41,7 +41,6 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 
-
 #################################################################
 #################################################################
 # FUNCTIONS
@@ -583,14 +582,15 @@ async def update_pinned_tracker(ctx, engine, bot):
             gm_tracker = guild.gm_tracker
             gm_tracker_channel = guild.gm_tracker_channel
 
-            #Update the tracker
+            # Update the tracker
             tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine)
             channel = bot.get_channel(tracker_channel)
             message = await channel.fetch_message(tracker)
             await message.edit(tracker_display_string)
 
-            #Update the GM tracker
-            gm_tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine, gm=True)
+            # Update the GM tracker
+            gm_tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine,
+                                                    gm=True)
             gm_channel = bot.get_channel(gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(gm_tracker)
             await gm_message.edit(gm_tracker_display_string)
@@ -613,6 +613,16 @@ async def post_init(ctx: discord.ApplicationContext, engine):
             ping_string = ''
     await ctx.send_followup(f"{tracker_string}\n"
                             f"{ping_string}")
+
+
+# Checks to see if the user of the slash command is the GM, returns a boolean
+def gm_check(ctx: discord.ApplicationContext, engine):
+    with Session(engine) as session:
+        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+        if int(guild.gm) != int(ctx.user.id):
+            return False
+        else:
+            return True
 
 
 #############################################################################
@@ -641,52 +651,57 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
                 return
 
-        with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-            if int(guild.gm) != int(ctx.user.id):
-                await ctx.respond("GM Restricted Command", ephemeral=True)
-                return
-            if mode == 'delete':
-                if argument == guild.saved_order:
-                    await ctx.respond(f"Please wait until {argument} is not the active character in initiative before "
-                                      f"deleting it.", ephemeral=True)
-                else:
-                    await ctx.response.defer()
-                    result = delete_character(ctx.guild, argument, self.engine)
-                    if result:
-                        await ctx.send_followup(f'{argument} deleted', ephemeral=True)
-                        await update_pinned_tracker(ctx, self.engine, self.bot)
+        if not gm_check(ctx, self.engine):
+            await ctx.respond("GM Restricted Command", ephemeral=True)
+            return
+        else:
+            with Session(self.engine) as session:
+                guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+                if mode == 'delete':
+                    if argument == guild.saved_order:
+                        await ctx.respond(
+                            f"Please wait until {argument} is not the active character in initiative before "
+                            f"deleting it.", ephemeral=True)
                     else:
-                        await ctx.send_followup('Delete Operation Failed')
-            elif mode == 'tracker':
-                try:
-                    init_pos = int(guild.initiative)
-                except Exception as e:
-                    init_pos = None
-                display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine)
-                # interaction = await ctx.respond(display_string)
-                interaction = await ctx.channel.send(display_string)
-                await ctx.respond("Tracker Placed",
-                                  ephemeral=True)
-                await interaction.pin()
-                guild.tracker = interaction.id
-                guild.tracker_channel = ctx.channel.id
-                session.commit()
-            elif mode == 'gm tracker':
-                try:
-                    init_pos = int(guild.initiative)
-                except Exception as e:
-                    init_pos = None
-                display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine, gm=True)
-                interaction = await ctx.channel.send(display_string)
-                await ctx.respond("Tracker Placed",
-                                  ephemeral=True)
-                await interaction.pin()
-                guild.gm_tracker = interaction.id
-                guild.gm_tracker_channel = ctx.channel.id
-                session.commit()
-            else:
-                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+                        await ctx.response.defer()
+                        result = delete_character(ctx.guild, argument, self.engine)
+                        if result:
+                            await ctx.send_followup(f'{argument} deleted', ephemeral=True)
+                            await update_pinned_tracker(ctx, self.engine, self.bot)
+                        else:
+                            await ctx.send_followup('Delete Operation Failed')
+                elif mode == 'tracker':
+                    await ctx.response.defer(ephemeral=True)
+                    try:
+                        init_pos = int(guild.initiative)
+                    except Exception as e:
+                        init_pos = None
+                    display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine)
+                    # interaction = await ctx.respond(display_string)
+                    interaction = await ctx.channel.send(display_string)
+                    await ctx.send_followup("Tracker Placed",
+                                            ephemeral=True)
+                    await interaction.pin()
+                    guild.tracker = interaction.id
+                    guild.tracker_channel = ctx.channel.id
+                    session.commit()
+                elif mode == 'gm tracker':
+                    await ctx.response.defer(ephemeral=True)
+                    try:
+                        init_pos = int(guild.initiative)
+                    except Exception as e:
+                        init_pos = None
+                    display_string = get_tracker(get_init_list(ctx.guild, self.engine), init_pos, ctx, self.engine,
+                                                 gm=True)
+                    interaction = await ctx.channel.send(display_string)
+                    await ctx.send_followup("Tracker Placed",
+                                      ephemeral=True)
+                    await interaction.pin()
+                    guild.gm_tracker = interaction.id
+                    guild.gm_tracker_channel = ctx.channel.id
+                    session.commit()
+                else:
+                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
     @i.command(description="Transfer GM duties to a new player",
                # guild_ids=[GUILD]
