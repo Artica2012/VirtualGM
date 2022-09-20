@@ -17,6 +17,8 @@ from sqlalchemy import select, update, delete
 from dice_roller import DiceRoller
 from database_operations import get_db_engine
 
+from error_reporting import ErrorReport
+
 import os
 from dotenv import load_dotenv
 
@@ -46,20 +48,20 @@ DATABASE = os.getenv('DATABASE')
 # FUNCTIONS
 
 # Set up the tracker if it does not exit.db
-def setup_tracker(server: discord.Guild, user: discord.User, engine):
+def setup_tracker(ctx: discord.ApplicationContext,  engine):
     try:
         conn = engine.connect()
         metadata = db.MetaData()
-        emp = TrackerTable(server, metadata).tracker_table()
-        con = ConditionTable(server, metadata).condition_table()
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        con = ConditionTable(ctx.guild, metadata).condition_table()
         metadata.create_all(engine)
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
             guild = Global(
-                guild_id=server.id,
+                guild_id=ctx.guild.id,
                 time=0,
-                gm=user.id,
+                gm=ctx.user.id,
             )
             session.add(guild)
             session.commit()
@@ -68,6 +70,7 @@ def setup_tracker(server: discord.Guild, user: discord.User, engine):
 
     except Exception as e:
         print(f'setup_tracker: {e}')
+        report = ErrorReport(ctx, setup_tracker.__name__)
         return False
 
 
@@ -659,7 +662,7 @@ class InitiativeCog(commands.Cog):
     @option('new_gm', description="@Player to transfer GM permissions to")
     async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = '', new_gm: discord.User = discord.ApplicationContext.user):
         if mode == 'setup':
-            response = setup_tracker(ctx.guild, ctx.user, self.engine)
+            response = setup_tracker(ctx, self.engine)
             if response:
                 await ctx.respond("Server Setup", ephemeral=True)
                 return
