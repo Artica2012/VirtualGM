@@ -27,19 +27,23 @@ DATABASE = os.getenv('DATABASE')
 error_server = os.getenv('error_server')
 
 class ErrorReport:
-    def __init__(self, ctx: discord.ApplicationContext, function_name:str, error:str):
+    def __init__(self, ctx: discord.ApplicationContext, function_name:str, error, bot):
         self.ctx = ctx
         self.name = function_name
         self.error_text = error
+        self.bot = bot
 
 
     async def report(self):
         guild_id = self.ctx.guild.id
+        channel = self.ctx.channel.id
         user_id = self.ctx.user.id
-        self.ctx.
         output_string = f"```\n" \
-                        f"Guild: {guild_id}\n" \
-                        f"User: {user_id}"\
-                        f""\
+                        f"Guild: {guild_id}, {self.ctx.guild.name} Channel: {channel}, {self.ctx.channel.name}\n" \
+                        f"Owner: {self.ctx.guild.owner_id}, {self.ctx.guild.owner.name}\n"\
+                        f"User: {user_id}, {self.ctx.user.name}\n"\
+                        f"Function: {self.name}\n"\
+                        f"Error: {self.error_text}"\
                         f"```"
+        await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)
 
