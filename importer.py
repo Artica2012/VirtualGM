@@ -90,21 +90,25 @@ def import_item(filename):
             ID = data[0].removeprefix('(').strip("'")
             # print(editedtext)
             # print(data)
+            if data[4].strip("'") == "Armor":
+                prefix = "Armor"
+            elif data[4].strip("'") == 'Implement':
+                prefix = "Implement"
+            elif data[4].strip("'") == 'Weapon':
+                prefix = 'Weapon'
+            else:
+                prefix = 'Item'
+
+
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
                 'Title': data[1].strip("'"),
-                'Cost': data[2],
-                'Level': data[4],
                 'Category': data[5],
-                'Source': data[8],
-                'Text': data[9],
                 'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
             }
-            # print(data[9])
             data_cache.append(data_dict)
-            index = ['Type', 'ID', 'Title', 'Cost', 'Level', 'Category', 'Source', 'URL']
-    return data_cache, index, prefix
+    return data_cache
 
 
 def import_power(filename):
