@@ -408,39 +408,39 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
     metadata = db.MetaData()
-    try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
-        stmt = emp.select().where(emp.c.name == name)
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            data = []
-            for row in conn.execute(stmt):
-                data.append(row)
+    # try:
+    emp = TrackerTable(ctx.guild, metadata).tracker_table()
+    stmt = emp.select().where(emp.c.name == name)
+    compiled = stmt.compile()
+    with engine.connect() as conn:
+        data = []
+        for row in conn.execute(stmt):
+            data.append(row)
 
-        chp = data[0][5]
-        new_hp = chp
+    chp = data[0][5]
+    new_hp = chp
         maxhp = data[0][6]
         thp = data[0][7]
         new_thp = 0
 
-        if heal:
-            new_hp = chp + amount
-            if new_hp > maxhp:
-                new_hp = maxhp
-        if not heal:
-            if thp == 0:
-                new_hp = chp - amount
-                if new_hp < 0:
-                    new_hp - 0
+    if heal:
+        new_hp = chp + amount
+        if new_hp > maxhp:
+            new_hp = maxhp
+    if not heal:
+        if thp == 0:
+            new_hp = chp - amount
+            if new_hp < 0:
+                new_hp = 0
+        else:
+            if thp > amount:
+                new_thp = thp - amount
+                new_hp = chp
             else:
-                if thp > amount:
-                    new_thp = thp - amount
-                    new_hp = chp
-                else:
-                    new_thp = 0
-                    new_hp = chp - amount + thp
-                    if new_hp < 0:
-                        new_hp = 0
+                new_thp = 0
+                new_hp = chp - amount + thp
+                if new_hp < 0:
+                    new_hp = 0
 
         stmt = update(emp).where(emp.c.name == name).values(
             current_hp=new_hp,
@@ -458,6 +458,24 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
         report = ErrorReport(ctx, change_hp.__name__, e, bot)
         await report.report()
         return False
+    stmt = update(emp).where(emp.c.name == name).values(
+        current_hp=new_hp,
+        temp_hp=new_thp
+    )
+    compiled = stmt.compile()
+    with engine.connect() as conn:
+        result = conn.execute(stmt)
+        # conn.commit()
+        if result.rowcount == 0:
+            return False
+    if new_hp == 0:
+        await ctx.channel.send(f'```HP: {new_hp}```')
+
+    return True
+    # except Exception as e:
+    #     print(f'change_hp: {e}')
+    #
+    #     return False
 
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
@@ -954,6 +972,7 @@ class InitiativeCog(commands.Cog):
                 for row in cc_list:
                     counter_string = f'{row[3]}: {row[4]}'
                     output_string += counter_string
+                    output_string += '\n'
                 output_string += "```"
                 await ctx.send_followup(output_string, ephemeral=True)
         except Exception as e:
