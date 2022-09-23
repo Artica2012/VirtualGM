@@ -253,7 +253,7 @@ def advance_initiative(server: discord.Guild, engine):
                             )
                         else:
                             new_stmt = delete(con).where(con.c.id == con_row[0])
-                    result = conn.execute(new_stmt)
+                        result = conn.execute(new_stmt)
         except Exception as e:
             print(e)
 
@@ -601,18 +601,19 @@ async def update_pinned_tracker(ctx, engine, bot):
             gm_tracker_channel = guild.gm_tracker_channel
 
             # Update the tracker
-            tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine)
-            channel = bot.get_channel(tracker_channel)
-            message = await channel.fetch_message(tracker)
-            await message.edit(tracker_display_string)
+            if tracker is not None:
+                tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine)
+                channel = bot.get_channel(tracker_channel)
+                message = await channel.fetch_message(tracker)
+                await message.edit(tracker_display_string)
 
             # Update the GM tracker
-            gm_tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine,
-                                                    gm=True)
-            gm_channel = bot.get_channel(gm_tracker_channel)
-            gm_message = await gm_channel.fetch_message(gm_tracker)
-            await gm_message.edit(gm_tracker_display_string)
-
+            if gm_tracker is not None:
+                gm_tracker_display_string = get_tracker(get_init_list(ctx.guild, engine), guild.initiative, ctx, engine,
+                                                        gm=True)
+                gm_channel = bot.get_channel(gm_tracker_channel)
+                gm_message = await gm_channel.fetch_message(gm_tracker)
+                await gm_message.edit(gm_tracker_display_string)
 
         except Exception as e:
             pass
