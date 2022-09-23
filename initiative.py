@@ -368,10 +368,10 @@ def add_thp(server: discord.Guild, engine, name: str, ammount: int):
         return False
 
 
-def change_hp(server: discord.Guild, engine, name: str, ammount: int, heal: bool):
+def change_hp(ctx: discord.ApplicationContext, engine, name: str, ammount: int, heal: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(server, metadata).tracker_table()
+        emp = TrackerTable(ctx.guild, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -413,6 +413,9 @@ def change_hp(server: discord.Guild, engine, name: str, ammount: int, heal: bool
             # conn.commit()
             if result.rowcount == 0:
                 return False
+        if new_hp == 0:
+            ctx.channel.send(f'HP:{new_hp}')
+
         return True
     except Exception as e:
         print(f'change_hp: {e}')
@@ -823,11 +826,11 @@ class InitiativeCog(commands.Cog):
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
         response = False
         if mode == 'Heal':
-            response = change_hp(ctx.guild, self.engine, name, amount, True)
+            response = change_hp(ctx, self.engine, name, amount, True)
             if response:
                 await ctx.respond(f"{name} healed for {amount}.")
         elif mode == 'Damage':
-            response = change_hp(ctx.guild, self.engine, name, amount, False)
+            response = change_hp(ctx, self.engine, name, amount, False)
             if response:
                 await ctx.respond(f"{name} damaged for {amount}.")
         elif mode == 'Temporary HP':
