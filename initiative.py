@@ -368,59 +368,59 @@ def add_thp(server: discord.Guild, engine, name: str, ammount: int):
         return False
 
 
-def change_hp(ctx: discord.ApplicationContext, engine, name: str, ammount: int, heal: bool):
+async def change_hp(ctx: discord.ApplicationContext, engine, name: str, ammount: int, heal: bool):
     metadata = db.MetaData()
-    try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
-        stmt = emp.select().where(emp.c.name == name)
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            data = []
-            for row in conn.execute(stmt):
-                data.append(row)
+    # try:
+    emp = TrackerTable(ctx.guild, metadata).tracker_table()
+    stmt = emp.select().where(emp.c.name == name)
+    compiled = stmt.compile()
+    with engine.connect() as conn:
+        data = []
+        for row in conn.execute(stmt):
+            data.append(row)
 
-        chp = data[0][5]
-        maxhp = data[0][6]
-        thp = data[0][7]
-        new_thp = 0
+    chp = data[0][5]
+    maxhp = data[0][6]
+    thp = data[0][7]
+    new_thp = 0
 
-        if heal:
-            new_hp = chp + ammount
-            if new_hp > maxhp:
-                new_hp = maxhp
-        if not heal:
-            if thp == 0:
-                new_hp = chp - ammount
-                if new_hp < 0:
-                    new_hp - 0
+    if heal:
+        new_hp = chp + ammount
+        if new_hp > maxhp:
+            new_hp = maxhp
+    if not heal:
+        if thp == 0:
+            new_hp = chp - ammount
+            if new_hp < 0:
+                new_hp = 0
+        else:
+            if thp > ammount:
+                new_thp = thp - ammount
+                new_hp = chp
             else:
-                if thp > ammount:
-                    new_thp = thp - ammount
-                    new_hp = chp
-                else:
-                    new_thp = 0
-                    new_hp = chp - ammount + thp
-                    if new_hp < 0:
-                        new_hp = 0
+                new_thp = 0
+                new_hp = chp - ammount + thp
+                if new_hp < 0:
+                    new_hp = 0
 
-        stmt = update(emp).where(emp.c.name == name).values(
-            current_hp=new_hp,
-            temp_hp=new_thp
-        )
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
-            if result.rowcount == 0:
-                return False
-        if new_hp == 0:
-            ctx.channel.send(f'HP:{new_hp}')
+    stmt = update(emp).where(emp.c.name == name).values(
+        current_hp=new_hp,
+        temp_hp=new_thp
+    )
+    compiled = stmt.compile()
+    with engine.connect() as conn:
+        result = conn.execute(stmt)
+        # conn.commit()
+        if result.rowcount == 0:
+            return False
+    if new_hp == 0:
+        await ctx.channel.send(f'```HP: {new_hp}```')
 
-        return True
-    except Exception as e:
-        print(f'change_hp: {e}')
-
-        return False
+    return True
+    # except Exception as e:
+    #     print(f'change_hp: {e}')
+    #
+    #     return False
 
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
@@ -826,11 +826,11 @@ class InitiativeCog(commands.Cog):
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
         response = False
         if mode == 'Heal':
-            response = change_hp(ctx, self.engine, name, amount, True)
+            response = await change_hp(ctx, self.engine, name, amount, True)
             if response:
                 await ctx.respond(f"{name} healed for {amount}.")
         elif mode == 'Damage':
-            response = change_hp(ctx, self.engine, name, amount, False)
+            response = await change_hp(ctx, self.engine, name, amount, False)
             if response:
                 await ctx.respond(f"{name} damaged for {amount}.")
         elif mode == 'Temporary HP':
