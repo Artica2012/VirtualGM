@@ -891,6 +891,7 @@ class InitiativeCog(commands.Cog):
                 for row in cc_list:
                     counter_string = f'{row[3]}: {row[4]}'
                     output_string += counter_string
+                    output_string += '\n'
                 output_string += "```"
                 await ctx.send_followup(output_string, ephemeral=True)
         except Exception as e:
