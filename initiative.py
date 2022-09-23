@@ -44,7 +44,7 @@ DATABASE = os.getenv('DATABASE')
 # FUNCTIONS
 
 # Set up the tracker if it does not exit.db
-async def setup_tracker(ctx: discord.ApplicationContext,  engine, bot):
+async def setup_tracker(ctx: discord.ApplicationContext, engine, bot):
     try:
         conn = engine.connect()
         metadata = db.MetaData()
@@ -183,7 +183,8 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
         await report.report()
         return False
 
-#Check to make sure that the character is in the right place in initiative
+
+# Check to make sure that the character is in the right place in initiative
 def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
     init_list = get_init_list(ctx, engine)
     if init_list[init_pos][1] == current_character:
@@ -264,6 +265,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
         report = ErrorReport(ctx, advance_initiative.__name__, e, bot)
         await report.report()
 
+
 def get_init_list(ctx: discord.ApplicationContext, engine):
     metadata = db.MetaData()
     emp = TrackerTable(ctx.guild, metadata).tracker_table()
@@ -278,7 +280,7 @@ def get_init_list(ctx: discord.ApplicationContext, engine):
         return data
 
 
-def parse_init_list(server: discord.Guild, init_list: list):
+def parse_init_list(init_list: list):
     parsed_list = []
     for row in init_list:
         parsed_list.append(row[1])
@@ -355,6 +357,7 @@ async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationCo
         print(f"get_tracker: {e}")
         report = ErrorReport(ctx, get_tracker.__name__, e, bot)
         await report.report()
+
 
 def calculate_hp(chp, maxhp):
     hp_string = ''
@@ -438,8 +441,10 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
                 else:
                     new_thp = 0
                     new_hp = chp - amount + thp
-                    if new_hp < 0:
-                        new_hp = 0
+                if new_hp < 0:
+                    new_hp = 0
+            if new_hp == 0:
+                await ctx.channel.send(f'```HP: {new_hp}```')
 
             stmt = update(emp).where(emp.c.name == name).values(
                 current_hp=new_hp,
@@ -468,9 +473,6 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             # conn.commit()
             if result.rowcount == 0:
                 return False
-        if new_hp == 0:
-            await ctx.channel.send(f'```HP: {new_hp}```')
-
         return True
     except Exception as e:
         print(f'change_hp: {e}')
@@ -624,7 +626,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         await report.report()
 
 
-async def update_pinned_tracker(ctx, engine, bot):
+async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
     with Session(engine) as session:
         try:
             guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
@@ -635,19 +637,20 @@ async def update_pinned_tracker(ctx, engine, bot):
 
             # Update the tracker
             if tracker is not None:
-                tracker_display_string = await get_tracker(get_init_list(ctx, engine), guild.initiative, ctx, engine, bot)
+                tracker_display_string = await get_tracker(get_init_list(ctx, engine), guild.initiative, ctx, engine,
+                                                           bot)
                 channel = bot.get_channel(tracker_channel)
                 message = await channel.fetch_message(tracker)
                 await message.edit(tracker_display_string)
 
             # Update the GM tracker
             if gm_tracker is not None:
-                gm_tracker_display_string = await get_tracker(get_init_list(ctx, engine), guild.initiative, ctx, engine, bot,
-                                                        gm=True)
+                gm_tracker_display_string = await get_tracker(get_init_list(ctx, engine), guild.initiative, ctx, engine,
+                                                              bot,
+                                                              gm=True)
                 gm_channel = bot.get_channel(gm_tracker_channel)
                 gm_message = await gm_channel.fetch_message(gm_tracker)
                 await gm_message.edit(gm_tracker_display_string)
-
 
         except Exception as e:
             print(f'update_pinned_tracker: {e}')
@@ -673,7 +676,6 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
         print(f"post_init: {e}")
         report = ErrorReport(ctx, post_init.__name__, e, bot)
         await report.report()
-
 
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
@@ -718,9 +720,9 @@ class InitiativeCog(commands.Cog):
                )
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'delete', 'transfer gm', 'tracker', 'gm tracker'])
-    @option('argument', description='Character to delete')
     @option('new_gm', description="@Player to transfer GM permissions to")
-    async def admin(self, ctx: discord.ApplicationContext, mode: str, argument: str = '', new_gm: discord.User = discord.ApplicationContext.user):
+    async def admin(self, ctx: discord.ApplicationContext, mode: str,
+                    new_gm: discord.User = discord.ApplicationContext.user):
         if mode == 'setup':
             response = await setup_tracker(ctx, self.engine, self.bot)
             if response:
@@ -736,26 +738,14 @@ class InitiativeCog(commands.Cog):
         else:
             with Session(self.engine) as session:
                 guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-                if mode == 'delete':
-                    if argument == guild.saved_order:
-                        await ctx.respond(
-                            f"Please wait until {argument} is not the active character in initiative before "
-                            f"deleting it.", ephemeral=True)
-                    else:
-                        await ctx.response.defer()
-                        result = await delete_character(ctx, argument, self.engine, self.bot)
-                        if result:
-                            await ctx.send_followup(f'{argument} deleted', ephemeral=True)
-                            await update_pinned_tracker(ctx, self.engine, self.bot)
-                        else:
-                            await ctx.send_followup('Delete Operation Failed')
-                elif mode == 'tracker':
+                if mode == 'tracker':
                     await ctx.response.defer(ephemeral=True)
                     try:
                         init_pos = int(guild.initiative)
                     except Exception as e:
                         init_pos = None
-                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine, self.bot)
+                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine,
+                                                       self.bot)
                     # interaction = await ctx.respond(display_string)
                     interaction = await ctx.channel.send(display_string)
                     await ctx.send_followup("Tracker Placed",
@@ -770,8 +760,9 @@ class InitiativeCog(commands.Cog):
                         init_pos = int(guild.initiative)
                     except Exception as e:
                         init_pos = None
-                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine, self.bot,
-                                                 gm=True)
+                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine,
+                                                       self.bot,
+                                                       gm=True)
                     interaction = await ctx.channel.send(display_string)
                     await ctx.send_followup("Tracker Placed",
                                             ephemeral=True)
@@ -787,7 +778,6 @@ class InitiativeCog(commands.Cog):
                         await ctx.respond("Permission Transfer Failed", ephemeral=True)
                 else:
                     await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
-
 
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
@@ -815,8 +805,9 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['start', 'stop'])
-    async def manage(self, ctx: discord.ApplicationContext, mode: str):
+    @option('mode', choices=['start', 'stop', 'delete character'])
+    @option('character', description='Character to delete')
+    async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
         init_list = get_init_list(ctx, self.engine)
 
         with Session(self.engine) as session:
@@ -827,7 +818,7 @@ class InitiativeCog(commands.Cog):
             if mode == 'start':
                 await ctx.response.defer()
                 guild.initiative = 0
-                guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
+                guild.saved_order = parse_init_list(init_list)[0]
                 session.commit()
                 await post_init(ctx, self.engine, self.bot)
                 await update_pinned_tracker(ctx, self.engine, self.bot)
@@ -839,6 +830,19 @@ class InitiativeCog(commands.Cog):
                 session.commit()
                 await update_pinned_tracker(ctx, self.engine, self.bot)
                 await ctx.send_followup("Initiative Ended.")
+            elif mode == 'delete character':
+                if character == guild.saved_order:
+                    await ctx.respond(
+                        f"Please wait until {character} is not the active character in initiative before "
+                        f"deleting it.", ephemeral=True)
+                else:
+                    await ctx.response.defer()
+                    result = await delete_character(ctx, character, self.engine, self.bot)
+                    if result:
+                        await ctx.send_followup(f'{character} deleted', ephemeral=True)
+                        await update_pinned_tracker(ctx, self.engine, self.bot)
+                    else:
+                        await ctx.send_followup('Delete Operation Failed')
 
     @i.command(description="Advance Initiative",
                # guild_ids=[GUILD]
@@ -853,7 +857,7 @@ class InitiativeCog(commands.Cog):
             if guild.initiative is None:
                 await ctx.response.defer()
                 guild.initiative = 0
-                guild.saved_order = parse_init_list(ctx.guild, init_list)[0]
+                guild.saved_order = parse_init_list(init_list)[0]
                 session.commit()
                 await post_init(ctx, self.engine, self.bot)
                 await update_pinned_tracker(ctx, self.engine, self.bot)
