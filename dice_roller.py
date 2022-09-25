@@ -80,11 +80,11 @@ class DiceRoller:
         return f'{text}: {dice_string} = **{total}**'
 
     def roll_dice(self):
-        print('parsing Text')
+        # print('parsing Text')
         parsed_text = self._text_parse(self.input_string)
-        print('Parsing Dice')
+        # print('Parsing Dice')
         parsed_dice = self._dice_parse(parsed_text[0])
-        print('Doing math')
+        # print('Doing math')
         calculated_total = self._math_equation(parsed_dice)
         return self._format_output(parsed_text[1], parsed_dice, calculated_total)
 
