@@ -132,3 +132,25 @@ def power_table(metadata):
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
+
+def monster_table(metadata):
+    tablename = f"monster"
+    emp = db.Table(tablename, metadata,
+                   db.Column('Type', db.Text()),
+                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
+                   db.Column('Title', db.String(255)),
+                   db.Column('Data', db.Text(), default=''),
+                   db.Column('URL', db.String(255), default=''),
+                   )
+    return emp
+
+def item_table(metadata):
+    tablename = "item"
+    emp = db.Table(tablename, metadata,
+                   db.Column('Type', db.Text()),
+                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
+                   db.Column('Title', db.String(255)),
+                   db.Column('Category', db.String(255)),
+                   db.Column('URL', db.String(255), default=''),
+                   )
+    return emp

@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, inspect
 from database_models import Global, Base, TrackerTable, ConditionTable
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
-from database_models import disease_table, feat_table, power_table
+from database_models import disease_table, feat_table, power_table, monster_table, item_table
 
 from database_operations import get_db_engine
 
@@ -109,6 +109,53 @@ def power_export(data):
                     Class=row['Class'],
                     Source=row['Source'],
                     Data=row['Source'],
+                    URL=row['URL']
+                )
+                compiled = stmt.compile()
+                with engine.connect() as conn:
+                    result = conn.execute(stmt)
+                # print(f"{row['Title']} Written")
+            except Exception as e:
+                print(e)
+    return
+
+
+def monster_export(data):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    metadata = db.MetaData()
+    emp = monster_table(metadata)
+    if not inspect(engine).has_table(emp):
+        metadata.create_all(engine)
+        for row in data:
+            try:
+                stmt = emp.insert().values(
+                    Type=row['Type'],
+                    ID=row["ID"],
+                    Title=row['Title'],
+                    Data=row['Data'],
+                    URL=row['URL']
+                )
+                compiled = stmt.compile()
+                with engine.connect() as conn:
+                    result = conn.execute(stmt)
+                print(f"{row['Title']} Written")
+            except Exception as e:
+                print(e)
+    return
+
+def item_export(data):
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    metadata = db.MetaData()
+    emp = item_table(metadata)
+    if not inspect(engine).has_table(emp):
+        metadata.create_all(engine)
+        for row in data:
+            try:
+                stmt = emp.insert().values(
+                    Type=row['Type'],
+                    ID=row["ID"],
+                    Title=row['Title'],
+                    Category=row["Category"],
                     URL=row['URL']
                 )
                 compiled = stmt.compile()
