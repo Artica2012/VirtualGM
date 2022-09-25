@@ -719,7 +719,7 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'delete', 'transfer gm', 'tracker', 'gm tracker'])
+    @option('mode', choices=['setup', 'transfer gm', 'tracker', 'gm tracker'])
     @option('new_gm', description="@Player to transfer GM permissions to")
     async def admin(self, ctx: discord.ApplicationContext, mode: str,
                     new_gm: discord.User = discord.ApplicationContext.user):
@@ -801,7 +801,7 @@ class InitiativeCog(commands.Cog):
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @i.command(description="Start/Stop Initiative",
+    @i.command(description="Manage Initiative",
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
