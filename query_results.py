@@ -7,7 +7,7 @@ from discord.ext import commands
 from discord.commands import SlashCommandGroup
 
 import sqlalchemy as db
-from database_models import disease_table, feat_table, power_table, monster_table, item_table
+from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
 from database_operations import get_db_engine
 
 import os
@@ -161,6 +161,34 @@ class QueryCog(commands.Cog):
             await ctx.send_followup(f"Query Results: Powers - {query}", view=view)
         except Exception as e:
             report = ErrorReport(ctx, "monster query", e, self.bot)
+            await report.report()
+
+    @query.command(description="Ritual Query")
+    async def ritual(self, ctx: discord.ApplicationContext, query: str):
+        await ctx.response.defer()
+        engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        metadata = db.MetaData()
+        try:
+            emp = ritual_table(metadata)
+            stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
+            compiled = stmt.compile()
+            with engine.connect() as conn:
+                results = []
+                # print(conn.execute(stmt))
+                for row in conn.execute(stmt):
+                    results.append(row)
+
+            view = discord.ui.View(timeout=None)  # Keep it persistent
+            if not results:
+                await ctx.respond("No Results Found")
+                return
+            for result in results[0:10]:
+                name = f"{result[2]}"
+                link = result[3]
+                view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
+            await ctx.send_followup(f"Query Results: Powers - {query}", view=view)
+        except Exception as e:
+            report = ErrorReport(ctx, "feat query", e, self.bot)
             await report.report()
 
     # @query.command(description="Monster Query")

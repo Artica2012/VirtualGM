@@ -154,3 +154,13 @@ def item_table(metadata):
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
+
+def ritual_table(metadata):
+    tablename = "ritual"
+    emp = db.Table(tablename, metadata,
+                   db.Column('Type', db.Text()),
+                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
+                   db.Column('Title', db.String(255)),
+                   db.Column('URL', db.String(255), default=''),
+                   )
+    return emp
