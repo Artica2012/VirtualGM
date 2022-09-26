@@ -50,9 +50,6 @@ def disease_export(data):
                     Type=row['Type'],
                     ID=row["ID"],
                     Title=row['Title'],
-                    Level=row["Level"],
-                    Source=row['Source'],
-                    Data=row['Source'],
                     URL=row['URL']
                 )
                 compiled = stmt.compile()
@@ -78,9 +75,6 @@ def feat_export(data):
                     Type=row['Type'],
                     ID=row["ID"],
                     Title=row['Title'],
-                    Tier=row["Tier"],
-                    Source=row['Source'],
-                    Data=row['Source'],
                     URL=row['URL']
                 )
                 compiled = stmt.compile()
@@ -104,11 +98,6 @@ def power_export(data):
                     Type=row['Type'],
                     ID=row["ID"],
                     Title=row['Title'],
-                    Level=row["Level"],
-                    Action=row['Action'],
-                    Class=row['Class'],
-                    Source=row['Source'],
-                    Data=row['Source'],
                     URL=row['URL']
                 )
                 compiled = stmt.compile()
@@ -132,7 +121,6 @@ def monster_export(data):
                     Type=row['Type'],
                     ID=row["ID"],
                     Title=row['Title'],
-                    Data=row['Data'],
                     URL=row['URL']
                 )
                 compiled = stmt.compile()

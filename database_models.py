@@ -96,9 +96,6 @@ def disease_table(metadata):
                    db.Column('Type', db.Text()),
                    db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
                    db.Column('Title', db.String(255)),
-                   db.Column('Level', db.INTEGER, nullable=True),
-                   db.Column('Source', db.String(255), nullable=True),
-                   db.Column('Data', db.Text(), default=''),
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
@@ -110,9 +107,6 @@ def feat_table(metadata):
                    db.Column('Type', db.Text()),
                    db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
                    db.Column('Title', db.String(255)),
-                   db.Column('Tier', db.String(255), nullable=True),
-                   db.Column('Source', db.String(255), nullable=True),
-                   db.Column('Data', db.Text(), default=''),
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
@@ -124,11 +118,6 @@ def power_table(metadata):
                    db.Column('Type', db.Text()),
                    db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
                    db.Column('Title', db.String(255)),
-                   db.Column('Level', db.INTEGER(), nullable=True),
-                   db.Column('Action', db.String(255), nullable=True),
-                   db.Column('Class', db.String(25), nullable=True),
-                   db.Column('Source', db.String(255), nullable=True),
-                   db.Column('Data', db.Text(), default=''),
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
@@ -139,7 +128,6 @@ def monster_table(metadata):
                    db.Column('Type', db.Text()),
                    db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
                    db.Column('Title', db.String(255)),
-                   db.Column('Data', db.Text(), default=''),
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
