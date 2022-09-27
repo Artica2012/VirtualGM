@@ -53,12 +53,13 @@ class Global(Base):
 
 
 class TrackerTable:
-    def __init__(self, server: discord.Guild, metadata):
-        self.server = server
+    def __init__(self, ctx: discord.ApplicationContext, metadata):
+        self.guild = ctx.guild.id
+        self.channel = ctx.channel.id
         self.metadata = metadata
 
     def tracker_table(self):
-        tablename = f"Tracker_{self.server.id}"
+        tablename = f"Tracker_{self.guild}_{self.channel}"
         emp = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
                        db.Column('name', db.String(255), nullable=False, unique=True),
@@ -73,15 +74,16 @@ class TrackerTable:
 
 
 class ConditionTable:
-    def __init__(self, server: discord.Guild, metadata):
-        self.server = server
+    def __init__(self, ctx: discord.ApplicationContext, metadata):
+        self.guild = ctx.guild.id
+        self.channel = ctx.channel.id
         self.metadata = metadata
 
     def condition_table(self, ):
-        tablename = f"Condition_{self.server.id}"
+        tablename = f"Condition_{self.guild}_{self.channel}"
         con = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.server.id}.id')),
+                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.guild}_{self.channel}.id')),
                        db.Column('counter', db.BOOLEAN(), default=False),
                        db.Column('title', db.String(255), nullable=False),
                        db.Column('number', db.INTEGER(), nullable=True, default=None),

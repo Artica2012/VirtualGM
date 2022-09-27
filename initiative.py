@@ -44,12 +44,12 @@ DATABASE = os.getenv('DATABASE')
 # FUNCTIONS
 
 # Set up the tracker if it does not exit.db
-async def setup_tracker(ctx: discord.ApplicationContext, engine, bot):
+async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm:discord.User, channel = discord.TextChannel, gm_channel =discord.TextChannel):
     try:
         conn = engine.connect()
         metadata = db.MetaData()
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         metadata.create_all(engine)
         Base.metadata.create_all(engine)
 
@@ -57,10 +57,13 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot):
             guild = Global(
                 guild_id=ctx.guild.id,
                 time=0,
-                gm=ctx.user.id,
+                gm=gm.id,
             )
             session.add(guild)
             session.commit()
+
+
+
 
         return True
 
@@ -69,6 +72,25 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot):
         report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
         await report.report()
         return False
+
+
+async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel):
+    with Session(engine) as session:
+        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+
+        try:
+            init_pos = int(guild.initiative)
+        except Exception as e:
+            init_pos = None
+        display_string = await get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
+                                           bot)
+        # interaction = await ctx.respond(display_string)
+        interaction = await bot.get #TODO WORKING HERE
+        interaction = await ctx.channel.send(display_string)
+        await interaction.pin()
+        guild.tracker = interaction.id
+        guild.tracker_channel = ctx.channel.id
+        session.commit()
 
 
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
@@ -720,11 +742,15 @@ class InitiativeCog(commands.Cog):
                )
     @discord.default_permissions(manage_messages=True)
     @option('mode', choices=['setup', 'transfer gm', 'tracker', 'gm tracker'])
-    @option('new_gm', description="@Player to transfer GM permissions to")
+    @option('gm', description="@Player to transfer GM permissions to.")
+    @option('channel', description="Player Channel")
+    @option('gm_channel', description="GM Channel")
     async def admin(self, ctx: discord.ApplicationContext, mode: str,
-                    new_gm: discord.User = discord.ApplicationContext.user):
+                    gm: discord.User = discord.ApplicationContext.user,
+                    channel:discord.TextChannel = discord.ApplicationContext.channel,
+                    gm_channel:discord.TextChannel = None):
         if mode == 'setup':
-            response = await setup_tracker(ctx, self.engine, self.bot)
+            response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
             if response:
                 await ctx.respond("Server Setup", ephemeral=True)
                 return
@@ -771,9 +797,9 @@ class InitiativeCog(commands.Cog):
                     guild.gm_tracker_channel = ctx.channel.id
                     session.commit()
                 elif mode == 'transfer gm':
-                    response = await set_gm(ctx, new_gm, self.engine, self.bot)
+                    response = await set_gm(ctx, gm, self.engine, self.bot)
                     if response:
-                        await ctx.respond(f"GM Permissions transferred to {new_gm.mention}")
+                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
                     else:
                         await ctx.respond("Permission Transfer Failed", ephemeral=True)
                 else:
