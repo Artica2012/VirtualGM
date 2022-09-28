@@ -50,9 +50,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
     try:
         conn = engine.connect()
         metadata = db.MetaData()
-        emp = TrackerTable(ctx, metadata).tracker_table()
-        con = ConditionTable(ctx, metadata).condition_table()
-        metadata.create_all(engine)
+
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
@@ -63,6 +61,9 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
             )
             session.add(guild)
             session.commit()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
+        metadata.create_all(engine)
 
         await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
         await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
@@ -112,9 +113,6 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
                 select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
             ))
             guild = session.execute(select(Global).from_statement(union)).scalar_one()
-            print(guild.gm)
-            print(guild.tracker_channel)
-            print('Success')
             guild.gm = new_gm.id
             session.commit()
 
@@ -130,7 +128,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, player_bool: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.insert().values(
             name=name,
             init=0,
@@ -155,8 +153,8 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
-        con = ConditionTable(ctx, metadata).condition_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -201,7 +199,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = update(emp).where(emp.c.name == name).values(
             init=init
         )
@@ -249,7 +247,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
 
             # decrement any conditions with the decrement flag
             try:
-                emp = TrackerTable(ctx, metadata).tracker_table()
+                emp = TrackerTable(ctx, metadata, engine).tracker_table()
                 stmt = emp.select().where(emp.c.name == current_character)
                 compiled = stmt.compile()
                 # print(compiled)
@@ -265,7 +263,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                 return False
 
             try:
-                con = ConditionTable(ctx, metadata).condition_table()
+                con = ConditionTable(ctx, metadata, engine).condition_table()
                 stmt = con.select().where(con.c.character_id == data[0][0])
                 compiled = stmt.compile()
                 with engine.connect() as conn:
@@ -305,7 +303,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
 
 def get_init_list(ctx: discord.ApplicationContext, engine):
     metadata = db.MetaData()
-    emp = TrackerTable(ctx, metadata).tracker_table()
+    emp = TrackerTable(ctx, metadata, engine).tracker_table()
     stmt = emp.select().order_by(emp.c.init.desc())
     # print(stmt)
     data = []
@@ -334,7 +332,7 @@ def ping_player_on_init(init_list: list, selected: int):
 async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False):
     try:
         metadata = db.MetaData()
-        con = ConditionTable(ctx, metadata).condition_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         row_data = []
         for row in init_list:
             stmt = con.select().where(con.c.character_id == row[0])
@@ -416,7 +414,7 @@ def calculate_hp(chp, maxhp):
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -448,7 +446,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -521,7 +519,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
     metadata = db.MetaData()
     # Get the Character's data
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -537,7 +535,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
     try:
-        con = ConditionTable(ctx, metadata).condition_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         stmt = con.insert().values(
             character_id=data[0][0],
             title=title,
@@ -561,7 +559,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -576,7 +574,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await report.report()
         return False
     try:
-        con = ConditionTable(ctx, metadata).condition_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
             number=value
         )
@@ -597,7 +595,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -613,7 +611,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return False
 
     try:
-        con = ConditionTable(ctx, metadata).condition_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
         complied = stmt.compile()
         # print(complied)
@@ -632,7 +630,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -647,7 +645,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         await report.report()
 
     try:
-        con = ConditionTable(ctx, metadata).condition_table()
+        con = ConditionTable(ctx, metadata, engine).condition_table()
         stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
         complied = stmt.compile()
         # print(complied)
@@ -728,7 +726,7 @@ def gm_check(ctx: discord.ApplicationContext, engine):
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = select(emp.c.player).where(emp.c.name == character)
         with engine.connect() as conn:
             data = []

@@ -7,7 +7,9 @@ from sqlalchemy import String, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.event import listens_for
 import sqlalchemy as db
-
+from sqlalchemy.orm import Session
+from sqlalchemy import union_all, and_, or_
+from sqlalchemy import select, update, delete
 import discord
 
 import os
@@ -53,13 +55,20 @@ class Global(Base):
 
 
 class TrackerTable:
-    def __init__(self, ctx: discord.ApplicationContext, metadata):
+    def __init__(self, ctx: discord.ApplicationContext, metadata, engine):
         self.guild = ctx.guild.id
         self.channel = ctx.channel.id
         self.metadata = metadata
+        with Session(engine) as session:
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            self.id = guild.id
 
     def tracker_table(self):
-        tablename = f"Tracker_{self.guild}_{self.channel}"
+        tablename = f"Tracker_{self.id}"
         emp = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
                        db.Column('name', db.String(255), nullable=False, unique=True),
@@ -74,16 +83,23 @@ class TrackerTable:
 
 
 class ConditionTable:
-    def __init__(self, ctx: discord.ApplicationContext, metadata):
+    def __init__(self, ctx: discord.ApplicationContext, metadata, engine):
         self.guild = ctx.guild.id
         self.channel = ctx.channel.id
         self.metadata = metadata
+        with Session(engine) as session:
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            self.id = guild.id
 
     def condition_table(self, ):
-        tablename = f"Condition_{self.guild}_{self.channel}"
+        tablename = f"Condition_{self.id}"
         con = db.Table(tablename, self.metadata,
                        db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.guild}_{self.channel}.id')),
+                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.id}.id')),
                        db.Column('counter', db.BOOLEAN(), default=False),
                        db.Column('title', db.String(255), nullable=False),
                        db.Column('number', db.INTEGER(), nullable=True, default=None),
