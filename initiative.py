@@ -12,6 +12,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session
+from sqlalchemy import union_all, and_, or_
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
@@ -106,7 +107,14 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            print(guild.gm)
+            print(guild.tracker_channel)
+            print('Success')
             guild.gm = new_gm.id
             session.commit()
 
