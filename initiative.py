@@ -91,8 +91,12 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
             # interaction = await ctx.respond(display_string)
             interaction = await bot.get_channel(channel.id).send(display_string)
             await interaction.pin()
-            guild.tracker = interaction.id
-            guild.tracker_channel = channel.id
+            if gm:
+                guild.gm_tracker = interaction.id
+                guild.gm_tracker_channel = channel.id
+            else:
+                guild.tracker = interaction.id
+                guild.tracker_channel = channel.id
             session.commit()
             return True
     except Exception as e:
