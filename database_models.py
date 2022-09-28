@@ -40,8 +40,8 @@ Base = declarative_base()
 
 class Global(Base):
     __tablename__ = "global_manager"
-
-    guild_id = Column(BigInteger(), primary_key=True, autoincrement=False)
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    guild_id = Column(BigInteger())
     time = Column(BigInteger(), default=0, nullable=False)
     initiative = Column(Integer())
     saved_order = Column(String(), default='')

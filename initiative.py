@@ -44,7 +44,8 @@ DATABASE = os.getenv('DATABASE')
 # FUNCTIONS
 
 # Set up the tracker if it does not exit.db
-async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm:discord.User, channel = discord.TextChannel, gm_channel =discord.TextChannel):
+async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
+                        gm_channel: discord.TextChannel):
     try:
         conn = engine.connect()
         metadata = db.MetaData()
@@ -55,17 +56,17 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm:discord
 
         with Session(engine) as session:
             guild = Global(
-                guild_id=ctx.guild.id,
+                guild_id=ctx.guild_id,
                 time=0,
                 gm=gm.id,
             )
             session.add(guild)
             session.commit()
 
-
-
-
+        await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
+        await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
         return True
+
 
     except Exception as e:
         print(f'setup_tracker: {e}')
@@ -74,23 +75,29 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm:discord
         return False
 
 
-async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel):
-    with Session(engine) as session:
-        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
+    try:
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
 
-        try:
-            init_pos = int(guild.initiative)
-        except Exception as e:
-            init_pos = None
-        display_string = await get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
-                                           bot)
-        # interaction = await ctx.respond(display_string)
-        interaction = await bot.get #TODO WORKING HERE
-        interaction = await ctx.channel.send(display_string)
-        await interaction.pin()
-        guild.tracker = interaction.id
-        guild.tracker_channel = ctx.channel.id
-        session.commit()
+            try:
+                init_pos = int(guild.initiative)
+            except Exception as e:
+                init_pos = None
+            display_string = await get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
+                                               bot, gm=gm)
+            # interaction = await ctx.respond(display_string)
+            interaction = await bot.get_channel(channel.id).send(display_string)
+            await interaction.pin()
+            guild.tracker = interaction.id
+            guild.tracker_channel = channel.id
+            session.commit()
+            return True
+    except Exception as e:
+        print(f'set_pinned_tracker: {e}')
+        report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
+        await report.report()
+        return False
 
 
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
@@ -115,7 +122,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, player_bool: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.insert().values(
             name=name,
             init=0,
@@ -140,8 +147,8 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -186,7 +193,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = update(emp).where(emp.c.name == name).values(
             init=init
         )
@@ -234,7 +241,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
 
             # decrement any conditions with the decrement flag
             try:
-                emp = TrackerTable(ctx.guild, metadata).tracker_table()
+                emp = TrackerTable(ctx, metadata).tracker_table()
                 stmt = emp.select().where(emp.c.name == current_character)
                 compiled = stmt.compile()
                 # print(compiled)
@@ -250,7 +257,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                 return False
 
             try:
-                con = ConditionTable(ctx.guild, metadata).condition_table()
+                con = ConditionTable(ctx, metadata).condition_table()
                 stmt = con.select().where(con.c.character_id == data[0][0])
                 compiled = stmt.compile()
                 with engine.connect() as conn:
@@ -290,7 +297,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
 
 def get_init_list(ctx: discord.ApplicationContext, engine):
     metadata = db.MetaData()
-    emp = TrackerTable(ctx.guild, metadata).tracker_table()
+    emp = TrackerTable(ctx, metadata).tracker_table()
     stmt = emp.select().order_by(emp.c.init.desc())
     # print(stmt)
     data = []
@@ -319,7 +326,7 @@ def ping_player_on_init(init_list: list, selected: int):
 async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False):
     try:
         metadata = db.MetaData()
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         row_data = []
         for row in init_list:
             stmt = con.select().where(con.c.character_id == row[0])
@@ -401,7 +408,7 @@ def calculate_hp(chp, maxhp):
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -433,7 +440,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == name)
         compiled = stmt.compile()
         with engine.connect() as conn:
@@ -506,7 +513,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
     metadata = db.MetaData()
     # Get the Character's data
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -522,7 +529,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
     try:
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         stmt = con.insert().values(
             character_id=data[0][0],
             title=title,
@@ -546,7 +553,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -561,7 +568,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await report.report()
         return False
     try:
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
             number=value
         )
@@ -582,7 +589,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -598,7 +605,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return False
 
     try:
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
         complied = stmt.compile()
         # print(complied)
@@ -617,7 +624,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -632,7 +639,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         await report.report()
 
     try:
-        con = ConditionTable(ctx.guild, metadata).condition_table()
+        con = ConditionTable(ctx, metadata).condition_table()
         stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
         complied = stmt.compile()
         # print(complied)
@@ -713,7 +720,7 @@ def gm_check(ctx: discord.ApplicationContext, engine):
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx.guild, metadata).tracker_table()
+        emp = TrackerTable(ctx, metadata).tracker_table()
         stmt = select(emp.c.player).where(emp.c.name == character)
         with engine.connect() as conn:
             data = []
@@ -741,14 +748,14 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'transfer gm', 'tracker', 'gm tracker'])
+    @option('mode', choices=['setup', 'transfer gm', 'gm tracker'])
     @option('gm', description="@Player to transfer GM permissions to.")
     @option('channel', description="Player Channel")
     @option('gm_channel', description="GM Channel")
     async def admin(self, ctx: discord.ApplicationContext, mode: str,
                     gm: discord.User = discord.ApplicationContext.user,
-                    channel:discord.TextChannel = discord.ApplicationContext.channel,
-                    gm_channel:discord.TextChannel = None):
+                    channel: discord.TextChannel = discord.ApplicationContext.channel,
+                    gm_channel: discord.TextChannel = None):
         if mode == 'setup':
             response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
             if response:
@@ -764,38 +771,15 @@ class InitiativeCog(commands.Cog):
         else:
             with Session(self.engine) as session:
                 guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-                if mode == 'tracker':
+                if mode == 'gm tracker':
                     await ctx.response.defer(ephemeral=True)
-                    try:
-                        init_pos = int(guild.initiative)
-                    except Exception as e:
-                        init_pos = None
-                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine,
-                                                       self.bot)
-                    # interaction = await ctx.respond(display_string)
-                    interaction = await ctx.channel.send(display_string)
-                    await ctx.send_followup("Tracker Placed",
-                                            ephemeral=True)
-                    await interaction.pin()
-                    guild.tracker = interaction.id
-                    guild.tracker_channel = ctx.channel.id
-                    session.commit()
-                elif mode == 'gm tracker':
-                    await ctx.response.defer(ephemeral=True)
-                    try:
-                        init_pos = int(guild.initiative)
-                    except Exception as e:
-                        init_pos = None
-                    display_string = await get_tracker(get_init_list(ctx, self.engine), init_pos, ctx, self.engine,
-                                                       self.bot,
-                                                       gm=True)
-                    interaction = await ctx.channel.send(display_string)
-                    await ctx.send_followup("Tracker Placed",
-                                            ephemeral=True)
-                    await interaction.pin()
-                    guild.gm_tracker = interaction.id
-                    guild.gm_tracker_channel = ctx.channel.id
-                    session.commit()
+                    response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
+                    if response:
+                        await ctx.send_followup("Tracker Placed",
+                                                ephemeral=True)
+                    else:
+                        await ctx.send_followup("Error setting tracker")
+
                 elif mode == 'transfer gm':
                     response = await set_gm(ctx, gm, self.engine, self.bot)
                     if response:
