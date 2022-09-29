@@ -11,6 +11,7 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import select, update, delete
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy import union_all, and_, or_
 
@@ -58,6 +59,8 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
                 guild_id=ctx.guild_id,
                 time=0,
                 gm=gm.id,
+                tracker_channel=channel.id,
+                gm_tracker_channel=gm_channel.id
             )
             session.add(guild)
             session.commit()
@@ -80,7 +83,13 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
     try:
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
 
             try:
                 init_pos = int(guild.initiative)
@@ -112,11 +121,13 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
         Base.metadata.create_all(engine)
 
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
             guild.gm = new_gm.id
             session.commit()
 
@@ -147,6 +158,11 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             result = conn.execute(stmt)
             # conn.commit()
         return True
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'add_character: {e}')
         report = ErrorReport(ctx, add_character.__name__, e, bot)
@@ -176,11 +192,13 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
 
         # Fix initiative position after delete:
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
             if guild.initiative is None:
                 return True
             elif guild.saved_order == '':
@@ -240,11 +258,13 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
     metadata = db.MetaData()
     try:
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
             if guild.initiative is None:
                 init_pos = -1
             else:
@@ -298,10 +318,10 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                     if row[1] == current_character:
                         init_pos = pos
 
-            init_pos += 1 # incrase the init position by 1
-            if init_pos >= len(get_init_list(ctx, engine)): # if it has reached the end, loop back to the beginning
+            init_pos += 1  # incrase the init position by 1
+            if init_pos >= len(get_init_list(ctx, engine)):  # if it has reached the end, loop back to the beginning
                 init_pos = 0
-            guild.initiative = init_pos # set it
+            guild.initiative = init_pos  # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
 
@@ -675,12 +695,13 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
     with Session(engine) as session:
         try:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                     (Global.gm_tracker_channel == ctx.channel.id)
-                                     ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
 
             tracker = guild.tracker
             tracker_channel = guild.tracker_channel
@@ -703,7 +724,11 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
                 gm_channel = bot.get_channel(gm_tracker_channel)
                 gm_message = await gm_channel.fetch_message(gm_tracker)
                 await gm_message.edit(gm_tracker_display_string)
-
+        except NoResultFound as e:
+            await ctx.channel.send(
+                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                delete_after=30)
         except Exception as e:
             print(f'update_pinned_tracker: {e}')
             report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
@@ -714,12 +739,13 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
     # Query the initiative position for the tracker and post it
     try:
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                     (Global.gm_tracker_channel == ctx.channel.id)
-                                     ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
             init_list = get_init_list(ctx, engine)
             tracker_string = await get_tracker(init_list, guild.initiative, ctx, engine, bot)
             try:
@@ -729,6 +755,10 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
                 ping_string = ''
         await ctx.send_followup(f"{tracker_string}\n"
                                 f"{ping_string}")
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
     except Exception as e:
         print(f"post_init: {e}")
         report = ErrorReport(ctx, post_init.__name__, e, bot)
@@ -738,12 +768,13 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
 # Checks to see if the user of the slash command is the GM, returns a boolean
 def gm_check(ctx: discord.ApplicationContext, engine):
     with Session(engine) as session:
-        union = union_all(
-            select(Global).where(Global.guild_id == ctx.guild_id),
-            select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                 (Global.gm_tracker_channel == ctx.channel.id)
-                                 ))
-        guild = session.execute(select(Global).from_statement(union)).scalar_one()
+        guild = session.execute(select(Global).filter(
+            or_(
+                Global.tracker_channel == ctx.channel.id,
+                Global.gm_tracker_channel == ctx.channel.id
+            )
+        )
+        ).scalar_one()
         if int(guild.gm) != int(ctx.user.id):
             return False
         else:
@@ -802,23 +833,32 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
-            if mode == 'gm tracker':
-                await ctx.response.defer(ephemeral=True)
-                response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
-                if response:
-                    await ctx.send_followup("Tracker Placed",
-                                            ephemeral=True)
-                else:
-                    await ctx.send_followup("Error setting tracker")
+            try:
+                if mode == 'gm tracker':
+                    await ctx.response.defer(ephemeral=True)
+                    response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
+                    if response:
+                        await ctx.send_followup("Tracker Placed",
+                                                ephemeral=True)
+                    else:
+                        await ctx.send_followup("Error setting tracker")
 
-            elif mode == 'transfer gm':
-                response = await set_gm(ctx, gm, self.engine, self.bot)
-                if response:
-                    await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                elif mode == 'transfer gm':
+                    response = await set_gm(ctx, gm, self.engine, self.bot)
+                    if response:
+                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                    else:
+                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
                 else:
-                    await ctx.respond("Permission Transfer Failed", ephemeral=True)
-            else:
-                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+            except NoResultFound as e:
+                await ctx.respond(
+                    "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                    "proper channel or run `/i admin setup` to setup the initiative tracker", ephemeral=True)
+            except Exception as e:
+                print(f"/i admin: {e}")
+                report = ErrorReport(ctx, "slash command /i admin", e, self.bot)
+                await report.report()
 
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
@@ -850,17 +890,25 @@ class InitiativeCog(commands.Cog):
     @option('character', description='Character to delete')
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
         init_list = get_init_list(ctx, self.engine)
-
-        with Session(self.engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                     (Global.gm_tracker_channel == ctx.channel.id)
-                                     ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
-            if int(guild.gm) != int(ctx.user.id):
-                await ctx.respond("GM Restricted Command", ephemeral=True)
-                return
+        try:
+            with Session(self.engine) as session:
+                guild = session.execute(select(Global).filter(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
+                )
+                ).scalar_one()
+        except NoResultFound as e:
+            await ctx.respond(
+                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                ephemeral=True)
+            return False
+        if not gm_check(ctx, self.engine):
+            await ctx.respond("GM Restricted Command", ephemeral=True)
+            return
+        else:
             if mode == 'start':
                 await ctx.response.defer()
                 guild.initiative = 0
@@ -895,43 +943,53 @@ class InitiativeCog(commands.Cog):
                )
     async def next(self, ctx: discord.ApplicationContext):
         result = False  # set fail state
+        try:
 
-        init_list = get_init_list(ctx, self.engine)
-        with Session(self.engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                     (Global.gm_tracker_channel == ctx.channel.id)
-                                     ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
-            # If initiative has not been started, start it, if not advance the init
-            if guild.initiative is None:
-                await ctx.response.defer()
-                guild.initiative = 0
-                guild.saved_order = parse_init_list(init_list)[0]
-                session.commit()
-                await post_init(ctx, self.engine, self.bot)
-                await update_pinned_tracker(ctx, self.engine, self.bot)
-            else:
-                # Advance Init and Display
-                result = await advance_initiative(ctx, self.engine, self.bot)  # Advance the init
+            init_list = get_init_list(ctx, self.engine)
+            with Session(self.engine) as session:
+                guild = session.execute(select(Global).filter(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
+                )
+                ).scalar_one()
+                # If initiative has not been started, start it, if not advance the init
+                if guild.initiative is None:
+                    await ctx.response.defer()
+                    guild.initiative = 0
+                    guild.saved_order = parse_init_list(init_list)[0]
+                    session.commit()
+                    await post_init(ctx, self.engine, self.bot)
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                else:
+                    # Advance Init and Display
+                    result = await advance_initiative(ctx, self.engine, self.bot)  # Advance the init
 
-                # Query the initiative position for the tracker and post it
-                await ctx.response.defer()
-                await post_init(ctx, self.engine, self.bot)
-                await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+                    # Query the initiative position for the tracker and post it
+                    await ctx.response.defer()
+                    await post_init(ctx, self.engine, self.bot)
+                    await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+        except NoResultFound as e:
+            await ctx.respond("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                              "proper channel or run `/i admin setup` to setup the initiative tracker", ephemeral=True)
+        except Exception as e:
+            print(f"/i next: {e}")
+            report = ErrorReport(ctx, "slash command /i next", e, self.bot)
+            await report.report()
 
     @i.command(description="Set Init (Number or XdY+Z)",
                # guild_ids=[GUILD]
                )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         with Session(self.engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
-                                     (Global.gm_tracker_channel == ctx.channel.id)
-                                     ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
             # print(guild)
             if character == guild.saved_order:
                 await ctx.respond(f"Please wait until {character} is not the active character in initiative before "

@@ -49,9 +49,9 @@ class Global(Base):
     saved_order = Column(String(), default='')
     gm = Column(String())
     tracker = Column(BigInteger(), nullable=True)
-    tracker_channel = Column(BigInteger(), nullable=True)
+    tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     gm_tracker = Column(BigInteger(), nullable=True)
-    gm_tracker_channel = Column(BigInteger(), nullable=True)
+    gm_tracker_channel = Column(BigInteger(), nullable=True, unique=True)
 
 
 class TrackerTable:
@@ -60,11 +60,18 @@ class TrackerTable:
         self.channel = ctx.channel.id
         self.metadata = metadata
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            # union = union_all(
+            #     select(Global).where(Global.guild_id == ctx.guild_id),
+            #     select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            # ))
+            # guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).filter(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
+                )
+            ).scalar_one()
             self.id = guild.id
 
     def tracker_table(self):
@@ -88,11 +95,17 @@ class ConditionTable:
         self.channel = ctx.channel.id
         self.metadata = metadata
         with Session(engine) as session:
-            union = union_all(
-                select(Global).where(Global.guild_id == ctx.guild_id),
-                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            ))
-            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            # union = union_all(
+            #     select(Global).where(Global.guild_id == ctx.guild_id),
+            #     select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            # ))
+            # guild = session.execute(select(Global).from_statement(union)).scalar_one()
+            guild = session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
+                )).scalar_one()
             self.id = guild.id
 
     def condition_table(self, ):
