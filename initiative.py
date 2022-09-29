@@ -176,7 +176,11 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
 
         # Fix initiative position after delete:
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             if guild.initiative is None:
                 return True
             elif guild.saved_order == '':
@@ -236,8 +240,11 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
     metadata = db.MetaData()
     try:
         with Session(engine) as session:
-            # get current position in the initiative
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
+            ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             if guild.initiative is None:
                 init_pos = -1
             else:
@@ -291,10 +298,10 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                     if row[1] == current_character:
                         init_pos = pos
 
-            init_pos += 1
-            if init_pos >= len(get_init_list(ctx, engine)):
+            init_pos += 1 # incrase the init position by 1
+            if init_pos >= len(get_init_list(ctx, engine)): # if it has reached the end, loop back to the beginning
                 init_pos = 0
-            guild.initiative = init_pos
+            guild.initiative = init_pos # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
 
@@ -668,7 +675,13 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
     with Session(engine) as session:
         try:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                     (Global.gm_tracker_channel == ctx.channel.id)
+                                     ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
+
             tracker = guild.tracker
             tracker_channel = guild.tracker_channel
             gm_tracker = guild.gm_tracker
@@ -701,7 +714,12 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
     # Query the initiative position for the tracker and post it
     try:
         with Session(engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                     (Global.gm_tracker_channel == ctx.channel.id)
+                                     ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             init_list = get_init_list(ctx, engine)
             tracker_string = await get_tracker(init_list, guild.initiative, ctx, engine, bot)
             try:
@@ -720,7 +738,12 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
 # Checks to see if the user of the slash command is the GM, returns a boolean
 def gm_check(ctx: discord.ApplicationContext, engine):
     with Session(engine) as session:
-        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+        union = union_all(
+            select(Global).where(Global.guild_id == ctx.guild_id),
+            select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                 (Global.gm_tracker_channel == ctx.channel.id)
+                                 ))
+        guild = session.execute(select(Global).from_statement(union)).scalar_one()
         if int(guild.gm) != int(ctx.user.id):
             return False
         else:
@@ -779,25 +802,23 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
-            with Session(self.engine) as session:
-                guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
-                if mode == 'gm tracker':
-                    await ctx.response.defer(ephemeral=True)
-                    response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
-                    if response:
-                        await ctx.send_followup("Tracker Placed",
-                                                ephemeral=True)
-                    else:
-                        await ctx.send_followup("Error setting tracker")
-
-                elif mode == 'transfer gm':
-                    response = await set_gm(ctx, gm, self.engine, self.bot)
-                    if response:
-                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
-                    else:
-                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
+            if mode == 'gm tracker':
+                await ctx.response.defer(ephemeral=True)
+                response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
+                if response:
+                    await ctx.send_followup("Tracker Placed",
+                                            ephemeral=True)
                 else:
-                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+                    await ctx.send_followup("Error setting tracker")
+
+            elif mode == 'transfer gm':
+                response = await set_gm(ctx, gm, self.engine, self.bot)
+                if response:
+                    await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                else:
+                    await ctx.respond("Permission Transfer Failed", ephemeral=True)
+            else:
+                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
 
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
@@ -831,7 +852,12 @@ class InitiativeCog(commands.Cog):
         init_list = get_init_list(ctx, self.engine)
 
         with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                     (Global.gm_tracker_channel == ctx.channel.id)
+                                     ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             if int(guild.gm) != int(ctx.user.id):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
@@ -872,7 +898,12 @@ class InitiativeCog(commands.Cog):
 
         init_list = get_init_list(ctx, self.engine)
         with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                     (Global.gm_tracker_channel == ctx.channel.id)
+                                     ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             # If initiative has not been started, start it, if not advance the init
             if guild.initiative is None:
                 await ctx.response.defer()
@@ -895,7 +926,12 @@ class InitiativeCog(commands.Cog):
                )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter_by(guild_id=ctx.guild_id)).scalar_one()
+            union = union_all(
+                select(Global).where(Global.guild_id == ctx.guild_id),
+                select(Global).where(or_(Global.tracker_channel == ctx.channel.id),
+                                     (Global.gm_tracker_channel == ctx.channel.id)
+                                     ))
+            guild = session.execute(select(Global).from_statement(union)).scalar_one()
             # print(guild)
             if character == guild.saved_order:
                 await ctx.respond(f"Please wait until {character} is not the active character in initiative before "
