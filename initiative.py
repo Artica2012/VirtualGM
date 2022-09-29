@@ -333,18 +333,21 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
 
 
 def get_init_list(ctx: discord.ApplicationContext, engine):
-    metadata = db.MetaData()
-    emp = TrackerTable(ctx, metadata, engine).tracker_table()
-    stmt = emp.select().order_by(emp.c.init.desc())
-    # print(stmt)
-    data = []
-    with engine.connect() as conn:
-        for row in conn.execute(stmt):
-            # print(row)
-            data.append(row)
-        # print(data)
-        return data
-
+    try:
+        metadata = db.MetaData()
+        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        stmt = emp.select().order_by(emp.c.init.desc())
+        # print(stmt)
+        data = []
+        with engine.connect() as conn:
+            for row in conn.execute(stmt):
+                # print(row)
+                data.append(row)
+            # print(data)
+            return data
+    except Exception as e:
+        print("error in get_init_list")
+        return []
 
 def parse_init_list(init_list: list):
     parsed_list = []
@@ -559,6 +562,11 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             for row in conn.execute(stmt):
                 data.append(row)
                 # print(row)
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'set_cc: {e}')
         report = ErrorReport(ctx, set_cc.__name__, e, bot)
@@ -580,6 +588,11 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             result = conn.execute(stmt)
         await update_pinned_tracker(ctx, engine, bot)
         return True
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'set_cc: {e}')
         report = ErrorReport(ctx, set_cc.__name__, e, bot)
@@ -599,6 +612,11 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
             for row in conn.execute(stmt):
                 data.append(row)
                 # print(row)
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'edit_cc: {e}')
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
@@ -616,6 +634,11 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
             result = conn.execute(stmt)
         await update_pinned_tracker(ctx, engine, bot)
         return True
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'edit_cc: {e}')
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
@@ -635,6 +658,11 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
             for row in conn.execute(stmt):
                 data.append(row)
                 # print(row)
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'delete_cc: {e}')
         report = ErrorReport(ctx, delete_cc.__name__, e, bot)
@@ -651,6 +679,11 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
             # print(result)
         await update_pinned_tracker(ctx, engine, bot)
         return True
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'delete_cc: {e}')
         report = ErrorReport(ctx, delete_cc.__name__, e, bot)
@@ -670,6 +703,11 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
             for row in conn.execute(stmt):
                 data.append(row)
                 # print(row)
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'get_cc: {e}')
         report = ErrorReport(ctx, get_cc.__name__, e, bot)
@@ -686,6 +724,11 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
             for row in result:
                 con_data.append(row)
         return con_data
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
     except Exception as e:
         print(f'get_cc: {e}')
         report = ErrorReport(ctx, get_cc.__name__, e, bot)
