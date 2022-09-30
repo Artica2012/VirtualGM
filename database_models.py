@@ -44,14 +44,21 @@ class Global(Base):
     __tablename__ = "global_manager"
     id = Column(Integer(), primary_key=True, autoincrement=True)
     guild_id = Column(BigInteger())
-    time = Column(BigInteger(), default=0, nullable=False)
+    gm = Column(String())
     initiative = Column(Integer())
     saved_order = Column(String(), default='')
-    gm = Column(String())
     tracker = Column(BigInteger(), nullable=True)
     tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True, unique=True)
+    timekeeping = Column(Boolean(), default=False)
+    time = Column(BigInteger(), default=6, nullable=False)
+    time_second = Column(Integer(), nullable=True)
+    time_minute = Column(Integer(), nullable=True)
+    time_hour = Column(Integer(), nullable=True)
+    time_day = Column(Integer(), nullable=True)
+    time_month = Column(Integer(), nullable=True)
+    time_year = Column(Integer(), nullable=True)
 
 
 class TrackerTable:
@@ -60,11 +67,6 @@ class TrackerTable:
         self.channel = ctx.channel.id
         self.metadata = metadata
         with Session(engine) as session:
-            # union = union_all(
-            #     select(Global).where(Global.guild_id == ctx.guild_id),
-            #     select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            # ))
-            # guild = session.execute(select(Global).from_statement(union)).scalar_one()
             guild = session.execute(select(Global).filter(
                     or_(
                         Global.tracker_channel == ctx.channel.id,
@@ -95,11 +97,6 @@ class ConditionTable:
         self.channel = ctx.channel.id
         self.metadata = metadata
         with Session(engine) as session:
-            # union = union_all(
-            #     select(Global).where(Global.guild_id == ctx.guild_id),
-            #     select(Global).where(or_(Global.tracker_channel == ctx.channel.id), (Global.gm_tracker_channel == ctx.channel.id)
-            # ))
-            # guild = session.execute(select(Global).from_statement(union)).scalar_one()
             guild = session.execute(select(Global).where(
                     or_(
                         Global.tracker_channel == ctx.channel.id,
