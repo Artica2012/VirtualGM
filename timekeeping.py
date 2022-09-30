@@ -164,19 +164,19 @@ async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int
 
             # update tracker
             await update_pinned_tracker(ctx, engine, bot)
-
+            return True
 
     except NoResultFound as e:
         await ctx.channel.send(
             "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
             "proper channel or run `/i admin setup` to setup the initiative tracker",
             delete_after=30)
-        return ""
+        return False
     except Exception as e:
         print(f'advance_time: {e}')
         report = ErrorReport(ctx, "advance_time", e, bot)
         await report.report()
-        return ""
+        return False
 
 
 # Timekeeper Cog - For managing the time functions
@@ -230,6 +230,14 @@ class TimekeeperCog(commands.Cog):
             report = ErrorReport(ctx, "/set_time", e, self.bot)
             await report.report()
             await ctx.respond("Setup Failed")
+
+    @timekeeper.command(description="Advance Time")
+    @option('amount', description="Amount to advance")
+    @option('unit', choices=['minute', 'hour', 'day'])
+    async def advance(self, ctx: discord.ApplicationContext, amount:int, unit:str="minute"):
+        if unit == "minute":
+            result = await advance_time(ctx, self.engine, self.bot, minute=amount)
+            #TODO - FINISH THIS
 
 
 def setup(bot):
