@@ -237,7 +237,17 @@ class TimekeeperCog(commands.Cog):
     async def advance(self, ctx: discord.ApplicationContext, amount:int, unit:str="minute"):
         if unit == "minute":
             result = await advance_time(ctx, self.engine, self.bot, minute=amount)
-            #TODO - FINISH THIS
+        elif unit == "hour":
+            result = await advance_time(ctx, self.engine, self.bot, hour=amount)
+        elif unit == "day":
+            result = await advance_time(ctx, self.engine, self.bot, day=amount)
+        else:
+            result = False
+
+        if result:
+            await ctx.respond(f"Time advanced to by {amount} {unit}(s). New time is: {await output_datetime(ctx, self.engine, self.bot)}")
+        else:
+            await ctx.respond("Failed to advance time.")
 
 
 def setup(bot):
