@@ -14,6 +14,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy import union_all, and_, or_
+import timekeeping
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
@@ -364,6 +365,22 @@ def ping_player_on_init(init_list: list, selected: int):
 
 # Build the tracker string
 async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False):
+    # Get the datetime
+    datetime_string = ''
+    try:
+        if timekeeping.check_timekeeper(ctx, engine):
+            datetime_string = f" {await timekeeping.output_datetime(ctx, engine, bot)}\n" \
+                              f"________________________\n"
+    except NoResultFound as e:
+        await ctx.channel.send(
+            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+            "proper channel or run `/i admin setup` to setup the initiative tracker",
+            delete_after=30)
+    except Exception as e:
+        print(f'get_tracker: {e}')
+        report = ErrorReport(ctx, "get_tracker", e, bot)
+        await report.report()
+
     try:
         metadata = db.MetaData()
         con = ConditionTable(ctx, metadata, engine).condition_table()
@@ -390,8 +407,8 @@ async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationCo
                              'cc': con_data
                              })
 
-        output_string = "```" \
-                        "Initiative:\n"
+        output_string = f"```{datetime_string}" \
+                        f"Initiative:\n"
         for x, row in enumerate(row_data):
             if x == selected:
                 selector = '>>'

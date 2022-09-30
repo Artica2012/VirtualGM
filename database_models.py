@@ -42,15 +42,18 @@ Base = declarative_base()
 
 class Global(Base):
     __tablename__ = "global_manager"
+    # ID Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
     guild_id = Column(BigInteger())
     gm = Column(String())
+    # Initiative Tracker
     initiative = Column(Integer())
     saved_order = Column(String(), default='')
     tracker = Column(BigInteger(), nullable=True)
     tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True, unique=True)
+    # Timekeeper Functionality
     timekeeping = Column(Boolean(), default=False)
     time = Column(BigInteger(), default=6, nullable=False)
     time_second = Column(Integer(), nullable=True)
