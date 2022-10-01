@@ -14,12 +14,12 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy import union_all, and_, or_
-import timekeeping
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
+from multi_cog_functions import output_datetime, check_timekeeper
 
 # define global variables
 
@@ -368,8 +368,8 @@ async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationCo
     # Get the datetime
     datetime_string = ''
     try:
-        if timekeeping.check_timekeeper(ctx, engine):
-            datetime_string = f" {await timekeeping.output_datetime(ctx, engine, bot)}\n" \
+        if check_timekeeper(ctx, engine):
+            datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
                               f"________________________\n"
     except NoResultFound as e:
         await ctx.channel.send(

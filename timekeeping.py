@@ -18,6 +18,7 @@ from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from initiative import update_pinned_tracker
+from multi_cog_functions import output_datetime, check_timekeeper
 
 import os
 from dotenv import load_dotenv
@@ -95,48 +96,7 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
         return False
 
 
-async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
-    try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
-                )
-            )
-            ).scalar_one()
 
-            time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
-                                     hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
-            output_string = time.strftime("%A %B %d, %Y: %I:%M:%S %p")
-            print(output_string)
-            return output_string
-
-    except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
-        return ""
-    except Exception as e:
-        print(f'output_datetime: {e}')
-        report = ErrorReport(ctx, "output_datetime", e, bot)
-        await report.report()
-        return ""
-
-def check_timekeeper(ctx:discord.ApplicationContext, engine):
-    try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
-                )
-            )
-            ).scalar_one()
-            return guild.timekeeping
-    except Exception as e:
-        return False
 
 
 async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int = 0, minute: int = 0, hour: int = 0,
