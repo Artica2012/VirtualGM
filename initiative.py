@@ -19,7 +19,7 @@ from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from multi_cog_functions import output_datetime, check_timekeeper
+from time_keeping_functions import output_datetime, check_timekeeper
 
 # define global variables
 

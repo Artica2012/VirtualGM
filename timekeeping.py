@@ -18,7 +18,7 @@ from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from initiative import update_pinned_tracker
-from multi_cog_functions import output_datetime, check_timekeeper
+from time_keeping_functions import output_datetime, check_timekeeper, set_datetime, advance_time
 
 import os
 from dotenv import load_dotenv
@@ -44,101 +44,6 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 
-async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int, minute: int, hour: int, day: int,
-                       month: int, year: int, time: int = None):
-    try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
-                )
-            )
-            ).scalar_one()
-            guild.timekeeping = True
-            if time:
-                # print(time)
-                guild.time = time
-            if second != None:
-                # print(second)
-                guild.time_second = second
-            if minute != None:
-                # print(minute)
-                guild.time_minute = minute
-            if hour != None:
-                # print(hour)
-                guild.time_hour = hour
-            if day != None:
-                # print(day)
-                guild.time_day = day
-            if month != None:
-                # print(month)
-                guild.time_month = month
-            if year != None:
-                # print(year)
-                guild.time_year = year
-            session.commit()
-
-            #update the tracker
-            await update_pinned_tracker(ctx, engine, bot)
-
-            return True
-    except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
-        return False
-    except Exception as e:
-        print(f'set_datetime: {e}')
-        report = ErrorReport(ctx, "set_datetime", e, bot)
-        await report.report()
-        return False
-
-
-
-
-
-async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int = 0, minute: int = 0, hour: int = 0,
-                       day: int = 0):
-    try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
-                )
-            )
-            ).scalar_one()
-
-            time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
-                                     hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
-            new_time = time + datetime.timedelta(seconds=second, minutes=minute, hours=hour, days=day)
-            guild.time_second = new_time.second
-            guild.time_minute = new_time.minute
-            guild.time_hour = new_time.hour
-            guild.time_day = new_time.day
-            guild.time_month = new_time.month
-            guild.time_year = new_time.year
-            session.commit()
-
-            # update tracker
-            await update_pinned_tracker(ctx, engine, bot)
-            return True
-
-    except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
-        return False
-    except Exception as e:
-        print(f'advance_time: {e}')
-        report = ErrorReport(ctx, "advance_time", e, bot)
-        await report.report()
-        return False
-
-
 # Timekeeper Cog - For managing the time functions
 class TimekeeperCog(commands.Cog):
     def __init__(self, bot):
@@ -156,6 +61,7 @@ class TimekeeperCog(commands.Cog):
                                         year=4802, time=time)
             if result:
                 await ctx.respond("Timekeeper Setup Complete", ephemeral=True)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
                 # await output_datetime(ctx, self.engine, self.bot)
             else:
                 await ctx.respond("Error Setting Up Timekeeper", ephemeral=True)
@@ -178,6 +84,7 @@ class TimekeeperCog(commands.Cog):
                                         year=year)
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
             else:
                 await ctx.respond("Error Setting Date and Time", ephemeral=True)
         except NoResultFound as e:
@@ -194,7 +101,7 @@ class TimekeeperCog(commands.Cog):
     @timekeeper.command(description="Advance Time")
     @option('amount', description="Amount to advance")
     @option('unit', choices=['minute', 'hour', 'day'])
-    async def advance(self, ctx: discord.ApplicationContext, amount:int, unit:str="minute"):
+    async def advance(self, ctx: discord.ApplicationContext, amount: int, unit: str = "minute"):
         if unit == "minute":
             result = await advance_time(ctx, self.engine, self.bot, minute=amount)
         elif unit == "hour":
@@ -205,7 +112,9 @@ class TimekeeperCog(commands.Cog):
             result = False
 
         if result:
-            await ctx.respond(f"Time advanced to by {amount} {unit}(s). New time is: {await output_datetime(ctx, self.engine, self.bot)}")
+            await ctx.respond(
+                f"Time advanced to by {amount} {unit}(s). New time is: {await output_datetime(ctx, self.engine, self.bot)}")
+            await update_pinned_tracker(ctx, self.engine, self.bot)
         else:
             await ctx.respond("Failed to advance time.")
 
