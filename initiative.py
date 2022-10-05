@@ -965,44 +965,44 @@ class InitiativeCog(commands.Cog):
                     )
                 )
                 ).scalar_one()
+                if not gm_check(ctx, self.engine):
+                    await ctx.respond("GM Restricted Command", ephemeral=True)
+                    return
+                else:
+                    if mode == 'start':
+                        await ctx.response.defer()
+                        guild.initiative = 0
+                        guild.saved_order = parse_init_list(init_list)[0]
+                        session.commit()
+                        await post_init(ctx, self.engine, self.bot)
+                        await update_pinned_tracker(ctx, self.engine, self.bot)
+                        # await ctx.respond('Initiative Started', ephemeral=True)
+                    elif mode == 'stop':
+                        await ctx.response.defer()
+                        guild.initiative = None
+                        guild.saved_order = ''
+                        session.commit()
+                        await update_pinned_tracker(ctx, self.engine, self.bot)
+                        await ctx.send_followup("Initiative Ended.")
+                    elif mode == 'delete character':
+                        if character == guild.saved_order:
+                            await ctx.respond(
+                                f"Please wait until {character} is not the active character in initiative before "
+                                f"deleting it.", ephemeral=True)
+                        else:
+                            await ctx.response.defer()
+                            result = await delete_character(ctx, character, self.engine, self.bot)
+                            if result:
+                                await ctx.send_followup(f'{character} deleted', ephemeral=True)
+                                await update_pinned_tracker(ctx, self.engine, self.bot)
+                            else:
+                                await ctx.send_followup('Delete Operation Failed')
         except NoResultFound as e:
             await ctx.respond(
                 "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
                 "proper channel or run `/i admin setup` to setup the initiative tracker",
                 ephemeral=True)
             return False
-        if not gm_check(ctx, self.engine):
-            await ctx.respond("GM Restricted Command", ephemeral=True)
-            return
-        else:
-            if mode == 'start':
-                await ctx.response.defer()
-                guild.initiative = 0
-                guild.saved_order = parse_init_list(init_list)[0]
-                session.commit()
-                await post_init(ctx, self.engine, self.bot)
-                await update_pinned_tracker(ctx, self.engine, self.bot)
-                # await ctx.respond('Initiative Started', ephemeral=True)
-            elif mode == 'stop':
-                await ctx.response.defer()
-                guild.initiative = None
-                guild.saved_order = ''
-                session.commit()
-                await update_pinned_tracker(ctx, self.engine, self.bot)
-                await ctx.send_followup("Initiative Ended.")
-            elif mode == 'delete character':
-                if character == guild.saved_order:
-                    await ctx.respond(
-                        f"Please wait until {character} is not the active character in initiative before "
-                        f"deleting it.", ephemeral=True)
-                else:
-                    await ctx.response.defer()
-                    result = await delete_character(ctx, character, self.engine, self.bot)
-                    if result:
-                        await ctx.send_followup(f'{character} deleted', ephemeral=True)
-                        await update_pinned_tracker(ctx, self.engine, self.bot)
-                    else:
-                        await ctx.send_followup('Delete Operation Failed')
 
     @i.command(description="Advance Initiative",
                # guild_ids=[GUILD]
