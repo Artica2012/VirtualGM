@@ -322,9 +322,10 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
             init_pos += 1  # increase the init position by 1
             if init_pos >= len(get_init_list(ctx, engine)):  # if it has reached the end, loop back to the beginning
                 init_pos = 0
-                # Advance time
-                # advance the time by the number of seconds in the guild.time column. Default is 6 seconds ala D&D standard
-                await advance_time(ctx, engine, bot, second=guild.time)
+                if guild.timekeeping:                    # if timekeeping is enable on the server
+                    # Advance time time by the number of seconds in the guild.time column. Default is 6
+                    # seconds ala D&D standard
+                    await advance_time(ctx, engine, bot, second=guild.time)
             guild.initiative = init_pos  # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
