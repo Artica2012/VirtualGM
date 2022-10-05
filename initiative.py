@@ -19,7 +19,7 @@ from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from time_keeping_functions import output_datetime, check_timekeeper
+from time_keeping_functions import output_datetime, check_timekeeper, advance_time
 
 # define global variables
 
@@ -319,12 +319,17 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                     if row[1] == current_character:
                         init_pos = pos
 
-            init_pos += 1  # incrase the init position by 1
+            init_pos += 1  # increase the init position by 1
             if init_pos >= len(get_init_list(ctx, engine)):  # if it has reached the end, loop back to the beginning
                 init_pos = 0
+                # Advance time
+                # advance the time by the number of seconds in the guild.time column. Default is 6 seconds ala D&D standard
+                await advance_time(ctx, engine, bot, second=guild.time)
             guild.initiative = init_pos  # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
+
+
 
             return True
     except Exception as e:
