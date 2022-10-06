@@ -58,7 +58,7 @@ class TimekeeperCog(commands.Cog):
     async def setup(self, ctx: discord.ApplicationContext, time: int = 6):
         try:
             result = await set_datetime(ctx, self.engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
-                                        year=4802, time=time)
+                                        year=2001, time=time)
             if result:
                 await ctx.respond("Timekeeper Setup Complete", ephemeral=True)
                 await update_pinned_tracker(ctx, self.engine, self.bot)
@@ -78,10 +78,9 @@ class TimekeeperCog(commands.Cog):
 
     @timekeeper.command(description="Set Date/Time")
     async def set_time(self, ctx: discord.ApplicationContext, minute: int = None, hour: int = None, day: int = None,
-                       month: int = None, year: int = None):
+                       month: int = None):
         try:
-            result = await set_datetime(ctx, self.engine, self.bot, second= 0, minute=minute, hour=hour, day=day, month=month,
-                                        year=year)
+            result = await set_datetime(ctx, self.engine, self.bot, second=0, minute=minute, hour=hour, day=day, month=month)
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
                 await update_pinned_tracker(ctx, self.engine, self.bot)

@@ -81,8 +81,8 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
 
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
-            output_string = time.strftime("%A %B %d, %Y: %I:%M:%S %p")
-            print(output_string)
+            output_string = time.strftime("%B %d, %y: %I:%M:%S %p")
+            # print(output_string)
             return output_string
 
     except NoResultFound as e:
