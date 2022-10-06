@@ -1032,7 +1032,17 @@ class InitiativeCog(commands.Cog):
                         await ctx.response.defer()
                         guild.initiative = None
                         guild.saved_order = ''
+
+                        metadata = db.MetaData()
+                        con = ConditionTable(ctx, metadata, self.engine).condition_table()
+                        stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(con.c.time == False)
+                        compiled = stmt.compile()
+                        with self.engine.connect() as conn:
+                            result = conn.execute(stmt)
+                            # print(result)
+                        await update_pinned_tracker(ctx, self.engine, self.bot)
                         session.commit()
+
                         await update_pinned_tracker(ctx, self.engine, self.bot)
                         await ctx.send_followup("Initiative Ended.")
                     elif mode == 'delete character':
