@@ -1,6 +1,6 @@
 # initiative.py
 # Initiative Tracker Module
-
+import datetime
 import os
 
 # imports
@@ -14,12 +14,13 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy import union_all, and_, or_
+import datetime
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time
+from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 
 # define global variables
 
@@ -300,7 +301,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                 compiled = stmt.compile()
                 with engine.connect() as conn:
                     for con_row in conn.execute(stmt):
-                        if con_row[5]:
+                        if con_row[5] and not con_row[6]:
                             if con_row[4] >= 2:
                                 new_stmt = update(con).where(con.c.id == con_row[0]).values(
                                     number=con_row[4] - 1
@@ -322,15 +323,13 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
             init_pos += 1  # increase the init position by 1
             if init_pos >= len(get_init_list(ctx, engine)):  # if it has reached the end, loop back to the beginning
                 init_pos = 0
-                if guild.timekeeping:                    # if timekeeping is enable on the server
+                if guild.timekeeping:  # if timekeeping is enable on the server
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
                     await advance_time(ctx, engine, bot, second=guild.time)
             guild.initiative = init_pos  # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
-
-
 
             return True
     except Exception as e:
@@ -355,6 +354,7 @@ def get_init_list(ctx: discord.ApplicationContext, engine):
     except Exception as e:
         print("error in get_init_list")
         return []
+
 
 def parse_init_list(init_list: list):
     parsed_list = []
@@ -433,7 +433,19 @@ async def get_tracker(init_list: list, selected: int, ctx: discord.ApplicationCo
             for con_row in row['cc']:
                 if gm or not con_row[2]:
                     if con_row[4] != None:
-                        con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                        if con_row[6]:
+                            time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                            current_time = await get_time(ctx, engine, bot)
+                            time_left = time_stamp - current_time
+                            days_left = time_left.days
+                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                            if days_left != 0:
+                                con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
+                            else:
+                                con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
+                        else:
+                            con_string = f"       {con_row[3]}: {con_row[4]}\n"
                     else:
                         con_string = f"       {con_row[3]}\n"
 
@@ -572,6 +584,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
 
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
+                 unit: str,
                  auto_decrement: bool, bot):
     metadata = db.MetaData()
     # Get the Character's data
@@ -597,20 +610,58 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
     try:
-        con = ConditionTable(ctx, metadata, engine).condition_table()
-        stmt = con.insert().values(
-            character_id=data[0][0],
-            title=title,
-            number=number,
-            counter=counter,
-            auto_increment=auto_decrement
-        )
-        complied = stmt.compile()
-        # print(complied)
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-        await update_pinned_tracker(ctx, engine, bot)
-        return True
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
+            if not guild.timekeeping or unit == 'Round':
+                con = ConditionTable(ctx, metadata, engine).condition_table()
+                stmt = con.insert().values(
+                    character_id=data[0][0],
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_decrement,
+                    time=False
+                )
+                complied = stmt.compile()
+                # print(complied)
+                with engine.connect() as conn:
+                    result = conn.execute(stmt)
+                await update_pinned_tracker(ctx, engine, bot)
+                return True
+            else:
+                current_time = await get_time(ctx, engine, bot)
+                if unit == 'Minute':
+                    end_time = current_time + datetime.timedelta(minutes=number)
+                elif unit == 'Hour':
+                    end_time = current_time + datetime.timedelta(hours=number)
+                else:
+                    end_time = current_time + datetime.timedelta(days=number)
+
+
+                timestamp = end_time.timestamp()
+
+                con = ConditionTable(ctx, metadata, engine).condition_table()
+                stmt = con.insert().values(
+                    character_id=data[0][0],
+                    title=title,
+                    number=timestamp,
+                    counter=counter,
+                    auto_increment=True,
+                    time=True
+                )
+                complied = stmt.compile()
+                # print(complied)
+                with engine.connect() as conn:
+                    result = conn.execute(stmt)
+                await update_pinned_tracker(ctx, engine, bot)
+                return True
+
     except NoResultFound as e:
         await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
                                "proper channel or run `/i admin setup` to setup the initiative tracker",
@@ -1107,7 +1158,9 @@ class InitiativeCog(commands.Cog):
                )
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
+    @option('unit', choices=['Round', 'Minute', 'Hour', 'Day'])
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+                 unit: str = "Round",
                  auto: str = 'Static'):
         if type == "Condition":
             counter_bool = False
@@ -1118,7 +1171,7 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = await set_cc(ctx, self.engine, character, title, counter_bool, number, auto_bool, self.bot)
+        response = await set_cc(ctx, self.engine, character, title, counter_bool, number, unit, auto_bool, self.bot)
         if response:
             await ctx.respond("Success", ephemeral=True)
         else:

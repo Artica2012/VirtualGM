@@ -41,6 +41,33 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 
+async def get_time(ctx: discord.ApplicationContext, engine, bot):
+    try:
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
+
+            time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
+                                     hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
+            return time
+
+    except NoResultFound as e:
+        await ctx.channel.send(
+            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+            "proper channel or run `/i admin setup` to setup the initiative tracker",
+            delete_after=30)
+        return None
+    except Exception as e:
+        print(f'output_datetime: {e}')
+        report = ErrorReport(ctx, "get_time", e, bot)
+        await report.report()
+        return None
+
 async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
     try:
         with Session(engine) as session:

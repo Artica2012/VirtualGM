@@ -80,7 +80,7 @@ class TimekeeperCog(commands.Cog):
     async def set_time(self, ctx: discord.ApplicationContext, minute: int = None, hour: int = None, day: int = None,
                        month: int = None, year: int = None):
         try:
-            result = await set_datetime(ctx, self.engine, self.bot, minute=minute, hour=hour, day=day, month=month,
+            result = await set_datetime(ctx, self.engine, self.bot, second= 0, minute=minute, hour=hour, day=day, month=month,
                                         year=year)
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
