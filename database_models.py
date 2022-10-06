@@ -46,6 +46,9 @@ class Global(Base):
     id = Column(Integer(), primary_key=True, autoincrement=True)
     guild_id = Column(BigInteger())
     gm = Column(String())
+    # Feature Flags
+    explode = Column(Boolean(), default=False)
+    aliases = Column(Boolean(), default=False)
     # Initiative Tracker
     initiative = Column(Integer())
     saved_order = Column(String(), default='')
@@ -53,6 +56,7 @@ class Global(Base):
     tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True, unique=True)
+    rp_channel = Column(BigInteger(), nullable=True, unique=True)
     # Timekeeper Functionality
     timekeeping = Column(Boolean(), default=False)
     time = Column(BigInteger(), default=6, nullable=False)
