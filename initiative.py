@@ -308,7 +308,16 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                                 )
                             else:
                                 new_stmt = delete(con).where(con.c.id == con_row[0])
+                                await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
                             result = conn.execute(new_stmt)
+                        elif con_row[6]:
+                            time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                            current_time = await get_time(ctx, engine, bot)
+                            time_left = time_stamp - current_time
+                            if time_left.total_seconds() <= 0:
+                                new_stmt = delete(con).where(con.c.id == con_row[0])
+                                await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
+                                result = conn.execute(new_stmt)
             except Exception as e:
                 print(f'advance_initiative: {e}')
                 report = ErrorReport(ctx, advance_initiative.__name__, e, bot)
@@ -327,6 +336,7 @@ async def advance_initiative(ctx: discord.ApplicationContext, engine, bot):
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
                     await advance_time(ctx, engine, bot, second=guild.time)
+                    await check_cc(ctx, engine, bot)
             guild.initiative = init_pos  # set it
             guild.saved_order = str(get_init_list(ctx, engine)[init_pos][1])
             session.commit()
@@ -808,6 +818,27 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         report = ErrorReport(ctx, get_cc.__name__, e, bot)
         await report.report()
 
+# Check to see if any time duration conditions have expired.
+# Intended to be called when time is advanced
+async def check_cc(ctx: discord.ApplicationContext, engine, bot):
+    metadata = db.MetaData()
+    current_time = await get_time(ctx, engine, bot)
+    con = ConditionTable(ctx, metadata, engine).condition_table()
+    emp = TrackerTable(ctx, metadata, engine).tracker_table()
+    stmt = con.select().where(con.c.time == True)
+    with engine.connect() as conn:
+        for row in conn.execute(stmt):
+            time_stamp = datetime.datetime.fromtimestamp(row[4])
+            time_left = time_stamp - current_time
+            if time_left.total_seconds() <= 0:
+                char_stmt = emp.select().where(emp.c.id == row[1])
+                char_name = ''
+                for char_row in conn.execute(char_stmt):
+                    char_name = char_row[1]
+                del_stmt = delete(con).where(con.c.id == row[0])
+                await ctx.channel.send(f"{row[3]} removed from {char_name}")
+                result = conn.execute(del_stmt)
+
 
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
     with Session(engine) as session:
@@ -1032,7 +1063,6 @@ class InitiativeCog(commands.Cog):
                         await ctx.response.defer()
                         guild.initiative = None
                         guild.saved_order = ''
-
                         metadata = db.MetaData()
                         con = ConditionTable(ctx, metadata, self.engine).condition_table()
                         stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(con.c.time == False)
