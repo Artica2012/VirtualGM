@@ -1,7 +1,6 @@
 # importer.py
 
 # imports
-from bs4 import BeautifulSoup
 
 
 # import the disease database
@@ -99,7 +98,6 @@ def import_item(filename):
             else:
                 prefix = 'Item'
 
-
             data_dict = {
                 'Type': prefix,
                 'ID': data[0].removeprefix('(').strip("'"),
@@ -141,6 +139,7 @@ def import_power(filename):
 
     return data_cache
 
+
 # import the monster database
 def import_monster(filename):
     with open(f'data/{filename}', 'r', encoding='utf-8') as file:  # open the file
@@ -179,6 +178,7 @@ def import_monster(filename):
             data_cache.append(data_dict)  # add that dict to the list of dicts
     return data_cache  # return a tuple with the data, the index and the database title to be read by
     # the exporter
+
 
 # import the monster database
 def import_Ritual(filename):

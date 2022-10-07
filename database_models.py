@@ -1,22 +1,20 @@
 # database_models.py
 
-from sqlalchemy import Column, ForeignKey
+import os
+
+import discord
+import sqlalchemy as db
+from dotenv import load_dotenv
+from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.event import listens_for
-import sqlalchemy as db
+from sqlalchemy import or_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy import union_all, and_, or_
-from sqlalchemy import select, update, delete
-import discord
-
-import os
-from dotenv import load_dotenv
+from sqlalchemy.orm import declarative_base
 
 # define global variables
-from database_operations import get_db_engine
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -75,11 +73,11 @@ class TrackerTable:
         self.metadata = metadata
         with Session(engine) as session:
             guild = session.execute(select(Global).filter(
-                    or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
-                    )
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
                 )
+            )
             ).scalar_one()
             self.id = guild.id
 
@@ -105,11 +103,11 @@ class ConditionTable:
         self.metadata = metadata
         with Session(engine) as session:
             guild = session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
-                    )
-                )).scalar_one()
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )).scalar_one()
             self.id = guild.id
 
     def condition_table(self, ):
@@ -158,6 +156,7 @@ def power_table(metadata):
                    )
     return emp
 
+
 def monster_table(metadata):
     tablename = f"monster"
     emp = db.Table(tablename, metadata,
@@ -167,6 +166,7 @@ def monster_table(metadata):
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
+
 
 def item_table(metadata):
     tablename = "item"
@@ -178,6 +178,7 @@ def item_table(metadata):
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
+
 
 def ritual_table(metadata):
     tablename = "ritual"

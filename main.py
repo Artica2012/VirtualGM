@@ -1,7 +1,5 @@
 # main.py
 
-import os
-
 # imports
 import discord
 from dotenv import load_dotenv

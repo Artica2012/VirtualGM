@@ -1,28 +1,19 @@
 # timekeeping.py
 
+import os
+
 # imports
-import datetime
 import discord
-import sqlalchemy as db
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
-from sqlalchemy import union_all, and_, or_
 
-from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from initiative import update_pinned_tracker, check_cc
-from time_keeping_functions import output_datetime, check_timekeeper, set_datetime, advance_time
-
-import os
-from dotenv import load_dotenv
-import database_operations
+from time_keeping_functions import output_datetime, set_datetime, advance_time
 
 # define global variables
 load_dotenv(verbose=True)

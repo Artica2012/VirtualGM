@@ -1,15 +1,14 @@
 # error_reporting_cog.py
 
+import os
+
 # imports
 import discord
-from discord.ext import commands
 from discord import option
+from discord.ext import commands
+from dotenv import load_dotenv
 
 from error_handling_reporting import ErrorReport
-
-import os
-from dotenv import load_dotenv
-import database_operations
 
 # define global variables
 load_dotenv(verbose=True)
@@ -27,7 +26,7 @@ class ErrorReportingCog(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name='bug', description='Report a Bug',
-                            #guild_ids=[GUILD)
+                            # guild_ids=[GUILD)
                             )
     @option('action', description="What were you doing?")
     @option('bug', description="Please describe the bug")

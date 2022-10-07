@@ -10,11 +10,10 @@ from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from dotenv import load_dotenv
+from sqlalchemy import or_
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
-from sqlalchemy import union_all, and_, or_
-import datetime
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
@@ -653,7 +652,6 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                 else:
                     end_time = current_time + datetime.timedelta(days=number)
 
-
                 timestamp = end_time.timestamp()
 
                 con = ConditionTable(ctx, metadata, engine).condition_table()
@@ -817,6 +815,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         print(f'get_cc: {e}')
         report = ErrorReport(ctx, get_cc.__name__, e, bot)
         await report.report()
+
 
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
@@ -1065,7 +1064,8 @@ class InitiativeCog(commands.Cog):
                         guild.saved_order = ''
                         metadata = db.MetaData()
                         con = ConditionTable(ctx, metadata, self.engine).condition_table()
-                        stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(con.c.time == False)
+                        stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
+                            con.c.time == False)
                         compiled = stmt.compile()
                         with self.engine.connect() as conn:
                             result = conn.execute(stmt)

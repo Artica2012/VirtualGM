@@ -12,8 +12,8 @@ class DiceRoller:
         self.input_string = input_string
 
     # rolls the dice in an XdY format
-    def roller(self, input: str):
-        dice = input.split('d')
+    def roller(self, input_string: str):
+        dice = input_string.split('d')
         num_die = int(dice[0])
         size_die = int(dice[1])
         # print(f"num_die = {num_die}, size_die = {size_die}")
@@ -25,8 +25,8 @@ class DiceRoller:
         return results
 
     # Parses out the Roll from the Text in the format of Roll (space) Text
-    def _text_parse(self, input: str):
-        text_parse = input.split(' ', 1)
+    def _text_parse(self, input_string: str):
+        text_parse = input_string.split(' ', 1)
         # print(text_parse)
         dice_string = text_parse[0]
         try:
@@ -36,8 +36,8 @@ class DiceRoller:
         return dice_string, text
 
     # Parses out each individaul dice roll with addition or subtraction signs
-    def _dice_parse(self, input: str):
-        dice_string = input.strip()
+    def _dice_parse(self, input_string: str):
+        dice_string = input_string.strip()
         dice_string = dice_string.lower()
         parsed_dice = re.split(r'([+,-])', dice_string)
         # print(f'Parsed Dice: {parsed_dice}')
@@ -49,10 +49,10 @@ class DiceRoller:
 
     # Does the addition and subtraction between the dice rolls
     def _math_equation(self, equation: list):
-        total = 0 # Set the initial total to zero
-        add = True # Default it to add
+        total = 0  # Set the initial total to zero
+        add = True  # Default it to add
         for item in equation:
-            if type(item) is str: # If its a string it should be either a +/- or a number
+            if type(item) is str:  # If its a string it should be either a +/- or a number
                 if item == '+':
                     add = True
                 elif item == '-':
@@ -60,9 +60,9 @@ class DiceRoller:
                 else:
                     if add:
                         total += int(item)
-                    else: # subtract it if the previous operator was a -
+                    else:  # subtract it if the previous operator was a -
                         total -= int(item)
-                        add = True # once you subtract, reset the add variable to true
+                        add = True  # once you subtract, reset the add variable to true
             # Hand the lists (set of die) separately since they need to be summed
             if type(item) is list:
                 if add:

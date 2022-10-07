@@ -1,21 +1,19 @@
 # dice_roller_cog.py
 
+import os
+
 # imports
 import discord
 from discord import option
 from discord.ext import commands
-import dice_roller
-
-from database_operations import get_db_engine
-from database_models import Global, Base, TrackerTable, ConditionTable
-from sqlalchemy import select, update, delete
-from sqlalchemy.orm import Session
-import sqlalchemy as db
-from error_handling_reporting import ErrorReport
-
-import os
 from dotenv import load_dotenv
-import database_operations
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+import dice_roller
+from database_models import Global
+from database_operations import get_db_engine
+from error_handling_reporting import ErrorReport
 
 # define global variables
 load_dotenv(verbose=True)

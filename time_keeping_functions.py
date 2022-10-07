@@ -1,24 +1,18 @@
 # time_keeping_functions.py
 
+import datetime
 import os
 
 # imports
 import discord
-import sqlalchemy as db
-from discord import option
-from discord.commands import SlashCommandGroup
-from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import select, update, delete
+from sqlalchemy import or_
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
-from sqlalchemy import union_all, and_, or_
 
-from database_models import Global, Base, TrackerTable, ConditionTable
-from database_operations import get_db_engine
-from dice_roller import DiceRoller
+from database_models import Global
 from error_handling_reporting import ErrorReport
-import datetime
 
 # define global variables
 
@@ -67,6 +61,7 @@ async def get_time(ctx: discord.ApplicationContext, engine, bot):
         report = ErrorReport(ctx, "get_time", e, bot)
         await report.report()
         return None
+
 
 async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
     try:

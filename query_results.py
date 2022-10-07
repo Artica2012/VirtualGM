@@ -2,20 +2,17 @@
 
 # Handles the 4e Query Commands Cog
 
-import discord
-from discord.ext import commands
-from discord import option
-from discord.commands import SlashCommandGroup
-
-import sqlalchemy as db
-from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
-from database_operations import get_db_engine
-
 import os
+
+import discord
+import sqlalchemy as db
+from discord import option
+from discord.ext import commands
 from dotenv import load_dotenv
 
+from database_models import disease_table, feat_table, power_table, monster_table, ritual_table
+from database_operations import get_db_engine
 from ui_components import QuerySelectButton
-from error_handling_reporting import ErrorReport
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -89,7 +86,6 @@ class QueryCog(commands.Cog):
         # except Exception as e:
         #     report = ErrorReport(ctx, "query", e, self.bot)
         #     await report.report()
-
 
     # @query.command(description="Monster Query")
     # async def item(self, ctx: discord.ApplicationContext, query: str):

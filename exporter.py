@@ -1,16 +1,12 @@
-import pandas as pd
-import json
-import sqlite3
+# exporter.py
+
 import os
-from dotenv import load_dotenv
 
 import sqlalchemy as db
-from sqlalchemy import create_engine, inspect
-from database_models import Global, Base, TrackerTable, ConditionTable
-from sqlalchemy.orm import Session
-from sqlalchemy import select, update, delete
-from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
+from dotenv import load_dotenv
+from sqlalchemy import inspect
 
+from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
 from database_operations import get_db_engine
 
 # define global variables

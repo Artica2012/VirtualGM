@@ -1,14 +1,13 @@
 # help_cog.py
 
+import os
+
 # imports
 import discord
-from discord.ext import commands
 from discord import option
 from discord.commands import SlashCommandGroup
-
-import os
+from discord.ext import commands
 from dotenv import load_dotenv
-import database_operations
 
 # define global variables
 load_dotenv(verbose=True)
@@ -51,7 +50,8 @@ class HelpCog(commands.Cog):
                           "- Dice are rolled with the /r slash command.\n"
                           "- The format is XdY+Z Label (e.g 1d20+7 Initiative)\n"
                           "- The dice roller will accept complex strings of dice (e.g 2d8+3d6-1d4+2)\n"
-                          "- The optional secret command with the dice roller will send the result to the GM channel if it has been set up.\n"
+                          "- The optional secret command with the dice roller will send the result to the GM channel "
+                          "if it has been set up.\n "
                           "```", ephemeral=True
                           )
 
@@ -95,36 +95,44 @@ class HelpCog(commands.Cog):
         elif command == 'init':
             await ctx.respond("```"
                               "init - Assign an initiative value to the character\n"
-                              "  - Takes the arguments character which is the character's name and initiative which can be given as a whole numner (e.g. 15) or a dice expression in the form of XdY+Z (e.g 1d20+7)"
+                              "- Takes the arguments character which is the character's name and initiative which can "
+                              "be given as a whole number (e.g. 15) or a dice expression in the form of XdY+Z (e.g "
+                              "1d20+7) "
                               "```", ephemeral=True)
         elif command == 'hp':
             await ctx.respond("```"
                               "hp - Adjust HP\n"
                               "  - Damage - Damages the indicated character for inputted amount\n"
                               "  - Heal - Heals the character for the inputted amount\n"
-                              "  - Temporary HP - Grants the character the inputted amount of temporary HP. This HP will be subtracted from first and not added to with any healing."
+                              "- Temporary HP - Grants the character the inputted amount of temporary HP. This HP "
+                              "will be subtracted from first and not added to with any healing. "
                               "```", ephemeral=True)
         elif command == 'cc':
             await ctx.respond("```"
                               "cc - Conditions and Counters\n"
-                              "  - condition - Assigns a condition to the given character. Option to add in a numeric value. Option to set it to autodecrement, which will decrease the value by 1 at the end of the character's turn until it reaches 0, where it is automatically deleted. Default is a static value which does not auto-decrement.\n"
-                              "  - counter - Assigns a custom counter to the character. Similar to a condition, except it is only showed on the tracker during the character's turn. Custom counters for NPCs do not display on the non-gm tracker."
+                              "- condition - Assigns a condition to the given character. Option to add in a numeric "
+                              "value. Option to set it to autodecrement, which will decrease the value by 1 at the "
+                              "end of the character's turn until it reaches 0, where it is automatically deleted. "
+                              "Default is a static value which does not auto-decrement.\n "
+                              "- counter - Assigns a custom counter to the character. Similar to a condition, "
+                              "except it is only showed on the tracker during the character's turn. Custom counters "
+                              "for NPCs do not display on the non-gm tracker. "
                               "```", ephemeral=True)
         elif command == 'cc_edit':
             await ctx.respond("```"
                               "cc_edit - Edit or Delete Counters or Conditions\n"
-                              "  - edit - Inputs the character's name, the name of the condition and the value, which will overwrite the previous counter/condition\n"
+                              "- edit - Inputs the character's name, the name of the condition and the value, "
+                              "which will overwrite the previous counter/condition\n "
                               "  - delete - Deletes the indicated condition or counter"
                               "```", ephemeral=True)
         elif command == 'cc_show':
             await ctx.respond("```"
                               "cc_show - Show Custom Counters\n"
-                              "  - Displays a popup visible only to the user which displays the custom counters for the selected character. Only the GM can see the custom counters of NPCs.\n"
+                              "- Displays a popup visible only to the user which displays the custom counters for the "
+                              "selected character. Only the GM can see the custom counters of NPCs.\n "
                               "```", ephemeral=True)
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
-
-
 
 
 def setup(bot):
