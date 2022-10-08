@@ -89,6 +89,33 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
         return False
 
 
+async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
+    try:
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
+            channel = bot.get_channel(guild.tracker_channel)
+            gm_channel = bot.get_channel(guild.gm_tracker_channel)
+            await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
+            await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
+            return True
+    except NoResultFound as e:
+        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+                               delete_after=30)
+        return False
+    except Exception as e:
+        print(f'repost_trackers: {e}')
+        report = ErrorReport(ctx, repost_trackers().__name__, e, bot)
+        await report.report()
+        return False
+
+
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
     try:
         with Session(engine) as session:
@@ -993,13 +1020,17 @@ class InitiativeCog(commands.Cog):
     async def before_update_status(self):
         await self.bot.wait_until_ready()
 
+    # ---------------------------------------------------
+    # ---------------------------------------------------
+    # Slash commands
+
     i = SlashCommandGroup("i", "Initiative Tracker")
 
     @i.command(description="Administrative Commands",
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'transfer gm', 'gm tracker'])
+    @option('mode', choices=['setup', 'transfer gm', 'reset trackers'])
     @option('gm', description="@Player to transfer GM permissions to.")
     @option('channel', description="Player Channel")
     @option('gm_channel', description="GM Channel")
@@ -1021,14 +1052,14 @@ class InitiativeCog(commands.Cog):
             return
         else:
             try:
-                if mode == 'gm tracker':
+                if mode == 'reset trackers':
                     await ctx.response.defer(ephemeral=True)
-                    response = set_pinned_tracker(ctx, self.engine, self.bot, ctx.channel, gm=True)
+                    response = await repost_trackers(ctx, self.engine, self.bot)
                     if response:
-                        await ctx.send_followup("Tracker Placed",
+                        await ctx.send_followup("Trackers Placed",
                                                 ephemeral=True)
                     else:
-                        await ctx.send_followup("Error setting tracker")
+                        await ctx.send_followup("Error setting trackers")
 
                 elif mode == 'transfer gm':
                     response = await set_gm(ctx, gm, self.engine, self.bot)
