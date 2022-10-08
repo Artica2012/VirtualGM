@@ -148,13 +148,29 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
 
 # Add a character to the database
-async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, player_bool: bool):
+async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int,
+                        player_bool: bool, init:str):
     metadata = db.MetaData()
+    dice = DiceRoller('')
+
+    try:
+        # print(f"Init: {init}")
+        initiative = int(init)
+    except:
+        try:
+            roll = dice.plain_roll(init)
+            initiative = roll[1]
+            if type(initiative) != int:
+                return False
+        except:
+            return False
+
+
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
         stmt = emp.insert().values(
             name=name,
-            init=0,
+            init=initiative,
             player=player_bool,
             user=ctx.user.id,
             current_hp=hp,
@@ -165,6 +181,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
         with engine.connect() as conn:
             result = conn.execute(stmt)
             # conn.commit()
+            await ctx.respond(f"Character {name} added successfully with initiative {initiative}", ephemeral=True)
         return True
     except NoResultFound as e:
         await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
@@ -1020,7 +1037,8 @@ class InitiativeCog(commands.Cog):
     @option('name', description="Character Name")
     @option('hp', description='Total HP')
     @option('player', choices=['player', 'npc'])
-    async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str):
+    @option('initiative', description="Set Init (Number or XdY+Z)")
+    async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str = 0):
         response = False
         player_bool = False
         if player == 'player':
@@ -1028,10 +1046,8 @@ class InitiativeCog(commands.Cog):
         elif player == 'npc':
             player_bool = False
 
-        response = await add_character(ctx, self.engine, self.bot, name, hp, player_bool)
-        if response:
-            await ctx.respond(f"Character {name} added successfully", ephemeral=True)
-        else:
+        response = await add_character(ctx, self.engine, self.bot, name, hp, player_bool, initiative)
+        if not response:
             await ctx.respond(f"Error Adding Character", ephemeral=True)
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
