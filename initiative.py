@@ -49,6 +49,12 @@ DATABASE = os.getenv('DATABASE')
 # Set up the tracker if it does not exit.db
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
+    # Check to make sure bot has permissions in both channels
+    if not channel.can_send() or gm_channel.can_send():
+        await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
+                          ephemeral=True)
+        return False
+
     try:
         conn = engine.connect()
         metadata = db.MetaData()
@@ -78,6 +84,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
         print(f'setup_tracker: {e}')
         report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
         await report.report()
+        await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
         return False
 
 
@@ -973,7 +980,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("Server Setup", ephemeral=True)
                 return
             else:
-                await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+                # await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
                 return
 
         if not gm_check(ctx, self.engine):
