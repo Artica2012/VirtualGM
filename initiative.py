@@ -5,10 +5,11 @@ import os
 
 # imports
 import discord
+import asyncio
 import sqlalchemy as db
 from discord import option
 from discord.commands import SlashCommandGroup
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select, update, delete
@@ -149,7 +150,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
 # Add a character to the database
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int,
-                        player_bool: bool, init:str):
+                        player_bool: bool, init: str):
     metadata = db.MetaData()
     dice = DiceRoller('')
 
@@ -164,7 +165,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 return False
         except:
             return False
-
 
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
@@ -976,6 +976,22 @@ class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.lock = asyncio.Lock()
+        self.update_status.start()
+
+    # Update the bot's status periodically
+    @tasks.loop(minutes=1)
+    async def update_status(self):
+        with Session(self.engine) as session:
+            result = session.query(Global).count()
+        async with self.lock:
+            await self.bot.change_presence(activity=discord.Game(name=f"ttRPGs in {result} tables across the "
+                                                                      f"digital universe."))
+            # f"Playing ttRPGs in {result} tables across the digital universe."
+
+    @update_status.before_loop
+    async def before_update_status(self):
+        await self.bot.wait_until_ready()
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
