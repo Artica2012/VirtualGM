@@ -47,11 +47,12 @@ DATABASE = os.getenv('DATABASE')
 #################################################################
 # FUNCTIONS
 
+
 # Set up the tracker if it does not exit.db
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
     # Check to make sure bot has permissions in both channels
-    if not channel.can_send() or gm_channel.can_send():
+    if not channel.can_send() or not gm_channel.can_send():
         await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
         return False

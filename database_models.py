@@ -13,6 +13,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
+from database_operations import get_db_engine
 
 # define global variables
 
@@ -34,7 +35,6 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 
 Base = declarative_base()
-
 
 # Database Models
 
@@ -67,15 +67,15 @@ class Global(Base):
 
 
 class TrackerTable:
-    def __init__(self, ctx: discord.ApplicationContext, metadata, engine):
-        self.guild = ctx.guild.id
-        self.channel = ctx.channel.id
+    def __init__(self, ctx, metadata, engine):
+        self.guild = ctx.interaction.guild_id
+        self.channel = ctx.interaction.channel_id
         self.metadata = metadata
         with Session(engine) as session:
             guild = session.execute(select(Global).filter(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
             ).scalar_one()
@@ -122,6 +122,32 @@ class ConditionTable:
                        db.Column('time', db.BOOLEAN, default=False)
                        )
         return con
+
+
+class MacroTable:
+    def __init__(self, ctx, metadata, engine):
+        self.guild = ctx.interaction.guild_id
+        self.channel = ctx.interaction.channel_id
+        self.metadata = metadata
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            ).scalar_one()
+            self.id = guild.id
+
+    def macro_table(self):
+        tablename = f"Macro_{self.id}"
+        macro = db.Table(tablename, self.metadata,
+                         db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
+                         db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.id}.id')),
+                         db.Column('name', db.String(255), nullable=False, unique=False),
+                         db.Column('macro', db.String(255), nullable=False, unique=False)
+                         )
+        return macro
 
 
 def disease_table(metadata):

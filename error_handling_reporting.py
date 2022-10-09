@@ -28,16 +28,16 @@ error_server = os.getenv('error_server')
 
 
 class ErrorReport:
-    def __init__(self, ctx: discord.ApplicationContext, function_name: str, error, bot):
+    def __init__(self, ctx, function_name: str, error, bot):
         self.ctx = ctx
         self.name = function_name
         self.error_text = error
         self.bot = bot
 
     async def report(self):
-        guild_id = self.ctx.guild.id
-        channel = self.ctx.channel.id
-        user_id = self.ctx.user.id
+        guild_id = self.ctx.interaction.guild_id
+        channel = self.ctx.interaction.channel_id
+        user_id = self.ctx.interaction.user.id
         output_string = f"```\n" \
                         f"Guild: {guild_id}, {self.ctx.guild.name} Channel: {channel}, {self.ctx.channel.name}\n" \
                         f"Owner: {self.ctx.guild.owner_id}, {self.ctx.guild.owner.name}\n" \
