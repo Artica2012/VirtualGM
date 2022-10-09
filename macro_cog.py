@@ -145,6 +145,33 @@ class MacroCog(commands.Cog):
             await report.report()
             return False
 
+
+    async def delete_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
+        metadata = db.MetaData()
+        macro = MacroTable(ctx, metadata, self.engine).macro_table()
+        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+        try:
+            char_stmt = emp.select().where(emp.c.name == character)
+            # print(character)
+            with self.engine.connect() as conn:
+                data = []
+                for char_row in conn.execute(char_stmt):
+                    data.append(char_row)
+                for row in data:
+                    # print(row)
+                    # print(f"{row[0]}, {macro_name}")
+                    macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(macro.c.name == macro_name.split(':')[0])
+                    for char_row in conn.execute(macro_stmt):
+                        # print(char_row)
+                        del_stmt = delete(macro).where(macro.c.id == char_row[0])
+                        conn.execute(del_stmt)
+                        return True
+        except Exception as e:
+            print(f'delete_macro: {e}')
+            report = ErrorReport(ctx, self.delete_macro.__name__, e, self.bot)
+            await report.report()
+            return False
+
     async def roll_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
         metadata = db.MetaData()
         macro = MacroTable(ctx, metadata, self.engine).macro_table()
@@ -187,18 +214,28 @@ class MacroCog(commands.Cog):
         else:
             await ctx.send_followup("Macro Creation Failed", ephemeral=True)
 
+    @macro.command(description="Delete Macro")
+    @option("character", description="Character", autocomplete=character_select, )
+    @option('macro', description="Macro Name", autocomplete=macro_select, )
+    async def remove(self, ctx:discord.ApplicationContext, character: str, macro: str):
+        result = await self.delete_macro(ctx, character, macro)
+        if result:
+            await ctx.respond("Macro Deleted Successfully", ephemeral=True)
+        else:
+            await ctx.respond("Delete Action Failed", ephemeral=True)
+
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
     async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str):
         await ctx.response.defer()
-        # try:
-        await ctx.send_followup(await self.roll_macro(ctx, character, macro))
-        # except Exception as e:
-        #     print(f"roll_macro: {e}")
-        #     report = ErrorReport(ctx, "roll_macro", e, self.bot)
-        #     await report.report()
-        #     await ctx.send_followup("Macro Roll Failed")
+        try:
+            await ctx.send_followup(await self.roll_macro(ctx, character, macro))
+        except Exception as e:
+            print(f"roll_macro: {e}")
+            report = ErrorReport(ctx, "roll_macro", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Macro Roll Failed")
 
 
 def setup(bot):
