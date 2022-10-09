@@ -227,15 +227,35 @@ class MacroCog(commands.Cog):
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
-    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str):
+    @option('secret', choices=['Secret', 'Open'])
+    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, secret:str = "Open"):
         await ctx.response.defer()
-        try:
+        # try:
+        if secret == "Open":
             await ctx.send_followup(await self.roll_macro(ctx, character, macro))
-        except Exception as e:
-            print(f"roll_macro: {e}")
-            report = ErrorReport(ctx, "roll_macro", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Macro Roll Failed")
+        else:
+            with Session(self.engine) as session:
+                guild = session.execute(select(Global).filter(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
+                )
+                ).scalar_one()
+                if guild.gm_tracker_channel != None:
+                    await ctx.send_followup(f"Secret Dice Rolled."
+                                            f"{character}: {macro}")
+                    await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"Secret Roll:\n"
+                                                                                   f"{await self.roll_macro(ctx, character, macro)}")
+                else:
+                    await ctx.send_followup('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
+                    await ctx.channel.send(await self.roll_macro(ctx, character, macro))
+
+        # except Exception as e:
+        #     print(f"roll_macro: {e}")
+        #     report = ErrorReport(ctx, "roll_macro", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Macro Roll Failed")
 
 
 def setup(bot):

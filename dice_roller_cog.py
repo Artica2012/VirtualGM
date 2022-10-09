@@ -7,7 +7,7 @@ import discord
 from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import Session
 
 import dice_roller
@@ -49,7 +49,14 @@ class DiceRollerCog(commands.Cog):
             try:
                 if secret == 'Secret':
                     with Session(self.engine) as session:
-                        guild = session.execute(select(Global).filter_by(guild_id=ctx.guild.id)).scalar_one()
+                        guild = session.execute(select(Global).filter(
+                            or_(
+                                Global.tracker_channel == ctx.channel.id,
+                                Global.gm_tracker_channel == ctx.channel.id
+                            )
+                        )
+                        ).scalar_one()
+
                         if guild.gm_tracker_channel != None:
                             await ctx.respond(f"Secret Dice Rolled")
                             await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"```Secret Roll from {ctx.user.name}\n{roll}\n{roller.roll_dice()}```")
