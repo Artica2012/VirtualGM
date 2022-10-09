@@ -97,15 +97,15 @@ class TrackerTable:
 
 
 class ConditionTable:
-    def __init__(self, ctx: discord.ApplicationContext, metadata, engine):
-        self.guild = ctx.guild.id
-        self.channel = ctx.channel.id
+    def __init__(self, ctx, metadata, engine):
+        self.guild = ctx.interaction.guild_id
+        self.channel = ctx.interaction.channel_id
         self.metadata = metadata
         with Session(engine) as session:
             guild = session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )).scalar_one()
             self.id = guild.id

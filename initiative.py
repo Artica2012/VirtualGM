@@ -182,9 +182,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     dice = DiceRoller('')
     insp = db.inspect(engine)
 
-
-
-
     try:
         # print(f"Init: {init}")
         initiative = int(init)
@@ -979,16 +976,16 @@ async def post_init(ctx: discord.ApplicationContext, engine, bot):
 
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
-def gm_check(ctx: discord.ApplicationContext, engine):
+def gm_check(ctx, engine):
     with Session(engine) as session:
         guild = session.execute(select(Global).filter(
             or_(
-                Global.tracker_channel == ctx.channel.id,
-                Global.gm_tracker_channel == ctx.channel.id
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
         )
         ).scalar_one()
-        if int(guild.gm) != int(ctx.user.id):
+        if int(guild.gm) != int(ctx.interaction.user.id):
             return False
         else:
             return True
@@ -1034,6 +1031,89 @@ class InitiativeCog(commands.Cog):
     @update_status.before_loop
     async def before_update_status(self):
         await self.bot.wait_until_ready()
+
+    # ---------------------------------------------------
+    # ---------------------------------------------------
+    # Autocomplete Methods
+
+    # Autocomplete to give the full character list
+    async def character_select(self, ctx: discord.AutocompleteContext):
+        metadata = db.MetaData()
+        character_list = []
+
+        with Session(self.engine) as session:
+            gm_status = gm_check(ctx, self.engine)
+
+        try:
+            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+            stmt = emp.select()
+            compiled = stmt.compile()
+            # print(compiled)
+            with self.engine.connect() as conn:
+                data = []
+                for row in conn.execute(stmt):
+                    data.append(row)
+                    # print(row)
+            for row in data:
+                # if row[4] == ctx.interaction.user.id or gm_status:
+                character_list.append(row[1])
+            # print(character_list)
+            return character_list
+        except Exception as e:
+            print(f'character+select: {e}')
+            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
+            await report.report()
+            return False
+
+    # Autocomplete to return the list of character the user owns, or all if the user is the GM
+    async def character_select_gm(self, ctx: discord.AutocompleteContext):
+        metadata = db.MetaData()
+        character_list = []
+
+        with Session(self.engine) as session:
+            gm_status = gm_check(ctx, self.engine)
+
+        try:
+            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+            stmt = emp.select()
+            compiled = stmt.compile()
+            # print(compiled)
+            with self.engine.connect() as conn:
+                data = []
+                for row in conn.execute(stmt):
+                    data.append(row)
+                    # print(row)
+            for row in data:
+                if row[4] == ctx.interaction.user.id or gm_status:
+                    character_list.append(row[1])
+            # print(character_list)
+            return character_list
+        except Exception as e:
+            print(f'character+select: {e}')
+            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
+            await report.report()
+            return False
+
+    async def cc_select(self, ctx: discord.AutocompleteContext):
+        metadata = db.MetaData()
+        character = ctx.options['character']
+        con = ConditionTable(ctx, metadata, self.engine).condition_table()
+        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+
+        char_stmt = emp.select().where(emp.c.name == character)
+        # print(character)
+        with self.engine.connect() as conn:
+            data = []
+            con_list = []
+            for char_row in conn.execute(char_stmt):
+                data.append(char_row)
+            for row in data:
+                # print(row)
+                con_stmt = con.select().where(con.c.character_id == row[0])
+                for char_row in conn.execute(con_stmt):
+                    # print(char_row)
+                    con_list.append(f"{char_row[3]}")
+        return con_list
 
     # ---------------------------------------------------
     # ---------------------------------------------------
@@ -1223,6 +1303,7 @@ class InitiativeCog(commands.Cog):
     @i.command(description="Set Init (Number or XdY+Z)",
                # guild_ids=[GUILD]
                )
+    @option("character", description="Character to select", autocomplete=character_select_gm, )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
         with Session(self.engine) as session:
             guild = session.execute(select(Global).filter(
@@ -1258,7 +1339,7 @@ class InitiativeCog(commands.Cog):
     @i.command(description="Heal, Damage or add Temp HP",
                # guild_ids=[GUILD]
                )
-    @option('name', description="Character Name")
+    @option('name', description="Character Name", autocomplete=character_select)
     @option('mode', choices=['Damage', 'Heal', "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
         response = False
@@ -1281,6 +1362,7 @@ class InitiativeCog(commands.Cog):
     @i.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
                )
+    @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', choices=['Round', 'Minute', 'Hour', 'Day'])
@@ -1306,6 +1388,8 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @option('mode', choices=['edit', 'delete'])
+    @option("character", description="Character to select", autocomplete=character_select)
+    @option("condition", description="Condition", autocomplete=cc_select)
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
@@ -1322,6 +1406,7 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
 
     @i.command(description="Show Custom Counters")
+    @option("character", description="Character to select", autocomplete=character_select_gm)
     async def cc_show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
         try:
