@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import lookup_parser
 
+
 # environmental variables
 print(os.environ['PRODUCTION'])
 load_dotenv(verbose=True)
@@ -27,6 +28,8 @@ bot = discord.Bot(intents=intents,
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
+    # print("Updating tables...")
+    # await update_code(bot)
     print(f"{bot.user} is connected.")
 
 # Initialize the database
@@ -39,4 +42,5 @@ bot.load_extension('initiative')
 bot.load_extension('error_reporting_cog')
 bot.load_extension('help_cog')
 bot.load_extension('timekeeping')
+bot.load_extension("macro_cog")
 bot.run(TOKEN)

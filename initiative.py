@@ -47,6 +47,7 @@ DATABASE = os.getenv('DATABASE')
 #################################################################
 # FUNCTIONS
 
+
 # Set up the tracker if it does not exit.db
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
