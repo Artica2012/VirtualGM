@@ -51,8 +51,8 @@ DATABASE = os.getenv('DATABASE')
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
     # Check to make sure bot has permissions in both channels
-    if not channel.can_send() or gm_channel.can_send():
-        await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
+    if not channel.can_send() or not gm_channel.can_send():
+        await ctx.send_followup("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
         return False
 
@@ -85,7 +85,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
         print(f'setup_tracker: {e}')
         report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
         await report.report()
-        await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+        await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
         return False
 
 
@@ -1039,9 +1039,10 @@ class InitiativeCog(commands.Cog):
                     channel: discord.TextChannel = discord.ApplicationContext.channel,
                     gm_channel: discord.TextChannel = None):
         if mode == 'setup':
+            await ctx.response.defer()
             response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
             if response:
-                await ctx.respond("Server Setup", ephemeral=True)
+                await ctx.send_followup("Server Setup", ephemeral=True)
                 return
             else:
                 # await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
