@@ -47,13 +47,12 @@ DATABASE = os.getenv('DATABASE')
 #################################################################
 # FUNCTIONS
 
-
 # Set up the tracker if it does not exit.db
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
     # Check to make sure bot has permissions in both channels
-    if not channel.can_send() or not gm_channel.can_send():
-        await ctx.send_followup("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
+    if not channel.can_send() or gm_channel.can_send():
+        await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
         return False
 
@@ -86,7 +85,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
         print(f'setup_tracker: {e}')
         report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
         await report.report()
-        await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+        await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
         return False
 
 
@@ -112,7 +111,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
         return False
     except Exception as e:
         print(f'repost_trackers: {e}')
-        report = ErrorReport(ctx, repost_trackers().__name__, e, bot)
+        report = ErrorReport(ctx, repost_trackers.__name__, e, bot)
         await report.report()
         return False
 
@@ -181,6 +180,10 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                         player_bool: bool, init: str):
     metadata = db.MetaData()
     dice = DiceRoller('')
+    insp = db.inspect(engine)
+
+
+
 
     try:
         # print(f"Init: {init}")
@@ -196,6 +199,12 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        with Session(engine) as session:
+            guild = session.scalars(select(Global))
+            for row in guild:
+                if not insp.has_table(emp.name):
+                    metadata.create_all(engine)
+
         stmt = emp.insert().values(
             name=name,
             init=initiative,
@@ -648,6 +657,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                  unit: str,
                  auto_decrement: bool, bot):
     metadata = db.MetaData()
+    insp = db.inspect(engine)
     # Get the Character's data
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
@@ -679,8 +689,14 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                 )
             )
             ).scalar_one()
+
+            con = ConditionTable(ctx, metadata, engine).condition_table()
+            for row in guild:
+                if not insp.has_table(con.name):
+                    metadata.create_all(engine)
+
             if not guild.timekeeping or unit == 'Round':
-                con = ConditionTable(ctx, metadata, engine).condition_table()
+
                 stmt = con.insert().values(
                     character_id=data[0][0],
                     title=title,
@@ -706,7 +722,6 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 
                 timestamp = end_time.timestamp()
 
-                con = ConditionTable(ctx, metadata, engine).condition_table()
                 stmt = con.insert().values(
                     character_id=data[0][0],
                     title=title,
@@ -1040,10 +1055,9 @@ class InitiativeCog(commands.Cog):
                     channel: discord.TextChannel = discord.ApplicationContext.channel,
                     gm_channel: discord.TextChannel = None):
         if mode == 'setup':
-            await ctx.response.defer()
             response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
             if response:
-                await ctx.send_followup("Server Setup", ephemeral=True)
+                await ctx.respond("Server Setup", ephemeral=True)
                 return
             else:
                 # await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
