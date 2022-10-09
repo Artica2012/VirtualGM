@@ -691,9 +691,8 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             ).scalar_one()
 
             con = ConditionTable(ctx, metadata, engine).condition_table()
-            for row in guild:
-                if not insp.has_table(con.name):
-                    metadata.create_all(engine)
+            if not insp.has_table(con.name):
+                metadata.create_all(engine)
 
             if not guild.timekeeping or unit == 'Round':
 
