@@ -47,6 +47,7 @@ class Global(Base):
     # Feature Flags
     explode = Column(Boolean(), default=False)
     aliases = Column(Boolean(), default=False)
+    block = Column(Boolean(), default=False)
     # Initiative Tracker
     initiative = Column(Integer())
     saved_order = Column(String(), default='')
