@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
-from error_handling_reporting import ErrorReport
+from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker
 from time_keeping_functions import set_datetime
@@ -70,7 +70,7 @@ class OptionsCog(commands.Cog):
     async def start(self, ctx: discord.ApplicationContext,
                     channel: discord.TextChannel,
                     gm_channel: discord.TextChannel,
-                    gm: discord.User = discord.ApplicationContext.user,
+                    gm: discord.User,
                     ):
         response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
         if response:
@@ -115,11 +115,10 @@ class OptionsCog(commands.Cog):
                     await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
             except NoResultFound as e:
                 await ctx.respond(
-                    "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                    "proper channel or run `/i admin setup` to setup the initiative tracker", ephemeral=True)
+                    error_not_initialized, ephemeral=True)
             except Exception as e:
                 print(f"/i admin: {e}")
-                report = ErrorReport(ctx, "slash command /i admin", e, self.bot)
+                report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
                 await report.report()
 
     @setup.command(description="Optional Modules")
@@ -131,34 +130,44 @@ class OptionsCog(commands.Cog):
             toggler = True
         else:
             toggler = False
-
-        with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+        try:
+            with Session(self.engine) as session:
+                guild = session.execute(select(Global).filter(
+                    or_(
+                        Global.tracker_channel == ctx.channel.id,
+                        Global.gm_tracker_channel == ctx.channel.id
+                    )
                 )
-            )
-            ).scalar_one()
+                ).scalar_one()
 
-            if module == 'View Modules':
-                pass
-            elif module == 'Timekeeper':
-                if toggler and guild.time_year is None:
-                    await set_datetime(ctx, self.engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
-                                       year=2001, time=time)
+                if module == 'View Modules':
+                    pass
+                elif module == 'Timekeeper':
+                    if toggler and guild.time_year is None:
+                        await set_datetime(ctx, self.engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
+                                           year=2001, time=time)
+                    else:
+                        guild.timekeeping = toggler
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                elif module == 'Block Initiative':
+                    guild.block = toggler
                 else:
-                    guild.timekeeping = toggler
-                await update_pinned_tracker(ctx, self.engine, self.bot)
-            elif module == 'Block Initiative':
-                guild.block = toggler
-            else:
-                await ctx.respond("Invalid Entry", ephemeral=True)
-                return
-            session.commit()
+                    await ctx.respond("Invalid Entry", ephemeral=True)
+                    return
+                session.commit()
 
-            embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
-            await ctx.respond(embed=embed)
+                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
+                await ctx.respond(embed=embed)
+        except NoResultFound as e:
+            await ctx.channel.send(
+                error_not_initialized,
+                delete_after=30)
+            return False
+        except Exception as e:
+            print(f'/admin options: {e}')
+            report = ErrorReport(ctx, "/admin options", e, self.bot)
+            await report.report()
+            return False
 
 
 def setup(bot):

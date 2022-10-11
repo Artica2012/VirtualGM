@@ -46,3 +46,7 @@ class ErrorReport:
                         f"Error: {self.error_text}" \
                         f"```"
         await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)
+
+
+error_not_initialized = "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the " \
+                        "proper channel or run `/admin start` to setup the initiative tracker"

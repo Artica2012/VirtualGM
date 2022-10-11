@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
-from error_handling_reporting import ErrorReport
+from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 
 # define global variables
@@ -56,7 +56,7 @@ DATABASE = os.getenv('DATABASE')
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel):
     # Check to make sure bot has permissions in both channels
-    if not channel.can_send() or gm_channel.can_send():
+    if not channel.can_send() or not gm_channel.can_send():
         await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
         return False
@@ -69,7 +69,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
 
         with Session(engine) as session:
             guild = Global(
-                guild_id=ctx.guild_id,
+                guild_id=ctx.guild.id,
                 time=0,
                 gm=gm.id,
                 tracker_channel=channel.id,
@@ -165,8 +165,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             await ctx.respond(f"Character {name} added successfully with initiative {initiative}", ephemeral=True)
         return True
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -367,8 +366,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
             await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
             return True
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -619,8 +617,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                               f"________________________\n"
     except NoResultFound as e:
         await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
+            error_not_initialized,
             delete_after=30)
     except Exception as e:
         print(f'get_tracker: {e}')
@@ -742,8 +739,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
                 await gm_message.edit(gm_tracker_display_string)
         except NoResultFound as e:
             await ctx.channel.send(
-                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                error_not_initialized,
                 delete_after=30)
         except Exception as e:
             print(f'update_pinned_tracker: {e}')
@@ -784,8 +780,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
         await ctx.send_followup(f"{tracker_string}\n"
                                 f"{ping_string}")
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
     except Exception as e:
         print(f"block_post_init: {e}")
@@ -856,8 +851,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -923,8 +917,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                 return True
 
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -947,8 +940,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -969,8 +961,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await update_pinned_tracker(ctx, engine, bot)
         return True
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -993,8 +984,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -1014,8 +1004,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         await update_pinned_tracker(ctx, engine, bot)
         return True
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -1038,8 +1027,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -1059,8 +1047,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
                 con_data.append(row)
         return con_data
     except NoResultFound as e:
-        await ctx.channel.send("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                               "proper channel or run `/i admin setup` to setup the initiative tracker",
+        await ctx.channel.send(error_not_initialized,
                                delete_after=30)
         return False
     except Exception as e:
@@ -1321,8 +1308,7 @@ class InitiativeCog(commands.Cog):
                                 await ctx.send_followup('Delete Operation Failed')
         except NoResultFound as e:
             await ctx.respond(
-                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                error_not_initialized,
                 ephemeral=True)
             return False
         except IndexError as e:
@@ -1354,8 +1340,7 @@ class InitiativeCog(commands.Cog):
                 await block_post_init(ctx, self.engine, self.bot)
                 await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
         except NoResultFound as e:
-            await ctx.respond("The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                              "proper channel or run `/i admin setup` to setup the initiative tracker", ephemeral=True)
+            await ctx.respond(error_not_initialized, ephemeral=True)
         except Exception as e:
             print(f"/i next: {e}")
             report = ErrorReport(ctx, "slash command /i next", e, self.bot)
