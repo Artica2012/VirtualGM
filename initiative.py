@@ -452,6 +452,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
     metadata = db.MetaData()
     block_done = False
     turn_list = []
+    first_pass = False
 
     try:
         with Session(engine) as session:
@@ -465,9 +466,11 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             emp = TrackerTable(ctx, metadata, engine).tracker_table()
             con = ConditionTable(ctx, metadata, engine).condition_table()
             init_list = get_init_list(ctx, engine)
+            # print(f"guild.initiative: {guild.initiative}")
             if guild.initiative is None:
                 init_pos = -1
                 guild.round = 0
+                first_pass = True
             else:
                 init_pos = int(guild.initiative)
             if guild.saved_order == '':
@@ -476,6 +479,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 current_character = guild.saved_order
 
             while not block_done:
+                # print(f"init_pos: {init_pos}")
 
                 # make sure that the current character is at the same place in initiative as it was before
                 # decrement any conditions with the decrement flag
@@ -522,12 +526,15 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     await report.report()
 
                 # if its not, set the init position to the position of the current character before advancing it
-                if not init_integrity_check(ctx, init_pos, current_character, engine):
+                if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                    # print(f"integrity check was false: init_pos: {init_pos}")
                     for pos, row in enumerate(init_list):
                         if row[1] == current_character:
                             init_pos = pos
+                            # print(f"integrity checked init_pos: {init_pos}")
 
                 init_pos += 1  # increase the init position by 1
+                # print(f"new init_pos: {init_pos}")
                 if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
                     init_pos = 0
                     guild.round += 1
@@ -556,6 +563,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
 
             # Out side while statement - for reference
             guild.initiative = init_pos  # set it
+            # print(f"final init_pos: {init_pos}")
             guild.saved_order = str(init_list[init_pos][1])
             session.commit()
             return True
