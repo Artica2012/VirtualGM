@@ -50,6 +50,7 @@ class Global(Base):
     block = Column(Boolean(), default=False)
     # Initiative Tracker
     initiative = Column(Integer())
+    round = Column(Integer(), default=0)
     saved_order = Column(String(), default='')
     tracker = Column(BigInteger(), nullable=True)
     tracker_channel = Column(BigInteger(), nullable=True, unique=True)
