@@ -43,30 +43,6 @@ class TimekeeperCog(commands.Cog):
 
     timekeeper = SlashCommandGroup('time', 'Time Keeper')
 
-    # The timekeeper setup functionality
-    @timekeeper.command(description="Setup Timekeeping")
-    @option('time', description="Seconds per round")
-    async def setup(self, ctx: discord.ApplicationContext, time: int = 6):
-        try:
-            result = await set_datetime(ctx, self.engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
-                                        year=2001, time=time)
-            if result:
-                await ctx.respond("Timekeeper Setup Complete", ephemeral=True)
-                await update_pinned_tracker(ctx, self.engine, self.bot)
-                # await output_datetime(ctx, self.engine, self.bot)
-            else:
-                await ctx.respond("Error Setting Up Timekeeper", ephemeral=True)
-        except NoResultFound as e:
-            await ctx.respond(
-                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                "proper channel or run `/i admin setup` to setup the initiative tracker",
-                ephemeral=True)
-        except Exception as e:
-            print(f'setup: {e}')
-            report = ErrorReport(ctx, "/time setup", e, self.bot)
-            await report.report()
-            await ctx.respond("Setup Failed")
-
     @timekeeper.command(description="Set Date/Time")
     async def set_time(self, ctx: discord.ApplicationContext, minute: int = None, hour: int = None, day: int = None,
                        month: int = None):

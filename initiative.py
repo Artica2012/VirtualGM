@@ -1241,58 +1241,6 @@ class InitiativeCog(commands.Cog):
 
     i = SlashCommandGroup("i", "Initiative Tracker")
 
-    @i.command(description="Administrative Commands",
-               # guild_ids=[GUILD]
-               )
-    @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['setup', 'transfer gm', 'reset trackers'])
-    @option('gm', description="@Player to transfer GM permissions to.")
-    @option('channel', description="Player Channel")
-    @option('gm_channel', description="GM Channel")
-    async def admin(self, ctx: discord.ApplicationContext, mode: str,
-                    gm: discord.User = discord.ApplicationContext.user,
-                    channel: discord.TextChannel = discord.ApplicationContext.channel,
-                    gm_channel: discord.TextChannel = None):
-        if mode == 'setup':
-            response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
-            if response:
-                await ctx.respond("Server Setup", ephemeral=True)
-                return
-            else:
-                # await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
-                return
-
-        if not gm_check(ctx, self.engine):
-            await ctx.respond("GM Restricted Command", ephemeral=True)
-            return
-        else:
-            try:
-                if mode == 'reset trackers':
-                    await ctx.response.defer(ephemeral=True)
-                    response = await repost_trackers(ctx, self.engine, self.bot)
-                    if response:
-                        await ctx.send_followup("Trackers Placed",
-                                                ephemeral=True)
-                    else:
-                        await ctx.send_followup("Error setting trackers")
-
-                elif mode == 'transfer gm':
-                    response = await set_gm(ctx, gm, self.engine, self.bot)
-                    if response:
-                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
-                    else:
-                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
-                else:
-                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
-            except NoResultFound as e:
-                await ctx.respond(
-                    "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-                    "proper channel or run `/i admin setup` to setup the initiative tracker", ephemeral=True)
-            except Exception as e:
-                print(f"/i admin: {e}")
-                report = ErrorReport(ctx, "slash command /i admin", e, self.bot)
-                await report.report()
-
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
                )
