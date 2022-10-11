@@ -41,6 +41,7 @@ This project uses the py-cord library for interfacing with discord.
 ### Initiative Tracker Commands
  - **/i add** - Add a PC or NPC
    - takes the argument player with the choice of player or NPC. NPCs have their health obscured and do not show custom counters on the non-gm tracker.
+   - An optional argument of _initiative_ can be given to set or roll initiative during the creation of the character.
  - **/i manage** - Mange Initiative (GM Restricted)
    - _start_ - Starts Initiative
    - _stop_ - Stops Initiative
