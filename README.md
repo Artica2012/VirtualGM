@@ -5,30 +5,40 @@ A discord bot focused on enhancing the play by Post ttRPG experience.
 Goals:
 - Provide a light weight streamlined experience
 - Develop an easy to use, system agnostic initiative tracker
+- The initiative tracker should be able to go from importing the bot, to basic combat within three minutes.
+- Additional functionality which adds to the user experience but is not essential to the basic running of the tracker
 
-It does have some reference/lookup that is D&D 4th edition specific, considering adding lookups to other systems in the future.
 
 This project uses the py-cord library for interfacing with discord. 
 
-## How To Use VirtualGM:
+# How To Use VirtualGM:
 
-### Initial Setup
-- To set up the bot, simply run the /i admin command and choose 'setup'.  
-- Once this is done, you should select a channel to be your main dice rolling channel and run the /i admin command and choose 'tracker'.  This will pin  a tracker into the channel for your player's usage.
-- Next select a channel for the GM screen. This channel should ideally be hidden from the players but VirtualGM will need message permissions for the channel. Run the /i admin command and select 'gm tracker'.  This channel will show a more verbose tracker, and will receive secret rolls.
+## Initial Setup
+- To set up the bot, simply run the **/admin start** command. Three inputs will be required, the player channel, the gm channel and the username of the gm.
+  - The GM channel will show a more verbose tracker, and will receive secret rolls.
+  - Make sure that VirtualGM has the 'send messages' permissions in both of the channels.
+  - Virtual GM can be set up to have multiple simultaneous tables in your server.  To allow this, each table is tied to a pair of channels, and the tracker functions will not work outside of these channels.  Channels cannot be changed once they are set, and one channel cannot house multiple tables.
+
+## Command Reference
 
 ### Dice Roller
-- Dice are rolled with the /r slash command.
+- Dice are rolled with the **/r** slash command.
 - The format is XdY+Z Label (e.g 1d20+7 Initiative)
 - The dice roller will accept complex strings of dice (e.g 2d8+3d6-1d4+2)
-- The optional secret command with the dice roller will send the result to the GM channel if it has been set up.
+- The optional secret command with the dice roller will send the result to the GM channel if the channel used has an initiative tracker set up.
 
-### Initiative Tracker - Commands
- - **/i admin** - Administrative Commands (GM Restricted)
-   - _setup_ - Initializes the bot
-   - _transfer gm_ - Transfers the GM permissions to another user
-   - _tracker_ - posts a pinned tracker into the given channel and assigns it as the active channel. This will deactivate the previous pinned tracker, (although it will not delete nor unpin it, the old pin will just cease to update automatically)
-   - _gm tracker_ - posts a pinned gm tracker, which is more verbose and displays NPC hp and counters. It will also assign the channel to act as the GM channel, which will receive secret rolls.
+### Admin Commands
+- **/admin start** - The command to initialize the tracker in the selected channels 
+- **/admin tracker** - Contains useful administrative tools for the initiative tracker
+  - _transfer gm_ - Transfers the GM permissions to another user
+  - _reset trackers_ - Will post and pin new copies of the trackers. Run this if the old tracker is deleted or lost for some reason.
+- **/admin options** - View and toggle additional modules
+  - _View Modules_ - Displays the current availible modules and if they are enabled for this table
+  - _Timekeeper_ - Toggles the Timekeeper Module (See below for details)
+    - Optional second input to set the number of seconds elapse per round. Default is 6 (D&D/Pathfinder)
+  - _Block Initiative_ - This will toggle block initiative when the next initiative is started or advanced.
+
+### Initiative Tracker Commands
  - **/i add** - Add a PC or NPC
    - takes the argument player with the choice of player or NPC. NPCs have their health obscured and do not show custom counters on the non-gm tracker.
  - **/i manage** - Mange Initiative (GM Restricted)
@@ -51,3 +61,16 @@ This project uses the py-cord library for interfacing with discord.
  - **/i cc_show** - Show Custom Counters
    - Displays a popup visible only to the user which displays the custom counters for the selected character. Only the GM can see the custom counters of NPCs.
  
+### Macro Commands
+- **/m** - Roll Macro 
+  - Select the character and the macro and VirtualGM will roll it for you. The options secret argument will send the roll to the GM instead.
+- **/macro create** - Create a Macro
+  - Select a character which you have control over and input the name of the macro and the string to roll (XdY+Z format).
+  - Note: The bot will not validate the roll string at the time of creation, so if the syntax of the roll is invalid, the bot will still except the macro, although errors will be given when you attempt to use it.
+- **/macro remove** - Remove a Macro
+  - Select the character and the macro, and this will delete it
+
+### Timekeeping Commands - Requires timekeeping module to be active
+- Note: Time is measured from an arbitrary start of the campaign. (Year 1). Do not try to set it to a particular year (aka 1542) as this may cause issues with proper timekeeping.  VirtualGM uses the standard gregorian calandar, but is sanitized of day and month names, reporting numnbers instead. So months will have 30/31 days (except month 2, which will have 28 or 29 days)
+- **/time advance** - advances the time by the selected amount
+- **/time set** - Sets the date and time to the selected date / time

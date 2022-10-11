@@ -16,7 +16,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
-from database_models import Global, Base, TrackerTable, ConditionTable
+from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -180,6 +180,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
         con = ConditionTable(ctx, metadata, engine).condition_table()
+        macro = MacroTable(ctx, metadata, engine).macro_table()
         stmt = emp.select().where(emp.c.name == character)
         compiled = stmt.compile()
         # print(compiled)
@@ -191,7 +192,9 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
             # print(data)
             primary_id = data[0][0]
             con_del_stmt = delete(con).where(con.c.character_id == primary_id)
+            macro_del_stmt = delete(macro).where(macro.c.character_id == primary_id)
             conn.execute(con_del_stmt)
+            conn.execute(macro_del_stmt)
             stmt = delete(emp).where(emp.c.id == primary_id)
             conn.execute(stmt)
 
