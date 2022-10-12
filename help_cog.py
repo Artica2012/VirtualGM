@@ -31,14 +31,14 @@ class HelpCog(commands.Cog):
                   )
     async def setup(self, ctx: discord.ApplicationContext):
         await ctx.respond("``` Setup \n"
-                          "- To set up the bot, simply run the /i admin command and choose 'setup'.\n"
-                          "- Once this is done, you should select a channel to be your main dice rolling channel and "
-                          "run the /i admin command and choose 'tracker'.  This will pin  a tracker into the channel "
-                          "for your player's usage.\n"
-                          "- Next select a channel for the GM screen. This channel should ideally be hidden from the "
-                          "players but VirtualGM will "
-                          "need message permissions for the channel. Run the /i admin command and select 'gm "
-                          "tracker'.  This channel will show a more verbose tracker, and will receive secret rolls.```",
+                          "- To set up the bot, simply run the **/admin start** command. Three inputs will be "
+                          "required, the player channel, the gm channel and the username of the gm.\n "
+                          "- The GM channel will show a more verbose tracker, and will receive secret rolls.\n"
+                          "- Make sure that VirtualGM has the 'send messages' permissions in both of the channels.\n"
+                          "- Virtual GM can be set up to have multiple simultaneous tables in your server.  To allow "
+                          "this, each table is tied to a pair of channels, and the tracker functions will not work "
+                          "outside of these channels.  Channels cannot be changed once they are set, and one channel "
+                          "cannot house multiple tables.\n```",
                           ephemeral=True)
 
     @help.command(description="Roller",
@@ -46,35 +46,40 @@ class HelpCog(commands.Cog):
                   )
     async def roller(self, ctx: discord.ApplicationContext):
         await ctx.respond("```"
-                          " Dice Roller\n"
-                          "- Dice are rolled with the /r slash command.\n"
+                          "- Dice are rolled with the **/r** slash command.\n"
                           "- The format is XdY+Z Label (e.g 1d20+7 Initiative)\n"
                           "- The dice roller will accept complex strings of dice (e.g 2d8+3d6-1d4+2)\n"
                           "- The optional secret command with the dice roller will send the result to the GM channel "
-                          "if it has been set up.\n "
+                          "if the channel used has an initiative tracker set up. \n "
                           "```", ephemeral=True
                           )
+
+    @help.command(description="Admin")
+    async def admin(self, ctx: discord.ApplicationContext):
+        await ctx.respond("```"
+                          "- **/admin start** - The command to initialize the tracker in the selected channels \n"
+                          "- **/admin tracker** - Contains useful administrative tools for the initiative tracker\n"
+                          "  - _transfer gm_ - Transfers the GM permissions to another user\n"
+                          "  - _reset trackers_ - Will post and pin new copies of the trackers. Run this if the old "
+                          "tracker is deleted or lost for some reason. \n"
+                          "- **/admin options** - View and toggle additional modules\n"
+                          "- _View Modules_ - Displays the current availible modules and if they are enabled for this "
+                          "table\n "
+                          "  - _Timekeeper_ - Toggles the Timekeeper Module (See below for details)\n"
+                          "  - Optional second input to set the number of seconds elapse per round. Default is 6 ("
+                          "D&D/Pathfinder)\n "
+                          "  - _Block Initiative_ - This will toggle block initiative when the next initiative is "
+                          "started or advanced.\n "
+                          "```", ephemeral=True)
 
     @help.command(description="Initiative",
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'admin', 'add', 'manage', 'next', 'init', 'hp', 'cc', 'cc_edit', 'cc_show'
+        'add', 'manage', 'next', 'init', 'hp', 'cc', 'cc_edit', 'cc_show'
     ])
     async def initiative(self, ctx: discord.ApplicationContext, command: str):
-        if command == 'admin':
-            await ctx.respond("```"
-                              "admin - Administrative Commands (GM Restricted)\n"
-                              "  - setup - Initializes the bot\n"
-                              "  - transfer gm - Transfers the GM permissions to another user\n"
-                              "  - tracker - posts a pinned tracker into the given channel and assigns it as the "
-                              "active channel. This will deactivate the previous pinned tracker, (although it will not "
-                              "delete nor unpin it, the old pin will just cease to update automatically)\n "
-                              "  - gm tracker - posts a pinned gm tracker, which is more verbose and displays NPC hp "
-                              "and counters. It will also assign the channel to act as the GM channel, which will "
-                              "receive secret rolls.\n "
-                              "```", ephemeral=True)
-        elif command == 'add':
+        if command == 'add':
             await ctx.respond("```"
                               "add - Add a PC or NPC\n"
                               "- takes the argument player with the choice of player or NPC. NPCs have their health "
@@ -109,14 +114,19 @@ class HelpCog(commands.Cog):
                               "```", ephemeral=True)
         elif command == 'cc':
             await ctx.respond("```"
-                              "cc - Conditions and Counters\n"
-                              "- condition - Assigns a condition to the given character. Option to add in a numeric "
-                              "value. Option to set it to autodecrement, which will decrease the value by 1 at the "
-                              "end of the character's turn until it reaches 0, where it is automatically deleted. "
-                              "Default is a static value which does not auto-decrement.\n "
-                              "- counter - Assigns a custom counter to the character. Similar to a condition, "
-                              "except it is only showed on the tracker during the character's turn. Custom counters "
-                              "for NPCs do not display on the non-gm tracker. "
+                              "- **/i cc** - Conditions and Counters"
+                              "  - _condition_ - Assigns a condition to the given character.\n"
+                              "    - Option to add in a numeric value.\n"
+                              "- Option to set it to auto-decrement, which will decrease the value by 1 at the end of "
+                              "the character's turn "
+                              "until it reaches 0, where it is automatically deleted. Default is a static value which "
+                              "does not auto-decrement.\n "
+                              "- NOTE: If Block Initiative is active, conditions will auto-decrement at the beginning "
+                              "of the block instead.\n "
+                              "  - _counter_ - Assigns a custom counter to the character.\n"
+                              "- Similar to a condition, except it is only showed on the tracker during the "
+                              "character's turn.\n "
+                              "    - Custom counters for NPCs do not display on the non-gm tracker.\n"
                               "```", ephemeral=True)
         elif command == 'cc_edit':
             await ctx.respond("```"
@@ -131,6 +141,62 @@ class HelpCog(commands.Cog):
                               "- Displays a popup visible only to the user which displays the custom counters for the "
                               "selected character. Only the GM can see the custom counters of NPCs.\n "
                               "```", ephemeral=True)
+        else:
+            await ctx.respond('Invalid choice', ephemeral=True)
+
+    @help.command(description="Macro",
+                  # guild_ids=[GUILD]
+                  )
+    @option('command', choices=[
+        'm', 'create', 'remove'])
+    async def macro(self, ctx: discord.ApplicationContext, command: str):
+        if command == 'm':
+            await ctx.respond(
+                "```Roll Macro\n"
+                "- Select the character and the macro and VirtualGM will roll it for you.The options secret argument "
+                "will send the roll to the GM instead.``` "
+                , ephemeral=True
+            )
+        elif command == 'create':
+            await ctx.respond("```Create a Macro"
+                              "- Select a character which you have control over and input the name of the macro and "
+                              "the string to roll (XdY+Z format).\n "
+                              "- Note: The bot will not validate the roll string at the time of creation, so if the "
+                              "syntax of the roll is invalid, the bot will still except the macro, although errors "
+                              "will be given when you attempt to use it.\n "
+                              '```', ephemeral=True
+                              )
+        elif command == "remove":
+            await ctx.respond("```Remove Macro\n"
+                              "- Select the character and the macro, and this will delete it"
+                              "```", ephemeral=True
+                              )
+        else:
+            await ctx.respond('Invalid choice', ephemeral=True)
+
+
+    @help.command(description="Timekeeping",
+                  # guild_ids=[GUILD]
+                  )
+    @option('command', choices=[
+        'advance', 'set'])
+    async def timekeeping(self, ctx: discord.ApplicationContext, command: str):
+        if command == 'advance':
+            await ctx.respond(
+                "```advance\n"
+                "- advances the time by the selected amount``` "
+                , ephemeral=True
+            )
+        elif command == 'set':
+            await ctx.respond("```Set time\n"
+                              "- Sets the date and time to the selected date / time\n"
+                              "- Note: Time is measured from an arbitrary start of the campaign. (Year 1). Do not try "
+                              "to set it to a particular year (aka 1542) as this may cause issues with proper "
+                              "timekeeping.  VirtualGM uses the standard gregorian calandar, but is sanitized of day "
+                              "and month names, reporting numnbers instead. So months will have 30/31 days (except "
+                              "month 2, which will have 28 or 29 days) "
+                              '```', ephemeral=True
+                              )
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
 
