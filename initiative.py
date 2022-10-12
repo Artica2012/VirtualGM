@@ -118,6 +118,52 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
         return False
 
 
+async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
+    # try:
+    metadata = db.MetaData()
+    insp = db.inspect(engine)
+
+    # macro = MacroTable(ctx, metadata, engine).macro_table()
+    # con = ConditionTable(ctx, metadata, engine).condition_table()
+    # emp = TrackerTable(ctx, metadata, engine).tracker_table()
+    #
+    # if insp.has_table(macro.name):
+    #     macro_drop_stmt = macro.drop()
+    # if insp.has_table(con.name):
+    #     con_drop_stmt = con.drop()
+    # if insp.has_table(emp.name):
+    #     emp_drop_stmt = emp.drop()
+    #
+    # with engine.connect() as conn:
+    #     if insp.has_table(macro.name):
+    #         conn.execute(macro_drop_stmt)
+    #     if insp.has_table(con.name):
+    #         conn.execute(con_drop_stmt)
+    #     if insp.has_table(emp.name):
+    #         conn.execute(emp_drop_stmt)
+
+    try:
+        with Session(engine) as session:
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
+            session.delete(guild)
+            session.commit()
+    except Exception as e:
+        print(f"guild: delete tracker: {e}")
+        report = ErrorReport(ctx, "guild: delete_tracker", e, bot)
+        await report.report()
+    return True
+    # except Exception as e:
+    #     print(f"delete tracker: {e}")
+    #     report = ErrorReport(ctx, "delete_tracker", e, bot)
+    #     await report.report()
+
+
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # CHARACTER MANAGEMENT
@@ -314,7 +360,8 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
                 if new_hp < 0:
                     new_hp = 0
             if new_hp == 0:
-                await ctx.channel.send(f'```HP: {new_hp}```')
+                dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
+                await ctx.channel.send(embed=dead_embed)
 
             stmt = update(emp).where(emp.c.name == name).values(
                 current_hp=new_hp,
@@ -483,7 +530,6 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
 
                 # make sure that the current character is at the same place in initiative as it was before
                 # decrement any conditions with the decrement flag
-
 
                 if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
                     # if its not, set the init position to the position of the current character before advancing it
@@ -763,7 +809,8 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
 
             # Update the tracker
             if tracker is not None:
-                tracker_display_string = await block_get_tracker(get_init_list(ctx, engine), guild.initiative, ctx, engine,
+                tracker_display_string = await block_get_tracker(get_init_list(ctx, engine), guild.initiative, ctx,
+                                                                 engine,
                                                                  bot)
                 channel = bot.get_channel(tracker_channel)
                 message = await channel.fetch_message(tracker)
