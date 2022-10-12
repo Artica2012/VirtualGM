@@ -79,6 +79,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
             session.commit()
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
         con = ConditionTable(ctx, metadata, engine).condition_table()
+        macro = MacroTable(ctx, metadata, engine).macro_table()
         metadata.create_all(engine)
 
         await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
@@ -865,8 +866,15 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
             except Exception as e:
                 # print(f'post_init: {e}')
                 ping_string = ''
-        await ctx.send_followup(f"{tracker_string}\n"
-                                f"{ping_string}")
+
+            # Always post the tracker to the player channel
+            if ctx.channel.id == guild.tracker_channel:
+                await ctx.send_followup(f"{tracker_string}\n"
+                                        f"{ping_string}")
+            else:
+                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                  f"{ping_string}")
+                await ctx.send_followup("Initiative Advanced.")
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
