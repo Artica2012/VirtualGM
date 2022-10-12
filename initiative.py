@@ -1272,10 +1272,10 @@ class InitiativeCog(commands.Cog):
     @i.command(description="Add PC on NPC",
                # guild_ids=[GUILD]
                )
-    @option('name', description="Character Name")
-    @option('hp', description='Total HP')
-    @option('player', choices=['player', 'npc'])
-    @option('initiative', description="Set Init (Number or XdY+Z)")
+    @option('name', description="Character Name", input_type=str)
+    @option('hp', description='Total HP', input_type=int)
+    @option('player', choices=['player', 'npc'], input_type=str)
+    @option('initiative', description="Set Init (Number or XdY+Z)", required=False, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str = 0):
         response = False
         player_bool = False
@@ -1294,8 +1294,8 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     @discord.default_permissions(manage_messages=True)
-    @option('mode', choices=['start', 'stop', 'delete character'])
-    @option('character', description='Character to delete')
+    @option('mode', choices=['start', 'stop', 'delete character'], required=True)
+    @option('character', description='Character to delete', required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
         init_list = get_init_list(ctx, self.engine)
         try:
