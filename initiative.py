@@ -479,10 +479,32 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 current_character = guild.saved_order
 
             while not block_done:
-                # print(f"init_pos: {init_pos}")
+                print(f"init_pos: {init_pos}")
 
                 # make sure that the current character is at the same place in initiative as it was before
                 # decrement any conditions with the decrement flag
+
+
+                if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
+                    # if its not, set the init position to the position of the current character before advancing it
+                    print("Yes guild.block")
+                    if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                        print(f"integrity check was false: init_pos: {init_pos}")
+                        for pos, row in enumerate(init_list):
+                            if row[1] == current_character:
+                                init_pos = pos
+                                print(f"integrity checked init_pos: {init_pos}")
+                    init_pos += 1  # increase the init position by 1
+                    print(f"new init_pos: {init_pos}")
+                    if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
+                        init_pos = 0
+                        guild.round += 1
+                        if guild.timekeeping:  # if timekeeping is enable on the server
+                            # Advance time time by the number of seconds in the guild.time column. Default is 6
+                            # seconds ala D&D standard
+                            await advance_time(ctx, engine, bot, second=guild.time)
+                            await check_cc(ctx, engine, bot)
+
                 try:
                     stmt = emp.select().where(emp.c.name == current_character)
                     compiled = stmt.compile()
@@ -525,24 +547,25 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
                     await report.report()
 
-                # if its not, set the init position to the position of the current character before advancing it
-                if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
-                    # print(f"integrity check was false: init_pos: {init_pos}")
-                    for pos, row in enumerate(init_list):
-                        if row[1] == current_character:
-                            init_pos = pos
-                            # print(f"integrity checked init_pos: {init_pos}")
-
-                init_pos += 1  # increase the init position by 1
-                # print(f"new init_pos: {init_pos}")
-                if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
-                    init_pos = 0
-                    guild.round += 1
-                    if guild.timekeeping:  # if timekeeping is enable on the server
-                        # Advance time time by the number of seconds in the guild.time column. Default is 6
-                        # seconds ala D&D standard
-                        await advance_time(ctx, engine, bot, second=guild.time)
-                        await check_cc(ctx, engine, bot)
+                if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
+                    print("Not guild.block")
+                    # if its not, set the init position to the position of the current character before advancing it
+                    if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                        print(f"integrity check was false: init_pos: {init_pos}")
+                        for pos, row in enumerate(init_list):
+                            if row[1] == current_character:
+                                init_pos = pos
+                                print(f"integrity checked init_pos: {init_pos}")
+                    init_pos += 1  # increase the init position by 1
+                    print(f"new init_pos: {init_pos}")
+                    if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
+                        init_pos = 0
+                        guild.round += 1
+                        if guild.timekeeping:  # if timekeeping is enable on the server
+                            # Advance time time by the number of seconds in the guild.time column. Default is 6
+                            # seconds ala D&D standard
+                            await advance_time(ctx, engine, bot, second=guild.time)
+                            await check_cc(ctx, engine, bot)
 
                 # block initiative loop
                 # check to see if the next character is player vs npc
@@ -664,14 +687,21 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         output_string = f"```{datetime_string}" \
                         f"Initiative:\n"
         for x, row in enumerate(row_data):
+            sel_bool = False
             selector = ''
+
             if block:
                 for character in turn_list:
                     if row['id'] == character[0]:
-                        selector = '>>'
+                        sel_bool = True
             else:
                 if x == selected:
-                    selector = '>>'
+                    sel_bool = True
+
+            # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+            if sel_bool:
+                selector = '>>'
             if row['player'] or gm:
                 if row['thp'] != 0:
                     string = f"{selector} {row['init']} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
@@ -701,7 +731,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                     else:
                         con_string = f"       {con_row[3]}\n"
 
-                elif con_row[2] == True and x == selected and row['player']:
+                elif con_row[2] == True and sel_bool and row['player']:
                     con_string = f"       {con_row[3]}: {con_row[4]}\n"
                 else:
                     con_string = ''

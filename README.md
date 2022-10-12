@@ -54,13 +54,19 @@ This project uses the py-cord library for interfacing with discord.
    - _Heal_ - Heals the character for the inputted amount
    - _Temporary HP_ - Grants the character the inputted amount of temporary HP. This HP will be subtracted from first and not added to with any healing.
  - **/i cc** - Conditions and Counters
-   - _condition_ - Assigns a condition to the given character. Option to add in a numeric value. Option to set it to autodecrement, which will decrease the value by 1 at the end of the character's turn until it reaches 0, where it is automatically deleted. Default is a static value which does not auto-decrement.
-   - _counter_ - Assigns a custom counter to the character. Similar to a condition, except it is only showed on the tracker during the character's turn. Custom counters for NPCs do not display on the non-gm tracker.  
+   - _condition_ - Assigns a condition to the given character. 
+     - Option to add in a numeric value. 
+     - Option to set it to auto-decrement, which will decrease the value by 1 at the end of the character's turn until it reaches 0, where it is automatically deleted. Default is a static value which does not auto-decrement.
+       - NOTE: If Block Initiative is active, conditions will auto-decrement at the beginning of the block instead.
+   - _counter_ - Assigns a custom counter to the character. 
+     - Similar to a condition, except it is only showed on the tracker during the character's turn. 
+     - Custom counters for NPCs do not display on the non-gm tracker.  
  - **/i cc_edit** - Edit or Delete Counters or Conditions
    - _edit_ - Inputs the character's name, the name of the condition and the value, which will overwrite the previous counter/condition
    - _delete_ - Deletes the indicated condition or counter
  - **/i cc_show** - Show Custom Counters
-   - Displays a popup visible only to the user which displays the custom counters for the selected character. Only the GM can see the custom counters of NPCs.
+   - Displays a popup visible only to the user which displays the custom counters for the selected character. 
+   - Only the GM can see the custom counters of NPCs.
  
 ### Macro Commands
 - **/m** - Roll Macro 
