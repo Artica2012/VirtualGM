@@ -567,6 +567,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             else:
                 current_character = guild.saved_order
 
+            # Record the initial to break an infinite loop
+            iterations = 0
+
             while not block_done:
                 print(f"init_pos: {init_pos}")
 
@@ -592,6 +595,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             # seconds ala D&D standard
                             await advance_time(ctx, engine, bot, second=guild.time)
                             await check_cc(ctx, engine, bot)
+
 
                 try:
                     stmt = emp.select().where(emp.c.name == current_character)
@@ -670,6 +674,10 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
 
                 turn_list.append(init_list[init_pos][1])
                 current_character = init_list[init_pos][1]
+                iterations += 1
+                if iterations >= len(init_list):
+                    block_done = True
+
                 # print(turn_list)
 
             # Out side while statement - for reference
@@ -950,6 +958,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
                 )
             )
             ).scalar_one()
+            iteration = 0
             init_pos = guild.initiative
             init_list = get_init_list(ctx, engine)
             length = len(init_list)
@@ -970,6 +979,9 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
                         init_pos = length - 1
                     else:
                         block_done = True
+                iteration += 1
+                if iteration >= length:
+                    block_done = True
 
             return turn_list
     except Exception as e:
