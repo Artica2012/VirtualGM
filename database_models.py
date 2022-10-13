@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
-from database_operations import get_db_engine
+
 
 # define global variables
 
@@ -94,6 +94,7 @@ class TrackerTable:
                        db.Column('current_hp', db.INTEGER(), default=0),
                        db.Column('max_hp', db.INTEGER(), default=1),
                        db.Column('temp_hp', db.INTEGER(), default=0),
+                       db.Column('init_string', db.String(255), nullable=True)
                        )
         return emp
 

@@ -39,16 +39,20 @@ This project uses the py-cord library for interfacing with discord.
   - _Block Initiative_ - This will toggle block initiative when the next initiative is started or advanced.
 
 ### Initiative Tracker Commands
- - **/i add** - Add a PC or NPC
+ - **/char add** - Add a PC or NPC
    - takes the argument player with the choice of player or NPC. NPCs have their health obscured and do not show custom counters on the non-gm tracker.
-   - An optional argument of _initiative_ can be given to set or roll initiative during the creation of the character.
+   - An argument of _initiative_ can be given to set an initiative string (XdY+Z) which will be rolled when initiative is started
+ - **/char edit** - Edit a PC or NPC
+   - Edit the max hp and initiative string of a character you control
  - **/i manage** - Mange Initiative (GM Restricted)
    - _start_ - Starts Initiative
    - _stop_ - Stops Initiative
    - _delete character_ - takes the argument character and will delete the character out of the tracker. Will not function if it is currently the character's turn.
  - **/i next** - Advance Initiative
+   - If initiative has not been started, it will start initiative.
  - **/i init** - Assign an initiative value to the character
-   - Takes the arguments _character_ which is the character's name and _initiative_ which can be given as a whole numner (e.g. 15) or a dice expression in the form of XdY+Z (e.g 1d20+7)
+   - Takes the arguments _character_ which is the character's name and _initiative_ which can be given as a whole numner (e.g. 15) or a dice expression in the form of XdY+Z (e.g 1d20+7). This will override any set initiative string for the next initiative.
+   - Can also be used to change initiative while initiative is running.
  - **/i hp** - Adjust HP
    - _Damage_ - Damages the indicated character for inputted amount
    - _Heal_ - Heals the character for the inputted amount

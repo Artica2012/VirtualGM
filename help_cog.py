@@ -76,15 +76,21 @@ class HelpCog(commands.Cog):
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'add', 'manage', 'next', 'init', 'hp', 'cc', 'cc_edit', 'cc_show'
+        'char add', 'char edit', 'manage', 'next', 'init', 'hp', 'cc', 'cc_edit', 'cc_show'
     ])
     async def initiative(self, ctx: discord.ApplicationContext, command: str):
-        if command == 'add':
+        if command == 'char add':
             await ctx.respond("```"
                               "add - Add a PC or NPC\n"
                               "- takes the argument player with the choice of player or NPC. NPCs have their health "
-                              "obscured and do not show custom counters on the non-gm tracker. "
+                              "- obscured and do not show custom counters on the non-gm tracker. "
+                              "- An argument of _initiative_ can be given to set an initiative string (XdY+Z) which will be rolled when initiative is started"
                               "```", ephemeral=True)
+        elif command == "char edit":
+            await ctx.respond("``` Edit a PC or NPC"
+                              "- Edit the max hp and initiative string of a character you control"
+                              "  ```"
+            )
         elif command == 'manage':
             await ctx.respond("```"
                               "manage - Mange Initiative (GM Restricted)\n"
@@ -95,14 +101,15 @@ class HelpCog(commands.Cog):
                               "```", ephemeral=True)
         elif command == 'next':
             await ctx.respond("```"
-                              "next - Advance Initiative"
+                              "next - Advance Initiative (or start it)"
                               "```", ephemeral=True)
         elif command == 'init':
             await ctx.respond("```"
                               "init - Assign an initiative value to the character\n"
-                              "- Takes the arguments character which is the character's name and initiative which can "
-                              "be given as a whole number (e.g. 15) or a dice expression in the form of XdY+Z (e.g "
-                              "1d20+7) "
+                              "- Takes the arguments _character_ which is the character's name and _initiative_ which "
+                              "can be given as a whole numner (e.g. 15) or a dice expression in the form of XdY+Z ("
+                              "e.g 1d20+7). This will override any set initiative string for the next initiative. "
+                              "- Can also be used to change initiative while initiative is running."
                               "```", ephemeral=True)
         elif command == 'hp':
             await ctx.respond("```"

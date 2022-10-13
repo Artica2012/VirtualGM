@@ -5,6 +5,7 @@ import discord
 from dotenv import load_dotenv
 import os
 import lookup_parser
+import database_operations
 
 
 # environmental variables
@@ -29,7 +30,8 @@ bot = discord.Bot(intents=intents,
 @bot.event
 async def on_ready():
     # print("Updating tables...")
-    # await update_code(bot)
+    database_operations.update_tracker_table()
+    # print("Tables updated")
     print(f"{bot.user} is connected.")
 
 # Initialize the database
