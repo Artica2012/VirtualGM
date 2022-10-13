@@ -30,7 +30,7 @@ bot = discord.Bot(intents=intents,
 @bot.event
 async def on_ready():
     # print("Updating tables...")
-    database_operations.update_tracker_table()
+    # database_operations.update_tracker_table()
     # print("Tables updated")
     print(f"{bot.user} is connected.")
 
