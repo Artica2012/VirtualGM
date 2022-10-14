@@ -88,7 +88,7 @@ class OptionsCog(commands.Cog):
     @option('delete', description="Type 'delete' to confirm delete. This cannot be undone.", required=False)
     async def tracker(self, ctx: discord.ApplicationContext, mode: str,
                       gm: discord.User = discord.ApplicationContext.user, delete: str = '' ):
-        if not gm_check(ctx, self.engine):
+        if not await gm_check(ctx, self.engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
