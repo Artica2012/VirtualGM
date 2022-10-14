@@ -168,6 +168,10 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     metadata = db.MetaData()
     insp = db.inspect(engine)
 
+
+
+
+
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
         with Session(engine) as session:
@@ -176,10 +180,26 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 if not insp.has_table(emp.name):
                     metadata.create_all(engine)
 
+            initiative = 0
+            if guild.initiative != None:
+                dice = DiceRoller('')
+                try:
+                    # print(f"Init: {init}")
+                    initiative = int(init)
+                except:
+                    try:
+                        roll = dice.plain_roll(init)
+                        initiative = roll[1]
+                        if type(initiative) != int:
+                            initiative = 0
+                    except:
+                        initiative = 0
+
+
         stmt = emp.insert().values(
             name=name,
             init_string=init,
-            init=0,
+            init=initiative,
             player=player_bool,
             user=ctx.user.id,
             current_hp=hp,
@@ -266,10 +286,17 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
                 data.append(row)
             # print(data)
             primary_id = data[0][0]
-            con_del_stmt = delete(con).where(con.c.character_id == primary_id)
-            macro_del_stmt = delete(macro).where(macro.c.character_id == primary_id)
-            conn.execute(con_del_stmt)
-            conn.execute(macro_del_stmt)
+            try:
+                con_del_stmt = delete(con).where(con.c.character_id == primary_id)
+                conn.execute(con_del_stmt)
+            except Exception as e:
+                pass
+            try:
+                macro_del_stmt = delete(macro).where(macro.c.character_id == primary_id)
+                conn.execute(macro_del_stmt)
+            except Exception as e:
+                pass
+
             stmt = delete(emp).where(emp.c.id == primary_id)
             conn.execute(stmt)
 
