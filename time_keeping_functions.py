@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+
 
 from database_models import Global
 from error_handling_reporting import ErrorReport
@@ -65,14 +67,16 @@ async def get_time(ctx: discord.ApplicationContext, engine, bot):
 
 async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
 
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)

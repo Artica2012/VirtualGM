@@ -1,6 +1,10 @@
 # database_operations.py
 
 # imports
+import discord
+import asyncio
+import asyncpg
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import create_engine
 import sqlalchemy as db
 from sqlalchemy_utils import database_exists, create_database
@@ -31,11 +35,11 @@ DATABASE = os.getenv('DATABASE')
 
 # Get the engine
 def get_db_engine(user, password, host, port, db):
-    url = f'postgresql://{user}:{password}@{host}:{port}/{db}'
+    url = f'postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}'
     # print(url)
-    if not database_exists(url):
-        create_database(url)
-    engine = create_engine(url, pool_size=50, echo=False)
+    # if not database_exists(url):
+    #     create_database(url)
+    engine = create_async_engine(url, echo=True)
     return engine
 
 

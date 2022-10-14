@@ -3,6 +3,10 @@
 import os
 
 import discord
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 import sqlalchemy as db
 from dotenv import load_dotenv
 from sqlalchemy import Column
@@ -11,7 +15,7 @@ from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.orm import declarative_base
 
 
@@ -68,20 +72,27 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
 
 
+async def get_tracker_table(ctx: discord.ApplicationContext, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = TrackerTable(ctx, metadata, guild.id).tracker_table()
+    return table
+
 class TrackerTable:
-    def __init__(self, ctx, metadata, engine):
+    def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
         self.channel = ctx.interaction.channel_id
         self.metadata = metadata
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            ).scalar_one()
-            self.id = guild.id
+        self.id = id
 
     def tracker_table(self):
         tablename = f"Tracker_{self.id}"
@@ -99,19 +110,27 @@ class TrackerTable:
         return emp
 
 
+async def get_condition_table(ctx: discord.ApplicationContext, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = ConditionTable(ctx, metadata, guild.id).condition_table()
+    return table
+
 class ConditionTable:
-    def __init__(self, ctx, metadata, engine):
+    def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
         self.channel = ctx.interaction.channel_id
         self.metadata = metadata
-        with Session(engine) as session:
-            guild = session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )).scalar_one()
-            self.id = guild.id
+        self.id = id
 
     def condition_table(self, ):
         tablename = f"Condition_{self.id}"
@@ -127,20 +146,27 @@ class ConditionTable:
         return con
 
 
+async def get_macro_table(ctx: discord.ApplicationContext, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = MacroTable(ctx, metadata, guild.id).macro_table()
+    return table
+
 class MacroTable:
-    def __init__(self, ctx, metadata, engine):
+    def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
         self.channel = ctx.interaction.channel_id
         self.metadata = metadata
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            ).scalar_one()
-            self.id = guild.id
+        self.id = id
 
     def macro_table(self):
         tablename = f"Macro_{self.id}"

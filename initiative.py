@@ -6,17 +6,21 @@ import os
 # imports
 import discord
 import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 import sqlalchemy as db
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
+from database_models import get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -61,38 +65,40 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
                           ephemeral=True)
         return False
 
-    try:
-        conn = engine.connect()
-        metadata = db.MetaData()
+    # try:
+    metadata = db.MetaData()
 
-        Base.metadata.create_all(engine)
-
-        with Session(engine) as session:
+    # Async code
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        async with session.begin():
             guild = Global(
                 guild_id=ctx.guild.id,
                 time=0,
-                gm=gm.id,
+                gm=str(gm.id),
                 tracker_channel=channel.id,
                 gm_tracker_channel=gm_channel.id
             )
             session.add(guild)
-            session.commit()
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
-        con = ConditionTable(ctx, metadata, engine).condition_table()
-        macro = MacroTable(ctx, metadata, engine).macro_table()
-        metadata.create_all(engine)
+        await session.commit()
 
-        await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
-        await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
-        return True
+    async with engine.begin() as conn:
+        emp = await get_tracker_table(ctx, metadata, engine)
+        con = await get_condition_table(ctx, metadata, engine)
+        macro = await get_macro_table(ctx, metadata, engine)
+        await conn.run_sync(metadata.create_all)
+
+    await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
+    await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
+    return True
 
 
-    except Exception as e:
-        print(f'setup_tracker: {e}')
-        report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
-        await report.report()
-        await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
-        return False
+    # except Exception as e:
+    #     print(f'setup_tracker: {e}')
+    #     report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
+    #     await report.report()
+    #     await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+    #     return False
 
 
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
@@ -486,38 +492,40 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
 
 
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
-    try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
-                or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
-                )
+    # try:
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
-            ).scalar_one()
+        )
+        )
+        guild = result.scalars().one()
 
-            try:
-                init_pos = int(guild.initiative)
-            except Exception as e:
-                init_pos = None
-            display_string = await block_get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
-                                                     bot, gm=gm)
-            # interaction = await ctx.respond(display_string)
-            interaction = await bot.get_channel(channel.id).send(display_string)
-            await interaction.pin()
-            if gm:
-                guild.gm_tracker = interaction.id
-                guild.gm_tracker_channel = channel.id
-            else:
-                guild.tracker = interaction.id
-                guild.tracker_channel = channel.id
-            session.commit()
-            return True
-    except Exception as e:
-        print(f'set_pinned_tracker: {e}')
-        report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
-        await report.report()
-        return False
+        try:
+            init_pos = int(guild.initiative)
+        except Exception as e:
+            init_pos = None
+        display_string = await block_get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
+                                                 bot, gm=gm)
+        # interaction = await ctx.respond(display_string)
+        interaction = await bot.get_channel(channel.id).send(display_string)
+        await interaction.pin()
+        if gm:
+            guild.gm_tracker = interaction.id
+            guild.gm_tracker_channel = channel.id
+        else:
+            guild.tracker = interaction.id
+            guild.tracker_channel = channel.id
+        await session.commit()
+        return True
+    # except Exception as e:
+    #     print(f'set_pinned_tracker: {e}')
+    #     report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
+    #     await report.report()
+    #     return False
 
 
 # Set the initiative
@@ -758,14 +766,16 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                             gm: bool = False):
     # Get the datetime
     datetime_string = ''
-    with Session(engine) as session:
-        guild = session.execute(select(Global).filter(
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
             or_(
-                Global.tracker_channel == ctx.channel.id,
-                Global.gm_tracker_channel == ctx.channel.id
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
         )
-        ).scalar_one()
+        )
+        guild = result.scalars().one()
         if guild.block and guild.initiative != None:
             turn_list = await get_turn_list(ctx, engine, bot)
             block = True
@@ -787,10 +797,10 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
 
     try:
         metadata = db.MetaData()
-        con = ConditionTable(ctx, metadata, engine).condition_table()
+        con = get_condition_table(ctx, metadata, engine)
         row_data = []
         for row in init_list:
-            stmt = con.select().where(con.c.character_id == row[0])
+            stmt = con.select().where(con.c.character_id == row[0]) #TODO - Continue HERE
             compiled = stmt.compile()
             # print(compiled)
             with engine.connect() as conn:
@@ -1315,14 +1325,27 @@ class InitiativeCog(commands.Cog):
         self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.lock = asyncio.Lock()
         self.update_status.start()
+        self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     # Update the bot's status periodically
     @tasks.loop(minutes=1)
     async def update_status(self):
-        with Session(self.engine) as session:
-            result = session.query(Global).count()
+        async with self.async_session() as session:
+            guild = await session.execute(select(Global))
+            result = guild.scalars().all()
+            count=len(result)
+            # for row in result:
+            #     print(row)
+            #     print(row.id)
+            #     count+=1
         async with self.lock:
-            await self.bot.change_presence(activity=discord.Game(name=f"ttRPGs in {result} tables across the "
+            await self.bot.change_presence(activity=discord.Game(name=f"ttRPGs in {count} tables across the "
                                                                       f"digital universe."))
             # f"Playing ttRPGs in {result} tables across the digital universe."
 
