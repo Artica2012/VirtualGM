@@ -269,46 +269,53 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
         await report.report()
         return False
 
-##TODO Working Here
+# Delete a character
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
-        con = ConditionTable(ctx, metadata, engine).condition_table()
-        macro = MacroTable(ctx, metadata, engine).macro_table()
+        #load tables
+        emp = await get_tracker_table(ctx, metadata, engine)
+        con = await get_condition_table(ctx, metadata, engine)
+        macro = await get_macro_table(ctx, metadata, engine)
+
+        # find the character
         stmt = emp.select().where(emp.c.name == character)
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
+
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 # print(row)
                 data.append(row)
             # print(data)
             primary_id = data[0][0]
+
+            #Manual Cascade Drop
             try:
                 con_del_stmt = delete(con).where(con.c.character_id == primary_id)
-                conn.execute(con_del_stmt)
+                await conn.execute(con_del_stmt)
             except Exception as e:
                 pass
             try:
                 macro_del_stmt = delete(macro).where(macro.c.character_id == primary_id)
-                conn.execute(macro_del_stmt)
+                await conn.execute(macro_del_stmt)
             except Exception as e:
                 pass
 
             stmt = delete(emp).where(emp.c.id == primary_id)
-            conn.execute(stmt)
+            await conn.execute(stmt)
 
         # Fix initiative position after delete:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
             if guild.initiative is None:
                 return True
             elif guild.saved_order == '':
@@ -316,13 +323,13 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
             else:
                 init_pos = int(guild.initiative)
                 current_character = guild.saved_order
-                if not init_integrity_check(ctx, init_pos, current_character, engine):
+                if not await init_integrity_check(ctx, init_pos, current_character, engine):
                     for pos, row in enumerate(await get_init_list(ctx, engine)):
                         if row[1] == current_character:
                             init_pos = pos
                 guild.initiative = init_pos
-                session.commit()
-
+                await session.commit()
+        await engine.dispose()
         return True
     except Exception as e:
         print(f"delete_character: {e}")
@@ -347,7 +354,7 @@ def calculate_hp(chp, maxhp):
 
     return hp_string
 
-
+#TODO Working Here
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
     metadata = db.MetaData()
     try:
@@ -1480,16 +1487,17 @@ class InitiativeCog(commands.Cog):
     @option('mode', choices=['start', 'stop', 'delete character'], required=True)
     @option('character', description='Character to delete', required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
-        init_list = get_init_list(ctx, self.engine)
+        init_list = await get_init_list(ctx, self.engine)
         try:
-            with Session(self.engine) as session:
-                guild = session.execute(select(Global).filter(
+            async with self.async_session() as session:
+                result = await session.execute(select(Global).where(
                     or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
                     )
                 )
-                ).scalar_one()
+                )
+                guild = result.scalars().one()
                 if not await gm_check(ctx, self.engine):
                     await ctx.respond("GM Restricted Command", ephemeral=True)
                     return
@@ -1506,23 +1514,23 @@ class InitiativeCog(commands.Cog):
                         guild.saved_order = ''
                         guild.round = 0
                         metadata = db.MetaData()
-                        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+                        emp = get_tracker_table(ctx, metadata, self.engine)
                         init_stmt = emp.select()
-                        con = ConditionTable(ctx, metadata, self.engine).condition_table()
+                        con = get_condition_table(ctx, metadata, self.engine)
                         stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
                             con.c.time == False)
                         compiled = stmt.compile()
-                        with self.engine.connect() as conn:
-                            result = conn.execute(stmt)
+                        async with self.engine.begin() as conn:
+                            result = await conn.execute(stmt)
                             for row in conn.execute(init_stmt):
                                 stmt = update(emp).where(emp.c.name == row[1]).values(
                                     init=0
                                 )
-                                conn.execute(stmt)
+                                await conn.execute(stmt)
 
                             # print(result)
                         await update_pinned_tracker(ctx, self.engine, self.bot)
-                        session.commit()
+                        await session.commit()
 
                         await update_pinned_tracker(ctx, self.engine, self.bot)
                         await ctx.send_followup("Initiative Ended.")
@@ -1539,6 +1547,7 @@ class InitiativeCog(commands.Cog):
                                 await update_pinned_tracker(ctx, self.engine, self.bot)
                             else:
                                 await ctx.send_followup('Delete Operation Failed')
+            self.engine.dispose()
         except NoResultFound as e:
             await ctx.respond(
                 error_not_initialized,
