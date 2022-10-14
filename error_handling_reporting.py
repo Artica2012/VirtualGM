@@ -36,11 +36,12 @@ class ErrorReport:
 
     async def report(self):
         guild_id = self.ctx.interaction.guild_id
+
         channel = self.ctx.interaction.channel_id
         user_id = self.ctx.interaction.user.id
         output_string = f"```\n" \
-                        f"Guild: {guild_id}, {self.ctx.guild.name} Channel: {channel}, {self.ctx.channel.name}\n" \
-                        f"Owner: {self.ctx.guild.owner_id}, {self.ctx.guild.owner.name}\n" \
+                        f"Guild: {guild_id}, {self.ctx.interaction.guild.name} Channel: {channel}, {self.ctx.interaction.channel.name}\n" \
+                        f"Owner: {self.ctx.interaction.guild.owner_id}, {self.ctx.interaction.guild.owner.name}\n" \
                         f"User: {user_id}, {self.ctx.user.name}\n" \
                         f"Function: {self.name}\n" \
                         f"Error: {self.error_text}" \

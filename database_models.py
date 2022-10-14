@@ -88,7 +88,7 @@ async def get_tracker(ctx: discord.ApplicationContext, metadata, engine):
     return table
 
 
-async def get_tracker_table(ctx: discord.ApplicationContext, metadata, engine):
+async def get_tracker_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(
@@ -127,7 +127,7 @@ class TrackerTable:
         return emp
 
 
-async def get_condition_table(ctx: discord.ApplicationContext, metadata, engine):
+async def get_condition_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(
@@ -164,7 +164,7 @@ class ConditionTable:
         return con
 
 
-async def get_macro_table(ctx: discord.ApplicationContext, metadata, engine):
+async def get_macro_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(

@@ -354,30 +354,28 @@ def calculate_hp(chp, maxhp):
 
     return hp_string
 
-#TODO Working Here
+
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == name)
-        compiled = stmt.compile()
-        with engine.connect() as conn:
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
 
-        thp = data[0][7]
-        new_thp = thp + amount
+            thp = data[0][7]
+            new_thp = thp + amount
 
-        stmt = update(emp).where(emp.c.name == name).values(
+            stmt = update(emp).where(emp.c.name == name).values(
             temp_hp=new_thp
-        )
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
+            )
+
+            result = await conn.execute(stmt)
             if result.rowcount == 0:
                 return False
+        await engine.dispose()
         return True
 
     except Exception as e:
@@ -390,72 +388,55 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == name)
-        compiled = stmt.compile()
-        with engine.connect() as conn:
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
 
-        chp = data[0][5]
-        new_hp = chp
-        maxhp = data[0][6]
-        thp = data[0][7]
-        new_thp = 0
+            chp = data[0][5]
+            new_hp = chp
+            maxhp = data[0][6]
+            thp = data[0][7]
+            new_thp = 0
 
-        if heal:
-            new_hp = chp + amount
-            if new_hp > maxhp:
-                new_hp = maxhp
-        if not heal:
-            if thp == 0:
-                new_hp = chp - amount
-                if new_hp < 0:
-                    new_hp = 0
-            else:
-                if thp > amount:
-                    new_thp = thp - amount
-                    new_hp = chp
+            if heal:
+                new_hp = chp + amount
+                if new_hp > maxhp:
+                    new_hp = maxhp
+            if not heal:
+                if thp == 0:
+                    new_hp = chp - amount
+                    if new_hp < 0:
+                        new_hp = 0
                 else:
-                    new_thp = 0
-                    new_hp = chp - amount + thp
-                if new_hp < 0:
-                    new_hp = 0
-            if new_hp == 0:
-                dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
-                await ctx.channel.send(embed=dead_embed)
+                    if thp > amount:
+                        new_thp = thp - amount
+                        new_hp = chp
+                    else:
+                        new_thp = 0
+                        new_hp = chp - amount + thp
+                    if new_hp < 0:
+                        new_hp = 0
+                if new_hp == 0:
+                    dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
+                    await ctx.channel.send(embed=dead_embed)
 
             stmt = update(emp).where(emp.c.name == name).values(
                 current_hp=new_hp,
                 temp_hp=new_thp
             )
-            compiled = stmt.compile()
-            with engine.connect() as conn:
-                result = conn.execute(stmt)
-                # conn.commit()
-                if result.rowcount == 0:
-                    return False
-            return True
+
+            result = await conn.execute(stmt)
+            if result.rowcount == 0:
+                return False
+        await engine.dispose()
+        return True
     except Exception as e:
         print(f'change_hp: {e}')
         report = ErrorReport(ctx, change_hp.__name__, e, bot)
         await report.report()
-        return False
-    try:
-        stmt = update(emp).where(emp.c.name == name).values(
-            current_hp=new_hp,
-            temp_hp=new_thp
-        )
-        compiled = stmt.compile()
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
-            if result.rowcount == 0:
-                return False
-        return True
-    except Exception as e:
-        print(f'change_hp: {e}')
         return False
 
 
@@ -740,8 +721,9 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
                 # print(row)
                 data.append(row)
             # print(data)
-            return data
-        engine.dispose()
+        await engine.dispose()
+        return data
+
     except Exception as e:
         print("error in get_init_list")
         return []
@@ -1372,7 +1354,7 @@ class InitiativeCog(commands.Cog):
         try:
             emp = await get_tracker_table(ctx, metadata, self.engine)
             stmt = emp.select()
-            with self.engine.begin() as conn:
+            async  with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
                     data.append(row)
@@ -1508,21 +1490,22 @@ class InitiativeCog(commands.Cog):
                         await block_post_init(ctx, self.engine, self.bot)
                         await update_pinned_tracker(ctx, self.engine, self.bot)
                         # await ctx.respond('Initiative Started', ephemeral=True)
-                    elif mode == 'stop':
+                    elif mode == 'stop': # Stop initiative
                         await ctx.response.defer()
+                        # Reset variables to the neutral state
                         guild.initiative = None
                         guild.saved_order = ''
                         guild.round = 0
                         metadata = db.MetaData()
-                        emp = get_tracker_table(ctx, metadata, self.engine)
+                        # Update the tables
+                        emp = await get_tracker_table(ctx, metadata, self.engine)
                         init_stmt = emp.select()
-                        con = get_condition_table(ctx, metadata, self.engine)
+                        con = await get_condition_table(ctx, metadata, self.engine)
                         stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
                             con.c.time == False)
-                        compiled = stmt.compile()
                         async with self.engine.begin() as conn:
-                            result = await conn.execute(stmt)
-                            for row in conn.execute(init_stmt):
+                            result = await conn.execute(stmt) # delete any auto-decrementing round based conditions
+                            for row in await conn.execute(init_stmt): # Set the initiatives of all characters to 0 (out of combat)
                                 stmt = update(emp).where(emp.c.name == row[1]).values(
                                     init=0
                                 )
@@ -1547,7 +1530,7 @@ class InitiativeCog(commands.Cog):
                                 await update_pinned_tracker(ctx, self.engine, self.bot)
                             else:
                                 await ctx.send_followup('Delete Operation Failed')
-            self.engine.dispose()
+            await self.engine.dispose()
         except NoResultFound as e:
             await ctx.respond(
                 error_not_initialized,
@@ -1562,18 +1545,16 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     async def next(self, ctx: discord.ApplicationContext):
-        result = False  # set fail state
         try:
-
-            init_list = get_init_list(ctx, self.engine)
-            with Session(self.engine) as session:
-                guild = session.execute(select(Global).filter(
+            async with self.async_session() as session:
+                result = await session.execute(select(Global).where(
                     or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
                     )
                 )
-                ).scalar_one()
+                )
+                guild = result.scalars().one()
                 await ctx.response.defer()
                 # Advance Init and Display
                 await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
@@ -1581,6 +1562,7 @@ class InitiativeCog(commands.Cog):
                 # Query the initiative position for the tracker and post it
                 await block_post_init(ctx, self.engine, self.bot)
                 await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+            await self.engine.dispose()
         except NoResultFound as e:
             await ctx.respond(error_not_initialized, ephemeral=True)
         except Exception as e:
@@ -1593,15 +1575,16 @@ class InitiativeCog(commands.Cog):
                )
     @option("character", description="Character to select", autocomplete=character_select_gm, )
     async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
-        with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter(
+        async with self.async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
-            # print(guild)
+            )
+            guild = result.scalars().one()
+
             if character == guild.saved_order:
                 await ctx.respond(f"Please wait until {character} is not the active character in initiative before "
                                   f"resetting its initiative.", ephemeral=True)
@@ -1623,6 +1606,7 @@ class InitiativeCog(commands.Cog):
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
             await update_pinned_tracker(ctx, self.engine, self.bot)
+        await self.engine.dispose()
 
     @i.command(description="Heal, Damage or add Temp HP",
                # guild_ids=[GUILD]
