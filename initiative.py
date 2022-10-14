@@ -520,13 +520,13 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
             guild.tracker = interaction.id
             guild.tracker_channel = channel.id
         await session.commit()
+        await engine.dispose()
         return True
     # except Exception as e:
     #     print(f'set_pinned_tracker: {e}')
     #     report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
     #     await report.report()
     #     return False
-
 
 # Set the initiative
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
@@ -782,115 +782,117 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         else:
             block = False
         round = guild.round
-    try:
-        if check_timekeeper(ctx, engine):
-            datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
-                              f"________________________\n"
-    except NoResultFound as e:
-        await ctx.channel.send(
-            error_not_initialized,
-            delete_after=30)
-    except Exception as e:
-        print(f'get_tracker: {e}')
-        report = ErrorReport(ctx, "get_tracker", e, bot)
-        await report.report()
+    # try:
+    if check_timekeeper(ctx, engine):
+        datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
+                          f"________________________\n"
+    # except NoResultFound as e:
+    #     await ctx.channel.send(
+    #         error_not_initialized,
+    #         delete_after=30)
+    # except Exception as e:
+    #     print(f'get_tracker: {e}')
+    #     report = ErrorReport(ctx, "get_tracker", e, bot)
+    #     await report.report()
 
-    try:
-        metadata = db.MetaData()
-        con = get_condition_table(ctx, metadata, engine)
-        row_data = []
-        for row in init_list:
-            stmt = con.select().where(con.c.character_id == row[0]) #TODO - Continue HERE
-            compiled = stmt.compile()
-            # print(compiled)
-            with engine.connect() as conn:
-                con_data = []
-                # print(conn.execute)
-                for con_row in conn.execute(stmt):
-                    con_data.append(con_row)
-                    # print(con_row)
+    # try:
+    metadata = db.MetaData()
+    con = await get_condition_table(ctx, metadata, engine)
+    row_data = []
+    for row in init_list:
+        stmt = con.select().where(con.c.character_id == row[0])
+        compiled = stmt.compile()
+        # print(compiled)
+        async with engine.connect() as conn:
+            con_data = []
+            # print(conn.execute)
+            for con_row in await conn.execute(stmt):
+                con_data.append(con_row)
+                # print(con_row)
+            await conn.close()
 
-            row_data.append({'id': row[0],
-                             'name': row[1],
-                             'init': row[2],
-                             'player': row[3],
-                             'user': row[4],
-                             'chp': row[5],
-                             'maxhp': row[6],
-                             'thp': row[7],
-                             'cc': con_data
-                             })
+        row_data.append({'id': row[0],
+                         'name': row[1],
+                         'init': row[2],
+                         'player': row[3],
+                         'user': row[4],
+                         'chp': row[5],
+                         'maxhp': row[6],
+                         'thp': row[7],
+                         'cc': con_data
+                         })
 
-        if round != 0:
-            round_string = f"Round: {round}"
+    if round != 0:
+        round_string = f"Round: {round}"
+    else:
+        round_string = ""
+
+    output_string = f"```{datetime_string}" \
+                    f"Initiative: {round_string}\n"
+    for x, row in enumerate(row_data):
+        sel_bool = False
+        selector = ''
+
+        #don't show an init if not in combat
+        if row['init'] == 0:
+            init_string = ""
         else:
-            round_string = ""
+            init_string = f"{row['init']}"
 
-        output_string = f"```{datetime_string}" \
-                        f"Initiative: {round_string}\n"
-        for x, row in enumerate(row_data):
-            sel_bool = False
-            selector = ''
-
-            #don't show an init if not in combat
-            if row['init'] == 0:
-                init_string = ""
-            else:
-                init_string = f"{row['init']}"
-
-            if block:
-                for character in turn_list:
-                    if row['id'] == character[0]:
-                        sel_bool = True
-            else:
-                if x == selected:
+        if block:
+            for character in turn_list:
+                if row['id'] == character[0]:
                     sel_bool = True
+        else:
+            if x == selected:
+                sel_bool = True
 
-            # print(f"{row['name']}: x: {x}, selected: {selected}")
+        # print(f"{row['name']}: x: {x}, selected: {selected}")
 
-            if sel_bool:
-                selector = '>>'
-            if row['player'] or gm:
-                if row['thp'] != 0:
-                    string = f"{selector} {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
-                else:
-                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
+        if sel_bool:
+            selector = '>>'
+        if row['player'] or gm:
+            if row['thp'] != 0:
+                string = f"{selector} {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
             else:
-                hp_string = calculate_hp(row['chp'], row['maxhp'])
-                string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
-            output_string += string
+                string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
+        else:
+            hp_string = calculate_hp(row['chp'], row['maxhp'])
+            string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
+        output_string += string
 
-            for con_row in row['cc']:
-                if gm or not con_row[2]:
-                    if con_row[4] != None:
-                        if con_row[6]:
-                            time_stamp = datetime.datetime.fromtimestamp(con_row[4])
-                            current_time = await get_time(ctx, engine, bot)
-                            time_left = time_stamp - current_time
-                            days_left = time_left.days
-                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                            if days_left != 0:
-                                con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
-                            else:
-                                con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
+        for con_row in row['cc']:
+            if gm or not con_row[2]:
+                if con_row[4] != None:
+                    if con_row[6]:
+                        time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                        current_time = await get_time(ctx, engine, bot)
+                        time_left = time_stamp - current_time
+                        days_left = time_left.days
+                        processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                        processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                        if days_left != 0:
+                            con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
                         else:
-                            con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                            con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
                     else:
-                        con_string = f"       {con_row[3]}\n"
-
-                elif con_row[2] == True and sel_bool and row['player']:
-                    con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                        con_string = f"       {con_row[3]}: {con_row[4]}\n"
                 else:
-                    con_string = ''
-                output_string += con_string
-        output_string += f"```"
-        # print(output_string)
-        return output_string
-    except Exception as e:
-        print(f"block_get_tracker: {e}")
-        report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
-        await report.report()
+                    con_string = f"       {con_row[3]}\n"
+
+            elif con_row[2] == True and sel_bool and row['player']:
+                con_string = f"       {con_row[3]}: {con_row[4]}\n"
+            else:
+                con_string = ''
+            output_string += con_string
+    output_string += f"```"
+    # print(output_string)
+    await engine.dispose()
+    return output_string
+    # except Exception as e:
+    #     print(f"block_get_tracker: {e}")
+    #     report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
+    #     await report.report()
 
 
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
