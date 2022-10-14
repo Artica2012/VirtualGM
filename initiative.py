@@ -80,13 +80,18 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
                     gm_tracker_channel=gm_channel.id
                 )
                 session.add(guild)
+                id = guild.id
             await session.commit()
 
         # Build the tracker, con and macro tables
-        async with engine.begin() as conn:
-            emp = await get_tracker_table(ctx, metadata, engine)
-            con = await get_condition_table(ctx, metadata, engine)
-            macro = await get_macro_table(ctx, metadata, engine)
+        async with engine.begin() as conn:  # Call the tables directly to save a database call
+
+            # emp = await get_tracker_table(ctx, metadata, engine)
+            # con = await get_condition_table(ctx, metadata, engine)
+            # macro = await get_macro_table(ctx, metadata, engine)
+            emp = TrackerTable(ctx, metadata, id).tracker_table()
+            con = ConditionTable(ctx, metadata, id).condition_table()
+            macro = MacroTable(ctx, metadata, id).macro_table()
             await conn.run_sync(metadata.create_all)
 
         # Update the pinned trackers
@@ -180,16 +185,18 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     metadata = db.MetaData()
 
     try:
-        emp = await TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
 
             initiative = 0
             if guild.initiative != None:
@@ -237,38 +244,21 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str):
     metadata = db.MetaData()
     dice = DiceRoller('')
-    insp = db.inspect(engine)
 
     try:
-        # print(f"Init: {init}")
-        initiative = int(init)
-    except:
-        try:
-            roll = dice.plain_roll(init)
-            initiative = roll[1]
-            if type(initiative) != int:
-                return False
-        except:
-            return False
-
-    try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
-        with Session(engine) as session:
-            guild = session.scalars(select(Global))
-            for row in guild:
-                if not insp.has_table(emp.name):
-                    metadata.create_all(engine)
+        emp = await get_tracker_table(ctx, metadata, engine)
 
         stmt = emp.update().where(emp.c.name == name).values(
-            init_string=initiative,
+            init_string=str(init),
             max_hp=hp,
         )
         compiled = stmt.compile()
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
-            # conn.commit()
+        async with engine.begin() as conn:
+            result = await conn.execute(stmt)
             await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+        await engine.dispose()
         return True
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -279,7 +269,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
         await report.report()
         return False
 
-
+##TODO Working Here
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
     metadata = db.MetaData()
     try:
@@ -327,7 +317,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
                 init_pos = int(guild.initiative)
                 current_character = guild.saved_order
                 if not init_integrity_check(ctx, init_pos, current_character, engine):
-                    for pos, row in enumerate(get_init_list(ctx, engine)):
+                    for pos, row in enumerate(await get_init_list(ctx, engine)):
                         if row[1] == current_character:
                             init_pos = pos
                 guild.initiative = init_pos
@@ -493,41 +483,41 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
 
 
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
-    # try:
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
+            )
+            guild = result.scalars().one()
 
-        try:
-            init_pos = int(guild.initiative)
-        except Exception as e:
-            init_pos = None
-        display_string = await block_get_tracker(get_init_list(ctx, engine), init_pos, ctx, engine,
-                                                 bot, gm=gm)
-        # interaction = await ctx.respond(display_string)
-        interaction = await bot.get_channel(channel.id).send(display_string)
-        await interaction.pin()
-        if gm:
-            guild.gm_tracker = interaction.id
-            guild.gm_tracker_channel = channel.id
-        else:
-            guild.tracker = interaction.id
-            guild.tracker_channel = channel.id
-        await session.commit()
-        await engine.dispose()
-        return True
-    # except Exception as e:
-    #     print(f'set_pinned_tracker: {e}')
-    #     report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
-    #     await report.report()
-    #     return False
+            try:
+                init_pos = int(guild.initiative)
+            except Exception as e:
+                init_pos = None
+            display_string = await block_get_tracker(await get_init_list(ctx, engine), init_pos, ctx, engine,
+                                                     bot, gm=gm)
+            # interaction = await ctx.respond(display_string)
+            interaction = await bot.get_channel(channel.id).send(display_string)
+            await interaction.pin()
+            if gm:
+                guild.gm_tracker = interaction.id
+                guild.gm_tracker_channel = channel.id
+            else:
+                guild.tracker = interaction.id
+                guild.tracker_channel = channel.id
+            await session.commit()
+            await engine.dispose()
+            return True
+    except Exception as e:
+        print(f'set_pinned_tracker: {e}')
+        report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
+        await report.report()
+        return False
 
 
 # Set the initiative
@@ -555,8 +545,8 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 
 
 # Check to make sure that the character is in the right place in initiative
-def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
-    init_list = get_init_list(ctx, engine)
+async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
+    init_list = await get_init_list(ctx, engine)
     if init_list[init_pos][1] == current_character:
         return True
     else:
@@ -600,7 +590,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             else:
                 init_pos = int(guild.initiative)
 
-            init_list = get_init_list(ctx, engine)
+            init_list = await get_init_list(ctx, engine)
 
             if guild.saved_order == '':
                 current_character = init_list[0][1]
@@ -619,7 +609,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
                     # if its not, set the init position to the position of the current character before advancing it
                     print("Yes guild.block")
-                    if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                    if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             if row[1] == current_character:
@@ -681,7 +671,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
                     print("Not guild.block")
                     # if its not, set the init position to the position of the current character before advancing it
-                    if not init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                    if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             if row[1] == current_character:
@@ -731,19 +721,20 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
         await report.report()
 
 
-def get_init_list(ctx: discord.ApplicationContext, engine):
+async def get_init_list(ctx: discord.ApplicationContext, engine):
     try:
         metadata = db.MetaData()
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().order_by(emp.c.init.desc())
         # print(stmt)
         data = []
-        with engine.connect() as conn:
-            for row in conn.execute(stmt):
+        async with engine.begin() as conn:
+            for row in await conn.execute(stmt):
                 # print(row)
                 data.append(row)
             # print(data)
             return data
+        engine.dispose()
     except Exception as e:
         print("error in get_init_list")
         return []
@@ -896,52 +887,51 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
     #     await report.report()
 
 
+# Gets the locations of the pinned trackers, then updates them with the newest tracker
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        try:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
+        # try:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
-            )
-            guild = result.scalars().one()
+        )
+        )
+        guild = result.scalars().one()
 
-            tracker = guild.tracker
-            tracker_channel = guild.tracker_channel
-            gm_tracker = guild.gm_tracker
-            gm_tracker_channel = guild.gm_tracker_channel
+        tracker = guild.tracker
+        tracker_channel = guild.tracker_channel
+        gm_tracker = guild.gm_tracker
+        gm_tracker_channel = guild.gm_tracker_channel
 
-            #TODO WORKING HERE
+        # Update the tracker
+        if tracker is not None:
+            tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine), guild.initiative,
+                                                             ctx, engine, bot)
+            channel = bot.get_channel(tracker_channel)
+            message = await channel.fetch_message(tracker)
+            await message.edit(tracker_display_string)
 
-            # Update the tracker
-            if tracker is not None:
-                tracker_display_string = await block_get_tracker(get_init_list(ctx, engine), guild.initiative, ctx,
-                                                                 engine,
-                                                                 bot)
-                channel = bot.get_channel(tracker_channel)
-                message = await channel.fetch_message(tracker)
-                await message.edit(tracker_display_string)
-
-            # Update the GM tracker
-            if gm_tracker is not None:
-                gm_tracker_display_string = await block_get_tracker(get_init_list(ctx, engine), guild.initiative, ctx,
-                                                                    engine,
-                                                                    bot,
-                                                                    gm=True)
-                gm_channel = bot.get_channel(gm_tracker_channel)
-                gm_message = await gm_channel.fetch_message(gm_tracker)
-                await gm_message.edit(gm_tracker_display_string)
-        except NoResultFound as e:
-            await ctx.channel.send(
-                error_not_initialized,
-                delete_after=30)
-        except Exception as e:
-            print(f'update_pinned_tracker: {e}')
-            report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
-            await report.report()
+        # Update the GM tracker
+        if gm_tracker is not None:
+            gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine), guild.initiative,
+                                                                ctx,
+                                                                engine,
+                                                                bot,
+                                                                gm=True)
+            gm_channel = bot.get_channel(gm_tracker_channel)
+            gm_message = await gm_channel.fetch_message(gm_tracker)
+            await gm_message.edit(gm_tracker_display_string)
+        # except NoResultFound as e:
+        #     await ctx.channel.send(
+        #         error_not_initialized,
+        #         delete_after=30)
+        # except Exception as e:
+        #     print(f'update_pinned_tracker: {e}')
+        #     report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
+        #     await report.report()
 
 
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
@@ -962,7 +952,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
             else:
                 block = False
 
-            init_list = get_init_list(ctx, engine)
+            init_list = await get_init_list(ctx, engine)
             tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
             try:
                 ping_string = ''
@@ -997,17 +987,19 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
     turn_list = []
     block_done = False
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
             iteration = 0
             init_pos = guild.initiative
-            init_list = get_init_list(ctx, engine)
+            init_list = await get_init_list(ctx, engine)
             length = len(init_list)
             while not block_done:
                 turn_list.append(init_list[init_pos])
@@ -1029,7 +1021,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
                 iteration += 1
                 if iteration >= length:
                     block_done = True
-
+            engine.dispose()
             return turn_list
     except Exception as e:
         print(f'get_turn_list: {e}')
@@ -1308,14 +1300,17 @@ async def gm_check(ctx, engine):
             return True
 
 
+# checks to see if the player is the ower of the character
+# possibly depreciated due to auto-complete
+## TODO - Evaluate if this can be eliminated
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = select(emp.c.player).where(emp.c.name == character)
-        with engine.connect() as conn:
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
         return data[0]
     except Exception as e:
@@ -1367,26 +1362,22 @@ class InitiativeCog(commands.Cog):
         metadata = db.MetaData()
         character_list = []
 
-        with Session(self.engine) as session:
-            gm_status = await gm_check(ctx, self.engine)
-
         try:
-            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+            emp = await get_tracker_table(ctx, metadata, self.engine)
             stmt = emp.select()
-            compiled = stmt.compile()
-            # print(compiled)
-            with self.engine.connect() as conn:
+            with self.engine.begin() as conn:
                 data = []
-                for row in conn.execute(stmt):
+                for row in await conn.execute(stmt):
                     data.append(row)
                     # print(row)
             for row in data:
                 # if row[4] == ctx.interaction.user.id or gm_status:
                 character_list.append(row[1])
             # print(character_list)
+            await self.engine.dispose()
             return character_list
         except Exception as e:
-            print(f'character+select: {e}')
+            print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
             return False
@@ -1396,26 +1387,25 @@ class InitiativeCog(commands.Cog):
         metadata = db.MetaData()
         character_list = []
 
-        with Session(self.engine) as session:
-            gm_status = await gm_check(ctx, self.engine)
+        gm_status = await gm_check(ctx, self.engine)
 
         try:
-            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+            emp = await get_tracker_table(ctx, metadata, self.engine)
             stmt = emp.select()
-            compiled = stmt.compile()
-            # print(compiled)
-            with self.engine.connect() as conn:
+            async with self.engine.begin() as conn:
                 data = []
-                for row in conn.execute(stmt):
+                for row in await conn.execute(stmt):
                     data.append(row)
                     # print(row)
             for row in data:
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
             # print(character_list)
+            await self.engine.dispose()
             return character_list
+
         except Exception as e:
-            print(f'character+select: {e}')
+            print(f'character_select_gm: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
             return False

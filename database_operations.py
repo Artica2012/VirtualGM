@@ -39,7 +39,7 @@ def get_db_engine(user, password, host, port, db):
     # print(url)
     # if not database_exists(url):
     #     create_database(url)
-    engine = create_async_engine(url, echo=True)
+    engine = create_async_engine(url, echo=False)
     return engine
 
 
