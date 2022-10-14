@@ -72,12 +72,13 @@ class OptionsCog(commands.Cog):
                     gm_channel: discord.TextChannel,
                     gm: discord.User,
                     ):
+        await ctx.response.defer(ephemeral=True)
         response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
         if response:
-            await ctx.respond("Server Setup", ephemeral=True)
+            await ctx.send_followup("Server Setup", ephemeral=True)
             return
         else:
-            await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+            await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
 
     @setup.command(description="Administrative Commands",
                    # guild_ids=[GUILD]

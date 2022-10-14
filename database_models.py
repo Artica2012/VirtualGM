@@ -18,7 +18,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.orm import declarative_base
 
-
 # define global variables
 
 load_dotenv(verbose=True)
@@ -39,6 +38,7 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 
 Base = declarative_base()
+
 
 # Database Models
 
@@ -72,6 +72,22 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
 
 
+async def get_tracker(ctx: discord.ApplicationContext, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = TrackerTable(ctx, metadata, guild.id)
+    return table
+
+
 async def get_tracker_table(ctx: discord.ApplicationContext, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -86,6 +102,7 @@ async def get_tracker_table(ctx: discord.ApplicationContext, metadata, engine):
 
     table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table
+
 
 class TrackerTable:
     def __init__(self, ctx, metadata, id):
@@ -125,6 +142,7 @@ async def get_condition_table(ctx: discord.ApplicationContext, metadata, engine)
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
     return table
 
+
 class ConditionTable:
     def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
@@ -160,6 +178,7 @@ async def get_macro_table(ctx: discord.ApplicationContext, metadata, engine):
 
     table = MacroTable(ctx, metadata, guild.id).macro_table()
     return table
+
 
 class MacroTable:
     def __init__(self, ctx, metadata, id):
