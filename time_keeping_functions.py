@@ -39,18 +39,20 @@ DATABASE = os.getenv('DATABASE')
 
 async def get_time(ctx: discord.ApplicationContext, engine, bot):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
-
+            )
+            guild = result.scalars().one()
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
-            return time
+        await engine.dispose()
+        return time
 
     except NoResultFound as e:
         await ctx.channel.send(
@@ -82,7 +84,8 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
             output_string = time.strftime("Month: %m Day: %d, Year: %y: %I:%M:%S %p")
             # print(output_string)
-            return output_string
+        await engine.dispose()
+        return output_string
 
     except NoResultFound as e:
         await ctx.channel.send(
@@ -97,17 +100,20 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
         return ""
 
 
-def check_timekeeper(ctx: discord.ApplicationContext, engine):
+async def check_timekeeper(ctx: discord.ApplicationContext, engine):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
-            return guild.timekeeping
+            )
+            guild = result.scalars().one()
+        await engine.dispose()
+        return guild.timekeeping
     except Exception as e:
         return False
 
@@ -115,14 +121,16 @@ def check_timekeeper(ctx: discord.ApplicationContext, engine):
 async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int, minute: int, hour: int, day: int,
                        month: int, year: int, time: int = None):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
             guild.timekeeping = True
             if time:
                 # print(time)
@@ -145,9 +153,9 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
             if year != None:
                 # print(year)
                 guild.time_year = year
-            session.commit()
-
-            return True
+        await session.commit()
+        await engine.dispose()
+        return True
     except NoResultFound as e:
         await ctx.channel.send(
             "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
@@ -164,14 +172,16 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
 async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int = 0, minute: int = 0, hour: int = 0,
                        day: int = 0):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
 
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
@@ -182,10 +192,10 @@ async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int
             guild.time_day = new_time.day
             guild.time_month = new_time.month
             guild.time_year = new_time.year
-            session.commit()
+            await session.commit()
 
-            # update tracker
-            return True
+        await engine.dispose()
+        return True
 
     except NoResultFound as e:
         await ctx.channel.send(
