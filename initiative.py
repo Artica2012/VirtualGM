@@ -175,10 +175,13 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     try:
         emp = TrackerTable(ctx, metadata, engine).tracker_table()
         with Session(engine) as session:
-            guild = session.scalars(select(Global))
-            for row in guild:
-                if not insp.has_table(emp.name):
-                    metadata.create_all(engine)
+            guild = session.execute(select(Global).filter(
+                or_(
+                    Global.tracker_channel == ctx.channel.id,
+                    Global.gm_tracker_channel == ctx.channel.id
+                )
+            )
+            ).scalar_one()
 
             initiative = 0
             if guild.initiative != None:
