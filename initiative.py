@@ -444,21 +444,25 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
 # ---------------------------------------------------------------
 # TRACKER MANAGEMENT
 
+# Reposts new trackers in the pre-assigned channels
 async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
             channel = bot.get_channel(guild.tracker_channel)
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
             await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
             await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
-            return True
+        await engine.dispose()
+        return True
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -470,6 +474,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
         return False
 
 
+# Function sets the pinned trackers and records their position in the Global table.
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -499,8 +504,8 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
                 guild.tracker = interaction.id
                 guild.tracker_channel = channel.id
             await session.commit()
-            await engine.dispose()
-            return True
+        await engine.dispose()
+        return True
     except Exception as e:
         print(f'set_pinned_tracker: {e}')
         report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
@@ -512,17 +517,14 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = update(emp).where(emp.c.name == name).values(
             init=init
         )
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
+        async with engine.begin() as conn:
+            result = await conn.execute(stmt)
             # conn.commit()
             if result.rowcount == 0:
-                # print("RowCount = 0")
                 return False
         return True
     except Exception as e:
