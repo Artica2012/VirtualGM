@@ -22,7 +22,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_operations import get_db_engine
+from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
@@ -1311,7 +1311,7 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
 class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.lock = asyncio.Lock()
         self.update_status.start()
         self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

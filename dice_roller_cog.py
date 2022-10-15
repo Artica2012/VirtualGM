@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import dice_roller
 from database_models import Global
-from database_operations import get_db_engine
+from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 
 # define global variables
@@ -39,7 +39,7 @@ DATABASE = os.getenv('DATABASE')
 class DiceRollerCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     # Takes a string and then parses out the string and rolls the dice
     @commands.slash_command(name="r", description="Dice Roller")

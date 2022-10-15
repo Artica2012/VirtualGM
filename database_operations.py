@@ -34,8 +34,16 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 # Get the engine
-def get_db_engine(user, password, host, port, db):
+def get_asyncio_db_engine(user, password, host, port, db):
     url = f'postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}'
+    # print(url)
+    # if not database_exists(url):
+    #     create_database(url)
+    engine = create_async_engine(url, echo=False)
+    return engine
+
+def get__db_engine(user, password, host, port, db):
+    url = f'postgresql://{user}:{password}@{host}:{port}/{db}'
     # print(url)
     # if not database_exists(url):
     #     create_database(url)
@@ -45,7 +53,7 @@ def get_db_engine(user, password, host, port, db):
 
 def update_tracker_table():
     metadata = db.MetaData()
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     with Session(engine) as session:
         guild = session.execute(select(Global)).all()

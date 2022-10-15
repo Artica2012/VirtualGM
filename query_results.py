@@ -11,7 +11,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from database_models import disease_table, feat_table, power_table, monster_table, ritual_table
-from database_operations import get_db_engine
+from database_operations import get_asyncio_db_engine
 from ui_components import QuerySelectButton
 
 load_dotenv(verbose=True)
@@ -40,7 +40,7 @@ DATABASE = os.getenv('DATABASE')
 class QueryCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
 
     # Set the group's prefix to q
 
@@ -90,7 +90,7 @@ class QueryCog(commands.Cog):
     # @query.command(description="Monster Query")
     # async def item(self, ctx: discord.ApplicationContext, query: str):
     #     await ctx.response.defer()
-    #     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     #     metadata = db.MetaData()
     #     try:
     #         emp = item_table(metadata)

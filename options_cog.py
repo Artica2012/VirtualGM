@@ -18,7 +18,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from database_models import Global, Base, TrackerTable, ConditionTable
-from database_operations import get_db_engine
+from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
@@ -49,7 +49,7 @@ DATABASE = os.getenv('DATABASE')
 class OptionsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     async def display_options(self, timekeeping: bool, block: bool):
         embed = discord.Embed(

@@ -75,7 +75,7 @@ class QueryLinkButton(discord.ui.Button):
 #         # Called when button is pressed
 #         message = interaction.message
 #         await message.delete()
-#         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+#         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 #         metadata = db.MetaData()
 #         try:
 #             con = ConditionTable(self.interaction.guild, metadata, engine).condition_table()
@@ -101,7 +101,7 @@ class QueryLinkButton(discord.ui.Button):
 #         )
 #
 #     async def callback(self, interaction: discord.Interaction):
-#         engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+#         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 #         metadata = db.MetaData()
 #         view = discord.ui.View()
 #         # print("Selected")

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from sqlalchemy import inspect
 
 from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
-from database_operations import get_db_engine
+from database_operations import get_asyncio_db_engine
 
 # define global variables
 
@@ -35,11 +35,11 @@ DATABASE = os.getenv('DATABASE')
 # Export function for each database table
 
 def disease_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = disease_table(metadata)
     if not inspect(engine).has_table(emp):
-        metadata.create_all(engine)
+
         for row in data:
             try:
                 stmt = emp.insert().values(
@@ -58,7 +58,7 @@ def disease_export(data):
 
 
 def feat_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = feat_table(metadata)
     if not inspect(engine).has_table(emp):
@@ -83,7 +83,7 @@ def feat_export(data):
 
 
 def power_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = power_table(metadata)
     if not inspect(engine).has_table(emp):
@@ -106,7 +106,7 @@ def power_export(data):
 
 
 def monster_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = monster_table(metadata)
     if not inspect(engine).has_table(emp):
@@ -128,7 +128,7 @@ def monster_export(data):
     return
 
 def item_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = item_table(metadata)
     if not inspect(engine).has_table(emp):
@@ -151,7 +151,7 @@ def item_export(data):
     return
 
 def ritual_export(data):
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     metadata = db.MetaData()
     emp = ritual_table(metadata)
     if not inspect(engine).has_table(emp):

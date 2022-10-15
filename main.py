@@ -35,10 +35,10 @@ async def on_ready():
     print(f"{bot.user} is connected.")
 
 # Initialize the database
-# lookup_parser.parser()
+lookup_parser.parser()
 
 # Load the bot
-# bot.load_extension("query_results")
+bot.load_extension("query_results")
 bot.load_extension("dice_roller_cog")
 bot.load_extension('initiative')
 bot.load_extension('error_reporting_cog')
