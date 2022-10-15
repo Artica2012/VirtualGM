@@ -28,7 +28,7 @@ error_server = os.getenv('error_server')
 
 
 class ErrorReport:
-    def __init__(self, ctx, function_name: str, error, bot):
+    def __init__(self, ctx:discord.ApplicationContext, function_name: str, error, bot):
         self.ctx = ctx
         self.name = function_name
         self.error_text = error
@@ -43,7 +43,7 @@ class ErrorReport:
                         f"Guild: {guild_id}, {self.ctx.interaction.guild.name} Channel: {channel}, {self.ctx.interaction.channel.name}\n" \
                         f"Owner: {self.ctx.interaction.guild.owner_id}, {self.ctx.interaction.guild.owner.name}\n" \
                         f"User: {user_id}, {self.ctx.user.name}\n" \
-                        f"Function: {self.name}\n" \
+                        f"Function: {self.name}, {self.ctx.interaction.message}\n" \
                         f"Error: {self.error_text}" \
                         f"```"
         await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)

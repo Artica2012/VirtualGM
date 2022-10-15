@@ -14,9 +14,11 @@ from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,selectinload, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
+from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
+    get_condition_table, get_macro_table
 from database_operations import get_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
@@ -57,33 +59,34 @@ class MacroCog(commands.Cog):
         metadata = db.MetaData()
         character_list = []
 
-        with Session(self.engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
                     Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
             if int(guild.gm) != int(ctx.interaction.user.id):
                 gm_status = False
             else:
                 gm_status = True
 
         try:
-            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+            emp = await get_tracker_table(ctx, metadata, self.engine)
             stmt = emp.select()
-            compiled = stmt.compile()
-            # print(compiled)
-            with self.engine.connect() as conn:
+            async with self.engine.begin() as conn:
                 data = []
-                for row in conn.execute(stmt):
+                for row in await conn.execute(stmt):
                     data.append(row)
                     # print(row)
             for row in data:
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
             # print(character_list)
+            await self.engine.dispose()
             return character_list
         except Exception as e:
             print(f'character+select: {e}')
@@ -94,22 +97,23 @@ class MacroCog(commands.Cog):
     async def macro_select(self, ctx: discord.AutocompleteContext):
         metadata = db.MetaData()
         character = ctx.options['character']
-        macro = MacroTable(ctx, metadata, self.engine).macro_table()
-        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+        macro = await get_macro_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
 
         char_stmt = emp.select().where(emp.c.name == character)
         # print(character)
-        with self.engine.connect() as conn:
+        async with self.engine.begin() as conn:
             data = []
             macro_list = []
-            for char_row in conn.execute(char_stmt):
+            for char_row in await conn.execute(char_stmt):
                 data.append(char_row)
             for row in data:
                 # print(row)
                 macro_stmt = macro.select().where(macro.c.character_id == row[0])
-                for char_row in conn.execute(macro_stmt):
+                for char_row in await conn.execute(macro_stmt):
                     # print(char_row)
                     macro_list.append(f"{char_row[2]}: {char_row[3]}")
+        await self.engine.dispose()
         return macro_list
 
     # Database
@@ -117,19 +121,13 @@ class MacroCog(commands.Cog):
         metadata = db.MetaData()
         insp = db.inspect(self.engine)
         try:
-            macro = MacroTable(ctx, metadata, self.engine).macro_table()
-            emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
-
-            with Session(self.engine) as session:
-                guild = session.scalars(select(Global))
-                for row in guild:
-                    if not insp.has_table(macro.name):
-                        metadata.create_all(self.engine)
+            macro = await get_macro_table(ctx, metadata, self.engine)
+            emp = await get_tracker_table(ctx, metadata, self.engine)
 
             char_stmt = emp.select().where(emp.c.name == character)
-            with self.engine.connect() as conn:
+            async with self.engine.begin() as conn:
                 data = []
-                for char_row in conn.execute(char_stmt):
+                for char_row in await conn.execute(char_stmt):
                     data.append(char_row)
 
                 macro_stmt = macro.insert().values(
@@ -137,7 +135,8 @@ class MacroCog(commands.Cog):
                     name=macro_name,
                     macro=macro_string
                 )
-                result = conn.execute(macro_stmt)
+                result = await conn.execute(macro_stmt)
+                await self.engine.dispose()
                 return result
         except Exception as e:
             print(f'create_macro: {e}')
@@ -148,24 +147,26 @@ class MacroCog(commands.Cog):
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
         metadata = db.MetaData()
-        macro = MacroTable(ctx, metadata, self.engine).macro_table()
-        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+        macro = await get_macro_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
         try:
             char_stmt = emp.select().where(emp.c.name == character)
             # print(character)
-            with self.engine.connect() as conn:
+            async with self.engine.begin() as conn:
                 data = []
-                for char_row in conn.execute(char_stmt):
+                for char_row in await conn.execute(char_stmt):
                     data.append(char_row)
                 for row in data:
                     # print(row)
                     # print(f"{row[0]}, {macro_name}")
                     macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(macro.c.name == macro_name.split(':')[0])
-                    for char_row in conn.execute(macro_stmt):
+                    for char_row in await conn.execute(macro_stmt):
                         # print(char_row)
                         del_stmt = delete(macro).where(macro.c.id == char_row[0])
-                        conn.execute(del_stmt)
-                        return True
+                        await conn.execute(del_stmt)
+
+            await self.engine.dispose()
+            return True
         except Exception as e:
             print(f'delete_macro: {e}')
             report = ErrorReport(ctx, self.delete_macro.__name__, e, self.bot)
@@ -174,20 +175,20 @@ class MacroCog(commands.Cog):
 
     async def roll_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
         metadata = db.MetaData()
-        macro = MacroTable(ctx, metadata, self.engine).macro_table()
-        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+        macro = await get_macro_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
 
         char_stmt = emp.select().where(emp.c.name == character)
         # print(character)
-        with self.engine.connect() as conn:
+        async with self.engine.begin() as conn:
             data = []
-            for char_row in conn.execute(char_stmt):
+            for char_row in await conn.execute(char_stmt):
                 data.append(char_row)
             for row in data:
                 # print(row)
                 # print(f"{row[0]}, {macro_name}")
                 macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(macro.c.name == macro_name.split(':')[0])
-                for char_row in conn.execute(macro_stmt):
+                for char_row in await conn.execute(macro_stmt):
                     # print(char_row)
                     roller = DiceRoller(char_row[3])
                     dice_string = roller.roll_dice()
@@ -230,32 +231,34 @@ class MacroCog(commands.Cog):
     @option('secret', choices=['Secret', 'Open'])
     async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, secret:str = "Open"):
         await ctx.response.defer()
-        # try:
-        if secret == "Open":
-            await ctx.send_followup(await self.roll_macro(ctx, character, macro))
-        else:
-            with Session(self.engine) as session:
-                guild = session.execute(select(Global).filter(
-                    or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
+        try:
+            if secret == "Open":
+                await ctx.send_followup(await self.roll_macro(ctx, character, macro))
+            else:
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                async with async_session() as session:
+                    result = await session.execute(select(Global).where(
+                        or_(
+                            Global.tracker_channel == ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == ctx.interaction.channel_id
+                        )
                     )
-                )
-                ).scalar_one()
-                if guild.gm_tracker_channel != None:
-                    await ctx.send_followup(f"Secret Dice Rolled."
-                                            f"{character}: {macro}")
-                    await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"Secret Roll:\n"
-                                                                                   f"{await self.roll_macro(ctx, character, macro)}")
-                else:
-                    await ctx.send_followup('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
-                    await ctx.channel.send(await self.roll_macro(ctx, character, macro))
-
-        # except Exception as e:
-        #     print(f"roll_macro: {e}")
-        #     report = ErrorReport(ctx, "roll_macro", e, self.bot)
-        #     await report.report()
-        #     await ctx.send_followup("Macro Roll Failed")
+                    )
+                    guild = result.scalars().one()
+                    if guild.gm_tracker_channel != None:
+                        await ctx.send_followup(f"Secret Dice Rolled."
+                                                f"{character}: {macro}")
+                        await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"Secret Roll:\n"
+                                                                                       f"{await self.roll_macro(ctx, character, macro)}")
+                    else:
+                        await ctx.send_followup('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
+                        await ctx.channel.send(await self.roll_macro(ctx, character, macro))
+            await self.engine.dispose()
+        except Exception as e:
+            print(f"roll_macro: {e}")
+            report = ErrorReport(ctx, "roll_macro", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Macro Roll Failed")
 
 
 def setup(bot):

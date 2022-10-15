@@ -163,6 +163,20 @@ class ConditionTable:
                        )
         return con
 
+async def get_macro(ctx, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = MacroTable(ctx, metadata, guild.id)
+    return table
 
 async def get_macro_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
