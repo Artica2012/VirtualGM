@@ -14,11 +14,14 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.orm import declarative_base
 
+from database_operations import get_asyncio_db_engine
+
 # define global variables
+
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -127,6 +130,22 @@ class TrackerTable:
         return emp
 
 
+async def get_con(ctx, metadata, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    table = ConditionTable(ctx, metadata, guild.id)
+    return table
+
+
 async def get_condition_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -145,8 +164,7 @@ async def get_condition_table(ctx, metadata, engine):
 
 class ConditionTable:
     def __init__(self, ctx, metadata, id):
-        self.guild = ctx.interaction.guild_id
-        self.channel = ctx.interaction.channel_id
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.metadata = metadata
         self.id = id
 
@@ -163,6 +181,30 @@ class ConditionTable:
                        )
         return con
 
+    async def set(self, character_id:int, title:str, number:int, counter:bool, auto_increment:bool, time:bool=False):
+        con = self.condition_table()
+        stmt = con.insert().values(
+                    character_id=character_id,
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_increment,
+                    time=False
+                )
+        async with self.engine.begin() as conn:
+            await conn.execute(stmt)
+
+    async def update(self, character_id:int, condition:str, number:int):
+        con = self.condition_table()
+        stmt = update(con).where(con.c.character_id == character_id).where(con.c.title == condition).values(
+            number=number
+        )
+        async with self.engine.begin() as conn:
+            await conn.execute(stmt)
+
+
+
+
 async def get_macro(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -177,6 +219,7 @@ async def get_macro(ctx, metadata, engine):
 
     table = MacroTable(ctx, metadata, guild.id)
     return table
+
 
 async def get_macro_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
