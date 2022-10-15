@@ -1029,19 +1029,18 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
 # COUNTER/CONDITION MANAGEMENT
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
-                 unit: str,
-                 auto_decrement: bool, bot):
+                 unit: str, auto_decrement: bool, bot):
     metadata = db.MetaData()
     insp = db.inspect(engine)
     # Get the Character's data
+
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == character)
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
+
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1055,18 +1054,18 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
     try:
-        with Session(engine) as session:
-            guild = session.execute(select(Global).filter(
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
                 or_(
-                    Global.tracker_channel == ctx.channel.id,
-                    Global.gm_tracker_channel == ctx.channel.id
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
             )
-            ).scalar_one()
+            )
+            guild = result.scalars().one()
 
-            con = ConditionTable(ctx, metadata, engine).condition_table()
-            if not insp.has_table(con.name):
-                metadata.create_all(engine)
+            con = await get_condition_table(ctx, metadata, engine)
 
             if not guild.timekeeping or unit == 'Round':
 
@@ -1078,11 +1077,10 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                     auto_increment=auto_decrement,
                     time=False
                 )
-                complied = stmt.compile()
-                # print(complied)
-                with engine.connect() as conn:
-                    result = conn.execute(stmt)
+                async with engine.begin() as conn:
+                    await conn.execute(stmt)
                 await update_pinned_tracker(ctx, engine, bot)
+                await engine.dispose()
                 return True
             else:
                 current_time = await get_time(ctx, engine, bot)
@@ -1103,11 +1101,10 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                     auto_increment=True,
                     time=True
                 )
-                complied = stmt.compile()
-                # print(complied)
-                with engine.connect() as conn:
-                    result = conn.execute(stmt)
+                async with engine.begin() as conn:
+                    await conn.execute(stmt)
                 await update_pinned_tracker(ctx, engine, bot)
+                await engine.dispose()
                 return True
 
     except NoResultFound as e:
@@ -1124,13 +1121,12 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == character)
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
+
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1143,16 +1139,15 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await report.report()
         return False
     try:
-        con = ConditionTable(ctx, metadata, engine).condition_table()
+        con = await get_condition_table(ctx, metadata, engine)
         stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
             number=value
         )
-        complied = stmt.compile()
-        # print(complied)
-        con_data = []
+
         with engine.connect() as conn:
-            result = conn.execute(stmt)
+            conn.execute(stmt)
         await update_pinned_tracker(ctx, engine, bot)
+        await engine.dispose()
         return True
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -1168,13 +1163,11 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == character)
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
+        async with engine.begin() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1188,14 +1181,13 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return False
 
     try:
-        con = ConditionTable(ctx, metadata, engine).condition_table()
+        con = await get_condition_table(ctx, metadata, engine)
         stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
-        complied = stmt.compile()
-        # print(complied)
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
+        async with engine.begin() as conn:
+            await conn.execute(stmt)
             # print(result)
         await update_pinned_tracker(ctx, engine, bot)
+        await engine.dispose()
         return True
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -1211,13 +1203,11 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = TrackerTable(ctx, metadata, engine).tracker_table()
+        emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == character)
-        compiled = stmt.compile()
-        # print(compiled)
-        with engine.connect() as conn:
+        async with engine.connect() as conn:
             data = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1230,15 +1220,15 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         await report.report()
 
     try:
-        con = ConditionTable(ctx, metadata, engine).condition_table()
+        con = await get_condition_table(ctx, metadata, engine)
         stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
-        complied = stmt.compile()
-        # print(complied)
+
         con_data = []
-        with engine.connect() as conn:
-            result = conn.execute(stmt)
+        async with engine.begin() as conn:
+            result = await conn.execute(stmt)
             for row in result:
                 con_data.append(row)
+        await engine.dispose()
         return con_data
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -1255,21 +1245,22 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 async def check_cc(ctx: discord.ApplicationContext, engine, bot):
     metadata = db.MetaData()
     current_time = await get_time(ctx, engine, bot)
-    con = ConditionTable(ctx, metadata, engine).condition_table()
-    emp = TrackerTable(ctx, metadata, engine).tracker_table()
+    con = await get_condition_table(ctx, metadata, engine)
+    emp = await get_tracker_table(ctx, metadata, engine)
     stmt = con.select().where(con.c.time == True)
-    with engine.connect() as conn:
-        for row in conn.execute(stmt):
+    async with engine.begin() as conn:
+        for row in await conn.execute(stmt):
             time_stamp = datetime.datetime.fromtimestamp(row[4])
             time_left = time_stamp - current_time
             if time_left.total_seconds() <= 0:
                 char_stmt = emp.select().where(emp.c.id == row[1])
                 char_name = ''
-                for char_row in conn.execute(char_stmt):
+                for char_row in await conn.execute(char_stmt):
                     char_name = char_row[1]
                 del_stmt = delete(con).where(con.c.id == row[0])
                 await ctx.channel.send(f"{row[3]} removed from {char_name}")
-                result = conn.execute(del_stmt)
+                conn.execute(del_stmt)
+    await engine.dispose()
 
 
 # ---------------------------------------------------------------
@@ -1407,22 +1398,23 @@ class InitiativeCog(commands.Cog):
     async def cc_select(self, ctx: discord.AutocompleteContext):
         metadata = db.MetaData()
         character = ctx.options['character']
-        con = ConditionTable(ctx, metadata, self.engine).condition_table()
-        emp = TrackerTable(ctx, metadata, self.engine).tracker_table()
+        con = await get_condition_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
 
         char_stmt = emp.select().where(emp.c.name == character)
         # print(character)
-        with self.engine.connect() as conn:
+        async with self.engine.begin() as conn:
             data = []
             con_list = []
-            for char_row in conn.execute(char_stmt):
+            for char_row in await conn.execute(char_stmt):
                 data.append(char_row)
             for row in data:
                 # print(row)
                 con_stmt = con.select().where(con.c.character_id == row[0])
-                for char_row in conn.execute(con_stmt):
+                for char_row in await conn.execute(con_stmt):
                     # print(char_row)
                     con_list.append(f"{char_row[3]}")
+        await self.engine.dispose()
         return con_list
 
     # ---------------------------------------------------
@@ -1474,7 +1466,6 @@ class InitiativeCog(commands.Cog):
     @option('mode', choices=['start', 'stop', 'delete character'], required=True)
     @option('character', description='Character to delete', required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
-        init_list = await get_init_list(ctx, self.engine)
         try:
             async with self.async_session() as session:
                 result = await session.execute(select(Global).where(
@@ -1509,7 +1500,7 @@ class InitiativeCog(commands.Cog):
                         stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
                             con.c.time == False)
                         async with self.engine.begin() as conn:
-                            result = await conn.execute(stmt) # delete any auto-decrementing round based conditions
+                            await conn.execute(stmt) # delete any auto-decrementing round based conditions
                             for row in await conn.execute(init_stmt): # Set the initiatives of all characters to 0 (out of combat)
                                 stmt = update(emp).where(emp.c.name == row[1]).values(
                                     init=0
@@ -1551,23 +1542,14 @@ class InitiativeCog(commands.Cog):
                )
     async def next(self, ctx: discord.ApplicationContext):
         try:
-            async with self.async_session() as session:
-                result = await session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )
-                )
-                )
-                guild = result.scalars().one()
-                await ctx.response.defer()
-                # Advance Init and Display
-                await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
+            await ctx.response.defer()
+            # Advance Init and Display
+            await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
 
-                # Query the initiative position for the tracker and post it
-                await block_post_init(ctx, self.engine, self.bot)
-                await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
-            await self.engine.dispose()
+            # Query the initiative position for the tracker and post it
+            await block_post_init(ctx, self.engine, self.bot)
+            await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+
         except NoResultFound as e:
             await ctx.respond(error_not_initialized, ephemeral=True)
         except Exception as e:
@@ -1672,12 +1654,14 @@ class InitiativeCog(commands.Cog):
         result = False
         if mode == 'delete':
             result = await delete_cc(ctx, self.engine, character, condition, self.bot)
-            await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
+            if result:
+                await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
         elif mode == 'edit':
             result = await edit_cc(ctx, self.engine, character, condition, new_value, self.bot)
-            await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
+            if result:
+                await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
         else:
-            await ctx.respond("Failed", ephemeral=True)
+            await ctx.respond("Invalid Input", ephemeral=True)
 
         if not result:
             await ctx.respond("Failed", ephemeral=True)
