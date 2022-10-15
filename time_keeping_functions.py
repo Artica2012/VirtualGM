@@ -153,8 +153,8 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
             if year != None:
                 # print(year)
                 guild.time_year = year
-        await session.commit()
-        await engine.dispose()
+            await session.commit()
+            await engine.dispose()
         return True
     except NoResultFound as e:
         await ctx.channel.send(

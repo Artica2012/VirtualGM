@@ -169,6 +169,15 @@ class OptionsCog(commands.Cog):
                     return
                 await session.commit()
 
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )
+                )
+                )
+                guild = result.scalars().one()
+
                 embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
                 await ctx.respond(embed=embed)
             await self.engine.dispose()

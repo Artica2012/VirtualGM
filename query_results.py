@@ -55,15 +55,15 @@ class QueryCog(commands.Cog):
         metadata = db.MetaData()
         # try:
         if category == "Power":
-            emp = await power_table(metadata)
+            emp = power_table(metadata)
         elif category == "Disease":
-            emp = await disease_table(metadata)
+            emp = disease_table(metadata)
         elif category == "Feat":
-            emp = await feat_table(metadata)
+            emp = feat_table(metadata)
         elif category == "Monster":
-            emp = await monster_table(metadata)
+            emp = monster_table(metadata)
         elif category == "Ritual":
-            emp = await ritual_table(metadata)
+            emp = ritual_table(metadata)
         else:
             ctx.send_followup("Error, Invalid")
             return

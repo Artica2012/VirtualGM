@@ -651,7 +651,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                 if time_left.total_seconds() <= 0:
                                     new_stmt = delete(con).where(con.c.id == con_row[0])
                                     await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
-                                    conn.execute(new_stmt)
+                                    await conn.execute(new_stmt)
                 except Exception as e:
                     print(f'block_advance_initiative: {e}')
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
@@ -1015,7 +1015,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
                 iteration += 1
                 if iteration >= length:
                     block_done = True
-            engine.dispose()
+            await engine.dispose()
             return turn_list
     except Exception as e:
         print(f'get_turn_list: {e}')
@@ -1031,7 +1031,6 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
                  unit: str, auto_decrement: bool, bot):
     metadata = db.MetaData()
-    insp = db.inspect(engine)
     # Get the Character's data
 
     try:
@@ -1259,7 +1258,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
                     char_name = char_row[1]
                 del_stmt = delete(con).where(con.c.id == row[0])
                 await ctx.channel.send(f"{row[3]} removed from {char_name}")
-                conn.execute(del_stmt)
+                await conn.execute(del_stmt)
     await engine.dispose()
 
 
@@ -1628,6 +1627,7 @@ class InitiativeCog(commands.Cog):
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
                  auto: str = 'Static'):
+        await ctx.response.defer()
         if type == "Condition":
             counter_bool = False
         else:
@@ -1639,9 +1639,9 @@ class InitiativeCog(commands.Cog):
 
         response = await set_cc(ctx, self.engine, character, title, counter_bool, number, unit, auto_bool, self.bot)
         if response:
-            await ctx.respond("Success", ephemeral=True)
+            await ctx.send_followup("Success", ephemeral=True)
         else:
-            await ctx.respond("Failure", ephemeral=True)
+            await ctx.send_followup("Failure", ephemeral=True)
 
     @i.command(description="Edit or remove conditions and counters",
                # guild_ids=[GUILD]
@@ -1652,19 +1652,20 @@ class InitiativeCog(commands.Cog):
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
+        await ctx.response.defer()
         if mode == 'delete':
             result = await delete_cc(ctx, self.engine, character, condition, self.bot)
             if result:
-                await ctx.respond(f"{condition} on {character} deleted.", ephemeral=True)
+                await ctx.send_followup(f"{condition} on {character} deleted.", ephemeral=True)
         elif mode == 'edit':
             result = await edit_cc(ctx, self.engine, character, condition, new_value, self.bot)
             if result:
-                await ctx.respond(f"{condition} on {character} updated.", ephemeral=True)
+                await ctx.send_followup(f"{condition} on {character} updated.", ephemeral=True)
         else:
-            await ctx.respond("Invalid Input", ephemeral=True)
+            await ctx.send_followup("Invalid Input", ephemeral=True)
 
         if not result:
-            await ctx.respond("Failed", ephemeral=True)
+            await ctx.send_followup("Failed", ephemeral=True)
 
     @i.command(description="Show Custom Counters")
     @option("character", description="Character to select", autocomplete=character_select_gm)

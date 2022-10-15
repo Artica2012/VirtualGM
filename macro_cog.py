@@ -119,7 +119,6 @@ class MacroCog(commands.Cog):
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
         metadata = db.MetaData()
-        insp = db.inspect(self.engine)
         try:
             macro = await get_macro_table(ctx, metadata, self.engine)
             emp = await get_tracker_table(ctx, metadata, self.engine)
