@@ -8,7 +8,8 @@ from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import select, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import dice_roller
 from database_models import Global
@@ -48,14 +49,16 @@ class DiceRollerCog(commands.Cog):
             roller = dice_roller.DiceRoller(roll)
             try:
                 if secret == 'Secret':
-                    with Session(self.engine) as session:
-                        guild = session.execute(select(Global).filter(
+                    async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                    async with async_session() as session:
+                        result = await session.execute(select(Global).where(
                             or_(
-                                Global.tracker_channel == ctx.channel.id,
-                                Global.gm_tracker_channel == ctx.channel.id
+                                Global.tracker_channel == ctx.interaction.channel_id,
+                                Global.gm_tracker_channel == ctx.interaction.channel_id
                             )
                         )
-                        ).scalar_one()
+                        )
+                        guild = result.scalars().one()
 
                         if guild.gm_tracker_channel != None:
                             await ctx.respond(f"Secret Dice Rolled")
@@ -66,6 +69,7 @@ class DiceRollerCog(commands.Cog):
 
                 else:
                     await ctx.respond(f"_{roll}_\n{roller.roll_dice()}")
+                await self.engine.dispose()
             except Exception as e:
                 print(f'dice_roller_cog, post: {e}')
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)

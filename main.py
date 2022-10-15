@@ -39,7 +39,7 @@ async def on_ready():
 
 # Load the bot
 # bot.load_extension("query_results")
-# bot.load_extension("dice_roller_cog")
+bot.load_extension("dice_roller_cog")
 bot.load_extension('initiative')
 # bot.load_extension('error_reporting_cog')
 # bot.load_extension('help_cog')

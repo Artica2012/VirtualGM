@@ -7,6 +7,7 @@ import os
 import discord
 import asyncio
 import sqlalchemy as db
+from sqlalchemy.ext.asyncio import AsyncSession
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
@@ -14,7 +15,7 @@ from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from database_models import Global, Base, TrackerTable, ConditionTable
 from database_operations import get_db_engine
@@ -93,43 +94,43 @@ class OptionsCog(commands.Cog):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
-            # try:
-            if mode == 'reset trackers':
-                await ctx.response.defer(ephemeral=True)
-                response = await repost_trackers(ctx, self.engine, self.bot)
-                if response:
-                    await ctx.send_followup("Trackers Placed",
-                                            ephemeral=True)
-                else:
-                    await ctx.send_followup("Error setting trackers")
+            try:
+                if mode == 'reset trackers':
+                    await ctx.response.defer(ephemeral=True)
+                    response = await repost_trackers(ctx, self.engine, self.bot)
+                    if response:
+                        await ctx.send_followup("Trackers Placed",
+                                                ephemeral=True)
+                    else:
+                        await ctx.send_followup("Error setting trackers")
 
-            elif mode == 'transfer gm':
-                if gm != None:
-                    response = await set_gm(ctx, gm, self.engine, self.bot)
-                else:
-                    response = False
+                elif mode == 'transfer gm':
+                    if gm != None:
+                        response = await set_gm(ctx, gm, self.engine, self.bot)
+                    else:
+                        response = False
 
-                if response:
-                    await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                    if response:
+                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                    else:
+                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
+                elif mode == "delete tracker":
+                    result = False
+                    if delete.lower() == "delete":
+                        result = await delete_tracker(ctx, self.engine, self.bot)
+                    if result:
+                        await ctx.respond("Successfully Deleted")
+                    else:
+                        await ctx.respond("Delete Action Failed.")
                 else:
-                    await ctx.respond("Permission Transfer Failed", ephemeral=True)
-            elif mode == "delete tracker":
-                result = False
-                if delete.lower() == "delete":
-                    result = await delete_tracker(ctx, self.engine, self.bot)
-                if result:
-                    await ctx.respond("Successfully Deleted")
-                else:
-                    await ctx.respond("Delete Action Failed.")
-            else:
-                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
-            # except NoResultFound as e:
-            #     await ctx.respond(
-            #         error_not_initialized, ephemeral=True)
-            # except Exception as e:
-            #     print(f"/admin tracker: {e}")
-            #     report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
-            #     await report.report()
+                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+            except NoResultFound as e:
+                await ctx.respond(
+                    error_not_initialized, ephemeral=True)
+            except Exception as e:
+                print(f"/admin tracker: {e}")
+                report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
+                await report.report()
 
     @setup.command(description="Optional Modules")
     @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative'])
@@ -141,14 +142,16 @@ class OptionsCog(commands.Cog):
         else:
             toggler = False
         try:
-            with Session(self.engine) as session:
-                guild = session.execute(select(Global).filter(
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
                     or_(
-                        Global.tracker_channel == ctx.channel.id,
-                        Global.gm_tracker_channel == ctx.channel.id
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
                     )
                 )
-                ).scalar_one()
+                )
+                guild = result.scalars().one()
 
                 if module == 'View Modules':
                     pass
@@ -164,10 +167,11 @@ class OptionsCog(commands.Cog):
                 else:
                     await ctx.respond("Invalid Entry", ephemeral=True)
                     return
-                session.commit()
+                await session.commit()
 
                 embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
                 await ctx.respond(embed=embed)
+            await self.engine.dispose()
         except NoResultFound as e:
             await ctx.channel.send(
                 error_not_initialized,
