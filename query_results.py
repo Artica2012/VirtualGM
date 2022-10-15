@@ -6,6 +6,8 @@ import os
 
 import discord
 import sqlalchemy as db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -53,23 +55,23 @@ class QueryCog(commands.Cog):
         metadata = db.MetaData()
         # try:
         if category == "Power":
-            emp = power_table(metadata)
+            emp = await power_table(metadata)
         elif category == "Disease":
-            emp = disease_table(metadata)
+            emp = await disease_table(metadata)
         elif category == "Feat":
-            emp = feat_table(metadata)
+            emp = await feat_table(metadata)
         elif category == "Monster":
-            emp = monster_table(metadata)
+            emp = await monster_table(metadata)
         elif category == "Ritual":
-            emp = ritual_table(metadata)
+            emp = await ritual_table(metadata)
         else:
             ctx.send_followup("Error, Invalid")
             return
         stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
-        compiled = stmt.compile()
-        with self.engine.connect() as conn:
+
+        async with self.engine.begin() as conn:
             results = []
-            for row in conn.execute(stmt):
+            for row in await conn.execute(stmt):
                 results.append(row)
 
         # Create the view

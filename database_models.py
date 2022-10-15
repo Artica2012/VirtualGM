@@ -212,7 +212,7 @@ class MacroTable:
         return macro
 
 
-def disease_table(metadata):
+async def disease_table(metadata):
     tablename = f"disease"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
@@ -223,7 +223,7 @@ def disease_table(metadata):
     return emp
 
 
-def feat_table(metadata):
+async def feat_table(metadata):
     tablename = f"feat"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
@@ -234,7 +234,7 @@ def feat_table(metadata):
     return emp
 
 
-def power_table(metadata):
+async def power_table(metadata):
     tablename = f"power"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
@@ -245,7 +245,7 @@ def power_table(metadata):
     return emp
 
 
-def monster_table(metadata):
+async def monster_table(metadata):
     tablename = f"monster"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
@@ -256,7 +256,7 @@ def monster_table(metadata):
     return emp
 
 
-def item_table(metadata):
+async def item_table(metadata):
     tablename = "item"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
@@ -268,7 +268,7 @@ def item_table(metadata):
     return emp
 
 
-def ritual_table(metadata):
+async def ritual_table(metadata):
     tablename = "ritual"
     emp = db.Table(tablename, metadata,
                    db.Column('Type', db.Text()),
