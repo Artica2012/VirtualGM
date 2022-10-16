@@ -213,20 +213,29 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     except:
                         initiative = 0
 
-        stmt = emp.insert().values(
-            name=name,
-            init_string=init,
-            init=initiative,
-            player=player_bool,
-            user=ctx.user.id,
-            current_hp=hp,
-            max_hp=hp,
-            temp_hp=0
-        )
-        async with engine.begin() as conn:
-            result = await conn.execute(stmt)
-            # conn.commit()
-            await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
+            stmt = emp.insert().values(
+                name=name,
+                init_string=init,
+                init=initiative,
+                player=player_bool,
+                user=ctx.user.id,
+                current_hp=hp,
+                max_hp=hp,
+                temp_hp=0
+            )
+            async with engine.begin() as conn:
+                result = await conn.execute(stmt)
+                # conn.commit()
+                await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
+
+            if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
+                # print(f"integrity check was false: init_pos: {init_pos}")
+                for pos, row in enumerate(await get_init_list(ctx, engine)):
+                    if row[1] == guild.saved_order:
+                        guild.initiative = pos
+                        # print(f"integrity checked init_pos: {init_pos}")
+                        await session.commit()
+
         await engine.dispose()
         return True
     except NoResultFound as e:
@@ -326,8 +335,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
                 if not await init_integrity_check(ctx, init_pos, current_character, engine):
                     for pos, row in enumerate(await get_init_list(ctx, engine)):
                         if row[1] == current_character:
-                            init_pos = pos
-                guild.initiative = init_pos
+                            guild.initiative = pos
                 await session.commit()
         await engine.dispose()
         return True

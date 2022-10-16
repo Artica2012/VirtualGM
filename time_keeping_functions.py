@@ -132,7 +132,7 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
             )
             guild = result.scalars().one()
             guild.timekeeping = True
-            if time:
+            if time != None:
                 # print(time)
                 guild.time = time
             if second != None:

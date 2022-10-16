@@ -137,6 +137,7 @@ class OptionsCog(commands.Cog):
     @option('toggle', choices=['On', 'Off'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
+        await ctx.response.defer()
         if toggle == 'On':
             toggler = True
         else:
@@ -165,7 +166,7 @@ class OptionsCog(commands.Cog):
                 elif module == 'Block Initiative':
                     guild.block = toggler
                 else:
-                    await ctx.respond("Invalid Entry", ephemeral=True)
+                    await ctx.send_followup("Invalid Entry", ephemeral=True)
                     return
                 await session.commit()
 
@@ -179,7 +180,7 @@ class OptionsCog(commands.Cog):
                 guild = result.scalars().one()
 
                 embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
-                await ctx.respond(embed=embed)
+                await ctx.send_followup(embed=embed)
             await self.engine.dispose()
         except NoResultFound as e:
             await ctx.channel.send(
