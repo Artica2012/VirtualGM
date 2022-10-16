@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session,selectinload, sessionmaker
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
@@ -143,8 +143,39 @@ class MacroCog(commands.Cog):
             await report.report()
             return False
 
+    async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
+        metadata = db.MetaData()
+        try:
+            macro = await get_macro_table(ctx, metadata, self.engine)
+            emp = await get_tracker_table(ctx, metadata, self.engine)
 
-    async def delete_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
+            char_stmt = emp.select().where(emp.c.name == character)
+
+            # Process data
+            processed_data = data.split(';')
+
+            async with self.engine.begin() as conn:
+                data = []
+                for char_row in await conn.execute(char_stmt):
+                    data.append(char_row)
+
+                for row in processed_data:
+                    macro_split = row.split(',')
+                    macro_stmt = macro.insert().values(
+                        character_id=data[0][0],
+                        name=macro_split[0].strip(),
+                        macro=macro_split[1].strip()
+                    )
+                    result = await conn.execute(macro_stmt)
+                await self.engine.dispose()
+                return result
+        except Exception as e:
+            print(f'create_macro: {e}')
+            report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
+            await report.report()
+            return False
+
+    async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
         metadata = db.MetaData()
         macro = await get_macro_table(ctx, metadata, self.engine)
         emp = await get_tracker_table(ctx, metadata, self.engine)
@@ -158,7 +189,8 @@ class MacroCog(commands.Cog):
                 for row in data:
                     # print(row)
                     # print(f"{row[0]}, {macro_name}")
-                    macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(macro.c.name == macro_name.split(':')[0])
+                    macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
+                        macro.c.name == macro_name.split(':')[0])
                     for char_row in await conn.execute(macro_stmt):
                         # print(char_row)
                         del_stmt = delete(macro).where(macro.c.id == char_row[0])
@@ -172,7 +204,31 @@ class MacroCog(commands.Cog):
             await report.report()
             return False
 
-    async def roll_macro(self, ctx: discord.ApplicationContext, character:str, macro_name:str):
+    async def delete_macro_all(self, ctx: discord.ApplicationContext, character: str):
+        metadata = db.MetaData()
+        macro = await get_macro_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
+        try:
+            char_stmt = emp.select().where(emp.c.name == character)
+            # print(character)
+            async with self.engine.begin() as conn:
+                data = []
+                for char_row in await conn.execute(char_stmt):
+                    data.append(char_row)
+                for row in data:
+                    # print(row)
+                    # print(f"{row[0]}, {macro_name}")
+                    del_stmt = delete(macro).where(macro.c.character_id == row[0])
+                    await conn.execute(del_stmt)
+            await self.engine.dispose()
+            return True
+        except Exception as e:
+            print(f'delete_macro: {e}')
+            report = ErrorReport(ctx, self.delete_macro.__name__, e, self.bot)
+            await report.report()
+            return False
+
+    async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
         metadata = db.MetaData()
         macro = await get_macro_table(ctx, metadata, self.engine)
         emp = await get_tracker_table(ctx, metadata, self.engine)
@@ -186,7 +242,8 @@ class MacroCog(commands.Cog):
             for row in data:
                 # print(row)
                 # print(f"{row[0]}, {macro_name}")
-                macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(macro.c.name == macro_name.split(':')[0])
+                macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
+                    macro.c.name == macro_name.split(':')[0])
                 for char_row in await conn.execute(macro_stmt):
                     # print(char_row)
                     roller = DiceRoller(char_row[3])
@@ -217,18 +274,38 @@ class MacroCog(commands.Cog):
     @macro.command(description="Delete Macro")
     @option("character", description="Character", autocomplete=character_select, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
-    async def remove(self, ctx:discord.ApplicationContext, character: str, macro: str):
+    async def remove(self, ctx: discord.ApplicationContext, character: str, macro: str):
         result = await self.delete_macro(ctx, character, macro)
         if result:
             await ctx.respond("Macro Deleted Successfully", ephemeral=True)
         else:
             await ctx.respond("Delete Action Failed", ephemeral=True)
 
+    @macro.command(description="Delete All Macros")
+    @option("character", description="Character", autocomplete=character_select, )
+    async def remove_all(self, ctx: discord.ApplicationContext, character: str):
+        result = await self.delete_macro_all(ctx, character)
+        if result:
+            await ctx.respond("Macro Deleted Successfully", ephemeral=True)
+        else:
+            await ctx.respond("Delete Action Failed", ephemeral=True)
+
+    @macro.command(description="Mass Import")
+    @option("character", description="Character", autocomplete=character_select, )
+    @option('data', description="Import CSV data", required=True)
+    async def bulk_create(self, ctx: discord.ApplicationContext, character: str, data: str):
+        result = await self.mass_add(ctx, character, data)
+        if result:
+            await ctx.respond("Macros Created Successfully", ephemeral=True)
+        else:
+            await ctx.respond("Action Failed", ephemeral=True)
+
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
     @option('secret', choices=['Secret', 'Open'])
-    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, secret:str = "Open"):
+    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str,
+                                 secret: str = "Open"):
         await ctx.response.defer()
         try:
             if secret == "Open":

@@ -18,8 +18,6 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.orm import declarative_base
 
-from database_operations import get_asyncio_db_engine
-
 # define global variables
 
 
@@ -164,7 +162,6 @@ async def get_condition_table(ctx, metadata, engine):
 
 class ConditionTable:
     def __init__(self, ctx, metadata, id):
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.metadata = metadata
         self.id = id
 
@@ -180,29 +177,6 @@ class ConditionTable:
                        db.Column('time', db.BOOLEAN, default=False)
                        )
         return con
-
-    async def set(self, character_id:int, title:str, number:int, counter:bool, auto_increment:bool, time:bool=False):
-        con = self.condition_table()
-        stmt = con.insert().values(
-                    character_id=character_id,
-                    title=title,
-                    number=number,
-                    counter=counter,
-                    auto_increment=auto_increment,
-                    time=False
-                )
-        async with self.engine.begin() as conn:
-            await conn.execute(stmt)
-
-    async def update(self, character_id:int, condition:str, number:int):
-        con = self.condition_table()
-        stmt = update(con).where(con.c.character_id == character_id).where(con.c.title == condition).values(
-            number=number
-        )
-        async with self.engine.begin() as conn:
-            await conn.execute(stmt)
-
-
 
 
 async def get_macro(ctx, metadata, engine):
