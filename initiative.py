@@ -226,14 +226,14 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             async with engine.begin() as conn:
                 result = await conn.execute(stmt)
                 # conn.commit()
-                await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
+                await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
             if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-                # print(f"integrity check was false: init_pos: {init_pos}")
+                print(f"integrity check was false: init_pos: {guild.initiative}")
                 for pos, row in enumerate(await get_init_list(ctx, engine)):
                     if row[1] == guild.saved_order:
                         guild.initiative = pos
-                        # print(f"integrity checked init_pos: {init_pos}")
+                        print(f"integrity checked init_pos: {guild.initiative}")
                         await session.commit()
 
         await engine.dispose()
@@ -1441,6 +1441,7 @@ class InitiativeCog(commands.Cog):
     @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
+        await ctx.response.defer()
         response = False
         player_bool = False
         if player == 'player':
@@ -1450,7 +1451,7 @@ class InitiativeCog(commands.Cog):
 
         response = await add_character(ctx, self.engine, self.bot, name, hp, player_bool, initiative)
         if not response:
-            await ctx.respond(f"Error Adding Character", ephemeral=True)
+            await ctx.send_followup(f"Error Adding Character", ephemeral=True)
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
