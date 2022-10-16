@@ -80,6 +80,10 @@ This project uses the py-cord library for interfacing with discord.
   - Note: The bot will not validate the roll string at the time of creation, so if the syntax of the roll is invalid, the bot will still except the macro, although errors will be given when you attempt to use it.
 - **/macro remove** - Remove a Macro
   - Select the character and the macro, and this will delete it
+- **/macro remove_all** - Deletes all macros owned by a given character
+- **/macro bulk_create** - Allows adding multiple macros at one time to the same character
+  - Format ins Name, Roll; Name, Roll; Name: Roll.
+  - Macro Name and roll separated by a comma, and each macro separated by a semicolon.
 
 ### Timekeeping Commands - Requires timekeeping module to be active
 - Note: Time is measured from an arbitrary start of the campaign. (Year 1). Do not try to set it to a particular year (aka 1542) as this may cause issues with proper timekeeping.  VirtualGM uses the standard gregorian calandar, but is sanitized of day and month names, reporting numnbers instead. So months will have 30/31 days (except month 2, which will have 28 or 29 days)

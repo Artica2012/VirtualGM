@@ -90,7 +90,7 @@ class HelpCog(commands.Cog):
             await ctx.respond("``` Edit a PC or NPC"
                               "- Edit the max hp and initiative string of a character you control"
                               "  ```"
-            )
+                              )
         elif command == 'manage':
             await ctx.respond("```"
                               "manage - Mange Initiative (GM Restricted)\n"
@@ -155,7 +155,7 @@ class HelpCog(commands.Cog):
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'm', 'create', 'remove'])
+        'm', 'create', 'remove', 'remove_all', "bulk_create"])
     async def macro(self, ctx: discord.ApplicationContext, command: str):
         if command == 'm':
             await ctx.respond(
@@ -178,9 +178,15 @@ class HelpCog(commands.Cog):
                               "- Select the character and the macro, and this will delete it"
                               "```", ephemeral=True
                               )
+        elif command == 'remove_all':
+            await ctx.respond('```Deletes all macros owned by a given character```', ephemeral=True)
+        elif command == 'bulk_create':
+            await ctx.respond('```Allows adding multiple macros at one time to the same character\n'
+                              '  - Format ins Name, Roll; Name, Roll; Name: Roll.\n'
+                              '  - Macro Name and roll separated by a comma, and each macro separated by a semicolon.```',
+                              ephemeral=True)
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
-
 
     @help.command(description="Timekeeping",
                   # guild_ids=[GUILD]
