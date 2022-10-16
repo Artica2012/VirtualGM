@@ -8,8 +8,10 @@ Goals:
 - The initiative tracker should be able to go from importing the bot, to basic combat within three minutes.
 - Additional functionality which adds to the user experience but is not essential to the basic running of the tracker
 
-
 This project uses the py-cord library for interfacing with discord. 
+
+### Join our discord community:
+https://discord.gg/CeF4yeAekQ
 
 # How To Use VirtualGM:
 
