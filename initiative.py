@@ -635,21 +635,22 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     stmt = con.select().where(con.c.character_id == data[0][0])
                     async with engine.begin() as conn:
                         for con_row in await conn.execute(stmt):
-                            if con_row[5] and not con_row[6]:
-                                if con_row[4] >= 2:
+                            if con_row[5] and not con_row[6]: # If auto-increment and NOT time
+                                if con_row[4] >= 2: # if number >= 2
                                     new_stmt = update(con).where(con.c.id == con_row[0]).values(
                                         number=con_row[4] - 1
-                                    )
+                                    ) # number --
                                 else:
-                                    new_stmt = delete(con).where(con.c.id == con_row[0])
+                                    new_stmt = delete(con).where(con.c.id == con_row[0]) # If number is 1 or 0, delete it
                                     await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
                                 await conn.execute(new_stmt)
-                            elif con_row[6]:
-                                time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                            elif con_row[6]: # If time is true
+                                time_stamp = datetime.datetime.fromtimestamp(con_row[4]) # The number is a timestamp
+                                # for the expiration, not a round count
                                 current_time = await get_time(ctx, engine, bot)
                                 time_left = time_stamp - current_time
                                 if time_left.total_seconds() <= 0:
-                                    new_stmt = delete(con).where(con.c.id == con_row[0])
+                                    new_stmt = delete(con).where(con.c.id == con_row[0]) # If the time left is 0 or left, delete it
                                     await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
                                     await conn.execute(new_stmt)
                 except Exception as e:
