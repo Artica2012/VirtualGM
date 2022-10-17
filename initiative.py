@@ -86,12 +86,12 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
         # Build the tracker, con and macro tables
         async with engine.begin() as conn:  # Call the tables directly to save a database call
 
-            # emp = await get_tracker_table(ctx, metadata, engine)
-            # con = await get_condition_table(ctx, metadata, engine)
-            # macro = await get_macro_table(ctx, metadata, engine)
-            emp = TrackerTable(ctx, metadata, id).tracker_table()
-            con = ConditionTable(ctx, metadata, id).condition_table()
-            macro = MacroTable(ctx, metadata, id).macro_table()
+            emp = await get_tracker_table(ctx, metadata, engine)
+            con = await get_condition_table(ctx, metadata, engine)
+            macro = await get_macro_table(ctx, metadata, engine)
+            # emp = TrackerTable(ctx, metadata, id).tracker_table()
+            # con = ConditionTable(ctx, metadata, id).condition_table()
+            # macro = MacroTable(ctx, metadata, id).macro_table()
             await conn.run_sync(metadata.create_all)
 
         # Update the pinned trackers
