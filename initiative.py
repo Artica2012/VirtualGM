@@ -184,50 +184,51 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                         player_bool: bool, init: str):
     metadata = db.MetaData()
 
-    try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # try:
+    emp = await get_tracker_table(ctx, metadata, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
-            )
-            guild = result.scalars().one()
+        )
+        )
+        guild = result.scalars().one()
 
-            initiative = 0
-            if guild.initiative != None:
-                dice = DiceRoller('')
+        initiative = 0
+        if guild.initiative != None:
+            dice = DiceRoller('')
+            try:
+                # print(f"Init: {init}")
+                initiative = int(init)
+            except:
                 try:
-                    # print(f"Init: {init}")
-                    initiative = int(init)
-                except:
-                    try:
-                        roll = dice.plain_roll(init)
-                        initiative = roll[1]
-                        if type(initiative) != int:
-                            initiative = 0
-                    except:
+                    roll = dice.plain_roll(init)
+                    initiative = roll[1]
+                    if type(initiative) != int:
                         initiative = 0
+                except:
+                    initiative = 0
 
-            stmt = emp.insert().values(
-                name=name,
-                init_string=init,
-                init=initiative,
-                player=player_bool,
-                user=ctx.user.id,
-                current_hp=hp,
-                max_hp=hp,
-                temp_hp=0
-            )
-            async with engine.begin() as conn:
-                result = await conn.execute(stmt)
-                # conn.commit()
-                await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+        stmt = emp.insert().values(
+            name=name,
+            init_string=init,
+            init=initiative,
+            player=player_bool,
+            user=ctx.user.id,
+            current_hp=hp,
+            max_hp=hp,
+            temp_hp=0
+        )
+        async with engine.begin() as conn:
+            result = await conn.execute(stmt)
+            # conn.commit()
+            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
+        if guild.initiative != None:
             if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
                 print(f"integrity check was false: init_pos: {guild.initiative}")
                 for pos, row in enumerate(await get_init_list(ctx, engine)):
@@ -236,17 +237,17 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                         print(f"integrity checked init_pos: {guild.initiative}")
                         await session.commit()
 
-        await engine.dispose()
-        return True
-    except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
-                               delete_after=30)
-        return False
-    except Exception as e:
-        print(f'add_character: {e}')
-        report = ErrorReport(ctx, add_character.__name__, e, bot)
-        await report.report()
-        return False
+    await engine.dispose()
+    return True
+    # except NoResultFound as e:
+    #     await ctx.channel.send(error_not_initialized,
+    #                            delete_after=30)
+    #     return False
+    # except Exception as e:
+    #     print(f'add_character: {e}')
+    #     report = ErrorReport(ctx, add_character.__name__, e, bot)
+    #     await report.report()
+    #     return False
 
 
 # Add a character to the database
