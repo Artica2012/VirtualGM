@@ -145,35 +145,37 @@ class MacroCog(commands.Cog):
 
     async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
         metadata = db.MetaData()
-        try:
-            macro = await get_macro_table(ctx, metadata, self.engine)
-            emp = await get_tracker_table(ctx, metadata, self.engine)
+        # try:
+        macro = await get_macro_table(ctx, metadata, self.engine)
+        emp = await get_tracker_table(ctx, metadata, self.engine)
 
-            char_stmt = emp.select().where(emp.c.name == character)
+        char_stmt = emp.select().where(emp.c.name == character)
 
-            # Process data
-            processed_data = data.split(';')
+        # Process data
+        processed_data = data.split(';')
+        print(processed_data)
 
-            async with self.engine.begin() as conn:
-                data = []
-                for char_row in await conn.execute(char_stmt):
-                    data.append(char_row)
+        async with self.engine.begin() as conn:
+            data = []
+            for char_row in await conn.execute(char_stmt):
+                data.append(char_row)
 
-                for row in processed_data:
-                    macro_split = row.split(',')
-                    macro_stmt = macro.insert().values(
-                        character_id=data[0][0],
-                        name=macro_split[0].strip(),
-                        macro=macro_split[1].strip()
-                    )
-                    result = await conn.execute(macro_stmt)
-                await self.engine.dispose()
-                return result
-        except Exception as e:
-            print(f'create_macro: {e}')
-            report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
-            await report.report()
-            return False
+            for row in processed_data[:-1]:
+                macro_split = row.split(',')
+                print(macro_split)
+                macro_stmt = macro.insert().values(
+                    character_id=data[0][0],
+                    name=macro_split[0].strip(),
+                    macro=macro_split[1].strip()
+                )
+                result = await conn.execute(macro_stmt)
+            await self.engine.dispose()
+            return result
+        # except Exception as e:
+        #     print(f'mass_add: {e}')
+        #     report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
+        #     await report.report()
+        #     return False
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
         metadata = db.MetaData()
