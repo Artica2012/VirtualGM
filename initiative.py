@@ -1149,12 +1149,18 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         return False
     try:
         con = await get_condition_table(ctx, metadata, engine)
-        stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
-            number=value
-        )
-
-        with engine.connect() as conn:
-            conn.execute(stmt)
+        check_stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.title == condition)
+        async with engine.begin() as conn:
+            check_data = []
+            for row in await conn.execute(check_stmt):
+                if row[6]:
+                    await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.")
+                    return False
+                else:
+                    stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
+                            number=value
+                            )
+                    await conn.execute(stmt)
         await update_pinned_tracker(ctx, engine, bot)
         await engine.dispose()
         return True
@@ -1214,7 +1220,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
         stmt = emp.select().where(emp.c.name == character)
-        async with engine.connect() as conn:
+        async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
                 data.append(row)
@@ -1426,6 +1432,13 @@ class InitiativeCog(commands.Cog):
         await self.engine.dispose()
         return con_list
 
+    async def time_check_ac(self, ctx:discord.AutocompleteContext):
+        if await check_timekeeper(ctx, self.engine):
+            return ['Round', 'Minute', 'Hour', 'Day']
+        else:
+            return ['Round']
+
+
     # ---------------------------------------------------
     # ---------------------------------------------------
     # Slash commands
@@ -1634,7 +1647,7 @@ class InitiativeCog(commands.Cog):
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
-    @option('unit', choices=['Round', 'Minute', 'Hour', 'Day'])
+    @option('unit', autocomplete=time_check_ac)
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
                  auto: str = 'Static'):

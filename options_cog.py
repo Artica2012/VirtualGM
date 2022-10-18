@@ -178,7 +178,6 @@ class OptionsCog(commands.Cog):
                 )
                 )
                 guild = result.scalars().one()
-
                 embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
                 await ctx.send_followup(embed=embed)
             await self.engine.dispose()

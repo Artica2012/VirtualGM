@@ -100,7 +100,7 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
         return ""
 
 
-async def check_timekeeper(ctx: discord.ApplicationContext, engine):
+async def check_timekeeper(ctx, engine):
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
