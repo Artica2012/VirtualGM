@@ -206,7 +206,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     initiative = int(init)
                 except:
                     try:
-                        roll = dice.plain_roll(init)
+                        roll = await dice.plain_roll(init)
                         initiative = roll[1]
                         if type(initiative) != int:
                             initiative = 0
@@ -596,7 +596,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 async with engine.begin() as conn:
                     for row in await conn.execute(stmt):
                         if row[2] == 0:
-                            roll = dice.plain_roll(row[8])
+                            roll = await dice.plain_roll(row[8])
                             # print(f"Name: {row[1]}, roll: {roll}")
                             await set_init(ctx, bot, row[1], roll[1], engine)
             else:
@@ -1619,7 +1619,7 @@ class InitiativeCog(commands.Cog):
                     else:
                         await ctx.respond("Failed to set initiative.", ephemeral=True)
                 except:
-                    roll = dice.plain_roll(init)
+                    roll = await dice.plain_roll(init)
                     success = await set_init(ctx, self.bot, character, roll[1], self.engine)
                     if success:
                         await ctx.respond(f"Initiative set to {roll[0]} = {roll[1]} for {character}")

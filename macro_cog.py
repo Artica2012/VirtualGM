@@ -250,12 +250,12 @@ class MacroCog(commands.Cog):
                     # print(char_row)
                     roller = DiceRoller(char_row[3])
                     if dc ==0:
-                        dice_string = roller.roll_dice()
-                        output_string = f"{character}: {macro_name}\n" \
+                        dice_string = await roller.roll_dice()
+                        output_string = f"{character}:\n{macro_name}\n" \
                                         f"{dice_string}"
                     else:
-                        dice_string = roller.opposed_roll(dc)
-                        output_string = f"{character}: {macro_name}\n" \
+                        dice_string = await roller.opposed_roll(dc)
+                        output_string = f"{character}:\n{macro_name}\n" \
                                         f"{dice_string}"
                     # print(output_string)
                     return output_string

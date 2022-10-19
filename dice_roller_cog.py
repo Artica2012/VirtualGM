@@ -64,26 +64,26 @@ class DiceRollerCog(commands.Cog):
                             if guild.gm_tracker_channel != None:
                                 await ctx.respond(f"Secret Dice Rolled")
                                 await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{roller.roll_dice()}")
+                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.roll_dice()}")
                             else:
                                 await ctx.respond('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
-                                await ctx.channel.send(f"_{roll}_\n{roller.roll_dice()}")
+                                await ctx.channel.send(f"_{roll}_\n{await roller.roll_dice()}")
                         else:
                             if guild.gm_tracker_channel != None:
                                 await ctx.respond(f"Secret Dice Rolled")
                                 await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{roller.opposed_roll(dc)}")
+                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.opposed_roll(dc)}")
                             else:
                                 await ctx.respond('No GM Channel Initialized. Secret rolls not possible',
                                                   ephemeral=True)
-                                await ctx.channel.send(f"_{roll}_\n{roller.opposed_roll(dc)}")
+                                await ctx.channel.send(f"_{roll}_\n{await roller.opposed_roll(dc)}")
 
 
                 else:
                     if dc == 0:
-                        await ctx.respond(f"_{roll}_\n{roller.roll_dice()}")
+                        await ctx.respond(f"_{roll}_\n{await roller.roll_dice()}")
                     else:
-                        await ctx.respond(f"_{roll}_\n{roller.opposed_roll(dc)}")
+                        await ctx.respond(f"_{roll}_\n{await roller.opposed_roll(dc)}")
 
                 await self.engine.dispose()
             except Exception as e:
