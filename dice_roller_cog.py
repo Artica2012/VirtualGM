@@ -89,6 +89,10 @@ class DiceRollerCog(commands.Cog):
             except Exception as e:
                 print(f'dice_roller_cog, post: {e}')
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)
+                await ctx.send_response(
+                    f'Invalid syntax: {roll}. \nPlease phrase in ```XdY Label``` format',
+                    ephemeral=True
+                )
                 await report.report()
         except Exception as e:  # If the parser doesn't work, assume the format was wrong
             await ctx.send_response(

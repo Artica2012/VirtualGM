@@ -29,7 +29,7 @@ class DiceRoller:
         original_list =  input_string.split(',')
         roll_list = []
         for item in original_list:
-            print(item)
+            # print(item)
             roll_list.append(item.strip())
 
         return roll_list
@@ -94,21 +94,21 @@ class DiceRoller:
     # Exposed Methods
 
     async def roll_dice(self):
-        print('parsing Text')
+        # print('parsing Text')
         roll_list = await self.multi_roll_parse(self.input_string)
-        print(roll_list)
+        # print(roll_list)
         output_string = ''
         for row in roll_list:
             parsed_text = await self._text_parse(row)
-            print(parsed_text)
+            # print(parsed_text)
             # print('Parsing Dice')
             parsed_dice = await self._dice_parse(parsed_text[0])
-            print(parsed_dice)
+            # print(parsed_dice)
             # print('Doing math')
             calculated_total = await self._math_equation(parsed_dice)
-            print(calculated_total)
+            # print(calculated_total)
             output_string += f"{ await self._format_output(parsed_text[1], parsed_dice, calculated_total)}\n"
-            print(output_string)
+            # print(output_string)
         return output_string
 
 
