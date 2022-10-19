@@ -1154,7 +1154,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
             check_data = []
             for row in await conn.execute(check_stmt):
                 if row[6]:
-                    await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.")
+                    await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.", ephemeral=True)
                     return False
                 else:
                     stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
@@ -1651,7 +1651,7 @@ class InitiativeCog(commands.Cog):
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
                  auto: str = 'Static'):
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         if type == "Condition":
             counter_bool = False
         else:
@@ -1676,7 +1676,7 @@ class InitiativeCog(commands.Cog):
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         if mode == 'delete':
             result = await delete_cc(ctx, self.engine, character, condition, self.bot)
             if result:
