@@ -35,7 +35,7 @@ class DiceRoller:
             text = 'Roll'
         return dice_string, text
 
-    # Parses out each individaul dice roll with addition or subtraction signs
+    # Parses out each individual dice roll with addition or subtraction signs
     def _dice_parse(self, input_string: str):
         dice_string = input_string.strip()
         dice_string = dice_string.lower()
@@ -79,6 +79,10 @@ class DiceRoller:
         dice_string = ' '.join(map(str, dice))
         return f'{text}: {dice_string} = **{total}**'
 
+    ############################################################
+    ############################################################
+    # Exposed Methods
+
     def roll_dice(self):
         # print('parsing Text')
         parsed_text = self._text_parse(self.input_string)
@@ -94,3 +98,19 @@ class DiceRoller:
         dice_string = ""
         dice_string = ' '.join(map(str, parsed_dice))
         return dice_string, calculated_total
+
+    def opposed_roll(self, dc:int):
+        # print('parsing Text')
+        parsed_text = self._text_parse(self.input_string)
+        # print('Parsing Dice')
+        parsed_dice = self._dice_parse(parsed_text[0])
+        # print('Doing math')
+        calculated_total = self._math_equation(parsed_dice)
+        if calculated_total >= dc:
+            dice_string = ""
+            dice_string = ' '.join(map(str, parsed_dice))
+            return f':thumbsup: {parsed_text[1]}: {dice_string} = **{calculated_total}** >= {dc}'
+        else:
+            dice_string = ""
+            dice_string = ' '.join(map(str, parsed_dice))
+            return f':thumbsdown: {parsed_text[1]}: {dice_string} = **{calculated_total}** >= {dc}'

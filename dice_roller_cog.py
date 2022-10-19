@@ -44,7 +44,8 @@ class DiceRollerCog(commands.Cog):
     # Takes a string and then parses out the string and rolls the dice
     @commands.slash_command(name="r", description="Dice Roller")
     @option('secret', choices=['Secret', 'Open'])
-    async def post(self, ctx: discord.ApplicationContext, roll: str, secret:str = 'Open'):
+    @option('dc', description="Number to which dice result will be compared", required=False)
+    async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = 0, secret: str = 'Open'):
         try:
             roller = dice_roller.DiceRoller(roll)
             try:
@@ -59,22 +60,37 @@ class DiceRollerCog(commands.Cog):
                         )
                         )
                         guild = result.scalars().one()
-
-                        if guild.gm_tracker_channel != None:
-                            await ctx.respond(f"Secret Dice Rolled")
-                            await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"```Secret Roll from {ctx.user.name}\n{roll}\n{roller.roll_dice()}```")
+                        if dc == 0:
+                            if guild.gm_tracker_channel != None:
+                                await ctx.respond(f"Secret Dice Rolled")
+                                await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{roller.roll_dice()}")
+                            else:
+                                await ctx.respond('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
+                                await ctx.channel.send(f"_{roll}_\n{roller.roll_dice()}")
                         else:
-                            await ctx.respond('No GM Channel Initialized. Secret rolls not possible',ephemeral=True)
-                            await ctx.channel.send(f"_{roll}_\n{roller.roll_dice()}")
+                            if guild.gm_tracker_channel != None:
+                                await ctx.respond(f"Secret Dice Rolled")
+                                await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{roller.opposed_roll(dc)}")
+                            else:
+                                await ctx.respond('No GM Channel Initialized. Secret rolls not possible',
+                                                  ephemeral=True)
+                                await ctx.channel.send(f"_{roll}_\n{roller.opposed_roll(dc)}")
+
 
                 else:
-                    await ctx.respond(f"_{roll}_\n{roller.roll_dice()}")
+                    if dc == 0:
+                        await ctx.respond(f"_{roll}_\n{roller.roll_dice()}")
+                    else:
+                        await ctx.respond(f"_{roll}_\n{roller.opposed_roll(dc)}")
+
                 await self.engine.dispose()
             except Exception as e:
                 print(f'dice_roller_cog, post: {e}')
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)
                 await report.report()
-        except Exception as e: # If the parser doesn't work, assume the format was wrong
+        except Exception as e:  # If the parser doesn't work, assume the format was wrong
             await ctx.send_response(
                 f'Invalid syntax: {roll}. \nPlease phrase in ```XdY Label``` format',
                 ephemeral=True
