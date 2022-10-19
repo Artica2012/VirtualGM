@@ -28,6 +28,7 @@ https://discord.gg/CeF4yeAekQ
 - The format is XdY+Z Label (e.g 1d20+7 Initiative)
 - The dice roller will accept complex strings of dice (e.g 2d8+3d6-1d4+2)
 - The optional secret command with the dice roller will send the result to the GM channel if the channel used has an initiative tracker set up.
+- The optional dc argument will give a positive (thumbsup) or negative (thumbsdown) to indicate if the roll meets or exceeds the given difficulty class.
 
 ### Admin Commands
 - **/admin start** - The command to initialize the tracker in the selected channels 
@@ -45,7 +46,7 @@ https://discord.gg/CeF4yeAekQ
    - takes the argument player with the choice of player or NPC. NPCs have their health obscured and do not show custom counters on the non-gm tracker.
    - An argument of _initiative_ can be given to set an initiative string (XdY+Z) which will be rolled when initiative is started
  - **/char edit** - Edit a PC or NPC
-   - Edit the max hp and initiative string of a character you control
+   - Edit the max hp and/or initiative string of a character you control
  - **/i manage** - Mange Initiative (GM Restricted)
    - _start_ - Starts Initiative
    - _stop_ - Stops Initiative
@@ -76,7 +77,8 @@ https://discord.gg/CeF4yeAekQ
  
 ### Macro Commands
 - **/m** - Roll Macro 
-  - Select the character and the macro and VirtualGM will roll it for you. The options secret argument will send the roll to the GM instead.
+  - Select the character and the macro and VirtualGM will roll it for you. The optional secret argument will send the roll to the GM instead.
+    - The optional dc argument will give a positive (thumbsup) or negative (thumbsdown) to indicate if the roll meets or exceeds the given difficulty class.
 - **/macro create** - Create a Macro
   - Select a character which you have control over and input the name of the macro and the string to roll (XdY+Z format).
   - Note: The bot will not validate the roll string at the time of creation, so if the syntax of the roll is invalid, the bot will still except the macro, although errors will be given when you attempt to use it.

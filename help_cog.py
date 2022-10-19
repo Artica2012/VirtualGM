@@ -51,6 +51,8 @@ class HelpCog(commands.Cog):
                           "- The dice roller will accept complex strings of dice (e.g 2d8+3d6-1d4+2)\n"
                           "- The optional secret command with the dice roller will send the result to the GM channel "
                           "if the channel used has an initiative tracker set up. \n "
+                          "- The optional dc argument will give a positive (thumbsup) or negative (thumbsdown) to "
+                          "indicate if the roll meets or exceeds the given difficulty class.\n"
                           "```", ephemeral=True
                           )
 
@@ -88,7 +90,7 @@ class HelpCog(commands.Cog):
                               "```", ephemeral=True)
         elif command == "char edit":
             await ctx.respond("``` Edit a PC or NPC"
-                              "- Edit the max hp and initiative string of a character you control"
+                              "- Edit the max hp and/or initiative string of a character you control"
                               "  ```"
                               )
         elif command == 'manage':
@@ -161,7 +163,9 @@ class HelpCog(commands.Cog):
             await ctx.respond(
                 "```Roll Macro\n"
                 "- Select the character and the macro and VirtualGM will roll it for you.The options secret argument "
-                "will send the roll to the GM instead.``` "
+                "will send the roll to the GM instead.\n"
+                "- The optional dc argument will give a positive (thumbsup) or negative (thumbsdown)  to indicate if the"
+                " roll meets or exceeds the given difficulty class.``` "
                 , ephemeral=True
             )
         elif command == 'create':

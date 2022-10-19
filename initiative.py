@@ -184,70 +184,70 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                         player_bool: bool, init: str):
     metadata = db.MetaData()
 
-    # try:
-    emp = await get_tracker_table(ctx, metadata, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        emp = await get_tracker_table(ctx, metadata, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
+            )
+            guild = result.scalars().one()
 
-        initiative = 0
-        if guild.initiative != None:
-            dice = DiceRoller('')
-            try:
-                # print(f"Init: {init}")
-                initiative = int(init)
-            except:
+            initiative = 0
+            if guild.initiative != None:
+                dice = DiceRoller('')
                 try:
-                    roll = dice.plain_roll(init)
-                    initiative = roll[1]
-                    if type(initiative) != int:
-                        initiative = 0
+                    # print(f"Init: {init}")
+                    initiative = int(init)
                 except:
-                    initiative = 0
+                    try:
+                        roll = dice.plain_roll(init)
+                        initiative = roll[1]
+                        if type(initiative) != int:
+                            initiative = 0
+                    except:
+                        initiative = 0
 
-        stmt = emp.insert().values(
-            name=name,
-            init_string=init,
-            init=initiative,
-            player=player_bool,
-            user=ctx.user.id,
-            current_hp=hp,
-            max_hp=hp,
-            temp_hp=0
-        )
-        async with engine.begin() as conn:
-            result = await conn.execute(stmt)
-            # conn.commit()
-            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+            stmt = emp.insert().values(
+                name=name,
+                init_string=init,
+                init=initiative,
+                player=player_bool,
+                user=ctx.user.id,
+                current_hp=hp,
+                max_hp=hp,
+                temp_hp=0
+            )
+            async with engine.begin() as conn:
+                result = await conn.execute(stmt)
+                # conn.commit()
+                await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
-        if guild.initiative != None:
-            if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-                print(f"integrity check was false: init_pos: {guild.initiative}")
-                for pos, row in enumerate(await get_init_list(ctx, engine)):
-                    if row[1] == guild.saved_order:
-                        guild.initiative = pos
-                        print(f"integrity checked init_pos: {guild.initiative}")
-                        await session.commit()
+            if guild.initiative != None:
+                if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
+                    print(f"integrity check was false: init_pos: {guild.initiative}")
+                    for pos, row in enumerate(await get_init_list(ctx, engine)):
+                        if row[1] == guild.saved_order:
+                            guild.initiative = pos
+                            print(f"integrity checked init_pos: {guild.initiative}")
+                            await session.commit()
 
-    await engine.dispose()
-    return True
-    # except NoResultFound as e:
-    #     await ctx.channel.send(error_not_initialized,
-    #                            delete_after=30)
-    #     return False
-    # except Exception as e:
-    #     print(f'add_character: {e}')
-    #     report = ErrorReport(ctx, add_character.__name__, e, bot)
-    #     await report.report()
-    #     return False
+        await engine.dispose()
+        return True
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
+    except Exception as e:
+        print(f'add_character: {e}')
+        report = ErrorReport(ctx, add_character.__name__, e, bot)
+        await report.report()
+        return False
 
 
 # Add a character to the database
@@ -258,11 +258,22 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
 
-        stmt = emp.update().where(emp.c.name == name).values(
-            init_string=str(init),
-            max_hp=hp,
-        )
-        compiled = stmt.compile()
+        if hp != None and init != None:
+            stmt = emp.update().where(emp.c.name == name).values(
+                init_string=str(init),
+                max_hp=hp,
+            )
+        elif hp!= None and init == None:
+            stmt = emp.update().where(emp.c.name == name).values(
+                max_hp=hp,
+            )
+        elif hp==None and init != None:
+            stmt = emp.update().where(emp.c.name == name).values(
+                init_string=str(init),
+            )
+        else:
+            return False
+
         async with engine.begin() as conn:
             result = await conn.execute(stmt)
             await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
@@ -586,7 +597,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     for row in await conn.execute(stmt):
                         if row[2] == 0:
                             roll = dice.plain_roll(row[8])
-                            print(f"Name: {row[1]}, roll: {roll}")
+                            # print(f"Name: {row[1]}, roll: {roll}")
                             await set_init(ctx, bot, row[1], roll[1], engine)
             else:
                 init_pos = int(guild.initiative)
@@ -602,14 +613,14 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             iterations = 0
 
             while not block_done:
-                print(f"init_pos: {init_pos}")
+                # print(f"init_pos: {init_pos}")
 
                 # make sure that the current character is at the same place in initiative as it was before
                 # decrement any conditions with the decrement flag
 
                 if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
                     # if its not, set the init position to the position of the current character before advancing it
-                    print("Yes guild.block")
+                    # print("Yes guild.block")
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
@@ -617,7 +628,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
                     init_pos += 1  # increase the init position by 1
-                    print(f"new init_pos: {init_pos}")
+                    # print(f"new init_pos: {init_pos}")
                     if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
                         init_pos = 0
                         guild.round += 1
@@ -668,14 +679,14 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     await report.report()
 
                 if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
-                    print("Not guild.block")
+                    # print("Not guild.block")
                     # if its not, set the init position to the position of the current character before advancing it
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             if row[1] == current_character:
                                 init_pos = pos
-                                print(f"integrity checked init_pos: {init_pos}")
+                                # print(f"integrity checked init_pos: {init_pos}")
                     init_pos += 1  # increase the init position by 1
                     # print(f"new init_pos: {init_pos}")
                     if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
@@ -1302,7 +1313,6 @@ async def gm_check(ctx, engine):
 
 # checks to see if the player is the ower of the character
 # possibly depreciated due to auto-complete
-## TODO - Evaluate if this can be eliminated
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
@@ -1471,8 +1481,8 @@ class InitiativeCog(commands.Cog):
 
     @char.command(description="Edit PC on NPC")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
-    @option('hp', description='Total HP', input_type=int)
-    @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
+    @option('hp', description='Total HP', input_type=int, required=False)
+    @option('initiative', description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int, initiative: str):
         response = False
 
