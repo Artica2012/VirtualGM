@@ -24,6 +24,7 @@ from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
+from PF2e.pathbuilder_importer import pathbuilder_import
 
 # define global variables
 
@@ -49,6 +50,15 @@ class PF2Cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+    pf2 = SlashCommandGroup('pf2', "Pathfinder 2nd Edition Specific Commands")
+
+    @pf2.command(description="Pathbuilder Import")
+    @option('pathbuilder_id', description="Pathbuilder Export ID", required=True)
+    async def pb_import(self, ctx:discord.ApplicationContext, pathbuilder_id:int):
+        await ctx.response.defer(ephemeral=True)
+        await pathbuilder_import(str(pathbuilder_id))
+        await ctx.send_followup('Success')
 
 
 def setup(bot):
