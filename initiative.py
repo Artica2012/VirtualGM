@@ -736,7 +736,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
     try:
         metadata = db.MetaData()
         emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().order_by(emp.c.init.desc())
+        stmt = emp.select().order_by(emp.c.init.desc()).order_by(emp.c.id.desc())
         # print(stmt)
         data = []
         async with engine.begin() as conn:
