@@ -230,7 +230,7 @@ class MacroCog(commands.Cog):
             await report.report()
             return False
 
-    async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc:int):
+    async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc:int, modifier:str):
         metadata = db.MetaData()
         macro = await get_macro_table(ctx, metadata, self.engine)
         emp = await get_tracker_table(ctx, metadata, self.engine)
@@ -248,14 +248,22 @@ class MacroCog(commands.Cog):
                     macro.c.name == macro_name.split(':')[0])
                 for char_row in await conn.execute(macro_stmt):
                     # print(char_row)
-                    roller = DiceRoller(char_row[3])
+                    if modifier != '':
+                        if modifier[0] == '+' or modifier[0] == '-':
+                            macro_string = char_row[3] + modifier
+                        else:
+                            macro_string = char_row[3] + '+' + modifier
+                    else:
+                        macro_string = char_row[3]
+
+                    roller = DiceRoller(macro_string)
                     if dc ==0:
                         dice_string = await roller.roll_dice()
-                        output_string = f"{character}:\n{macro_name}\n" \
+                        output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
                                         f"{dice_string}"
                     else:
                         dice_string = await roller.opposed_roll(dc)
-                        output_string = f"{character}:\n{macro_name}\n" \
+                        output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
                                         f"{dice_string}"
                     # print(output_string)
                     return output_string
@@ -310,14 +318,15 @@ class MacroCog(commands.Cog):
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
+    @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
     @option('secret', choices=['Secret', 'Open'])
     @option('dc', description="Number to which dice result will be compared", required=False)
-    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, dc:int = 0,
+    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, modifier:str = '', dc:int = 0,
                                  secret: str = "Open"):
         await ctx.response.defer()
         try:
             if secret == "Open":
-                await ctx.send_followup(await self.roll_macro(ctx, character, macro,dc))
+                await ctx.send_followup(await self.roll_macro(ctx, character, macro,dc, modifier))
             else:
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
@@ -333,10 +342,10 @@ class MacroCog(commands.Cog):
                         await ctx.send_followup(f"Secret Dice Rolled."
                                                 f"{character}: {macro}")
                         await self.bot.get_channel(int(guild.gm_tracker_channel)).send(f"Secret Roll:\n"
-                                                                                       f"{await self.roll_macro(ctx, character, macro, dc)}")
+                                                                                       f"{await self.roll_macro(ctx, character, macro, dc, modifier)}")
                     else:
                         await ctx.send_followup('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
-                        await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc))
+                        await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc, modifier))
 
             await self.engine.dispose()
         except Exception as e:
