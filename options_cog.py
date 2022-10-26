@@ -51,11 +51,12 @@ class OptionsCog(commands.Cog):
         self.bot = bot
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-    async def display_options(self, timekeeping: bool, block: bool):
+    async def display_options(self, timekeeping: bool, block: bool, system:str):
         embed = discord.Embed(
             title="Optional Modules",
             description=f"Timekeeper: {timekeeping}\n"
-                        f"Block Initiative: {block}"
+                        f"Block Initiative: {block}\n"
+                        f"System: {system}"
         )
         return embed
 
@@ -133,10 +134,11 @@ class OptionsCog(commands.Cog):
                 await report.report()
 
     @setup.command(description="Optional Modules")
-    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative'])
+    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative', 'System'])
     @option('toggle', choices=['On', 'Off'], required=False)
+    @option('system', choices=['Generic', 'Pathfinder 2e'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
-    async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
+    async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, system:str = '', time: int = 6):
         await ctx.response.defer()
         if toggle == 'On':
             toggler = True
@@ -165,6 +167,11 @@ class OptionsCog(commands.Cog):
                     await update_pinned_tracker(ctx, self.engine, self.bot)
                 elif module == 'Block Initiative':
                     guild.block = toggler
+                elif module == 'System':
+                    if system == 'Pathfinder 2e':
+                        guild.system = 'PF2'
+                    else:
+                        guild.system = None
                 else:
                     await ctx.send_followup("Invalid Entry", ephemeral=True)
                     return
@@ -178,7 +185,14 @@ class OptionsCog(commands.Cog):
                 )
                 )
                 guild = result.scalars().one()
-                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
+                if guild.system == None:
+                    system_str = 'Generic'
+                elif guild.system == 'PF2':
+                    system_str = 'Pathfinder Second Edition'
+                else:
+                    system_str = 'Generic'
+
+                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
                 await ctx.send_followup(embed=embed)
             await self.engine.dispose()
         except NoResultFound as e:

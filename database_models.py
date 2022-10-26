@@ -53,6 +53,7 @@ class Global(Base):
     explode = Column(Boolean(), default=False)
     aliases = Column(Boolean(), default=False)
     block = Column(Boolean(), default=False)
+    system = Column(String(), default=None, nullable=True)
     # Initiative Tracker
     initiative = Column(Integer())
     round = Column(Integer(), default=0)
