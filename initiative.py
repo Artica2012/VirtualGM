@@ -19,6 +19,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
+from PF2e.pf2_functions import PF2AddCharacterModal
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -186,6 +187,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
+        con = await get_condition_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -197,6 +199,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             )
             )
             guild = result.scalars().one()
+
 
             initiative = 0
             if guild.initiative != None:
@@ -212,6 +215,11 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                             initiative = 0
                     except:
                         initiative = 0
+            if guild.system == 'PF2':
+                await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
+                                                          player=player_bool, ctx=ctx,
+                                                          emp=emp, con=con, engine=engine, title=name))
+
 
             stmt = emp.insert().values(
                 name=name,
@@ -1465,7 +1473,7 @@ class InitiativeCog(commands.Cog):
     @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
-        await ctx.response.defer()
+        # await ctx.response.defer()
         response = False
         player_bool = False
         if player == 'player':
