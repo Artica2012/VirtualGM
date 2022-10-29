@@ -946,7 +946,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
             await report.report()
 
 
-async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
+async def block_post_init(ctx: discord.ApplicationContext, engine, bot:discord.Bot):
     # Query the initiative position for the tracker and post it
     # try:
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -972,9 +972,11 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot):
             ping_string = ''
             if block:
                 for character in turn_list:
-                    ping_string += f"<@{character[4]}>, it's your turn.\n"
+                    user = bot.get_user(character[4])
+                    ping_string += f"{user.mention}, it's your turn.\n"
             else:
-                ping_string = f"{ping_player_on_init(init_list, guild.initiative)}\n"
+                user = bot.get_user(init_list[guild.initiative][4])
+                ping_string += f"{user.mention}, it's your turn.\n"
         except Exception as e:
             # print(f'post_init: {e}')
             ping_string = ''
