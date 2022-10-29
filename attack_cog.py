@@ -158,6 +158,7 @@ class AttackCog(commands.Cog):
             # Save = False
 
             if save == 'True':
+                # TODO - Make this
                 pass
             else:
                 # Dice Roller

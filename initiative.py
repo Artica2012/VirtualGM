@@ -873,6 +873,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                 string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
             output_string += string
 
+            #TODO Adjust how the tracker displays the PF2 /a stats, as its going to get crowded fast
             for con_row in row['cc']:
                 if gm or not con_row[2]:
                     if con_row[4] != None:
