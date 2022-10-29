@@ -45,10 +45,11 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
-PF2_attributes = ['AC','Fort', 'Reflex', 'Will', 'DC']
+PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
+
 
 class PF2AddCharacterModal(discord.ui.Modal):
-    def __init__(self, name:str, hp:int, init:str, initiative, player, ctx, emp, con, engine, *args, **kwargs ):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, emp, con, engine, *args, **kwargs):
         self.name = name
         self.hp = hp
         self.init = init
@@ -113,8 +114,6 @@ class PF2AddCharacterModal(discord.ui.Modal):
             color=discord.Color.dark_gold(),
         )
 
-
-
         emp_stmt = self.emp.insert().values(
             name=self.name,
             init_string=self.init,
@@ -132,11 +131,11 @@ class PF2AddCharacterModal(discord.ui.Modal):
             for row in await conn.execute(id_stmt):
                 id_data.append(row)
 
-            char_dicts =[{
-                    'character_id':id_data[0][0],
-                    'title': 'AC',
-                    'number': int(self.children[0].value),
-                },
+            char_dicts = [{
+                'character_id': id_data[0][0],
+                'title': 'AC',
+                'number': int(self.children[0].value),
+            },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Fort',
