@@ -151,8 +151,8 @@ class DiceRoller:
         parsed_dice = await self._pf2_smart_dice_parse(dice)
         calculated_total = await self._math_equation(parsed_dice[0])
         dice_string = ""
-        dice_string = ' '.join(map(str, parsed_dice))
-        print(dice_string)
+        dice_string = ' '.join(map(str, parsed_dice[0]))
+        # print(dice_string)
         return dice_string, calculated_total, parsed_dice[1], parsed_dice[2]
 
     async def plain_roll(self, dice: str):
