@@ -34,6 +34,11 @@ async def on_ready():
     # print("Tables updated")
     print(f"{bot.user} is connected.")
 
+@bot.event
+async def on_disconnect():
+    await bot.connect()
+    print('Disconnected')
+
 # Initialize the database
 lookup_parser.parser()
 
