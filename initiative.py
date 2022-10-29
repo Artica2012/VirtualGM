@@ -1501,76 +1501,84 @@ class InitiativeCog(commands.Cog):
     @option('mode', choices=['start', 'stop', 'delete character'], required=True)
     @option('character', description='Character to delete', required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ''):
-        try:
-            async with self.async_session() as session:
-                result = await session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )
+        # try:
+        async with self.async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
                 )
-                )
-                guild = result.scalars().one()
-                if not await gm_check(ctx, self.engine):
-                    await ctx.respond("GM Restricted Command", ephemeral=True)
-                    return
-                else:
-                    if mode == 'start':
-                        await ctx.response.defer()
-                        await block_advance_initiative(ctx, self.engine, self.bot)
-                        await block_post_init(ctx, self.engine, self.bot)
-                        await update_pinned_tracker(ctx, self.engine, self.bot)
-                        # await ctx.respond('Initiative Started', ephemeral=True)
-                    elif mode == 'stop': # Stop initiative
-                        await ctx.response.defer()
-                        # Reset variables to the neutral state
-                        guild.initiative = None
-                        guild.saved_order = ''
-                        guild.round = 0
-                        metadata = db.MetaData()
-                        # Update the tables
-                        emp = await get_tracker_table(ctx, metadata, self.engine)
-                        init_stmt = emp.select()
-                        con = await get_condition_table(ctx, metadata, self.engine)
-                        stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
-                            con.c.time == False)
-                        async with self.engine.begin() as conn:
-                            await conn.execute(stmt) # delete any auto-decrementing round based conditions
-                            for row in await conn.execute(init_stmt): # Set the initiatives of all characters to 0 (out of combat)
-                                stmt = update(emp).where(emp.c.name == row[1]).values(
-                                    init=0
-                                )
-                                await conn.execute(stmt)
+            )
+            )
+            guild = result.scalars().one()
+            if not await gm_check(ctx, self.engine):
+                await ctx.respond("GM Restricted Command", ephemeral=True)
+                return
+            else:
+                if mode == 'start':
+                    await ctx.response.defer()
+                    await block_advance_initiative(ctx, self.engine, self.bot)
+                    await block_post_init(ctx, self.engine, self.bot)
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                    # await ctx.respond('Initiative Started', ephemeral=True)
+                elif mode == 'stop': # Stop initiative
+                    await ctx.response.defer()
+                    # Reset variables to the neutral state
+                    guild.initiative = None
+                    guild.saved_order = ''
+                    guild.round = 0
+                    metadata = db.MetaData()
+                    # Update the tables
+                    emp = await get_tracker_table(ctx, metadata, self.engine)
+                    init_stmt = emp.select()
+                    #tracker cleanup
 
-                            # print(result)
-                        await update_pinned_tracker(ctx, self.engine, self.bot)
-                        await session.commit()
+                    con = await get_condition_table(ctx, metadata, self.engine)
+                    stmt = delete(con).where(con.c.counter == False).where(con.c.auto_increment == True).where(
+                        con.c.time == False)
+                    clean_stmt = emp.select().where(emp.c.current_hp <= 0).where(emp.c.player == False) # select all npcs with 0 HP
 
-                        await update_pinned_tracker(ctx, self.engine, self.bot)
-                        await ctx.send_followup("Initiative Ended.")
-                    elif mode == 'delete character':
-                        if character == guild.saved_order:
-                            await ctx.respond(
-                                f"Please wait until {character} is not the active character in initiative before "
-                                f"deleting it.", ephemeral=True)
+                    async with self.engine.begin() as conn:
+                        await conn.execute(stmt) # delete any auto-decrementing round based conditions
+                        for row in await conn.execute(init_stmt): # Set the initiatives of all characters to 0 (out of combat)
+                            stmt = update(emp).where(emp.c.name == row[1]).values(
+                                init=0
+                            )
+                        await conn.execute(stmt)
+
+                        for row in await conn.execute(clean_stmt):
+                            await delete_character(ctx, row[1], self.engine, self.bot)
+
+
+                        # print(result)
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                    await session.commit()
+
+                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                    await ctx.send_followup("Initiative Ended.")
+                elif mode == 'delete character':
+                    if character == guild.saved_order:
+                        await ctx.respond(
+                            f"Please wait until {character} is not the active character in initiative before "
+                            f"deleting it.", ephemeral=True)
+                    else:
+                        await ctx.response.defer()
+                        result = await delete_character(ctx, character, self.engine, self.bot)
+                        if result:
+                            await ctx.send_followup(f'{character} deleted', ephemeral=True)
+                            await update_pinned_tracker(ctx, self.engine, self.bot)
                         else:
-                            await ctx.response.defer()
-                            result = await delete_character(ctx, character, self.engine, self.bot)
-                            if result:
-                                await ctx.send_followup(f'{character} deleted', ephemeral=True)
-                                await update_pinned_tracker(ctx, self.engine, self.bot)
-                            else:
-                                await ctx.send_followup('Delete Operation Failed')
-            await self.engine.dispose()
-        except NoResultFound as e:
-            await ctx.respond(
-                error_not_initialized,
-                ephemeral=True)
-            return False
-        except IndexError as e:
-            await ctx.respond("Ensure that you have added characters to the initiative list.")
-        except Exception as e:
-            await ctx.respond("Failed")
+                            await ctx.send_followup('Delete Operation Failed')
+        await self.engine.dispose()
+        # except NoResultFound as e:
+        #     await ctx.respond(
+        #         error_not_initialized,
+        #         ephemeral=True)
+        #     return False
+        # except IndexError as e:
+        #     await ctx.respond("Ensure that you have added characters to the initiative list.")
+        # except Exception as e:
+        #     await ctx.respond("Failed")
 
     @i.command(description="Advance Initiative",
                # guild_ids=[GUILD]
