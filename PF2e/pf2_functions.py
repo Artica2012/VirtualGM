@@ -135,26 +135,31 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 'character_id': id_data[0][0],
                 'title': 'AC',
                 'number': int(self.children[0].value),
+                'counter':True
             },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Fort',
                     'number': int(self.children[1].value),
+                    'counter': True
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Reflex',
                     'number': int(self.children[2].value),
+                    'counter': True
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Will',
                     'number': int(self.children[3].value),
+                    'counter': True
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'DC',
                     'number': int(self.children[4].value),
+                    'counter': True
                 },
             ]
 
