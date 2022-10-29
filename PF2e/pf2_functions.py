@@ -112,6 +112,8 @@ class PF2AddCharacterModal(discord.ui.Modal):
             color=discord.Color.dark_gold(),
         )
 
+
+
         emp_stmt = self.emp.insert().values(
             name=self.name,
             init_string=self.init,
@@ -130,20 +132,36 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 id_data.append(row)
 
         ##TODO Working Here
-        char_dict = {
-            'character_id':data[0][0],
-            'title': title,
-            'number': number,
-        }
+            char_dicts =[{
+                    'character_id':id_data[0][0],
+                    'title': 'AC',
+                    'number': int(self.children[0].value),
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Fort',
+                    'number': int(self.children[1].value),
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Reflex',
+                    'number': int(self.children[2].value),
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Will',
+                    'number': int(self.children[3].value),
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'DC',
+                    'number': int(self.children[4].value),
+                },
+            ]
 
-        con_stmt = self.con.insert().values(
-            character_id=id_data[0][0],
-            title=title,
-            number=number,
-            counter=counter,
-            auto_increment=auto_decrement,
-            time=False
-        )
-
+            con_stmt = self.con.insert().values(
+                char_dicts
+            )
+            await conn.execute(con_stmt)
 
         await interaction.response.send_message(embeds=[embed])

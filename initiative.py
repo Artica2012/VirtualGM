@@ -219,22 +219,22 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
                                                           player=player_bool, ctx=ctx,
                                                           emp=emp, con=con, engine=engine, title=name))
+            else:
 
-
-            stmt = emp.insert().values(
-                name=name,
-                init_string=init,
-                init=initiative,
-                player=player_bool,
-                user=ctx.user.id,
-                current_hp=hp,
-                max_hp=hp,
-                temp_hp=0
-            )
-            async with engine.begin() as conn:
-                result = await conn.execute(stmt)
-                # conn.commit()
-                await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+                stmt = emp.insert().values(
+                    name=name,
+                    init_string=init,
+                    init=initiative,
+                    player=player_bool,
+                    user=ctx.user.id,
+                    current_hp=hp,
+                    max_hp=hp,
+                    temp_hp=0
+                )
+                async with engine.begin() as conn:
+                    result = await conn.execute(stmt)
+                    # conn.commit()
+                    await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
             if guild.initiative != None:
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
