@@ -47,6 +47,40 @@ DATABASE = os.getenv('DATABASE')
 
 PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
 
+async def PF2_eval_succss(result_tuple:tuple, goal:int):
+    total = result_tuple[1]
+    nat_twenty = result_tuple[2]
+    nat_one = result_tuple[3]
+    result = 0
+    success_string = ''
+
+    if total>=goal+10:
+        result = 4
+    elif total >= goal:
+        result =3
+    elif goal >= total >= goal-10:
+        result = 2
+    else:
+        result = 1
+
+    if nat_twenty:
+        result += 1
+    elif nat_one:
+        result -=1
+
+    if result >=4:
+        success_string = "Critical Success"
+    elif result == 3:
+        success_string = "Success"
+    elif result == 2:
+        success_string = "Failure"
+    elif result <= 1:
+        success_string = "Critical Failure"
+    else:
+        success_string = "Error"
+
+    return success_string
+
 
 class PF2AddCharacterModal(discord.ui.Modal):
     def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, emp, con, engine, *args, **kwargs):
@@ -135,31 +169,36 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 'character_id': id_data[0][0],
                 'title': 'AC',
                 'number': int(self.children[0].value),
-                'counter':True
+                'counter':True,
+                'visible': False
             },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Fort',
                     'number': int(self.children[1].value),
-                    'counter': True
+                    'counter': True,
+                    'visible': False
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Reflex',
                     'number': int(self.children[2].value),
-                    'counter': True
+                    'counter': True,
+                    'visible': False
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'Will',
                     'number': int(self.children[3].value),
-                    'counter': True
+                    'counter': True,
+                    'visible': False
                 },
                 {
                     'character_id': id_data[0][0],
                     'title': 'DC',
                     'number': int(self.children[4].value),
-                    'counter': True
+                    'counter': True,
+                    'visible': False
                 },
             ]
 

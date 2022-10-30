@@ -175,7 +175,8 @@ class ConditionTable:
                        db.Column('title', db.String(255), nullable=False),
                        db.Column('number', db.INTEGER(), nullable=True, default=None),
                        db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
-                       db.Column('time', db.BOOLEAN, default=False)
+                       db.Column('time', db.BOOLEAN, default=False),
+                       db.Column('visible',db.BOOLEAN, default=True)
                        )
         return con
 

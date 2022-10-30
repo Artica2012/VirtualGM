@@ -68,6 +68,7 @@ async def gm_check(ctx, engine):
         else:
             return True
 
+
 class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -137,14 +138,14 @@ class AttackCog(commands.Cog):
     # ---------------------------------------------------
     # Slash commands
 
-    attack = SlashCommandGroup("a", "Automatic Attack Commands")
+    att = SlashCommandGroup("a", "Automatic Attack Commands")
 
-
-    @commands.slash_command(name='a', description="Automatic Attack")
+    @att.command(description="Automatic Attack")
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('target', description="Character to Target", autocomplete=character_select)
-    @option('vs', description="Target Attribute", autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
-    async def attack(self, ctx:discord.ApplicationContext, character:str, target:str, roll:str, vs:str):
+    @option('vs', description="Target Attribute",
+            autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
+    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str):
         metadata = db.MetaData()
         await ctx.response.defer()
         async with self.async_session() as session:
@@ -159,7 +160,7 @@ class AttackCog(commands.Cog):
             if not guild.system:
                 await ctx.respond("No system set, command inactive.")
                 return
-            #PF2 specific code
+            # PF2 specific code
 
             # Dice Roller
             roller = dice_roller.DiceRoller('')
@@ -203,34 +204,19 @@ class AttackCog(commands.Cog):
                 await report.report()
 
             goal_value = con_data[0][4]
-            success = False
-            crit = False
-            success_string = ''
-            if total >= goal_value:
-                success = True
-                success_string = "Success"
-                if total >= goal_value+10 or dice_result[1]:
-                    crit = True
-                    success_string = "Critical Success"
-            else:
-                success = False
-                success_string = "Failure"
-                if total <= goal_value-10 or dice_result[2]:
-                    crit = True
-                    success_string = "Critical Failure"
-
+            success_string = await PF2e.pf2_functions.PF2_eval_succss(dice_result,goal_value)
             # Format output string
             output_string = f"{character} vs {target} {vs}:\n" \
                             f"{dice_string} = {total}\n" \
                             f"{success_string}"
             await ctx.send_followup(output_string)
 
-
-    @attack.command(description="Saving Throw")
+    @att.command(description="Saving Throw")
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('target', description="Character to Target", autocomplete=character_select)
-    @option('vs', description="Target Attribute", autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
-    async def attack(self, ctx:discord.ApplicationContext, character:str, target:str, vs:str):
+    @option('vs', description="Target Attribute",
+            autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str):
         metadata = db.MetaData()
         await ctx.response.defer()
         async with self.async_session() as session:
@@ -245,22 +231,42 @@ class AttackCog(commands.Cog):
             if not guild.system:
                 await ctx.respond("No system set, command inactive.")
                 return
-            #PF2 specific code
+            # PF2 specific code
+            roller = dice_roller.DiceRoller('')
             try:
                 emp = await get_tracker_table(ctx, metadata, self.engine)
                 con = await get_condition_table(ctx, metadata, self.engine)
 
-
                 char_sel_stmt = emp.select().where(emp.c.name == character)
                 target_sel_stmt = emp.select().where(emp.c.name == target)
                 async with self.engine.begin() as conn:
-                    data = []
+                    charID = None
+                    targetID = None
+                    roll = ''
+                    dc = None
                     for row in await conn.execute(char_sel_stmt):
-                        data.append(row)
+                        charID = row[0]
+                    for row in await conn.execute(target_sel_stmt):
+                        targetID = row[0]
 
+                    roll_stmt = con.select().where(con.c.character_id == targetID).where(con.c.title == vs)
+                    dc_stmt = con.select().where(con.c.character_id == charID).where(con.c.title == 'DC')
+                    for row in await conn.execute(roll_stmt):
+                        roll = f"1d20+{row[4]}"
+                    for row in await conn.execute(dc_stmt):
+                        dc = row[4]
 
+                dice_result = await roller.attack_roll(roll)
+                total = dice_result[1]
+                dice_string = dice_result[0]
 
-
+                success_string = await PF2e.pf2_functions.PF2_eval_succss(dice_result, dc)
+                # Format output string
+                output_string = f"{character} vs {target}\n" \
+                                f" {vs} Save\n" \
+                                f"{dice_string} = {total}\n" \
+                                f"{success_string}"
+                await ctx.send_followup(output_string)
             except NoResultFound as e:
                 await ctx.channel.send(error_not_initialized,
                                        delete_after=30)
@@ -269,37 +275,6 @@ class AttackCog(commands.Cog):
                 print(f'attack: {e}')
                 report = ErrorReport(ctx, "/attack (emp)", e, self.bot)
                 await report.report()
-
-
-
-
-
-            try:
-                con_stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.title == vs)
-                con_data = []
-                async with self.engine.begin() as conn:
-                    for row in await conn.execute(con_stmt):
-                        con_data.append(row)
-                await self.engine.dispose()
-            except NoResultFound as e:
-                await ctx.channel.send(error_not_initialized,
-                                       delete_after=30)
-                return False
-            except Exception as e:
-                print(f'get_cc: {e}')
-                report = ErrorReport(ctx, "/attack (con)", e, self.bot)
-                await report.report()
-
-
-
-
-            roller = dice_roller.DiceRoller('')
-            try:
-                dice_result = await roller.attack_roll("1d20")
-                total = dice_result[1]
-                dice_string = dice_result[0]
-            except Exception as e:
-                await ctx.send_followup('Error in the dice string. Check Syntax')
 
 
 
