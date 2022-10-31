@@ -30,7 +30,7 @@ bot = discord.Bot(intents=intents,
 @bot.event
 async def on_ready():
     # print("Updating tables...")
-    # database_operations.update_tracker_table()
+    # database_operations.update_con_table()
     # print("Tables updated")
     print(f"{bot.user} is connected.")
 
@@ -51,4 +51,6 @@ bot.load_extension('help_cog')
 bot.load_extension('timekeeping')
 bot.load_extension("macro_cog")
 bot.load_extension("options_cog")
+bot.load_extension("PF2e.pf2_cog")
+bot.load_extension("attack_cog")
 bot.run(TOKEN)

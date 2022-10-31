@@ -19,6 +19,7 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
+from PF2e.pf2_functions import PF2AddCharacterModal
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -59,12 +60,17 @@ DATABASE = os.getenv('DATABASE')
 
 # Set up the tracker if it does not exist
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
-                        gm_channel: discord.TextChannel):
+                        gm_channel: discord.TextChannel, system:str):
     # Check to make sure bot has permissions in both channels
     if not channel.can_send() or not gm_channel.can_send():
         await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
         return False
+
+    if system == 'Pathfinder 2e':
+        g_system = 'PF2'
+    else:
+        g_system = None
 
     try:
         metadata = db.MetaData()
@@ -77,7 +83,8 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
                     time=0,
                     gm=str(gm.id),
                     tracker_channel=channel.id,
-                    gm_tracker_channel=gm_channel.id
+                    gm_tracker_channel=gm_channel.id,
+                    system=g_system
                 )
                 session.add(guild)
                 id = guild.id
@@ -186,6 +193,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
+        con = await get_condition_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -197,6 +205,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             )
             )
             guild = result.scalars().one()
+
 
             initiative = 0
             if guild.initiative != None:
@@ -212,21 +221,26 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                             initiative = 0
                     except:
                         initiative = 0
+            if guild.system == 'PF2':
+                await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
+                                                          player=player_bool, ctx=ctx,
+                                                          emp=emp, con=con, engine=engine, title=name))
+            else:
 
-            stmt = emp.insert().values(
-                name=name,
-                init_string=init,
-                init=initiative,
-                player=player_bool,
-                user=ctx.user.id,
-                current_hp=hp,
-                max_hp=hp,
-                temp_hp=0
-            )
-            async with engine.begin() as conn:
-                result = await conn.execute(stmt)
-                # conn.commit()
-                await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+                stmt = emp.insert().values(
+                    name=name,
+                    init_string=init,
+                    init=initiative,
+                    player=player_bool,
+                    user=ctx.user.id,
+                    current_hp=hp,
+                    max_hp=hp,
+                    temp_hp=0
+                )
+                async with engine.begin() as conn:
+                    result = await conn.execute(stmt)
+                    # conn.commit()
+                    await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
             if guild.initiative != None:
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
@@ -865,30 +879,35 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                 string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
             output_string += string
 
+            #TODO Adjust how the tracker displays the PF2 /a stats, as its going to get crowded fast
             for con_row in row['cc']:
-                if gm or not con_row[2]:
-                    if con_row[4] != None:
-                        if con_row[6]:
-                            time_stamp = datetime.datetime.fromtimestamp(con_row[4])
-                            current_time = await get_time(ctx, engine, bot)
-                            time_left = time_stamp - current_time
-                            days_left = time_left.days
-                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                            if days_left != 0:
-                                con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
+                if con_row[7] == True:
+                    if gm or not con_row[2]:
+                        if con_row[4] != None:
+                            if con_row[6]:
+                                time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                                current_time = await get_time(ctx, engine, bot)
+                                time_left = time_stamp - current_time
+                                days_left = time_left.days
+                                processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                                processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                                if days_left != 0:
+                                    con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
+                                else:
+                                    con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
                             else:
-                                con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                con_string = f"       {con_row[3]}: {con_row[4]}\n"
                         else:
-                            con_string = f"       {con_row[3]}: {con_row[4]}\n"
-                    else:
-                        con_string = f"       {con_row[3]}\n"
+                            con_string = f"       {con_row[3]}\n"
 
-                elif con_row[2] == True and sel_bool and row['player']:
-                    con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                    elif con_row[2] == True and sel_bool and row['player']:
+                        con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                    else:
+                        con_string = ''
+                    output_string += con_string
                 else:
                     con_string = ''
-                output_string += con_string
+                    output_string += con_string
         output_string += f"```"
         # print(output_string)
         await engine.dispose()
@@ -1210,7 +1229,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 
     try:
         con = await get_condition_table(ctx, metadata, engine)
-        stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition)
+        stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).where(con.c.visible == True)
         async with engine.begin() as conn:
             await conn.execute(stmt)
             # print(result)
@@ -1298,19 +1317,22 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
-        if int(guild.gm) != int(ctx.interaction.user.id):
-            return False
-        else:
-            return True
+            )
+            guild = result.scalars().one()
+            if int(guild.gm) != int(ctx.interaction.user.id):
+                return False
+            else:
+                return True
+    except Exception as e:
+        return False
 
 
 # checks to see if the player is the ower of the character
@@ -1457,6 +1479,7 @@ class InitiativeCog(commands.Cog):
 
     i = SlashCommandGroup("i", "Initiative Tracker")
     char = SlashCommandGroup("char", "Character Commands")
+    cc = SlashCommandGroup("cc", "Conditions and Counters")
 
     @char.command(description="Add PC on NPC",
                   # guild_ids=[GUILD]
@@ -1467,7 +1490,7 @@ class InitiativeCog(commands.Cog):
     @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
-        await ctx.response.defer()
+        # await ctx.response.defer()
         response = False
         player_bool = False
         if player == 'player':
@@ -1661,14 +1684,14 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @i.command(description="Add conditions and counters",
+    @cc.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
                )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+    async def add(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
                  auto: str = 'Static'):
         await ctx.response.defer(ephemeral=True)
@@ -1687,13 +1710,13 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.send_followup("Failure", ephemeral=True)
 
-    @i.command(description="Edit or remove conditions and counters",
+    @cc.command(description="Edit or remove conditions and counters",
                # guild_ids=[GUILD]
                )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
-    async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
+    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
@@ -1711,9 +1734,9 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.send_followup("Failed", ephemeral=True)
 
-    @i.command(description="Show Custom Counters")
+    @cc.command(description="Show Custom Counters")
     @option("character", description="Character to select", autocomplete=character_select_gm)
-    async def cc_show(self, ctx: discord.ApplicationContext, character: str):
+    async def show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
         try:
             if not await player_check(ctx, self.engine, self.bot, character) and not await gm_check(ctx, self.engine):

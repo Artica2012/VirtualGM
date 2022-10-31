@@ -63,4 +63,15 @@ def update_tracker_table():
             with engine.connect() as conn:
                 conn.execute(alter_string)
 
+def update_con_table():
+    metadata = db.MetaData()
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+    with Session(engine) as session:
+        guild = session.execute(select(Global)).all()
+        for row in guild:
+            print(row[0].id)
+            alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD visible boolean DEFAULT TRUE'
+            with engine.connect() as conn:
+                conn.execute(alter_string)
 

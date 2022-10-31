@@ -51,11 +51,12 @@ class OptionsCog(commands.Cog):
         self.bot = bot
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-    async def display_options(self, timekeeping: bool, block: bool):
+    async def display_options(self, timekeeping: bool, block: bool, system:str):
         embed = discord.Embed(
             title="Optional Modules",
             description=f"Timekeeper: {timekeeping}\n"
-                        f"Block Initiative: {block}"
+                        f"Block Initiative: {block}\n"
+                        f"System: {system}"
         )
         return embed
 
@@ -68,13 +69,15 @@ class OptionsCog(commands.Cog):
     @option('gm', description="@Player to transfer GM permissions to.", required=True)
     @option('channel', description="Player Channel", required=True)
     @option('gm_channel', description="GM Channel", required=True)
+    @option('system', choices=['Generic', 'Pathfinder 2e'], required=False)
     async def start(self, ctx: discord.ApplicationContext,
                     channel: discord.TextChannel,
                     gm_channel: discord.TextChannel,
                     gm: discord.User,
+                    system:str = ''
                     ):
         await ctx.response.defer(ephemeral=True)
-        response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
+        response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel, system)
         if response:
             await ctx.send_followup("Server Setup", ephemeral=True)
             return
@@ -133,7 +136,7 @@ class OptionsCog(commands.Cog):
                 await report.report()
 
     @setup.command(description="Optional Modules")
-    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative'])
+    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative', ])
     @option('toggle', choices=['On', 'Off'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
@@ -178,7 +181,14 @@ class OptionsCog(commands.Cog):
                 )
                 )
                 guild = result.scalars().one()
-                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block)
+                if guild.system == None:
+                    system_str = 'Generic'
+                elif guild.system == 'PF2':
+                    system_str = 'Pathfinder Second Edition'
+                else:
+                    system_str = 'Generic'
+
+                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
                 await ctx.send_followup(embed=embed)
             await self.engine.dispose()
         except NoResultFound as e:
