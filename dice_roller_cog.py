@@ -48,18 +48,18 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = 0, secret: str = 'Open'):
         try:
             roller = dice_roller.DiceRoller(roll)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )
+                )
+                )
+                guild = result.scalars().one()
             try:
                 if secret == 'Secret':
-                    async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-                    async with async_session() as session:
-                        result = await session.execute(select(Global).where(
-                            or_(
-                                Global.tracker_channel == ctx.interaction.channel_id,
-                                Global.gm_tracker_channel == ctx.interaction.channel_id
-                            )
-                        )
-                        )
-                        guild = result.scalars().one()
                         if dc == 0:
                             if guild.gm_tracker_channel != None:
                                 await ctx.respond(f"Secret Dice Rolled")
