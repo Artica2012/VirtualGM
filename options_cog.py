@@ -69,13 +69,15 @@ class OptionsCog(commands.Cog):
     @option('gm', description="@Player to transfer GM permissions to.", required=True)
     @option('channel', description="Player Channel", required=True)
     @option('gm_channel', description="GM Channel", required=True)
+    @option('system', choices=['Generic', 'Pathfinder 2e'], required=False)
     async def start(self, ctx: discord.ApplicationContext,
                     channel: discord.TextChannel,
                     gm_channel: discord.TextChannel,
                     gm: discord.User,
+                    system:str = ''
                     ):
         await ctx.response.defer(ephemeral=True)
-        response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel)
+        response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel, system)
         if response:
             await ctx.send_followup("Server Setup", ephemeral=True)
             return
@@ -134,11 +136,10 @@ class OptionsCog(commands.Cog):
                 await report.report()
 
     @setup.command(description="Optional Modules")
-    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative', 'System'])
+    @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative', ])
     @option('toggle', choices=['On', 'Off'], required=False)
-    @option('system', choices=['Generic', 'Pathfinder 2e'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
-    async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, system:str = '', time: int = 6):
+    async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
         await ctx.response.defer()
         if toggle == 'On':
             toggler = True
@@ -167,11 +168,6 @@ class OptionsCog(commands.Cog):
                     await update_pinned_tracker(ctx, self.engine, self.bot)
                 elif module == 'Block Initiative':
                     guild.block = toggler
-                elif module == 'System':
-                    if system == 'Pathfinder 2e':
-                        guild.system = 'PF2'
-                    else:
-                        guild.system = None
                 else:
                     await ctx.send_followup("Invalid Entry", ephemeral=True)
                     return
