@@ -224,9 +224,8 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
             if guild.system == 'PF2':
                 await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
                                                           player=player_bool, ctx=ctx,
-                                                          emp=emp, con=con, engine=engine, title=name))
+                                                          emp=emp, con=con, engine=engine, bot=bot, title=name))
             else:
-
                 stmt = emp.insert().values(
                     name=name,
                     init_string=init,
@@ -240,15 +239,15 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 async with engine.begin() as conn:
                     result = await conn.execute(stmt)
                     # conn.commit()
-                    await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
 
             if guild.initiative != None:
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-                    print(f"integrity check was false: init_pos: {guild.initiative}")
+                    # print(f"integrity check was false: init_pos: {guild.initiative}")
                     for pos, row in enumerate(await get_init_list(ctx, engine)):
                         if row[1] == guild.saved_order:
                             guild.initiative = pos
-                            print(f"integrity checked init_pos: {guild.initiative}")
+                            # print(f"integrity checked init_pos: {guild.initiative}")
                             await session.commit()
 
         await engine.dispose()
@@ -1351,6 +1350,141 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
         print(f'player_check: {e}')
         report = ErrorReport(ctx, player_check.__name__, e, bot)
         await report.report()
+
+
+#############################################################################
+#############################################################################
+# Specific character modals
+
+class PF2AddCharacterModal(discord.ui.Modal):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, emp, con, engine, bot, *args, **kwargs):
+        self.name = name
+        self.hp = hp
+        self.init = init
+        self.initiative = initiative
+        self.player = player
+        self.ctx = ctx
+        self.emp = emp
+        self.con = con
+        self.engine = engine
+        self.bot = bot
+        super().__init__(
+            discord.ui.InputText(
+                label="AC",
+                placeholder="Armor Class",
+            ),
+            discord.ui.InputText(
+                label="Fort",
+                placeholder="Fortitude",
+            ),
+            discord.ui.InputText(
+                label="Reflex",
+                placeholder="Reflex",
+            ),
+            discord.ui.InputText(
+                label="Will",
+                placeholder="Will",
+            ),
+            discord.ui.InputText(
+                label="Class / Spell DC",
+                placeholder="DC",
+            ), *args, **kwargs
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="Character Created (PF2)",
+            fields=[
+                discord.EmbedField(
+                    name="Name: ", value=self.name, inline=True
+                ),
+                discord.EmbedField(
+                    name="HP: ", value=f"{self.hp}", inline=True
+                ),
+                discord.EmbedField(
+                    name="AC: ", value=self.children[0].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Fort: ", value=self.children[1].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Reflex: ", value=self.children[2].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Will: ", value=self.children[3].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Class/Spell DC: ", value=self.children[4].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Initiative: ", value=self.init, inline=True
+                ),
+            ],
+            color=discord.Color.dark_gold(),
+        )
+
+        emp_stmt = self.emp.insert().values(
+            name=self.name,
+            init_string=self.init,
+            init=self.initiative,
+            player=self.player,
+            user=self.ctx.user.id,
+            current_hp=self.hp,
+            max_hp=self.hp,
+            temp_hp=0
+        )
+        async with self.engine.begin() as conn:
+            result = await conn.execute(emp_stmt)
+            id_stmt = self.emp.select().where(self.emp.c.name == self.name)
+            id_data = []
+            for row in await conn.execute(id_stmt):
+                id_data.append(row)
+
+            char_dicts = [{
+                'character_id': id_data[0][0],
+                'title': 'AC',
+                'number': int(self.children[0].value),
+                'counter': True,
+                'visible': False
+            },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Fort',
+                    'number': int(self.children[1].value),
+                    'counter': True,
+                    'visible': False
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Reflex',
+                    'number': int(self.children[2].value),
+                    'counter': True,
+                    'visible': False
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'Will',
+                    'number': int(self.children[3].value),
+                    'counter': True,
+                    'visible': False
+                },
+                {
+                    'character_id': id_data[0][0],
+                    'title': 'DC',
+                    'number': int(self.children[4].value),
+                    'counter': True,
+                    'visible': False
+                },
+            ]
+
+            con_stmt = self.con.insert().values(
+                char_dicts
+            )
+            await conn.execute(con_stmt)
+        await update_pinned_tracker(self.ctx, self.engine,self.bot)
+
+        await interaction.response.send_message(embeds=[embed])
+
 
 
 #############################################################################
