@@ -71,7 +71,12 @@ def update_con_table():
         guild = session.execute(select(Global)).all()
         for row in guild:
             print(row[0].id)
-            alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD visible boolean DEFAULT TRUE'
-            with engine.connect() as conn:
-                conn.execute(alter_string)
+            try:
+                alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD visible boolean DEFAULT TRUE'
+                with engine.connect() as conn:
+                    conn.execute(alter_string)
+            except Exception as e:
+                print('Table Not Updated')
+
+
 
