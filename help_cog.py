@@ -217,6 +217,27 @@ class HelpCog(commands.Cog):
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
 
+    @help.command(description="Automation",
+                      # guild_ids=[GUILD]
+                      )
+    @option('command', choices=[
+            'attack', 'save'])
+    async def a(self, ctx: discord.ApplicationContext, command: str):
+        if command == 'attack':
+            await ctx.respond(
+                "```attack\n"
+                "- rolls an automatic attack``` "
+                , ephemeral=True
+            )
+        elif command == 'save':
+            await ctx.respond("```Save\n"
+                              "- Rolls an automated Saving Throw\n"
+                              '```', ephemeral=True
+                              )
+        else:
+            await ctx.respond('Invalid choice', ephemeral=True)
+
+
 
 def setup(bot):
     bot.add_cog(HelpCog(bot))

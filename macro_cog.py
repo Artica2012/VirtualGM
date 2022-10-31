@@ -56,6 +56,7 @@ class MacroCog(commands.Cog):
 
     # Autocomplete
     async def character_select(self, ctx: discord.AutocompleteContext):
+        # print("searching characters")
         metadata = db.MetaData()
         character_list = []
 

@@ -32,6 +32,7 @@ https://discord.gg/CeF4yeAekQ
 
 ### Admin Commands
 - **/admin start** - The command to initialize the tracker in the selected channels 
+  - system - Select either the generic system agnostic tracker or a system specific tracker. **NOTE**, this must be decided at time of table setup. It is unchangeable once set.
 - **/admin tracker** - Contains useful administrative tools for the initiative tracker
   - _transfer gm_ - Transfers the GM permissions to another user
   - _reset trackers_ - Will post and pin new copies of the trackers. Run this if the old tracker is deleted or lost for some reason.
@@ -60,7 +61,7 @@ https://discord.gg/CeF4yeAekQ
    - _Damage_ - Damages the indicated character for inputted amount
    - _Heal_ - Heals the character for the inputted amount
    - _Temporary HP_ - Grants the character the inputted amount of temporary HP. This HP will be subtracted from first and not added to with any healing.
- - **/i cc** - Conditions and Counters
+ - **/cc add** - Add Conditions and Counters
    - _condition_ - Assigns a condition to the given character. 
      - Option to add in a numeric value. 
      - Option to set it to auto-decrement, which will decrease the value by 1 at the end of the character's turn until it reaches 0, where it is automatically deleted. Default is a static value which does not auto-decrement.
@@ -68,10 +69,10 @@ https://discord.gg/CeF4yeAekQ
    - _counter_ - Assigns a custom counter to the character. 
      - Similar to a condition, except it is only showed on the tracker during the character's turn. 
      - Custom counters for NPCs do not display on the non-gm tracker.  
- - **/i cc_edit** - Edit or Delete Counters or Conditions
+ - **/cc edit** - Edit or Delete Counters or Conditions
    - _edit_ - Inputs the character's name, the name of the condition and the value, which will overwrite the previous counter/condition
    - _delete_ - Deletes the indicated condition or counter
- - **/i cc_show** - Show Custom Counters
+ - **/cc show** - Show Custom Counters
    - Displays a popup visible only to the user which displays the custom counters for the selected character. 
    - Only the GM can see the custom counters of NPCs.
  
@@ -93,3 +94,8 @@ https://discord.gg/CeF4yeAekQ
 - Note: Time is measured from an arbitrary start of the campaign. (Year 1). Do not try to set it to a particular year (aka 1542) as this may cause issues with proper timekeeping.  VirtualGM uses the standard gregorian calandar, but is sanitized of day and month names, reporting numnbers instead. So months will have 30/31 days (except month 2, which will have 28 or 29 days)
 - **/time advance** - advances the time by the selected amount
 - **/time set** - Sets the date and time to the selected date / time
+
+### Automated Functions - BETA FUNCTIONALITY
+- These are only active when a system was selected at table setup. This functionality is not availible on the generic tracker
+  - /a attack - Rolls an automated attack 
+  - /a save - Rolls automated saving throw
