@@ -238,7 +238,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 async with engine.begin() as conn:
                     result = await conn.execute(stmt)
                     # conn.commit()
-            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+
 
             if guild.initiative != None:
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
@@ -1703,7 +1703,7 @@ class InitiativeCog(commands.Cog):
     @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
-        # await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         response = False
         player_bool = False
         if player == 'player':
@@ -1712,7 +1712,9 @@ class InitiativeCog(commands.Cog):
             player_bool = False
 
         response = await add_character(ctx, self.engine, self.bot, name, hp, player_bool, initiative)
-        if not response:
+        if response:
+            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+        else:
             await ctx.send_followup(f"Error Adding Character", ephemeral=True)
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
@@ -1919,7 +1921,7 @@ class InitiativeCog(commands.Cog):
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    async def add(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+    async def new(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                   unit: str = "Round",
                   auto: str = 'Static'):
         await ctx.response.defer(ephemeral=True)
