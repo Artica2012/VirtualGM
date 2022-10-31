@@ -48,6 +48,7 @@ https://discord.gg/CeF4yeAekQ
    - An argument of _initiative_ can be given to set an initiative string (XdY+Z) which will be rolled when initiative is started
  - **/char edit** - Edit a PC or NPC
    - Edit the max hp and/or initiative string of a character you control
+ - **/char copy** - Copies a character or NPC including any system specific stats. Does not copy and conditions or counters. Will roll a new initiative if initiative is active.
  - **/i manage** - Mange Initiative (GM Restricted)
    - _start_ - Starts Initiative
    - _stop_ - Stops Initiative
@@ -61,7 +62,7 @@ https://discord.gg/CeF4yeAekQ
    - _Damage_ - Damages the indicated character for inputted amount
    - _Heal_ - Heals the character for the inputted amount
    - _Temporary HP_ - Grants the character the inputted amount of temporary HP. This HP will be subtracted from first and not added to with any healing.
- - **/cc add** - Add Conditions and Counters
+ - **/cc new** - Add Conditions and Counters
    - _condition_ - Assigns a condition to the given character. 
      - Option to add in a numeric value. 
      - Option to set it to auto-decrement, which will decrease the value by 1 at the end of the character's turn until it reaches 0, where it is automatically deleted. Default is a static value which does not auto-decrement.

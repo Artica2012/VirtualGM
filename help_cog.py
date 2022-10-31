@@ -78,7 +78,7 @@ class HelpCog(commands.Cog):
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'char add', 'char edit', 'manage', 'next', 'init', 'hp', 'cc', 'cc_edit', 'cc_show'
+        'char add', 'char edit', 'char copy', 'manage', 'next', 'init', 'hp', 'cc new', 'cc_edit', 'cc_show'
     ])
     async def initiative(self, ctx: discord.ApplicationContext, command: str):
         if command == 'char add':
@@ -93,6 +93,9 @@ class HelpCog(commands.Cog):
                               "- Edit the max hp and/or initiative string of a character you control"
                               "  ```"
                               )
+        elif command == 'char copy':
+            await ctx.respond("```Copies a character or NPC including any system specific stats. Does not copy and "
+                              "conditions or counters. Will roll a new initiative if initiative is active.```")
         elif command == 'manage':
             await ctx.respond("```"
                               "manage - Mange Initiative (GM Restricted)\n"
@@ -121,9 +124,9 @@ class HelpCog(commands.Cog):
                               "- Temporary HP - Grants the character the inputted amount of temporary HP. This HP "
                               "will be subtracted from first and not added to with any healing. "
                               "```", ephemeral=True)
-        elif command == 'cc':
+        elif command == 'cc new':
             await ctx.respond("```"
-                              "- **/i cc** - Conditions and Counters"
+                              "- **/cc new** - Conditions and Counters"
                               "  - _condition_ - Assigns a condition to the given character.\n"
                               "    - Option to add in a numeric value.\n"
                               "- Option to set it to auto-decrement, which will decrease the value by 1 at the end of "
@@ -137,16 +140,16 @@ class HelpCog(commands.Cog):
                               "character's turn.\n "
                               "    - Custom counters for NPCs do not display on the non-gm tracker.\n"
                               "```", ephemeral=True)
-        elif command == 'cc_edit':
+        elif command == '/cc edit':
             await ctx.respond("```"
-                              "cc_edit - Edit or Delete Counters or Conditions\n"
+                              "cc edit - Edit or Delete Counters or Conditions\n"
                               "- edit - Inputs the character's name, the name of the condition and the value, "
                               "which will overwrite the previous counter/condition\n "
                               "  - delete - Deletes the indicated condition or counter"
                               "```", ephemeral=True)
-        elif command == 'cc_show':
+        elif command == '/cc show':
             await ctx.respond("```"
-                              "cc_show - Show Custom Counters\n"
+                              "cc show - Show Custom Counters\n"
                               "- Displays a popup visible only to the user which displays the custom counters for the "
                               "selected character. Only the GM can see the custom counters of NPCs.\n "
                               "```", ephemeral=True)
