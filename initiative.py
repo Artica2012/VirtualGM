@@ -1477,6 +1477,7 @@ class InitiativeCog(commands.Cog):
 
     i = SlashCommandGroup("i", "Initiative Tracker")
     char = SlashCommandGroup("char", "Character Commands")
+    cc = SlashCommandGroup("cc", "Conditions and Counters")
 
     @char.command(description="Add PC on NPC",
                   # guild_ids=[GUILD]
@@ -1673,14 +1674,14 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @i.command(description="Add conditions and counters",
+    @cc.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
                )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+    async def add(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
                  auto: str = 'Static'):
         await ctx.response.defer(ephemeral=True)
@@ -1699,13 +1700,13 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.send_followup("Failure", ephemeral=True)
 
-    @i.command(description="Edit or remove conditions and counters",
+    @cc.command(description="Edit or remove conditions and counters",
                # guild_ids=[GUILD]
                )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
-    async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
+    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
@@ -1723,9 +1724,9 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.send_followup("Failed", ephemeral=True)
 
-    @i.command(description="Show Custom Counters")
+    @cc.command(description="Show Custom Counters")
     @option("character", description="Character to select", autocomplete=character_select_gm)
-    async def cc_show(self, ctx: discord.ApplicationContext, character: str):
+    async def show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
         try:
             if not await player_check(ctx, self.engine, self.bot, character) and not await gm_check(ctx, self.engine):

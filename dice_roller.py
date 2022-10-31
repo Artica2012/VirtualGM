@@ -57,6 +57,43 @@ class DiceRoller:
                 parsed_dice[x] = await self.roller(item)
         return parsed_dice
 
+
+
+    # Does the addition and subtraction between the dice rolls
+    async def _math_equation(self, equation: list):
+        total = 0  # Set the initial total to zero
+        add = True  # Default it to add
+        for item in equation:
+            if type(item) is str:  # If its a string it should be either a +/- or a number
+                if item == '+':
+                    add = True
+                elif item == '-':
+                    add = False
+                else:
+                    if add:
+                        total += int(item)
+                    else:  # subtract it if the previous operator was a -
+                        total -= int(item)
+                        add = True  # once you subtract, reset the add variable to true
+            # Hand the lists (set of die) separately since they need to be summed
+            if type(item) is list:
+                if add:
+                    total += sum(item)
+                else:
+                    total -= sum(item)
+                    add = True
+
+        return total
+
+    # formats the output
+    async def _format_output(self, text: str, dice, total):
+        dice_string = ""
+        dice_string = ' '.join(map(str, dice))
+        return f'{text}: {dice_string} = **{total}**'
+
+    ####
+    # System Specific Code:
+
     async def _pf2_smart_dice_parse(self, input_string: str):
         crit_s =False
         crit_f = False
@@ -91,39 +128,8 @@ class DiceRoller:
             elif roll == 1 and size_die == 20:
                 crit_f = True
         # print(results)
+        # print(results, crit_s, crit_f)
         return results, crit_s, crit_f
-
-    # Does the addition and subtraction between the dice rolls
-    async def _math_equation(self, equation: list):
-        total = 0  # Set the initial total to zero
-        add = True  # Default it to add
-        for item in equation:
-            if type(item) is str:  # If its a string it should be either a +/- or a number
-                if item == '+':
-                    add = True
-                elif item == '-':
-                    add = False
-                else:
-                    if add:
-                        total += int(item)
-                    else:  # subtract it if the previous operator was a -
-                        total -= int(item)
-                        add = True  # once you subtract, reset the add variable to true
-            # Hand the lists (set of die) separately since they need to be summed
-            if type(item) is list:
-                if add:
-                    total += sum(item)
-                else:
-                    total -= sum(item)
-                    add = True
-
-        return total
-
-    # formats the output
-    async def _format_output(self, text: str, dice, total):
-        dice_string = ""
-        dice_string = ' '.join(map(str, dice))
-        return f'{text}: {dice_string} = **{total}**'
 
     ############################################################
     ############################################################
