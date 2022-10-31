@@ -48,11 +48,19 @@ DATABASE = os.getenv('DATABASE')
 PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
 
 
-async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str):
+async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
+                 attack_modifier:str, target_modifier:str):
     roller = DiceRoller('')
     metadata = db.MetaData()
     try:
-        dice_result = await roller.attack_roll(roll)
+        if attack_modifier != '':
+            if attack_modifier[0] == '+' or attack_modifier[0] == '-':
+                roll_string = roll + attack_modifier
+            else:
+                roll_string = roll + '+' + attack_modifier
+        else:
+            roll_string = roll
+        dice_result = await roller.attack_roll(roll_string)
         total = dice_result[1]
         dice_string = dice_result[0]
     except Exception as e:
@@ -93,9 +101,23 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         await report.report()
         return False
 
-    goal_value = con_data[0][4]
+    if vs in ["Fort", "Will", "Reflex"]:
+        goal_value = con_data[0][4] + 10
+    else:
+        goal_value = con_data[0][4]
+    if target_modifier != '':
+        if target_modifier[0] == '+':
+            goal = goal_value + int(target_modifier[1:])
+        elif target_modifier[0] == '-':
+            goal = goal_value - int(target_modifier[1:])
+        elif type(target_modifier[0]) == int:
+            goal = goal_value + int(target_modifier)
+        else:
+            goal = goal_value
+    else:
+        goal = goal_value
 
-    success_string = await PF2_eval_succss(dice_result, goal_value)
+    success_string = await PF2_eval_succss(dice_result, goal)
 
     # print(f"{dice_string}, {total}\n"
     #       f"{vs}, {goal_value}\n {success_string}")
@@ -105,7 +127,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
                     f"{success_string}"
     return output_string
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str):
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier:str):
     roller = DiceRoller('')
     metadata = db.MetaData()
     try:
@@ -131,11 +153,22 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
             for row in await conn.execute(dc_stmt):
                 dc = row[4]
 
+        if modifier != '':
+            if modifier[0] == '+':
+                goal = dc + int(modifier[1:])
+            elif modifier[0] == '-':
+                goal = dc - int(modifier[1:])
+            elif type(modifier[0]) == int:
+                goal = dc + int(modifier)
+            else:
+                goal = dc
+        else:
+            goal = dc
         dice_result = await roller.attack_roll(roll)
         total = dice_result[1]
         dice_string = dice_result[0]
 
-        success_string = await PF2_eval_succss(dice_result, dc)
+        success_string = await PF2_eval_succss(dice_result, goal)
         # Format output string
         output_string = f"{character} vs {target}\n" \
                         f" {vs} Save\n" \

@@ -168,7 +168,9 @@ class AttackCog(commands.Cog):
     @option('roll', description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option('vs', description="Target Attribute",
             autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
-    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str):
+    @option('attack_modifier', description="Modifier to the macro (defaults to +)", required=False)
+    @option('target_modifier', description="Modifier to the target's dc (defaults to +)", required=False)
+    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str, attack_modifier:str ='', target_modifier:str=''):
         metadata = db.MetaData()
         await ctx.response.defer()
         async with self.async_session() as session:
@@ -186,7 +188,7 @@ class AttackCog(commands.Cog):
 
             if guild.system == 'PF2':
                 # PF2 specific code
-                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs)
+                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs, attack_modifier, target_modifier)
             else:
                 output_string = 'Error'
             await ctx.send_followup(output_string)
@@ -197,7 +199,9 @@ class AttackCog(commands.Cog):
     @option('roll', description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option('vs', description="Target Attribute",
             autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str):
+    @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
+
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier:str=''):
         metadata = db.MetaData()
         await ctx.response.defer()
         async with self.async_session() as session:
@@ -214,7 +218,7 @@ class AttackCog(commands.Cog):
                 return
             # PF2 specific code
             if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs)
+                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs, modifier)
                 await ctx.send_followup(output_string)
 
 
