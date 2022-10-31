@@ -62,7 +62,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
         con = await get_condition_table(ctx, metadata, engine)
-        emp_stmt = emp.select().where(emp.c.name == character)
+        emp_stmt = emp.select().where(emp.c.name == target)
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(emp_stmt):
@@ -94,7 +94,11 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         return False
 
     goal_value = con_data[0][4]
+
     success_string = await PF2_eval_succss(dice_result, goal_value)
+
+    # print(f"{dice_string}, {total}\n"
+    #       f"{vs}, {goal_value}\n {success_string}")
     # Format output string
     output_string = f"{character} vs {target} {vs}:\n" \
                     f"{dice_string} = {total}\n" \
