@@ -92,11 +92,11 @@ class AttackCog(commands.Cog):
                 data = []
                 for row in await conn.execute(stmt):
                     data.append(row)
-                    # print(row)
+                    print(row)
             for row in data:
                 # if row[4] == ctx.interaction.user.id or gm_status:
                 character_list.append(row[1])
-            # print(character_list)
+            print(character_list)
             await self.engine.dispose()
             return character_list
         except Exception as e:
@@ -111,7 +111,9 @@ class AttackCog(commands.Cog):
         metadata = db.MetaData()
         character_list = []
 
+        print('checking gm')
         gm_status = await gm_check(ctx, self.engine)
+        print(f"GM:  {gm_status}")
 
         try:
             emp = await get_tracker_table(ctx, metadata, self.engine)
@@ -120,11 +122,11 @@ class AttackCog(commands.Cog):
                 data = []
                 for row in await conn.execute(stmt):
                     data.append(row)
-                    # print(row)
+                    print(row)
             for row in data:
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
-            # print(character_list)
+            print(character_list)
             await self.engine.dispose()
             return character_list
 
@@ -142,14 +144,14 @@ class AttackCog(commands.Cog):
 
         try:
             char_stmt = emp.select().where(emp.c.name == character)
-            # print(character)
+            print(character)
             async with self.engine.begin() as conn:
                 data = []
                 macro_list = []
                 for char_row in await conn.execute(char_stmt):
                     data.append(char_row)
                 for row in data:
-                    # print(row)
+                    print(row)
                     macro_stmt = macro.select().where(macro.c.character_id == row[0])
                     for char_row in await conn.execute(macro_stmt):
                         if not ',' in  char_row[3]:
