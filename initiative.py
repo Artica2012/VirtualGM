@@ -1664,21 +1664,28 @@ class InitiativeCog(commands.Cog):
         con = await get_condition_table(ctx, metadata, self.engine)
         emp = await get_tracker_table(ctx, metadata, self.engine)
 
-        char_stmt = emp.select().where(emp.c.name == character)
-        # print(character)
-        async with self.engine.begin() as conn:
-            data = []
-            con_list = []
-            for char_row in await conn.execute(char_stmt):
-                data.append(char_row)
-            for row in data:
-                # print(row)
-                con_stmt = con.select().where(con.c.character_id == row[0])
-                for char_row in await conn.execute(con_stmt):
-                    # print(char_row)
-                    con_list.append(f"{char_row[3]}")
-        await self.engine.dispose()
-        return con_list
+        try:
+            char_stmt = emp.select().where(emp.c.name == character)
+            # print(character)
+            async with self.engine.begin() as conn:
+                data = []
+                con_list = []
+                for char_row in await conn.execute(char_stmt):
+                    data.append(char_row)
+                for row in data:
+                    # print(row)
+                    con_stmt = con.select().where(con.c.character_id == row[0])
+                    for char_row in await conn.execute(con_stmt):
+                        # print(char_row)
+                        con_list.append(f"{char_row[3]}")
+            await self.engine.dispose()
+            return con_list
+
+        except Exception as e:
+            print(f'cc_select: {e}')
+            report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
+            await report.report()
+            return False
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         if await check_timekeeper(ctx, self.engine):
@@ -1914,14 +1921,14 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @cc.command(description="Add conditions and counters",
+    @i.command(description="Add conditions and counters",
                 # guild_ids=[GUILD]
                 )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    async def new(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                   unit: str = "Round",
                   auto: str = 'Static'):
         await ctx.response.defer(ephemeral=True)
@@ -1940,13 +1947,13 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.send_followup("Failure", ephemeral=True)
 
-    @cc.command(description="Edit or remove conditions and counters",
+    @i.command(description="Edit or remove conditions and counters",
                 # guild_ids=[GUILD]
                 )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
-    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
+    async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                    new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
@@ -1964,9 +1971,9 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.send_followup("Failed", ephemeral=True)
 
-    @cc.command(description="Show Custom Counters")
+    @i.command(description="Show Custom Counters")
     @option("character", description="Character to select", autocomplete=character_select_gm)
-    async def show(self, ctx: discord.ApplicationContext, character: str):
+    async def cc_show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
         try:
             if not await player_check(ctx, self.engine, self.bot, character) and not await gm_check(ctx, self.engine):

@@ -28,7 +28,7 @@ error_server = os.getenv('error_server')
 
 
 class ErrorReport:
-    def __init__(self, ctx:discord.ApplicationContext, function_name: str, error, bot):
+    def __init__(self, ctx, function_name: str, error, bot):
         self.ctx = ctx
         self.name = function_name
         self.error_text = error

@@ -101,21 +101,28 @@ class MacroCog(commands.Cog):
         macro = await get_macro_table(ctx, metadata, self.engine)
         emp = await get_tracker_table(ctx, metadata, self.engine)
 
-        char_stmt = emp.select().where(emp.c.name == character)
-        # print(character)
-        async with self.engine.begin() as conn:
-            data = []
-            macro_list = []
-            for char_row in await conn.execute(char_stmt):
-                data.append(char_row)
-            for row in data:
-                # print(row)
-                macro_stmt = macro.select().where(macro.c.character_id == row[0])
-                for char_row in await conn.execute(macro_stmt):
-                    # print(char_row)
-                    macro_list.append(f"{char_row[2]}: {char_row[3]}")
-        await self.engine.dispose()
-        return macro_list
+        try:
+            char_stmt = emp.select().where(emp.c.name == character)
+            # print(character)
+            async with self.engine.begin() as conn:
+                data = []
+                macro_list = []
+                for char_row in await conn.execute(char_stmt):
+                    data.append(char_row)
+                for row in data:
+                    # print(row)
+                    macro_stmt = macro.select().where(macro.c.character_id == row[0])
+                    for char_row in await conn.execute(macro_stmt):
+                        # print(char_row)
+                        macro_list.append(f"{char_row[2]}: {char_row[3]}")
+            await self.engine.dispose()
+            return macro_list
+        except Exception as e:
+            print(f'macro_selct: {e}')
+            report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)
+            await report.report()
+            return False
+
 
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
