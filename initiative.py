@@ -857,7 +857,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
         return []
 
 
-def parse_init_list(init_list: list):
+async def parse_init_list(init_list: list):
     parsed_list = []
     for row in init_list:
         await asyncio.sleep(0)
@@ -865,7 +865,7 @@ def parse_init_list(init_list: list):
     return parsed_list
 
 
-def ping_player_on_init(init_list: list, selected: int):
+async def ping_player_on_init(init_list: list, selected: int):
     selected_char = init_list[selected]
     user = selected_char[4]
     return f"<@{user}>, it's your turn."
