@@ -55,9 +55,9 @@ class PF2Cog(commands.Cog):
 
     @pf2.command(description="Pathbuilder Import")
     @option('pathbuilder_id', description="Pathbuilder Export ID", required=True)
-    async def pb_import(self, ctx:discord.ApplicationContext, pathbuilder_id:int):
+    async def pb_import(self, ctx:discord.ApplicationContext, name:str, pathbuilder_id:int):
         await ctx.response.defer(ephemeral=True)
-        await pathbuilder_import(str(pathbuilder_id))
+        await pathbuilder_import(ctx, self.engine, self.bot, name, str(pathbuilder_id))
         await ctx.send_followup('Success')
 
 
