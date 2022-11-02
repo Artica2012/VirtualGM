@@ -74,6 +74,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(emp_stmt):
+                await asyncio.sleep(0)
                 data.append(row)
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -89,6 +90,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         con_data = []
         async with engine.begin() as conn:
             for row in await conn.execute(con_stmt):
+                await asyncio.sleep(0)
                 con_data.append(row)
         await engine.dispose()
     except NoResultFound as e:
@@ -142,15 +144,19 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
             roll = ''
             dc = None
             for row in await conn.execute(char_sel_stmt):
+                await asyncio.sleep(0)
                 charID = row[0]
             for row in await conn.execute(target_sel_stmt):
+                await asyncio.sleep(0)
                 targetID = row[0]
 
             roll_stmt = con.select().where(con.c.character_id == targetID).where(con.c.title == vs)
             dc_stmt = con.select().where(con.c.character_id == charID).where(con.c.title == 'DC')
             for row in await conn.execute(roll_stmt):
+                await asyncio.sleep(0)
                 roll = f"1d20+{row[4]}"
             for row in await conn.execute(dc_stmt):
+                await asyncio.sleep(0)
                 dc = row[4]
 
         if modifier != '':

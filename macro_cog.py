@@ -81,9 +81,11 @@ class MacroCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     data.append(row)
                     # print(row)
             for row in data:
+                await asyncio.sleep(0)
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
             # print(character_list)
@@ -108,8 +110,10 @@ class MacroCog(commands.Cog):
                 data = []
                 macro_list = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
                 for row in data:
+                    await asyncio.sleep(0)
                     # print(row)
                     macro_stmt = macro.select().where(macro.c.character_id == row[0])
                     for char_row in await conn.execute(macro_stmt):
@@ -135,6 +139,7 @@ class MacroCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
 
                 macro_stmt = macro.insert().values(
@@ -166,9 +171,11 @@ class MacroCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
 
                 for row in processed_data[:-1]:
+                    await asyncio.sleep(0)
                     macro_split = row.split(',')
                     print(macro_split)
                     macro_stmt = macro.insert().values(
@@ -195,8 +202,10 @@ class MacroCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
                 for row in data:
+                    await asyncio.sleep(0)
                     # print(row)
                     # print(f"{row[0]}, {macro_name}")
                     macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
@@ -224,8 +233,10 @@ class MacroCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
                 for row in data:
+                    await asyncio.sleep(0)
                     # print(row)
                     # print(f"{row[0]}, {macro_name}")
                     del_stmt = delete(macro).where(macro.c.character_id == row[0])
@@ -248,13 +259,16 @@ class MacroCog(commands.Cog):
         async with self.engine.begin() as conn:
             data = []
             for char_row in await conn.execute(char_stmt):
+                await asyncio.sleep(0)
                 data.append(char_row)
             for row in data:
+                await asyncio.sleep(0)
                 # print(row)
                 # print(f"{row[0]}, {macro_name}")
                 macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
                     macro.c.name == macro_name.split(':')[0])
                 for char_row in await conn.execute(macro_stmt):
+                    await asyncio.sleep(0)
                     # print(char_row)
                     if modifier != '':
                         if modifier[0] == '+' or modifier[0] == '-':

@@ -79,8 +79,7 @@ class AttackCog(commands.Cog):
         # ---------------------------------------------------
         # Autocomplete Methods
 
-        # Autocomplete to give the full character list
-
+    # Autocomplete to give the full character list
     async def character_select(self, ctx: discord.AutocompleteContext):
         metadata = db.MetaData()
         character_list = []
@@ -91,12 +90,13 @@ class AttackCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     data.append(row)
-                    print(row)
+                    # print(row)
             for row in data:
-                # if row[4] == ctx.interaction.user.id or gm_status:
+                await asyncio.sleep(0)
                 character_list.append(row[1])
-            print(character_list)
+            # print(character_list)
             await self.engine.dispose()
             return character_list
         except Exception as e:
@@ -105,15 +105,14 @@ class AttackCog(commands.Cog):
             await report.report()
             return False
 
-        # Autocomplete to return the list of character the user owns, or all if the user is the GM
-
+    # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
         metadata = db.MetaData()
         character_list = []
 
-        print('checking gm')
+        # print('checking gm')
         gm_status = await gm_check(ctx, self.engine)
-        print(f"GM:  {gm_status}")
+        # print(f"GM:  {gm_status}")
 
         try:
             emp = await get_tracker_table(ctx, metadata, self.engine)
@@ -121,12 +120,14 @@ class AttackCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     data.append(row)
-                    print(row)
+                    # print(row)
             for row in data:
+                await asyncio.sleep(0)
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
-            print(character_list)
+            # print(character_list)
             await self.engine.dispose()
             return character_list
 
@@ -149,11 +150,14 @@ class AttackCog(commands.Cog):
                 data = []
                 macro_list = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
                 for row in data:
-                    print(row)
+                    await asyncio.sleep(0)
+                    # print(row)
                     macro_stmt = macro.select().where(macro.c.character_id == row[0])
                     for char_row in await conn.execute(macro_stmt):
+                        await asyncio.sleep(0)
                         if not ',' in  char_row[3]:
                             macro_list.append(f"{char_row[2]}: {char_row[3]}")
             await self.engine.dispose()

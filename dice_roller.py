@@ -2,6 +2,7 @@
 # dice roller module
 
 # imports
+import asyncio
 import random
 import re
 
@@ -19,6 +20,7 @@ class DiceRoller:
         # print(f"num_die = {num_die}, size_die = {size_die}")
         results = []
         for die in range(num_die):
+            await asyncio.sleep(0)
             roll = random.randint(1, size_die)
             results.append(roll)
         # print(results)
@@ -29,6 +31,7 @@ class DiceRoller:
         original_list =  input_string.split(',')
         roll_list = []
         for item in original_list:
+            await asyncio.sleep(0)
             # print(item)
             roll_list.append(item.strip())
 
@@ -52,6 +55,7 @@ class DiceRoller:
         parsed_dice = re.split(r'([+,-])', dice_string)
         # print(f'Parsed Dice: {parsed_dice}')
         for x, item in enumerate(parsed_dice):
+            await asyncio.sleep(0)
             # print(f"{item}, {x}")
             if "d" in item:
                 parsed_dice[x] = await self.roller(item)
@@ -64,6 +68,7 @@ class DiceRoller:
         total = 0  # Set the initial total to zero
         add = True  # Default it to add
         for item in equation:
+            await asyncio.sleep(0)
             if type(item) is str:  # If its a string it should be either a +/- or a number
                 if item == '+':
                     add = True
@@ -102,6 +107,7 @@ class DiceRoller:
         parsed_dice = re.split(r'([+,-])', dice_string)
         # print(f'Parsed Dice: {parsed_dice}')
         for x, item in enumerate(parsed_dice):
+            await asyncio.sleep(0)
             # print(f"{item}, {x}")
             if "d" in item:
                 roll = await self._pf2_smart_roller(item)
@@ -121,6 +127,7 @@ class DiceRoller:
         # print(f"num_die = {num_die}, size_die = {size_die}")
         results = []
         for die in range(num_die):
+            await asyncio.sleep(0)
             roll = random.randint(1, size_die)
             results.append(roll)
             if roll == size_die and size_die == 20:
@@ -141,6 +148,7 @@ class DiceRoller:
         # print(roll_list)
         output_string = ''
         for row in roll_list:
+            await asyncio.sleep(0)
             parsed_text = await self._text_parse(row)
             # print(parsed_text)
             # print('Parsing Dice')

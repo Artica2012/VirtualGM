@@ -1,7 +1,7 @@
 # query_result.py
 
 # Handles the 4e Query Commands Cog
-
+import asyncio
 import os
 
 import discord
@@ -72,6 +72,7 @@ class QueryCog(commands.Cog):
         async with self.engine.begin() as conn:
             results = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 results.append(row)
 
         # Create the view
@@ -81,6 +82,7 @@ class QueryCog(commands.Cog):
             return
         # Add a button to the view for each of the first 10 results
         for result in results[0:10]:
+            await asyncio.sleep(0)
             name = f"{result[2]}"
             link = result[3]
             view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))

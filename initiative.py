@@ -244,6 +244,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
                     # print(f"integrity check was false: init_pos: {guild.initiative}")
                     for pos, row in enumerate(await get_init_list(ctx, engine)):
+                        await asyncio.sleep(0)
                         if row[1] == guild.saved_order:
                             guild.initiative = pos
                             # print(f"integrity checked init_pos: {guild.initiative}")
@@ -323,6 +324,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
         old_char_stmt = emp.select().where(emp.c.name == name)
         async with engine.begin() as conn:
+            await asyncio.sleep(0)
             for row in await conn.execute(old_char_stmt):
                 initiative = 0
                 if guild.initiative != None:
@@ -349,12 +351,14 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 id_stmt = emp.select().where(emp.c.name == new_name)
                 new_char_id = None  # Get the ID of the new character
                 for id_row in await conn.execute(id_stmt):
+                    await asyncio.sleep(0)
                     new_char_id = id_row[0]
 
                 # copy over the invisible conditions
                 con_stmt = con.select().where(con.c.character_id == old_char_id).where(con.c.visible == False)
                 old_con_list = []
                 for con_row in await conn.execute(con_stmt):
+                    await asyncio.sleep(0)
                     add_con_stmt = con.insert().values(
                         character_id=new_char_id,
                         counter=con_row[2],
@@ -395,6 +399,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 # print(row)
                 data.append(row)
             # print(data)
@@ -448,8 +453,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         return False
 
 
-def calculate_hp(chp, maxhp):
-    hp_string = ''
+async def calculate_hp(chp, maxhp):
     hp = chp / maxhp
     if hp == 1:
         hp_string = 'Uninjured'
@@ -473,6 +477,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
 
             thp = data[0][7]
@@ -503,6 +508,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
 
             chp = data[0][5]
@@ -685,7 +691,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 dice = DiceRoller('')
                 async with engine.begin() as conn:
                     for row in await conn.execute(stmt):
+                        await asyncio.sleep(0)
                         if row[2] == 0:
+                            await asyncio.sleep(0)
                             roll = await dice.plain_roll(row[8])
                             # print(f"Name: {row[1]}, roll: {roll}")
                             await set_init(ctx, bot, row[1], roll[1], engine)
@@ -714,6 +722,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
+                            await asyncio.sleep(0)
                             if row[1] == current_character:
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
@@ -733,6 +742,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     async with engine.begin() as conn:
                         data = []
                         for row in await conn.execute(stmt):
+                            await asyncio.sleep(0)
                             data.append(row)
                             # print(row)
                 except Exception as e:
@@ -745,6 +755,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     stmt = con.select().where(con.c.character_id == data[0][0])
                     async with engine.begin() as conn:
                         for con_row in await conn.execute(stmt):
+                            await asyncio.sleep(0)
                             if con_row[5] and not con_row[6]:  # If auto-increment and NOT time
                                 if con_row[4] >= 2:  # if number >= 2
                                     new_stmt = update(con).where(con.c.id == con_row[0]).values(
@@ -776,6 +787,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
+                            await asyncio.sleep(0)
                             if row[1] == current_character:
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
@@ -833,6 +845,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
         data = []
         async with engine.begin() as conn:
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 # print(row)
                 data.append(row)
             # print(data)
@@ -847,6 +860,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
 def parse_init_list(init_list: list):
     parsed_list = []
     for row in init_list:
+        await asyncio.sleep(0)
         parsed_list.append(row[1])
     return parsed_list
 
@@ -896,16 +910,17 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         con = await get_condition_table(ctx, metadata, engine)
         row_data = []
         for row in init_list:
+            await asyncio.sleep(0)
             stmt = con.select().where(con.c.character_id == row[0])
-            compiled = stmt.compile()
             # print(compiled)
             async with engine.connect() as conn:
                 con_data = []
                 # print(conn.execute)
                 for con_row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     con_data.append(con_row)
                     # print(con_row)
-                await conn.close()
+            await conn.close()
 
             row_data.append({'id': row[0],
                              'name': row[1],
@@ -926,6 +941,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         output_string = f"```{datetime_string}" \
                         f"Initiative: {round_string}\n"
         for x, row in enumerate(row_data):
+            await asyncio.sleep(0)
             sel_bool = False
             selector = ''
 
@@ -953,12 +969,13 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                 else:
                     string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
             else:
-                hp_string = calculate_hp(row['chp'], row['maxhp'])
+                hp_string = await calculate_hp(row['chp'], row['maxhp'])
                 string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
             output_string += string
 
             # TODO Adjust how the tracker displays the PF2 /a stats, as its going to get crowded fast
             for con_row in row['cc']:
+                await asyncio.sleep(0)
                 if con_row[7] == True:
                     if gm or not con_row[2]:
                         if con_row[4] != None:
@@ -1069,6 +1086,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             ping_string = ''
             if block:
                 for character in turn_list:
+                    await asyncio.sleep(0)
                     user = bot.get_user(character[4])
                     ping_string += f"{user.mention}, it's your turn.\n"
             else:
@@ -1160,6 +1178,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1246,6 +1265,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1263,6 +1283,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         async with engine.begin() as conn:
             check_data = []
             for row in await conn.execute(check_stmt):
+                await asyncio.sleep(0)
                 if row[6]:
                     await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.",
                                             ephemeral=True)
@@ -1294,6 +1315,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1335,6 +1357,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
                 # print(row)
     except NoResultFound as e:
@@ -1354,6 +1377,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         async with engine.begin() as conn:
             result = await conn.execute(stmt)
             for row in result:
+                await asyncio.sleep(0)
                 con_data.append(row)
         await engine.dispose()
         return con_data
@@ -1377,12 +1401,14 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
     stmt = con.select().where(con.c.time == True)
     async with engine.begin() as conn:
         for row in await conn.execute(stmt):
+            await asyncio.sleep(0)
             time_stamp = datetime.datetime.fromtimestamp(row[4])
             time_left = time_stamp - current_time
             if time_left.total_seconds() <= 0:
                 char_stmt = emp.select().where(emp.c.id == row[1])
                 char_name = ''
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     char_name = char_row[1]
                 del_stmt = delete(con).where(con.c.id == row[0])
                 await ctx.channel.send(f"{row[3]} removed from {char_name}")
@@ -1425,6 +1451,7 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
         async with engine.begin() as conn:
             data = []
             for row in await conn.execute(stmt):
+                await asyncio.sleep(0)
                 data.append(row)
         return data[0]
     except Exception as e:
@@ -1519,6 +1546,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             id_stmt = self.emp.select().where(self.emp.c.name == self.name)
             id_data = []
             for row in await conn.execute(id_stmt):
+                await asyncio.sleep(0)
                 id_data.append(row)
 
             char_dicts = [{
@@ -1616,10 +1644,12 @@ class InitiativeCog(commands.Cog):
             async  with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     data.append(row)
                     # print(row)
             for row in data:
                 # if row[4] == ctx.interaction.user.id or gm_status:
+                await asyncio.sleep(0)
                 character_list.append(row[1])
             # print(character_list)
             await self.engine.dispose()
@@ -1643,9 +1673,11 @@ class InitiativeCog(commands.Cog):
             async with self.engine.begin() as conn:
                 data = []
                 for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
                     data.append(row)
                     # print(row)
             for row in data:
+                await asyncio.sleep(0)
                 if row[4] == ctx.interaction.user.id or gm_status:
                     character_list.append(row[1])
             # print(character_list)
@@ -1671,11 +1703,14 @@ class InitiativeCog(commands.Cog):
                 data = []
                 con_list = []
                 for char_row in await conn.execute(char_stmt):
+                    await asyncio.sleep(0)
                     data.append(char_row)
                 for row in data:
                     # print(row)
+                    await asyncio.sleep(0)
                     con_stmt = con.select().where(con.c.character_id == row[0])
                     for char_row in await conn.execute(con_stmt):
+                        await asyncio.sleep(0)
                         # print(char_row)
                         con_list.append(f"{char_row[3]}")
             await self.engine.dispose()
@@ -1801,13 +1836,15 @@ class InitiativeCog(commands.Cog):
                     async with self.engine.begin() as conn:
                         await conn.execute(stmt)  # delete any auto-decrementing round based conditions
                         for row in await conn.execute(
-                                init_stmt):  # Set the initiatives of all characters to 0 (out of combat)
+                                init_stmt):
+                            await asyncio.sleep(0)# Set the initiatives of all characters to 0 (out of combat)
                             stmt = update(emp).where(emp.c.name == row[1]).values(
                                 init=0
                             )
                             await conn.execute(stmt)
 
                         for row in await conn.execute(clean_stmt):
+                            await asyncio.sleep(0)
                             await delete_character(ctx, row[1], self.engine, self.bot)
 
                         # print(result)
@@ -1982,6 +2019,7 @@ class InitiativeCog(commands.Cog):
                 cc_list = await get_cc(ctx, self.engine, self.bot, character)
                 output_string = f'```{character}:\n'
                 for row in cc_list:
+                    await asyncio.sleep(0)
                     counter_string = f'{row[3]}: {row[4]}'
                     output_string += counter_string
                     output_string += '\n'

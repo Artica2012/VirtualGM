@@ -36,6 +36,8 @@ async def pathbuilder_import(pb_char_code:str):
     # This is wrong VVVVVVVV Level should only be considered if proficieny is not untrained.
     stats['initiative'] = stats['wis_mod'] + pb['proficiencies']['perception'] + stats['level']
     stats['acrobatics'] = stats['dex_mod'] + pb['proficiencies']['acrobatics'] + stats['level']
+    stats['arcana'] = stats['int_mod'] + pb['proficiencies']['arcana'] + stats['level']
+
 
 
 
