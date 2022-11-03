@@ -222,6 +222,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     except:
                         initiative = 0
         if guild.system == 'PF2':
+            #TODO CONVERT THIS
             await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
                                                       player=player_bool, ctx=ctx,
                                                       emp=emp, con=con, engine=engine, bot=bot, title=name))
