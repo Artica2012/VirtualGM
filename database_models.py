@@ -43,6 +43,7 @@ Base = declarative_base()
 
 # Database Models
 
+# Global Class
 class Global(Base):
     __tablename__ = "global_manager"
     # ID Columns
@@ -74,6 +75,11 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
 
 
+#########################################
+#########################################
+# Tracker Table
+
+# Tracker Class
 class Tracker(Base):
     __abstract__ = True
 
@@ -87,7 +93,8 @@ class Tracker(Base):
     temp_hp = Column(Integer(), default=0)
     init_string = Column(String(), nullable=True)
 
-async def get_tracker(ctx:discord.ApplicationContext, metadata, engine, id=None):
+# Tracker Get Function
+async def get_tracker(ctx:discord.ApplicationContext, engine, id=None):
     if id == None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -109,6 +116,7 @@ async def get_tracker(ctx:discord.ApplicationContext, metadata, engine, id=None)
     })
     return Model
 
+# Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -124,7 +132,7 @@ async def get_tracker_table(ctx, metadata, engine):
     table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table
 
-
+# Old Tracker (emp) Class
 class TrackerTable:
     def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
@@ -147,21 +155,47 @@ class TrackerTable:
                        )
         return emp
 
+#########################################
+#########################################
+# Condition Table
 
-async def get_con(ctx, metadata, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+# ORM Condition Table
+class Condition(Base):
+    __abstract__ = True
+
+
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    character_id = Column(Integer(), nullable=False)
+    counter = Column(Boolean(), default=False)
+    title = Column(String(), nullable=False)
+    number = Column(Integer(), nullable=True, default=False)
+    auto_increment = Column(Boolean(), nullable=False, default=False)
+    time = Column(Boolean(), default=False)
+    visible = Column(Boolean(), default=True)
+
+# Condition Get Function
+async def get_condition(ctx:discord.ApplicationContext, engine, id=None):
+    if id == None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
+            )
+            guild = result.scalars().one()
+            tablename = f"Condition_{guild.id}"
+            classname = f"Condition{guild.id}"
+    else:
+        tablename = f"Condition_{id}"
+        classname = f"Condition{id}"
+    Model = type(classname, (Condition,), {
+        '__tablename__':tablename
+    })
+    return Model
 
-    table = ConditionTable(ctx, metadata, guild.id)
-    return table
 
 
 async def get_condition_table(ctx, metadata, engine):

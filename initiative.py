@@ -22,7 +22,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_models import get_tracker
+from database_models import get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -226,7 +226,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                                                       player=player_bool, ctx=ctx,
                                                       emp=emp, con=con, engine=engine, bot=bot, title=name))
         else:
-            Tracker = await get_tracker(ctx, engine, bot, id=guild.id)
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
             async with session.begin():
                 tracker = Tracker(
                     name=name,
@@ -270,28 +270,25 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
     dice = DiceRoller('')
 
     try:
-        Tracker = get_tracker(ctx, metadata, engine)
-        emp = await get_tracker_table(ctx, metadata, engine)
+        Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        if hp != None and init != None:
-            stmt = emp.update().where(emp.c.name == name).values(
-                init_string=str(init),
-                max_hp=hp,
-            )
-        elif hp != None and init == None:
-            stmt = emp.update().where(emp.c.name == name).values(
-                max_hp=hp,
-            )
-        elif hp == None and init != None:
-            stmt = emp.update().where(emp.c.name == name).values(
-                init_string=str(init),
-            )
-        else:
-            return False
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character = result.scalars().one()
 
-        async with engine.begin() as conn:
-            result = await conn.execute(stmt)
-            await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+            if hp != None and init != None:
+                character.init_string = str(init)
+                character.max_hp = hp
+            elif hp != None and init == None:
+                character.max_hp = hp
+            elif hp == None and init != None:
+                character.init_string = str(init)
+            else:
+                return False
+
+            await session.commit()
+        await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
         await engine.dispose()
         return True
 
@@ -310,10 +307,8 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
     metadata = db.MetaData()
     dice = DiceRoller('')
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
+        # Get the table
         async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
@@ -324,53 +319,70 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
             )
             guild = result.scalars().one()
 
-        old_char_stmt = emp.select().where(emp.c.name == name)
-        async with engine.begin() as conn:
-            await asyncio.sleep(0)
-            for row in await conn.execute(old_char_stmt):
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx,engine, id=guild.id)
+
+        # Load up the old character
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == name
+            ))
+            character = char_result.scalars().one()
+
+        # If initiative is active, roll initiative
+        initiative = 0
+        if guild.initiative != None:
+            try:
+                roll = await dice.plain_roll(character.init_string)
+                initiative = roll[1]
+                if type(initiative) != int:
+                    initiative = 0
+            except:
                 initiative = 0
-                if guild.initiative != None:
-                    try:
-                        roll = await dice.plain_roll(row[8])
-                        initiative = roll[1]
-                        if type(initiative) != int:
-                            initiative = 0
-                    except:
-                        initiative = 0
-                new_char_stmt = emp.insert().values(
-                    name=new_name,
-                    init_string=row[8],
-                    init=initiative,
-                    player=row[3],
-                    user=row[4],
-                    current_hp=row[5],
-                    max_hp=row[6],
-                    temp_hp=row[7]
+
+        # Copy the character over into a new character with a new name
+        async with session.begin():
+            new_char = Tracker(
+                name = new_name,
+                init_string = character.init_string,
+                init = initiative,
+                player = character.player,
+                user = character.user,
+                current_hp = character.current_hp,
+                max_hp = character.max_hp,
+                temp_hp = character.temp_hp
+            )
+            session.add(new_char)
+        await session.commit()
+
+        # Load the new character from the database, to get its ID
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == new_name
+            ))
+            new_character = char_result.scalars().one()
+
+        async with async_session() as session:
+            con_result = await session.execute(select(Condition).where(
+                Condition.character_id == character.id
+            ).where(Condition.visible == False))
+            conditions = con_result.scalars().all()
+
+        async with session.begin():
+            for condit in conditions:
+                await asyncio.sleep(0)
+                new_condition = Condition(
+                    character_id=new_character.id,
+                    counter=condit.counter,
+                    title=condit.title,
+                    number=condit.number,
+                    auto_increment=condit.auto_increment,
+                    time=condit.time,
+                    visible=condit.visible,
                 )
-                old_char_id = row[0]  # Save the ID of the old character
+                session.add(new_condition)
+            await session.commit()
 
-                await conn.execute(new_char_stmt)  # Copy the character with a new name and ID
-                id_stmt = emp.select().where(emp.c.name == new_name)
-                new_char_id = None  # Get the ID of the new character
-                for id_row in await conn.execute(id_stmt):
-                    await asyncio.sleep(0)
-                    new_char_id = id_row[0]
-
-                # copy over the invisible conditions
-                con_stmt = con.select().where(con.c.character_id == old_char_id).where(con.c.visible == False)
-                old_con_list = []
-                for con_row in await conn.execute(con_stmt):
-                    await asyncio.sleep(0)
-                    add_con_stmt = con.insert().values(
-                        character_id=new_char_id,
-                        counter=con_row[2],
-                        title=con_row[3],
-                        number=con_row[4],
-                        auto_increment=con_row[5],
-                        time=con_row[6],
-                        visible=con_row[7],
-                    )
-                    await conn.execute(add_con_stmt)
 
         await engine.dispose()
         return True
