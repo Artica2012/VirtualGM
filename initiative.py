@@ -22,6 +22,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
+from database_models import get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -191,6 +192,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     metadata = db.MetaData()
 
     try:
+
         emp = await get_tracker_table(ctx, metadata, engine)
         con = await get_condition_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -219,12 +221,14 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                             initiative = 0
                     except:
                         initiative = 0
-            if guild.system == 'PF2':
-                await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
-                                                          player=player_bool, ctx=ctx,
-                                                          emp=emp, con=con, engine=engine, bot=bot, title=name))
-            else:
-                stmt = emp.insert().values(
+        if guild.system == 'PF2':
+            await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
+                                                      player=player_bool, ctx=ctx,
+                                                      emp=emp, con=con, engine=engine, bot=bot, title=name))
+        else:
+            Tracker = await get_tracker(ctx, engine, bot, id=guild.id)
+            async with session.begin():
+                tracker = Tracker(
                     name=name,
                     init_string=init,
                     init=initiative,
@@ -234,10 +238,8 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     max_hp=hp,
                     temp_hp=0
                 )
-                async with engine.begin() as conn:
-                    result = await conn.execute(stmt)
-                    # conn.commit()
-
+                session.add(tracker)
+            await session.commit()
 
             if guild.initiative != None:
                 if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
@@ -268,6 +270,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
     dice = DiceRoller('')
 
     try:
+        Tracker = get_tracker(ctx, metadata, engine)
         emp = await get_tracker_table(ctx, metadata, engine)
 
         if hp != None and init != None:

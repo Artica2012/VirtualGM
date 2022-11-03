@@ -74,21 +74,40 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
 
 
-async def get_tracker(ctx: discord.ApplicationContext, metadata, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+class Tracker(Base):
+    __abstract__ = True
+
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    name = Column(String(), nullable=False, unique=True)
+    init = Column(Integer(), default=0)
+    player = Column(Boolean(), nullable=False)
+    user = Column(BigInteger(), nullable=False)
+    current_hp = Column(Integer(), default=0)
+    max_hp = Column(Integer(), default=1)
+    temp_hp = Column(Integer(), default=0)
+    init_string = Column(String(), nullable=True)
+
+async def get_tracker(ctx:discord.ApplicationContext, metadata, engine, id=None):
+    if id == None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
-
-    table = TrackerTable(ctx, metadata, guild.id)
-    return table
-
+            )
+            guild = result.scalars().one()
+            tablename = f"Tracker_{guild.id}"
+            classname = f"Tracker{guild.id}"
+    else:
+        tablename = f"Tracker_{id}"
+        classname = f"Tracker{id}"
+    Model = type(classname, (Tracker,), {
+        '__tablename__':tablename
+    })
+    return Model
 
 async def get_tracker_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
