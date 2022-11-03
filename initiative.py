@@ -1667,27 +1667,27 @@ class InitiativeCog(commands.Cog):
         metadata = db.MetaData()
         character_list = []
 
-        try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async  with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
-                    await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                # if row[4] == ctx.interaction.user.id or gm_status:
+        # try:
+        emp = await get_tracker_table(ctx, metadata, self.engine)
+        stmt = emp.select()
+        async  with self.engine.begin() as conn:
+            data = []
+            for row in await conn.execute(stmt):
                 await asyncio.sleep(0)
-                character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return False
+                data.append(row)
+                # print(row)
+        for row in data:
+            # if row[4] == ctx.interaction.user.id or gm_status:
+            await asyncio.sleep(0)
+            character_list.append(row[1])
+        # print(character_list)
+        await self.engine.dispose()
+        return character_list
+        # except Exception as e:
+        #     print(f'character_select: {e}')
+        #     report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
+        #     await report.report()
+        #     return False
 
     # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
