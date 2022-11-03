@@ -36,7 +36,7 @@ async def on_ready():
 
 @bot.event
 async def on_disconnect():
-    await bot.connect()
+    # await bot.connect()
     print('Disconnected')
 
 # Initialize the database

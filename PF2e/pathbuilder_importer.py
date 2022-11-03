@@ -1,6 +1,7 @@
 # Pathbuilder_importer.py
 
 # Code to facilitate the importing of data directly from pathbuilder
+import asyncio
 from math import floor
 import os
 import aiohttp
@@ -25,6 +26,7 @@ from database_models import get_tracker_table, get_condition_table, get_macro_ta
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
+from initiative import init_integrity_check, get_init_list
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -176,6 +178,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
     try:
         emp = await get_tracker_table(ctx, metadata, engine)
         con = await get_condition_table(ctx, metadata, engine)
+        macro_table = await get_macro_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -202,3 +205,97 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
                             initiative = 0
                     except:
                         initiative = 0
+            if guild.system != 'PF2':
+                return False
+            else:
+                stmt = emp.insert().values(
+                    name=name,
+                    init_string=stats['init_string'],
+                    init=initiative,
+                    player=True,
+                    user=ctx.user.id,
+                    current_hp=stats['hp'],
+                    max_hp=stats['hp'],
+                    temp_hp=0
+                )
+                async with engine.begin() as conn:
+                    result = await conn.execute(stmt)
+
+                    if guild.initiative != None:
+                        if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
+                            # print(f"integrity check was false: init_pos: {guild.initiative}")
+                            for pos, row in enumerate(await get_init_list(ctx, engine)):
+                                await asyncio.sleep(0)
+                                if row[1] == guild.saved_order:
+                                    guild.initiative = pos
+                                    # print(f"integrity checked init_pos: {guild.initiative}")
+                                    await session.commit()
+                    id_stmt = emp.select().where(emp.c.name == name)
+                    id_data = []
+                    for row in await conn.execute(id_stmt):
+                        await asyncio.sleep(0)
+                        id_data.append(row)
+
+                    char_dicts = [{
+                        'character_id': id_data[0][0],
+                        'title': 'AC',
+                        'number': int(stats['ac']),
+                        'counter': True,
+                        'visible': False
+                    },
+                        {
+                            'character_id': id_data[0][0],
+                            'title': 'Fort',
+                            'number': int(stats['fort']),
+                            'counter': True,
+                            'visible': False
+                        },
+                        {
+                            'character_id': id_data[0][0],
+                            'title': 'Reflex',
+                            'number': int(stats['reflex']),
+                            'counter': True,
+                            'visible': False
+                        },
+                        {
+                            'character_id': id_data[0][0],
+                            'title': 'Will',
+                            'number': int(stats['will']),
+                            'counter': True,
+                            'visible': False
+                        },
+                        {
+                            'character_id': id_data[0][0],
+                            'title': 'DC',
+                            'number': int(stats['dc']),
+                            'counter': True,
+                            'visible': False
+                        },
+                    ]
+
+                    con_stmt = con.insert().values(
+                        char_dicts
+                    )
+                    await conn.execute(con_stmt)
+
+                    macro_keys = macro.keys()
+                    for key in macro_keys:
+                        await asyncio.sleep(0)
+                        macro_stmt = macro_table.insert().values(
+                            character_id=id_data[0][0],
+                            name=key,
+                            macro=f"1d20+{macro[key]}"
+                        )
+                        await conn.execute(macro_stmt)
+                await engine.dispose()
+    except Exception as e:
+        print(f'create_macro: {e}')
+        report = ErrorReport(ctx, "pathbuilder importer", e, bot)
+        await report.report()
+        return False
+
+
+
+
+
+
