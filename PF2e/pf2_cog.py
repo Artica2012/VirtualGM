@@ -25,6 +25,7 @@ from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from PF2e.pathbuilder_importer import pathbuilder_import
+from initiative import update_pinned_tracker
 
 # define global variables
 
@@ -57,8 +58,13 @@ class PF2Cog(commands.Cog):
     @option('pathbuilder_id', description="Pathbuilder Export ID", required=True)
     async def pb_import(self, ctx:discord.ApplicationContext, name:str, pathbuilder_id:int):
         await ctx.response.defer(ephemeral=True)
-        await pathbuilder_import(ctx, self.engine, self.bot, name, str(pathbuilder_id))
-        await ctx.send_followup('Success')
+        response = await pathbuilder_import(ctx, self.engine, self.bot, name, str(pathbuilder_id))
+        if response:
+            await update_pinned_tracker(ctx, self.engine, self.bot)
+            await ctx.send_followup('Success')
+
+        else:
+            await ctx.send_followup('Failed')
 
 
 def setup(bot):
