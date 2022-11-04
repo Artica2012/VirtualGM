@@ -1612,7 +1612,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
                             # print(f"integrity checked init_pos: {guild.initiative}")
                             await session.commit()
 
-        await update_pinned_tracker(self.ctx, self.engine, self.bot)
+        # await update_pinned_tracker(self.ctx, self.engine, self.bot)
         print('Tracker Updated')
         await interaction.response.send_message(embeds=[embed])
 
