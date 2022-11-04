@@ -16,13 +16,13 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlalchemy import or_, func
 from sqlalchemy import select, update, delete
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, SAWarning
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_models import get_tracker, get_condition
+from database_models import get_tracker, get_condition, get_macro
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -192,9 +192,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
     metadata = db.MetaData()
 
     try:
-
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -224,7 +221,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
         if guild.system == 'PF2':
             pf2Modal = PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
                                             player=player_bool, ctx=ctx,
-                                            emp=emp, con=con, engine=engine, bot=bot, title=name)
+                                            engine=engine, bot=bot, title=name)
             await ctx.send_modal(pf2Modal)
             return True
         else:
@@ -485,29 +482,19 @@ async def calculate_hp(chp, maxhp):
 
 
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
-    metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == name)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
 
-            thp = data[0][7]
-            new_thp = thp + amount
-
-            stmt = update(emp).where(emp.c.name == name).values(
-                temp_hp=new_thp
-            )
-
-            result = await conn.execute(stmt)
-            if result.rowcount == 0:
-                return False
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == name
+            ))
+            character = char_result.scalars().one()
+            character.temp_hp = character.temp_hp + amount
+            await session.commit()
         await engine.dispose()
         return True
-
     except Exception as e:
         print(f'add_thp: {e}')
         report = ErrorReport(ctx, add_thp.__name__, e, bot)
@@ -1480,15 +1467,13 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
 # Specific character modals
 
 class PF2AddCharacterModal(discord.ui.Modal):
-    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, emp, con, engine, bot, *args, **kwargs):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
         self.name = name
         self.hp = hp
         self.init = init
         self.initiative = initiative
         self.player = player
         self.ctx = ctx
-        self.emp = emp
-        self.con = con
         self.engine = engine
         self.bot = bot
         super().__init__(
