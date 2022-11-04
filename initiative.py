@@ -322,7 +322,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
             guild = result.scalars().one()
 
         Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx,engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
         # Load up the old character
         async with async_session() as session:
@@ -345,14 +345,14 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         # Copy the character over into a new character with a new name
         async with session.begin():
             new_char = Tracker(
-                name = new_name,
-                init_string = character.init_string,
-                init = initiative,
-                player = character.player,
-                user = character.user,
-                current_hp = character.current_hp,
-                max_hp = character.max_hp,
-                temp_hp = character.temp_hp
+                name=new_name,
+                init_string=character.init_string,
+                init=initiative,
+                player=character.player,
+                user=character.user,
+                current_hp=character.current_hp,
+                max_hp=character.max_hp,
+                temp_hp=character.temp_hp
             )
             session.add(new_char)
         await session.commit()
@@ -384,7 +384,6 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 )
                 session.add(new_condition)
             await session.commit()
-
 
         await engine.dispose()
         return True
@@ -1516,6 +1515,17 @@ class PF2AddCharacterModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == self.ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+
         embed = discord.Embed(
             title="Character Created (PF2)",
             fields=[
@@ -1547,77 +1557,66 @@ class PF2AddCharacterModal(discord.ui.Modal):
             color=discord.Color.dark_gold(),
         )
 
-        emp_stmt = self.emp.insert().values(
-            name=self.name,
-            init_string=self.init,
-            init=self.initiative,
-            player=self.player,
-            user=self.ctx.user.id,
-            current_hp=self.hp,
-            max_hp=self.hp,
-            temp_hp=0
-        )
-        async with self.engine.begin() as conn:
-            result = await conn.execute(emp_stmt)
-            id_stmt = self.emp.select().where(self.emp.c.name == self.name)
-            id_data = []
-            for row in await conn.execute(id_stmt):
-                await asyncio.sleep(0)
-                id_data.append(row)
-
-            char_dicts = [{
-                'character_id': id_data[0][0],
-                'title': 'AC',
-                'number': int(self.children[0].value),
-                'counter': True,
-                'visible': False
-            },
-                {
-                    'character_id': id_data[0][0],
-                    'title': 'Fort',
-                    'number': int(self.children[1].value),
-                    'counter': True,
-                    'visible': False
-                },
-                {
-                    'character_id': id_data[0][0],
-                    'title': 'Reflex',
-                    'number': int(self.children[2].value),
-                    'counter': True,
-                    'visible': False
-                },
-                {
-                    'character_id': id_data[0][0],
-                    'title': 'Will',
-                    'number': int(self.children[3].value),
-                    'counter': True,
-                    'visible': False
-                },
-                {
-                    'character_id': id_data[0][0],
-                    'title': 'DC',
-                    'number': int(self.children[4].value),
-                    'counter': True,
-                    'visible': False
-                },
-            ]
-
-            con_stmt = self.con.insert().values(
-                char_dicts
-            )
-            await conn.execute(con_stmt)
-            print("Condition's written")
-
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == self.ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+            Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+            async with session.begin():
+                tracker = Tracker(
+                    name=self.name,
+                    init_string=self.init,
+                    init=self.initiative,
+                    player=self.player,
+                    user=self.ctx.user.id,
+                    current_hp=self.hp,
+                    max_hp=self.hp,
+                    temp_hp=0
                 )
-            )
-            )
-            guild = result.scalars().one()
+                session.add(tracker)
+            await session.commit()
+
+        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+
+        async with session.begin():
+            session.add(Condition(
+                character_id=character.id,
+                title='AC',
+                number=int(self.children[0].value),
+                counter=True,
+                visible=False))
+            session.add(Condition(
+                character_id=character.id,
+                title='Fort',
+                number=int(self.children[1].value),
+                counter=True,
+                visible=False
+            ))
+            session.add(Condition(
+                character_id=character.id,
+                title='Reflex',
+                number=int(self.children[2].value),
+                counter=True,
+                visible=False
+            ))
+            session.add(Condition(
+                character_id=character.id,
+                title='Will',
+                number=int(self.children[3].value),
+                counter=True,
+                visible=False
+            ))
+            session.add(Condition(
+                character_id=character.id,
+                title='DC',
+                number=int(self.children[4].value),
+                counter=True,
+                visible=False
+            ))
+            await session.commit()
+
+        async with session.begin():
             if guild.initiative != None:
                 if not await init_integrity_check(self.ctx, guild.initiative, guild.saved_order, self.engine):
                     # print(f"integrity check was false: init_pos: {guild.initiative}")
@@ -1631,10 +1630,9 @@ class PF2AddCharacterModal(discord.ui.Modal):
         # await update_pinned_tracker(self.ctx, self.engine, self.bot)
         print('Tracker Updated')
         await interaction.response.send_message(embeds=[embed])
-
-    async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        print(error)
-
+    #
+    # async def on_error(self, error: Exception, interaction: Interaction) -> None:
+    #     print(error)
 
 
 #############################################################################
@@ -1879,7 +1877,7 @@ class InitiativeCog(commands.Cog):
                         await conn.execute(stmt)  # delete any auto-decrementing round based conditions
                         for row in await conn.execute(
                                 init_stmt):
-                            await asyncio.sleep(0)# Set the initiatives of all characters to 0 (out of combat)
+                            await asyncio.sleep(0)  # Set the initiatives of all characters to 0 (out of combat)
                             stmt = update(emp).where(emp.c.name == row[1]).values(
                                 init=0
                             )
@@ -2001,15 +1999,15 @@ class InitiativeCog(commands.Cog):
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @i.command(description="Add conditions and counters",
-                # guild_ids=[GUILD]
-                )
+               # guild_ids=[GUILD]
+               )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
     async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
-                  unit: str = "Round",
-                  auto: str = 'Static'):
+                 unit: str = "Round",
+                 auto: str = 'Static'):
         await ctx.response.defer(ephemeral=True)
         if type == "Condition":
             counter_bool = False
@@ -2027,13 +2025,13 @@ class InitiativeCog(commands.Cog):
             await ctx.send_followup("Failure", ephemeral=True)
 
     @i.command(description="Edit or remove conditions and counters",
-                # guild_ids=[GUILD]
-                )
+               # guild_ids=[GUILD]
+               )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
     async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
-                   new_value: int = 0):
+                      new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
         if mode == 'delete':
