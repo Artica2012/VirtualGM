@@ -115,7 +115,7 @@ class MacroCog(commands.Cog):
                 for row in data:
                     await asyncio.sleep(0)
                     # print(row)
-                    macro_stmt = macro.select().where(macro.c.character_id == row[0])
+                    macro_stmt = macro.select().where(macro.c.character_id == row[0]).order_by(macro.c.name.asc())
                     for char_row in await conn.execute(macro_stmt):
                         # print(char_row)
                         macro_list.append(f"{char_row[2]}: {char_row[3]}")

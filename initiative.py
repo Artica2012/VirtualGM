@@ -1869,9 +1869,9 @@ class InitiativeCog(commands.Cog):
                                 )
                                 await conn.execute(stmt)
 
-                            for row in await conn.execute(clean_stmt):
-                                await asyncio.sleep(0)
-                                await delete_character(ctx, row[1], self.engine, self.bot)
+                            # for row in await conn.execute(clean_stmt):
+                            #     await asyncio.sleep(0)
+                            #     await delete_character(ctx, row[1], self.engine, self.bot)
 
                             # print(result)
                         await update_pinned_tracker(ctx, self.engine, self.bot)
