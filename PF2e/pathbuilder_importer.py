@@ -65,12 +65,13 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
     # print(stats['level'])
 
     # Modifiers
-    stats['str_mod'] = floor(pb['build']['abilities']['str'] - 10 / 2)
-    stats['dex_mod'] = floor(pb['build']['abilities']['dex'] - 10 / 2)
-    stats['con_mod'] = floor(pb['build']['abilities']['con'] - 10 / 2)
-    stats['int_mod'] = floor(pb['build']['abilities']['int'] - 10 / 2)
-    stats['wis_mod'] = floor(pb['build']['abilities']['wis'] - 10 / 2)
-    stats['cha_mod'] = floor(pb['build']['abilities']['cha'] - 10 / 2)
+    stats['str_mod'] = floor((pb['build']['abilities']['str'] - 10) / 2)
+    # print(stats['str_mod'])
+    stats['dex_mod'] = floor((pb['build']['abilities']['dex'] - 10) / 2)
+    stats['con_mod'] = floor((pb['build']['abilities']['con'] - 10) / 2)
+    stats['int_mod'] = floor((pb['build']['abilities']['int'] - 10) / 2)
+    stats['wis_mod'] = floor((pb['build']['abilities']['wis'] - 10) / 2)
+    stats['cha_mod'] = floor((pb['build']['abilities']['cha'] - 10) / 2)
 
     # AC
     stats['ac'] = pb['build']['acTotal']['acTotal']
@@ -96,6 +97,14 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
 
 
     # Stats
+
+    macro['perception'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
+
+    if pb['build']['proficiencies']['athletics'] == 0:
+        macro['athletics'] = stats['str_mod']
+    else:
+        macro['athletics'] = stats['str_mod'] + pb['build']['proficiencies']['athletics'] + stats['level']
+
     if pb['build']['proficiencies']['acrobatics'] == 0:
         macro['acrobatics'] = stats['dex_mod']
     else:
