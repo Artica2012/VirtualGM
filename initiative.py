@@ -628,17 +628,17 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
 
 # Set the initiative
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
-    metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = update(emp).where(emp.c.name == name).values(
-            init=init
-        )
-        async with engine.begin() as conn:
-            result = await conn.execute(stmt)
-            # conn.commit()
-            if result.rowcount == 0:
-                return False
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == name
+            ))
+            character = char_result.scalars().one()
+            character.init = init
+            await session.commit()
         return True
     except Exception as e:
         print(f'set_init: {e}')
@@ -674,28 +674,26 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             )
             )
             guild = result.scalars().one()
-            emp = await get_tracker_table(ctx, metadata, engine)
-            con = await get_condition_table(ctx, metadata, engine)
 
-            # print(f"guild.initiative: {guild.initiative}")
-            if guild.initiative is None:
-                init_pos = -1
-                guild.round = 1
-                first_pass = True
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
+            async with async_session() as t_session:
+                char_result = await t_session.execute(select(Tracker))
+                character = char_result.scalars().all()
 
-                # set init
-                stmt = emp.select()
-                dice = DiceRoller('')
-                async with engine.begin() as conn:
-                    for row in await conn.execute(stmt):
+                # print(f"guild.initiative: {guild.initiative}")
+                if guild.initiative == None:
+                    dice = DiceRoller('')
+                    init_pos = -1
+                    guild.round = 1
+                    first_pass = True
+                    for char in character:
                         await asyncio.sleep(0)
-                        if row[2] == 0:
+                        if char.init == 0:
                             await asyncio.sleep(0)
-                            roll = await dice.plain_roll(row[8])
-                            # print(f"Name: {row[1]}, roll: {roll}")
-                            await set_init(ctx, bot, row[1], roll[1], engine)
-            else:
-                init_pos = int(guild.initiative)
+                            roll = await dice.plain_roll(char.init_string)
+                            await set_init(ctx, bot, char.name, roll[1], engine)
+                else:
+                    init_pos = int(guild.initiative)
 
             init_list = await get_init_list(ctx, engine)
 
@@ -703,13 +701,10 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 current_character = init_list[0][1]
             else:
                 current_character = guild.saved_order
-
             # Record the initial to break an infinite loop
             iterations = 0
 
             while not block_done:
-                # print(f"init_pos: {init_pos}")
-
                 # make sure that the current character is at the same place in initiative as it was before
                 # decrement any conditions with the decrement flag
 
@@ -735,13 +730,11 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             await check_cc(ctx, engine, bot)
 
                 try:
-                    stmt = emp.select().where(emp.c.name == current_character)
-                    async with engine.begin() as conn:
-                        data = []
-                        for row in await conn.execute(stmt):
-                            await asyncio.sleep(0)
-                            data.append(row)
-                            # print(row)
+                    async with async_session() as session:
+                        char_result = await session.execute(select(Tracker).where(
+                            Tracker.name == current_character
+                        ))
+                        cur_char = char_result.scalars().one()
                 except Exception as e:
                     print(f'advance_initiative: {e}')
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
@@ -749,30 +742,39 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     return False
 
                 try:
-                    stmt = con.select().where(con.c.character_id == data[0][0])
-                    async with engine.begin() as conn:
-                        for con_row in await conn.execute(stmt):
-                            await asyncio.sleep(0)
-                            if con_row[5] and not con_row[6]:  # If auto-increment and NOT time
-                                if con_row[4] >= 2:  # if number >= 2
-                                    new_stmt = update(con).where(con.c.id == con_row[0]).values(
-                                        number=con_row[4] - 1
-                                    )  # number --
-                                else:
-                                    new_stmt = delete(con).where(
-                                        con.c.id == con_row[0])  # If number is 1 or 0, delete it
-                                    await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
-                                await conn.execute(new_stmt)
-                            elif con_row[6]:  # If time is true
-                                time_stamp = datetime.datetime.fromtimestamp(con_row[4])  # The number is a timestamp
-                                # for the expiration, not a round count
-                                current_time = await get_time(ctx, engine, bot)
-                                time_left = time_stamp - current_time
-                                if time_left.total_seconds() <= 0:
-                                    new_stmt = delete(con).where(
-                                        con.c.id == con_row[0])  # If the time left is 0 or left, delete it
-                                    await ctx.channel.send(f"{con_row[3]} removed from {data[0][1]}")
-                                    await conn.execute(new_stmt)
+                    Condition = await get_condition(ctx, engine, id=guild.id)
+                    # con = await get_condition_table(ctx, metadata, engine)
+                    async with async_session() as session:
+                        char_result = await session.execute(select(Condition).where(
+                            Condition.character_id == cur_char.id
+                        ))
+                        con_list = char_result.scalars().all()
+
+                    for con_row in con_list:
+                        await asyncio.sleep(0)
+                        if con_row.auto_increment and not con_row.time:  # If auto-increment and NOT time
+                            if con_row.number >= 2:  # if number >= 2
+                                con_row.number -= 1
+                            else:
+                                async with async_session() as session:
+                                    del_result = await session.execute(select(Condition).where(Condition.id == con_row.id))
+                                    del_row = del_result.scalars().one()
+                                    await session.delete(del_row)
+                                    await session.commit()
+                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                        elif con_row.time:  # If time is true
+                            time_stamp = datetime.datetime.fromtimestamp(con_row.number)  # The number is a timestamp
+                            # for the expiration, not a round count
+                            current_time = await get_time(ctx, engine, bot)
+                            time_left = time_stamp - current_time
+                            if time_left.total_seconds() <= 0:
+                                async with async_session() as session:
+                                    del_result = await session.execute(select(Condition).where(Condition.id == con_row.id))
+                                    del_row = del_result.scalars().one()
+                                    await session.delete(del_row)
+                                    await session.commit()
+                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+
                 except Exception as e:
                     print(f'block_advance_initiative: {e}')
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
@@ -819,7 +821,15 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     block_done = True
 
                 # print(turn_list)
-
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
             # Out side while statement - for reference
             guild.initiative = init_pos  # set it
             # print(f"final init_pos: {init_pos}")
@@ -832,7 +842,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
         report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
         await report.report()
 
-
+#TODO CONTINUE UPDATING HERE
 async def get_init_list(ctx: discord.ApplicationContext, engine):
     try:
         metadata = db.MetaData()
@@ -1115,48 +1125,50 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
     turn_list = []
     block_done = False
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
+    # try:
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
-            )
-            guild = result.scalars().one()
-            iteration = 0
-            init_pos = guild.initiative
-            init_list = await get_init_list(ctx, engine)
-            length = len(init_list)
-            while not block_done:
-                turn_list.append(init_list[init_pos])
-                # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
-                player_status = init_list[init_pos][3]
-                if init_pos == 0:
-                    if player_status != init_list[length - 1][3]:
-                        block_done = True
-                else:
-                    if player_status != init_list[init_pos - 1][3]:
-                        block_done = True
-
-                init_pos -= 1
-                if init_pos < 0:
-                    if guild.round != 1:  # Don't loop back to the end on the first round
-                        init_pos = length - 1
-                    else:
-                        block_done = True
-                iteration += 1
-                if iteration >= length:
+        )
+        )
+        guild = result.scalars().one()
+        iteration = 0
+        init_pos = guild.initiative
+        print(f"init_pos: {init_pos}")
+        print(init_pos)
+        init_list = await get_init_list(ctx, engine)
+        length = len(init_list)
+        while not block_done:
+            turn_list.append(init_list[init_pos])
+            # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
+            player_status = init_list[init_pos][3]
+            if init_pos == 0:
+                if player_status != init_list[length - 1][3]:
                     block_done = True
-            await engine.dispose()
-            return turn_list
-    except Exception as e:
-        print(f'get_turn_list: {e}')
-        report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
-        await report.report()
-        return False
+            else:
+                if player_status != init_list[init_pos - 1][3]:
+                    block_done = True
+
+            init_pos -= 1
+            if init_pos < 0:
+                if guild.round != 1:  # Don't loop back to the end on the first round
+                    init_pos = length - 1
+                else:
+                    block_done = True
+            iteration += 1
+            if iteration >= length:
+                block_done = True
+        await engine.dispose()
+        return turn_list
+    # except Exception as e:
+    #     print(f'get_turn_list: {e}')
+    #     report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
+    #     await report.report()
+    #     return False
 
 
 # ---------------------------------------------------------------
@@ -1895,21 +1907,21 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     async def next(self, ctx: discord.ApplicationContext):
-        try:
-            await ctx.response.defer()
-            # Advance Init and Display
-            await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
+        # try:
+        await ctx.response.defer()
+        # Advance Init and Display
+        await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
 
-            # Query the initiative position for the tracker and post it
-            await block_post_init(ctx, self.engine, self.bot)
-            await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+        # Query the initiative position for the tracker and post it
+        await block_post_init(ctx, self.engine, self.bot)
+        await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
 
-        except NoResultFound as e:
-            await ctx.respond(error_not_initialized, ephemeral=True)
-        except Exception as e:
-            print(f"/i next: {e}")
-            report = ErrorReport(ctx, "slash command /i next", e, self.bot)
-            await report.report()
+        # except NoResultFound as e:
+        #     await ctx.respond(error_not_initialized, ephemeral=True)
+        # except Exception as e:
+        #     print(f"/i next: {e}")
+        #     report = ErrorReport(ctx, "slash command /i next", e, self.bot)
+        #     await report.report()
 
     @i.command(description="Set Init (Number or XdY+Z)",
                # guild_ids=[GUILD]
