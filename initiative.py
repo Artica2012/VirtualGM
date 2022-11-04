@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import sqlalchemy as db
-from discord import option
+from discord import option, Interaction
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -222,10 +222,11 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     except:
                         initiative = 0
         if guild.system == 'PF2':
-            #TODO CONVERT THIS
-            await ctx.send_modal(PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
-                                                      player=player_bool, ctx=ctx,
-                                                      emp=emp, con=con, engine=engine, bot=bot, title=name))
+            pf2Modal = PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
+                                            player=player_bool, ctx=ctx,
+                                            emp=emp, con=con, engine=engine, bot=bot, title=name)
+            await ctx.send_modal(pf2Modal)
+            return True
         else:
             Tracker = await get_tracker(ctx, engine, id=guild.id)
             async with session.begin():
@@ -1605,9 +1606,35 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 char_dicts
             )
             await conn.execute(con_stmt)
-        await update_pinned_tracker(self.ctx, self.engine, self.bot)
+            print("Condition's written")
 
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == self.ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+            if guild.initiative != None:
+                if not await init_integrity_check(self.ctx, guild.initiative, guild.saved_order, self.engine):
+                    # print(f"integrity check was false: init_pos: {guild.initiative}")
+                    for pos, row in enumerate(await get_init_list(self.ctx, self.engine)):
+                        await asyncio.sleep(0)
+                        if row[1] == guild.saved_order:
+                            guild.initiative = pos
+                            # print(f"integrity checked init_pos: {guild.initiative}")
+                            await session.commit()
+
+        # await update_pinned_tracker(self.ctx, self.engine, self.bot)
+        print('Tracker Updated')
         await interaction.response.send_message(embeds=[embed])
+
+    async def on_error(self, error: Exception, interaction: Interaction) -> None:
+        print(error)
+
 
 
 #############################################################################
@@ -1760,7 +1787,7 @@ class InitiativeCog(commands.Cog):
     @option('initiative', description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
-        await ctx.response.defer(ephemeral=True)
+        # await ctx.response.defer(ephemeral=True)
         response = False
         player_bool = False
         if player == 'player':
@@ -1770,9 +1797,9 @@ class InitiativeCog(commands.Cog):
 
         response = await add_character(ctx, self.engine, self.bot, name, hp, player_bool, initiative)
         if response:
-            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+            await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
         else:
-            await ctx.send_followup(f"Error Adding Character", ephemeral=True)
+            await ctx.respond(f"Error Adding Character", ephemeral=True)
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
