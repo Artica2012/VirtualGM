@@ -505,18 +505,18 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
     metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == name)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == name
+            ))
+            character = char_result.scalars().one()
 
-            chp = data[0][5]
+            chp = character.current_hp
             new_hp = chp
-            maxhp = data[0][6]
-            thp = data[0][7]
+            maxhp = character.max_hp
+            thp = character.temp_hp
             new_thp = 0
 
             if heal:
@@ -541,14 +541,9 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
                     dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
                     await ctx.channel.send(embed=dead_embed)
 
-            stmt = update(emp).where(emp.c.name == name).values(
-                current_hp=new_hp,
-                temp_hp=new_thp
-            )
-
-            result = await conn.execute(stmt)
-            if result.rowcount == 0:
-                return False
+            character.current_hp = new_hp
+            character.temp_hp - new_thp
+            await session.commit()
         await engine.dispose()
         return True
     except Exception as e:
@@ -1664,21 +1659,18 @@ class InitiativeCog(commands.Cog):
         character_list = []
 
         try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async  with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker))
+                character = char_result.scalars().all()
+                for char in character:
                     await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                # if row[4] == ctx.interaction.user.id or gm_status:
-                await asyncio.sleep(0)
-                character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
+
         except Exception as e:
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -1693,21 +1685,20 @@ class InitiativeCog(commands.Cog):
         gm_status = await gm_check(ctx, self.engine)
 
         try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                if gm_status:
+                    char_result = await session.execute(select(Tracker))
+                else:
+                    char_result = await session.execute(select(Tracker).where(Tracker.user == ctx.interaction.user.id))
+                character = char_result.scalars().all()
+                for char in character:
                     await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                await asyncio.sleep(0)
-                if row[4] == ctx.interaction.user.id or gm_status:
-                    character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
 
         except Exception as e:
             print(f'character_select_gm: {e}')
@@ -1716,28 +1707,26 @@ class InitiativeCog(commands.Cog):
             return False
 
     async def cc_select(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character = ctx.options['character']
-        con = await get_condition_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
 
+        con_list = []
         try:
-            char_stmt = emp.select().where(emp.c.name == character)
-            # print(character)
-            async with self.engine.begin() as conn:
-                data = []
-                con_list = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-                for row in data:
-                    # print(row)
-                    await asyncio.sleep(0)
-                    con_stmt = con.select().where(con.c.character_id == row[0])
-                    for char_row in await conn.execute(con_stmt):
-                        await asyncio.sleep(0)
-                        # print(char_row)
-                        con_list.append(f"{char_row[3]}")
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+            Condition = await get_condition(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(
+                    Tracker.name == character
+                ))
+                char = char_result.scalars().one()
+            async with async_session() as session:
+                con_result = await session.execute(select(Condition).where(
+                    Condition.character_id == char.id
+                ))
+                condition = con_result.scalars().all()
+            for cond in condition:
+                con_list.append(cond.title)
             await self.engine.dispose()
             return con_list
 
