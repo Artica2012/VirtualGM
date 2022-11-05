@@ -20,6 +20,7 @@ from sqlalchemy.exc import NoResultFound, SAWarning
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
+import PF2e.pf2_functions
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
 from database_models import get_tracker, get_condition, get_macro
@@ -876,8 +877,27 @@ async def ping_player_on_init(init_list: list, selected: int):
     return f"<@{user}>, it's your turn."
 
 
-# Builds the tracker string. Updated to work with block initiative
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
+                            gm: bool = False):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+        if guild.system == 'PF2':
+            output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm)
+        else:
+            output_string = await generic_block_get_tracker(init_list, selected, ctx, engine, bot, gm)
+        return output_string
+
+# Builds the tracker string. Updated to work with block initiative
+async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
                             gm: bool = False):
     # Get the datetime
     datetime_string = ''

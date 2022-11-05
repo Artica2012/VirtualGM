@@ -4,6 +4,8 @@
 import os
 
 # imports
+from datetime import datetime
+
 import discord
 import asyncio
 import sqlalchemy as db
@@ -17,6 +19,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import initiative
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
     get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
@@ -230,4 +233,139 @@ async def PF2_eval_succss(result_tuple: tuple, goal: int):
 
     return success_string
 
+
+# Builds the tracker string. Updated to work with block initiative
+async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
+                            gm: bool = False):
+    # Get the datetime
+    datetime_string = ''
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+        if guild.block and guild.initiative != None:
+            turn_list = await initiative.get_turn_list(ctx, engine, bot)
+            block = True
+        else:
+            block = False
+        round = guild.round
+    try:
+        if await check_timekeeper(ctx, engine):
+            datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
+                              f"________________________\n"
+    except NoResultFound as e:
+        await ctx.channel.send(
+            error_not_initialized,
+            delete_after=30)
+    except Exception as e:
+        print(f'get_tracker: {e}')
+        report = ErrorReport(ctx, "get_tracker", e, bot)
+        await report.report()
+
+    try:
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        row_data = []
+        for row in init_list:
+            async with async_session() as session:
+                result = await session.execute(select(Condition).where(Condition.character_id == row.id))
+                con = result.scalars().all()
+            row_data.append({'id': row.id,
+                             'name': row.name,
+                             'init': row.init,
+                             'player': row.player,
+                             'user': row.user,
+                             'chp': row.current_hp,
+                             'maxhp': row.max_hp,
+                             'thp': row.temp_hp,
+                             'cc': con
+                             })
+
+        if round != 0:
+            round_string = f"Round: {round}"
+        else:
+            round_string = ""
+
+        output_string = f"```{datetime_string}" \
+                        f"Initiative: {round_string}\n"
+        for x, row in enumerate(row_data):
+            await asyncio.sleep(0)
+            sel_bool = False
+            selector = ''
+
+            # don't show an init if not in combat
+            if row['init'] == 0:
+                init_string = ""
+            else:
+                init_string = f"{row['init']}"
+
+            if block:
+                for character in turn_list:
+                    if row['id'] == character.id:
+                        sel_bool = True
+            else:
+                if x == selected:
+                    sel_bool = True
+
+            # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+            if sel_bool:
+                selector = '>>'
+            if row['player'] or gm:
+                if row['thp'] != 0:
+                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
+                else:
+                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
+            else:
+                hp_string = await initiative.calculate_hp(row['chp'], row['maxhp'])
+                string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
+            output_string += string
+
+            for con_row in row['cc']:
+                await asyncio.sleep(0)
+                if con_row.visible == True:
+                    if gm or not con_row.counter:
+                        if con_row.number != None:
+                            if con_row.time:
+                                time_stamp = datetime.datetime.fromtimestamp(con_row.number)
+                                current_time = await get_time(ctx, engine, bot)
+                                time_left = time_stamp - current_time
+                                days_left = time_left.days
+                                processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                                processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                                if processed_seconds_left <10:
+                                    processed_seconds_left = f"0{processed_seconds_left}"
+                                if days_left != 0:
+                                    con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
+                                else:
+                                    con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                            else:
+                                con_string = f"       {con_row.title}: {con_row.number}\n"
+                        else:
+                            con_string = f"       {con_row.title}\n"
+
+                    elif con_row.counter == True and sel_bool and row['player']:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                    else:
+                        con_string = ''
+                    output_string += con_string
+                else:
+                    if con_row.title == 'AC' and row['player'] == True:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                    else:
+                        con_string = ''
+                    output_string += con_string
+        output_string += f"```"
+        # print(output_string)
+        await engine.dispose()
+        return output_string
+    except Exception as e:
+        print(f"pf2_get_tracker: {e}")
+        report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
+        await report.report()
 
