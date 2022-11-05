@@ -245,7 +245,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     # print(f"integrity check was false: init_pos: {guild.initiative}")
                     for pos, row in enumerate(await get_init_list(ctx, engine)):
                         await asyncio.sleep(0)
-                        if row[1] == guild.saved_order:
+                        if row.name == guild.saved_order:
                             guild.initiative = pos
                             # print(f"integrity checked init_pos: {guild.initiative}")
                             await session.commit()
@@ -948,7 +948,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
 
             if block:
                 for character in turn_list:
-                    if row['id'] == character[0]:
+                    if row['id'] == character.id:
                         sel_bool = True
             else:
                 if x == selected:
@@ -1080,7 +1080,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                 if block:
                     for character in turn_list:
                         await asyncio.sleep(0)
-                        user = bot.get_user(character[4])
+                        user = bot.get_user(character.user)
                         ping_string += f"{user.mention}, it's your turn.\n"
                 else:
                     user = bot.get_user(init_list[guild.initiative].user)
@@ -1593,7 +1593,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
                     # print(f"integrity check was false: init_pos: {guild.initiative}")
                     for pos, row in enumerate(await get_init_list(self.ctx, self.engine)):
                         await asyncio.sleep(0)
-                        if row[1] == guild.saved_order:
+                        if row.name == guild.saved_order:
                             guild.initiative = pos
                             # print(f"integrity checked init_pos: {guild.initiative}")
                             await session.commit()
