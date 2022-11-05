@@ -971,7 +971,6 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                 string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
             output_string += string
 
-            # TODO Adjust how the tracker displays the PF2 /a stats, as its going to get crowded fast
             for con_row in row['cc']:
                 await asyncio.sleep(0)
                 if con_row.visible == True:
@@ -1043,10 +1042,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
             # Update the GM tracker
             if gm_tracker is not None:
                 gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine), guild.initiative,
-                                                                    ctx,
-                                                                    engine,
-                                                                    bot,
-                                                                    gm=True)
+                                                                    ctx, engine, bot, gm=True)
                 gm_channel = bot.get_channel(gm_tracker_channel)
                 gm_message = await gm_channel.fetch_message(gm_tracker)
                 await gm_message.edit(gm_tracker_display_string)
@@ -1062,106 +1058,106 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
 
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot):
     # Query the initiative position for the tracker and post it
-    # try:
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
-        if guild.block:
-            turn_list = await get_turn_list(ctx, engine, bot)
-            block = True
-            # print(f"block_post_init: \n {turn_list}")
-        else:
-            block = False
-
-        init_list = await get_init_list(ctx, engine)
-        tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
-        try:
-            ping_string = ''
-            if block:
-                for character in turn_list:
-                    await asyncio.sleep(0)
-                    user = bot.get_user(character[4])
-                    ping_string += f"{user.mention}, it's your turn.\n"
+            )
+            guild = result.scalars().one()
+            if guild.block:
+                turn_list = await get_turn_list(ctx, engine, bot)
+                block = True
+                # print(f"block_post_init: \n {turn_list}")
             else:
-                user = bot.get_user(init_list[guild.initiative].user)
-                ping_string += f"{user.mention}, it's your turn.\n"
-        except Exception as e:
-            # print(f'post_init: {e}')
-            ping_string = ''
+                block = False
 
-        # Always post the tracker to the player channel
-        if ctx.channel.id == guild.tracker_channel:
-            await ctx.send_followup(f"{tracker_string}\n"
-                                    f"{ping_string}")
-        else:
-            await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                              f"{ping_string}")
-            await ctx.send_followup("Initiative Advanced.")
-    await engine.dispose()
-    # except NoResultFound as e:
-    #     await ctx.channel.send(error_not_initialized,
-    #                            delete_after=30)
-    # except Exception as e:
-    #     print(f"block_post_init: {e}")
-    #     report = ErrorReport(ctx, block_post_init.__name__, e, bot)
-    #     await report.report()
+            init_list = await get_init_list(ctx, engine)
+            tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
+            try:
+                ping_string = ''
+                if block:
+                    for character in turn_list:
+                        await asyncio.sleep(0)
+                        user = bot.get_user(character[4])
+                        ping_string += f"{user.mention}, it's your turn.\n"
+                else:
+                    user = bot.get_user(init_list[guild.initiative].user)
+                    ping_string += f"{user.mention}, it's your turn.\n"
+            except Exception as e:
+                # print(f'post_init: {e}')
+                ping_string = ''
+
+            # Always post the tracker to the player channel
+            if ctx.channel.id == guild.tracker_channel:
+                await ctx.send_followup(f"{tracker_string}\n"
+                                        f"{ping_string}")
+            else:
+                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                  f"{ping_string}")
+                await ctx.send_followup("Initiative Advanced.")
+        await engine.dispose()
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+    except Exception as e:
+        print(f"block_post_init: {e}")
+        report = ErrorReport(ctx, block_post_init.__name__, e, bot)
+        await report.report()
 
 
 # Note: Works backwards
 async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
     turn_list = []
     block_done = False
-    # try:
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
-        iteration = 0
-        init_pos = guild.initiative
-        print(f"init_pos: {init_pos}")
-        print(init_pos)
-        init_list = await get_init_list(ctx, engine)
-        length = len(init_list)
-        while not block_done:
-            turn_list.append(init_list[init_pos])
-            # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
-            player_status = init_list[init_pos].player
-            if init_pos == 0:
-                if player_status != init_list[length - 1].player:
-                    block_done = True
-            else:
-                if player_status != init_list[init_pos - 1].player:
-                    block_done = True
-
-            init_pos -= 1
-            if init_pos < 0:
-                if guild.round != 1:  # Don't loop back to the end on the first round
-                    init_pos = length - 1
+            )
+            guild = result.scalars().one()
+            iteration = 0
+            init_pos = guild.initiative
+            print(f"init_pos: {init_pos}")
+            print(init_pos)
+            init_list = await get_init_list(ctx, engine)
+            length = len(init_list)
+            while not block_done:
+                turn_list.append(init_list[init_pos])
+                # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
+                player_status = init_list[init_pos].player
+                if init_pos == 0:
+                    if player_status != init_list[length - 1].player:
+                        block_done = True
                 else:
+                    if player_status != init_list[init_pos - 1].player:
+                        block_done = True
+
+                init_pos -= 1
+                if init_pos < 0:
+                    if guild.round != 1:  # Don't loop back to the end on the first round
+                        init_pos = length - 1
+                    else:
+                        block_done = True
+                iteration += 1
+                if iteration >= length:
                     block_done = True
-            iteration += 1
-            if iteration >= length:
-                block_done = True
-        await engine.dispose()
-        return turn_list
-    # except Exception as e:
-    #     print(f'get_turn_list: {e}')
-    #     report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
-    #     await report.report()
-    #     return False
+            await engine.dispose()
+            return turn_list
+    except Exception as e:
+        print(f'get_turn_list: {e}')
+        report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
+        await report.report()
+        return False
 
 
 # ---------------------------------------------------------------
