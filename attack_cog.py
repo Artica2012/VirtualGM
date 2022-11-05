@@ -152,7 +152,7 @@ class AttackCog(commands.Cog):
                     macros.append(f"{row.name}: {row.macro}")
 
             await self.engine.dispose()
-            return macro_list
+            return macros
         except Exception as e:
             print(f'a_macro_select: {e}')
             report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)

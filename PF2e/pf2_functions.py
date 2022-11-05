@@ -50,20 +50,27 @@ PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
                  attack_modifier:str, target_modifier:str):
     roller = DiceRoller('')
-    try:
-        if attack_modifier != '':
-            if attack_modifier[0] == '+' or attack_modifier[0] == '-':
-                roll_string = roll + attack_modifier
-            else:
-                roll_string = roll + '+' + attack_modifier
+    # try:
+
+    # Strip a macro:
+    roll_list = roll.split(':')
+    if len(roll_list)==1:
+        roll = roll
+    else:
+        roll = roll_list[1]
+
+    if attack_modifier != '':
+        if attack_modifier[0] == '+' or attack_modifier[0] == '-':
+            roll_string = roll + attack_modifier
         else:
-            roll_string = roll
-        dice_result = await roller.attack_roll(roll_string)
-        total = dice_result[1]
-        dice_string = dice_result[0]
-    except Exception as e:
-        await ctx.send_followup('Error in the dice string. Check Syntax')
-        return
+            roll_string = roll + '+' + attack_modifier
+    else:
+        roll_string = roll
+    print(roll_string)
+    dice_result = await roller.attack_roll(roll_string)
+    total = dice_result[1]
+    dice_string = dice_result[0]
+    # return
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx, engine)
     Condition = await get_condition(ctx, engine)
