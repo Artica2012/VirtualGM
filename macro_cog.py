@@ -90,7 +90,7 @@ class MacroCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
             macros = []
             for row in macro_list:
