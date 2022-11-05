@@ -1170,26 +1170,6 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
     # Get the Character's data
 
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == character)
-
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
-                # print(row)
-    except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
-                               delete_after=30)
-        return False
-    except Exception as e:
-        print(f'set_cc: {e}')
-        report = ErrorReport(ctx, set_cc.__name__, e, bot)
-        await report.report()
-        return False
-
-    try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(
@@ -1201,23 +1181,41 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             )
             guild = result.scalars().one()
 
-            con = await get_condition_table(ctx, metadata, engine)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
+    except Exception as e:
+        print(f'set_cc: {e}')
+        report = ErrorReport(ctx, set_cc.__name__, e, bot)
+        await report.report()
+        return False
+
+    try:
             if not guild.timekeeping or unit == 'Round':
+                async with session.begin():
+                    condition = Condition(
+                        character_id=character.id,
+                        title=title,
+                        number=number,
+                        counter=counter,
+                        auto_increment=auto_decrement,
+                        time=False
+                    )
+                    session.add(condition)
+                await session.commit()
 
-                stmt = con.insert().values(
-                    character_id=data[0][0],
-                    title=title,
-                    number=number,
-                    counter=counter,
-                    auto_increment=auto_decrement,
-                    time=False
-                )
-                async with engine.begin() as conn:
-                    await conn.execute(stmt)
                 await update_pinned_tracker(ctx, engine, bot)
                 await engine.dispose()
                 return True
+
             else:
                 current_time = await get_time(ctx, engine, bot)
                 if unit == 'Minute':
@@ -1229,16 +1227,17 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 
                 timestamp = end_time.timestamp()
 
-                stmt = con.insert().values(
-                    character_id=data[0][0],
-                    title=title,
-                    number=timestamp,
-                    counter=counter,
-                    auto_increment=True,
-                    time=True
-                )
-                async with engine.begin() as conn:
-                    await conn.execute(stmt)
+                async with session.begin():
+                    condition = Condition(
+                        character_id=character.id,
+                        title=title,
+                        number=timestamp,
+                        counter=counter,
+                        auto_increment=True,
+                        time=True
+                    )
+                    session.add(condition)
+                await session.commit()
                 await update_pinned_tracker(ctx, engine, bot)
                 await engine.dispose()
                 return True
@@ -1257,15 +1256,14 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == character)
+        Tracker = await get_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
-                # print(row)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -1275,22 +1273,19 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
         await report.report()
         return False
+
     try:
-        con = await get_condition_table(ctx, metadata, engine)
-        check_stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.title == condition)
-        async with engine.begin() as conn:
-            check_data = []
-            for row in await conn.execute(check_stmt):
-                await asyncio.sleep(0)
-                if row[6]:
-                    await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.",
-                                            ephemeral=True)
-                    return False
-                else:
-                    stmt = update(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).values(
-                        number=value
-                    )
-                    await conn.execute(stmt)
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.title == condition))
+            condition = result.scalars().one()
+
+            if condition.time:
+                await ctx.send_followup("Unable to edit time based conditions. Try again in a future update.",
+                                        ephemeral=True)
+                return False
+            else:
+                condition.number = value
+                await session.commit()
         await update_pinned_tracker(ctx, engine, bot)
         await engine.dispose()
         return True
@@ -1676,7 +1671,7 @@ class InitiativeCog(commands.Cog):
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
@@ -1705,7 +1700,7 @@ class InitiativeCog(commands.Cog):
             print(f'character_select_gm: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     async def cc_select(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
@@ -1735,7 +1730,7 @@ class InitiativeCog(commands.Cog):
             print(f'cc_select: {e}')
             report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         if await check_timekeeper(ctx, self.engine):
