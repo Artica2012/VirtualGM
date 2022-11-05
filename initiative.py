@@ -1636,6 +1636,7 @@ class InitiativeCog(commands.Cog):
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.lock = asyncio.Lock()
         self.update_status.start()
+        self.check_latency.start()
         self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
     def __enter__(self):
@@ -1643,6 +1644,11 @@ class InitiativeCog(commands.Cog):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
+    @tasks.loop(seconds=5)
+    async def check_latency(self):
+        print(f"{self.bot.latency}: {datetime.datetime.now()}")
+
 
     # Update the bot's status periodically
     @tasks.loop(minutes=1)
