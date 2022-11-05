@@ -1897,21 +1897,21 @@ class InitiativeCog(commands.Cog):
                # guild_ids=[GUILD]
                )
     async def next(self, ctx: discord.ApplicationContext):
-        # try:
-        await ctx.response.defer()
-        # Advance Init and Display
-        await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
+        try:
+            await ctx.response.defer()
+            # Advance Init and Display
+            await block_advance_initiative(ctx, self.engine, self.bot)  # Advance the init
 
-        # Query the initiative position for the tracker and post it
-        await block_post_init(ctx, self.engine, self.bot)
-        await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
+            # Query the initiative position for the tracker and post it
+            await block_post_init(ctx, self.engine, self.bot)
+            await update_pinned_tracker(ctx, self.engine, self.bot)  # update the pinned tracker
 
-        # except NoResultFound as e:
-        #     await ctx.respond(error_not_initialized, ephemeral=True)
-        # except Exception as e:
-        #     print(f"/i next: {e}")
-        #     report = ErrorReport(ctx, "slash command /i next", e, self.bot)
-        #     await report.report()
+        except NoResultFound as e:
+            await ctx.respond(error_not_initialized, ephemeral=True)
+        except Exception as e:
+            print(f"/i next: {e}")
+            report = ErrorReport(ctx, "slash command /i next", e, self.bot)
+            await report.report()
 
     @i.command(description="Set Init (Number or XdY+Z)",
                # guild_ids=[GUILD]
