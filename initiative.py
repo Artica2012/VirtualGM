@@ -652,7 +652,7 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 # Check to make sure that the character is in the right place in initiative
 async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
     init_list = await get_init_list(ctx, engine)
-    if init_list[init_pos][1] == current_character:
+    if init_list[init_pos].name == current_character:
         return True
     else:
         return False
@@ -700,7 +700,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             init_list = await get_init_list(ctx, engine)
 
             if guild.saved_order == '':
-                current_character = init_list[0][1]
+                current_character = init_list[0].name
             else:
                 current_character = guild.saved_order
             # Record the initial to break an infinite loop
@@ -717,7 +717,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             await asyncio.sleep(0)
-                            if row[1] == current_character:
+                            if row.name == current_character:
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
                     init_pos += 1  # increase the init position by 1
@@ -791,7 +791,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             await asyncio.sleep(0)
-                            if row[1] == current_character:
+                            if row.name == current_character:
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
                     init_pos += 1  # increase the init position by 1
@@ -811,15 +811,15 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
                 if init_pos >= len(init_list) - 1:
                     # print(f"init_pos: {init_pos}")
-                    if init_list[init_pos][3] != init_list[0][3]:
+                    if init_list[init_pos].player != init_list[0].player:
                         block_done = True
-                elif init_list[init_pos][3] != init_list[init_pos + 1][3]:
+                elif init_list[init_pos].player != init_list[init_pos + 1].player:
                     block_done = True
                 if not guild.block:
                     block_done = True
 
-                turn_list.append(init_list[init_pos][1])
-                current_character = init_list[init_pos][1]
+                turn_list.append(init_list[init_pos].name)
+                current_character = init_list[init_pos].name
                 iterations += 1
                 if iterations >= len(init_list):  # stop an infinite loop
                     block_done = True
@@ -837,7 +837,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             # Out side while statement - for reference
             guild.initiative = init_pos  # set it
             # print(f"final init_pos: {init_pos}")
-            guild.saved_order = str(init_list[init_pos][1])
+            guild.saved_order = str(init_list[init_pos].name)
             await session.commit()
         await engine.dispose()
         return True
@@ -847,22 +847,18 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
         await report.report()
 
 
-# TODO CONTINUE UPDATING HERE
+#Returns the tracker list sorted by initiative
 async def get_init_list(ctx: discord.ApplicationContext, engine):
     try:
-        metadata = db.MetaData()
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().order_by(emp.c.init.desc()).order_by(emp.c.id.desc())
-        # print(stmt)
-        data = []
-        async with engine.begin() as conn:
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                # print(row)
-                data.append(row)
-            # print(data)
+        Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).order_by(Tracker.init.desc()).order_by(Tracker.id.desc()))
+            init_list = result.scalars().all()
+            # print(init_list)
         await engine.dispose()
-        return data
+        return init_list
 
     except Exception as e:
         print("error in get_init_list")
@@ -873,13 +869,13 @@ async def parse_init_list(init_list: list):
     parsed_list = []
     for row in init_list:
         await asyncio.sleep(0)
-        parsed_list.append(row[1])
+        parsed_list.append(row.name)
     return parsed_list
 
 
 async def ping_player_on_init(init_list: list, selected: int):
     selected_char = init_list[selected]
-    user = selected_char[4]
+    user = selected_char.user
     return f"<@{user}>, it's your turn."
 
 
@@ -923,7 +919,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         row_data = []
         for row in init_list:
             await asyncio.sleep(0)
-            stmt = con.select().where(con.c.character_id == row[0])
+            stmt = con.select().where(con.c.character_id == row.id)
             # print(compiled)
             async with engine.connect() as conn:
                 con_data = []
@@ -934,14 +930,14 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                     # print(con_row)
             await conn.close()
 
-            row_data.append({'id': row[0],
-                             'name': row[1],
-                             'init': row[2],
-                             'player': row[3],
-                             'user': row[4],
-                             'chp': row[5],
-                             'maxhp': row[6],
-                             'thp': row[7],
+            row_data.append({'id': row.id,
+                             'name': row.name,
+                             'init': row.init,
+                             'player': row.player,
+                             'user': row.user,
+                             'chp': row.current_hp,
+                             'maxhp': row.max_hp,
+                             'thp': row.temp_hp,
                              'cc': con_data
                              })
 
@@ -1102,7 +1098,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                     user = bot.get_user(character[4])
                     ping_string += f"{user.mention}, it's your turn.\n"
             else:
-                user = bot.get_user(init_list[guild.initiative][4])
+                user = bot.get_user(init_list[guild.initiative].user)
                 ping_string += f"{user.mention}, it's your turn.\n"
         except Exception as e:
             # print(f'post_init: {e}')
@@ -1150,12 +1146,12 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
         while not block_done:
             turn_list.append(init_list[init_pos])
             # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
-            player_status = init_list[init_pos][3]
+            player_status = init_list[init_pos].player
             if init_pos == 0:
-                if player_status != init_list[length - 1][3]:
+                if player_status != init_list[length - 1].player:
                     block_done = True
             else:
-                if player_status != init_list[init_pos - 1][3]:
+                if player_status != init_list[init_pos - 1].player:
                     block_done = True
 
             init_pos -= 1
