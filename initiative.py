@@ -914,22 +914,12 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         await report.report()
 
     try:
-        metadata = db.MetaData()
-        con = await get_condition_table(ctx, metadata, engine)
+        Condition = await get_condition(ctx, engine, id=guild.id)
         row_data = []
         for row in init_list:
-            await asyncio.sleep(0)
-            stmt = con.select().where(con.c.character_id == row.id)
-            # print(compiled)
-            async with engine.connect() as conn:
-                con_data = []
-                # print(conn.execute)
-                for con_row in await conn.execute(stmt):
-                    await asyncio.sleep(0)
-                    con_data.append(con_row)
-                    # print(con_row)
-            await conn.close()
-
+            async with async_session() as session:
+                result = await session.execute(select(Condition).where(Condition.character_id == row.id))
+                con = result.scalars().all()
             row_data.append({'id': row.id,
                              'name': row.name,
                              'init': row.init,
@@ -938,7 +928,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                              'chp': row.current_hp,
                              'maxhp': row.max_hp,
                              'thp': row.temp_hp,
-                             'cc': con_data
+                             'cc': con
                              })
 
         if round != 0:
@@ -973,7 +963,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
                 selector = '>>'
             if row['player'] or gm:
                 if row['thp'] != 0:
-                    string = f"{selector} {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
+                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
                 else:
                     string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
             else:
@@ -984,27 +974,29 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
             # TODO Adjust how the tracker displays the PF2 /a stats, as its going to get crowded fast
             for con_row in row['cc']:
                 await asyncio.sleep(0)
-                if con_row[7] == True:
-                    if gm or not con_row[2]:
-                        if con_row[4] != None:
-                            if con_row[6]:
-                                time_stamp = datetime.datetime.fromtimestamp(con_row[4])
+                if con_row.visible == True:
+                    if gm or not con_row.counter:
+                        if con_row.number != None:
+                            if con_row.time:
+                                time_stamp = datetime.datetime.fromtimestamp(con_row.number)
                                 current_time = await get_time(ctx, engine, bot)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
                                 processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                                if processed_seconds_left <10:
+                                    processed_seconds_left = f"0{processed_seconds_left}"
                                 if days_left != 0:
-                                    con_string = f"       {con_row[3]}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
+                                    con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
                                 else:
-                                    con_string = f"       {con_row[3]}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                    con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
                             else:
-                                con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                                con_string = f"       {con_row.title}: {con_row.number}\n"
                         else:
-                            con_string = f"       {con_row[3]}\n"
+                            con_string = f"       {con_row.title}\n"
 
-                    elif con_row[2] == True and sel_bool and row['player']:
-                        con_string = f"       {con_row[3]}: {con_row[4]}\n"
+                    elif con_row.counter == True and sel_bool and row['player']:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
                     else:
                         con_string = ''
                     output_string += con_string
