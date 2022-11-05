@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import dice_roller
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table
+    get_condition_table, get_macro_table, get_condition, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -81,85 +81,76 @@ class AttackCog(commands.Cog):
 
     # Autocomplete to give the full character list
     async def character_select(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character_list = []
 
         try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker))
+                character = char_result.scalars().all()
+                for char in character:
                     await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                await asyncio.sleep(0)
-                character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
+
         except Exception as e:
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character_list = []
 
-        # print('checking gm')
         gm_status = await gm_check(ctx, self.engine)
-        # print(f"GM:  {gm_status}")
 
         try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                if gm_status:
+                    char_result = await session.execute(select(Tracker))
+                else:
+                    char_result = await session.execute(select(Tracker).where(Tracker.user == ctx.interaction.user.id))
+                character = char_result.scalars().all()
+                for char in character:
                     await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                await asyncio.sleep(0)
-                if row[4] == ctx.interaction.user.id or gm_status:
-                    character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
 
         except Exception as e:
             print(f'character_select_gm: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     async def a_macro_select(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character = ctx.options['character']
-        macro = await get_macro_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
+        Tracker = await get_tracker(ctx, self.engine)
+        Macro = await get_macro(ctx, self.engine)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
-            char_stmt = emp.select().where(emp.c.name == character)
-            print(character)
-            async with self.engine.begin() as conn:
-                data = []
-                macro_list = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-                for row in data:
-                    await asyncio.sleep(0)
-                    # print(row)
-                    macro_stmt = macro.select().where(macro.c.character_id == row[0])
-                    for char_row in await conn.execute(macro_stmt):
-                        await asyncio.sleep(0)
-                        if not ',' in  char_row[3]:
-                            macro_list.append(f"{char_row[2]}: {char_row[3]}")
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(
+                    Tracker.name == character
+                ))
+                char = char_result.scalars().one()
+            async with async_session() as session:
+                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                macro_list = macro_result.scalars().all()
+            macros = []
+            for row in macro_list:
+                await asyncio.sleep(0)
+                if not ',' in row.macro:
+                    macros.append(f"{row.name}: {row.macro}")
+
             await self.engine.dispose()
             return macro_list
         except Exception as e:

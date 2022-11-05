@@ -1646,7 +1646,6 @@ class InitiativeCog(commands.Cog):
 
     # Autocomplete to give the full character list
     async def character_select(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character_list = []
 
         try:
@@ -1670,7 +1669,6 @@ class InitiativeCog(commands.Cog):
 
     # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character_list = []
 
         gm_status = await gm_check(ctx, self.engine)
