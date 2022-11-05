@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table
+    get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -50,7 +50,6 @@ PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
                  attack_modifier:str, target_modifier:str):
     roller = DiceRoller('')
-    metadata = db.MetaData()
     try:
         if attack_modifier != '':
             if attack_modifier[0] == '+' or attack_modifier[0] == '-':
@@ -65,16 +64,15 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
     except Exception as e:
         await ctx.send_followup('Error in the dice string. Check Syntax')
         return
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(ctx, engine)
+    Condition = await get_condition(ctx, engine)
 
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
-        emp_stmt = emp.select().where(emp.c.name == target)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(emp_stmt):
-                await asyncio.sleep(0)
-                data.append(row)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == target))
+            targ = result.scalars().one()
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -84,14 +82,14 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
+
     try:
-        con_stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.title == vs)
-        con_data = []
-        async with engine.begin() as conn:
-            for row in await conn.execute(con_stmt):
-                await asyncio.sleep(0)
-                con_data.append(row)
-        await engine.dispose()
+        async with async_session() as session:
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == targ.id)
+                                           .where(Condition.title == vs))
+            con_vs = result.scalars().one()
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -103,9 +101,9 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         return False
 
     if vs in ["Fort", "Will", "Reflex"]:
-        goal_value = con_data[0][4] + 10
+        goal_value = con_vs.number + 10
     else:
-        goal_value = con_data[0][4]
+        goal_value = con_vs.number
     if target_modifier != '':
         if target_modifier[0] == '+':
             goal = goal_value + int(target_modifier[1:])
@@ -130,33 +128,31 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
 
 async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier:str):
     roller = DiceRoller('')
-    metadata = db.MetaData()
+
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(ctx, engine)
+    Condition = await get_condition(ctx, engine)
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
 
-        char_sel_stmt = emp.select().where(emp.c.name == character)
-        target_sel_stmt = emp.select().where(emp.c.name == target)
-        async with engine.begin() as conn:
-            charID = None
-            targetID = None
-            roll = ''
-            dc = None
-            for row in await conn.execute(char_sel_stmt):
-                await asyncio.sleep(0)
-                charID = row[0]
-            for row in await conn.execute(target_sel_stmt):
-                await asyncio.sleep(0)
-                targetID = row[0]
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            char = result.scalars().one()
 
-            roll_stmt = con.select().where(con.c.character_id == targetID).where(con.c.title == vs)
-            dc_stmt = con.select().where(con.c.character_id == charID).where(con.c.title == 'DC')
-            for row in await conn.execute(roll_stmt):
-                await asyncio.sleep(0)
-                roll = f"1d20+{row[4]}"
-            for row in await conn.execute(dc_stmt):
-                await asyncio.sleep(0)
-                dc = row[4]
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == target))
+            targ = result.scalars().one()
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == targ.id)
+                                           .where(Condition.title == vs))
+            raw_roll = result.scalars().one()
+            roll = f"1d20+{raw_roll.number}"
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == char.id)
+                                           .where(Condition.title == 'DC'))
+            raw_dc = result.scalars().one()
+            dc = raw_dc.number
 
         if modifier != '':
             if modifier[0] == '+':
