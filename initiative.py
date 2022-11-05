@@ -1433,14 +1433,15 @@ async def gm_check(ctx, engine):
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = select(emp.c.player).where(emp.c.name == character)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
-        return data[0]
+        Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(
+                Tracker.name == character))
+            character = char_result.scalars().one()
+        return character
+
     except Exception as e:
         print(f'player_check: {e}')
         report = ErrorReport(ctx, player_check.__name__, e, bot)
