@@ -1695,6 +1695,29 @@ class InitiativeCog(commands.Cog):
             await report.report()
             return []
 
+    # Autocomplete to return only non-player characters
+    async def npc_select(self, ctx: discord.AutocompleteContext):
+        character_list = []
+
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.player == False))
+                character = char_result.scalars().all()
+                for char in character:
+                    await asyncio.sleep(0)
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
+
+        except Exception as e:
+            print(f'character_select: {e}')
+            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
+            await report.report()
+            return []
+
     async def cc_select(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
 
@@ -1777,7 +1800,7 @@ class InitiativeCog(commands.Cog):
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @char.command(description="Duplicate NPC")
+    @char.command(description="Duplicate Character")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
     @option('new_name', description='Name for the new NPC', input_type=str, required=True)
     async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str):
@@ -1790,6 +1813,35 @@ class InitiativeCog(commands.Cog):
             await ctx.send_followup(f"Error Copying Character", ephemeral=True)
 
         await update_pinned_tracker(ctx, self.engine, self.bot)
+
+    @char.command(description="Delete NPC")
+    @option('name', description="Character Name", input_type=str, autocomplete=npc_select, )
+
+    async def delete(self, ctx: discord.ApplicationContext, name: str):
+        await ctx.response.defer(ephemeral=True)
+
+        async with self.async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+
+        if name == guild.saved_order:
+            await ctx.send_followup(
+                f"Please wait until {name} is not the active character in initiative before "
+                f"deleting it.", ephemeral=True)
+        else:
+            result = await delete_character(ctx, name, self.engine, self.bot)
+            if result:
+                await ctx.send_followup(f'{name} deleted', ephemeral=True)
+                await update_pinned_tracker(ctx, self.engine, self.bot)
+            else:
+                await ctx.send_followup('Delete Operation Failed', ephemeral=True)
+        await self.engine.dispose()
 
     @i.command(description="Manage Initiative",
                # guild_ids=[GUILD]
