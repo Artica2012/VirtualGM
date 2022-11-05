@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table
+    get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
@@ -56,100 +56,77 @@ class MacroCog(commands.Cog):
 
     # Autocomplete
     async def character_select(self, ctx: discord.AutocompleteContext):
-        # print("searching characters")
-        metadata = db.MetaData()
         character_list = []
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if int(guild.gm) != int(ctx.interaction.user.id):
-                gm_status = False
-            else:
-                gm_status = True
-
         try:
-            emp = await get_tracker_table(ctx, metadata, self.engine)
-            stmt = emp.select()
-            async with self.engine.begin() as conn:
-                data = []
-                for row in await conn.execute(stmt):
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker))
+                character = char_result.scalars().all()
+                for char in character:
                     await asyncio.sleep(0)
-                    data.append(row)
-                    # print(row)
-            for row in data:
-                await asyncio.sleep(0)
-                if row[4] == ctx.interaction.user.id or gm_status:
-                    character_list.append(row[1])
-            # print(character_list)
-            await self.engine.dispose()
-            return character_list
+                    character_list.append(char.name)
+                await self.engine.dispose()
+                return character_list
+
         except Exception as e:
-            print(f'character+select: {e}')
+            print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
-            return False
+            return []
 
     async def macro_select(self, ctx: discord.AutocompleteContext):
-        metadata = db.MetaData()
         character = ctx.options['character']
-        macro = await get_macro_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
+        Tracker = await get_tracker(ctx, self.engine)
+        Macro = await get_macro(ctx, self.engine)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
-            char_stmt = emp.select().where(emp.c.name == character)
-            # print(character)
-            async with self.engine.begin() as conn:
-                data = []
-                macro_list = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-                for row in data:
-                    await asyncio.sleep(0)
-                    # print(row)
-                    macro_stmt = macro.select().where(macro.c.character_id == row[0])
-                    for char_row in await conn.execute(macro_stmt):
-                        # print(char_row)
-                        macro_list.append(f"{char_row[2]}: {char_row[3]}")
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(
+                    Tracker.name == character
+                ))
+                char = char_result.scalars().one()
+            async with async_session() as session:
+                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                macro_list = macro_result.scalars().all()
+            macros = []
+            for row in macro_list:
+                await asyncio.sleep(0)
+                macros.append(f"{row.name}: {row.macro}")
+
             await self.engine.dispose()
-            return macro_list
+            return macros
         except Exception as e:
-            print(f'macro_selct: {e}')
-            report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)
+            print(f'a_macro_select: {e}')
+            report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
             await report.report()
             return False
-
 
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
-        metadata = db.MetaData()
         try:
-            macro = await get_macro_table(ctx, metadata, self.engine)
-            emp = await get_tracker_table(ctx, metadata, self.engine)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+            Macro = await get_macro(ctx, self.engine)
 
-            char_stmt = emp.select().where(emp.c.name == character)
-            async with self.engine.begin() as conn:
-                data = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
 
-                macro_stmt = macro.insert().values(
-                    character_id=data[0][0],
+
+            async with session.begin():
+                new_macro = Macro(
+                    character_id=char.id,
                     name=macro_name,
                     macro=macro_string
                 )
-                result = await conn.execute(macro_stmt)
-                await self.engine.dispose()
-                return result
+                session.add(new_macro)
+            await session.commit()
+            await self.engine.dispose()
+            return True
         except Exception as e:
             print(f'create_macro: {e}')
             report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
@@ -157,35 +134,32 @@ class MacroCog(commands.Cog):
             return False
 
     async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
-        metadata = db.MetaData()
         try:
-            macro = await get_macro_table(ctx, metadata, self.engine)
-            emp = await get_tracker_table(ctx, metadata, self.engine)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+            Macro = await get_macro(ctx, self.engine)
 
-            char_stmt = emp.select().where(emp.c.name == character)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
 
             # Process data
             processed_data = data.split(';')
-            print(processed_data)
+            # print(processed_data)
 
-            async with self.engine.begin() as conn:
-                data = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-
+            async with session.begin():
                 for row in processed_data[:-1]:
                     await asyncio.sleep(0)
                     macro_split = row.split(',')
-                    print(macro_split)
-                    macro_stmt = macro.insert().values(
-                        character_id=data[0][0],
+                    new_macro = Macro(
+                        character_id=char.id,
                         name=macro_split[0].strip(),
                         macro=macro_split[1].strip()
                     )
-                    result = await conn.execute(macro_stmt)
-                await self.engine.dispose()
-                return result
+                    session.add(new_macro)
+            await session.commit()
+            await self.engine.dispose()
+            return True
         except Exception as e:
             print(f'mass_add: {e}')
             report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
@@ -193,27 +167,22 @@ class MacroCog(commands.Cog):
             return False
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
-        metadata = db.MetaData()
-        macro = await get_macro_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, self.engine)
+        Macro = await get_macro(ctx, self.engine)
+
         try:
-            char_stmt = emp.select().where(emp.c.name == character)
-            # print(character)
-            async with self.engine.begin() as conn:
-                data = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-                for row in data:
-                    await asyncio.sleep(0)
-                    # print(row)
-                    # print(f"{row[0]}, {macro_name}")
-                    macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
-                        macro.c.name == macro_name.split(':')[0])
-                    for char_row in await conn.execute(macro_stmt):
-                        # print(char_row)
-                        del_stmt = delete(macro).where(macro.c.id == char_row[0])
-                        await conn.execute(del_stmt)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(select(Macro)
+                                               .where(Macro.character_id == char.id)
+                                               .where(Macro.name == macro_name.split(':')[0])
+                                               )
+                con = result.scalars().one()
+                await session.delete(con)
+                await session.commit()
 
             await self.engine.dispose()
             return True
@@ -224,23 +193,23 @@ class MacroCog(commands.Cog):
             return False
 
     async def delete_macro_all(self, ctx: discord.ApplicationContext, character: str):
-        metadata = db.MetaData()
-        macro = await get_macro_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, self.engine)
+        Macro = await get_macro(ctx, self.engine)
         try:
-            char_stmt = emp.select().where(emp.c.name == character)
-            # print(character)
-            async with self.engine.begin() as conn:
-                data = []
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    data.append(char_row)
-                for row in data:
-                    await asyncio.sleep(0)
-                    # print(row)
-                    # print(f"{row[0]}, {macro_name}")
-                    del_stmt = delete(macro).where(macro.c.character_id == row[0])
-                    await conn.execute(del_stmt)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(select(Macro)
+                                               .where(Macro.character_id == char.id))
+                con = result.scalars().all()
+            for row in con:
+                await asyncio.sleep(0)
+                async with async_session() as session:
+                    await session.delete(row)
+                    await session.commit()
+
             await self.engine.dispose()
             return True
         except Exception as e:
@@ -249,46 +218,42 @@ class MacroCog(commands.Cog):
             await report.report()
             return False
 
-    async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc:int, modifier:str):
-        metadata = db.MetaData()
-        macro = await get_macro_table(ctx, metadata, self.engine)
-        emp = await get_tracker_table(ctx, metadata, self.engine)
+    async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int,
+                         modifier: str):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, self.engine)
+        Macro = await get_macro(ctx, self.engine)
 
-        char_stmt = emp.select().where(emp.c.name == character)
-        # print(character)
-        async with self.engine.begin() as conn:
-            data = []
-            for char_row in await conn.execute(char_stmt):
-                await asyncio.sleep(0)
-                data.append(char_row)
-            for row in data:
-                await asyncio.sleep(0)
-                # print(row)
-                # print(f"{row[0]}, {macro_name}")
-                macro_stmt = macro.select().where(macro.c.character_id == row[0]).where(
-                    macro.c.name == macro_name.split(':')[0])
-                for char_row in await conn.execute(macro_stmt):
-                    await asyncio.sleep(0)
-                    # print(char_row)
-                    if modifier != '':
-                        if modifier[0] == '+' or modifier[0] == '-':
-                            macro_string = char_row[3] + modifier
-                        else:
-                            macro_string = char_row[3] + '+' + modifier
-                    else:
-                        macro_string = char_row[3]
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            char = result.scalars().one()
+        async with async_session() as session:
+            result = await session.execute(select(Macro)
+                                           .where(Macro.character_id == char.id)
+                                           .where(Macro.name == macro_name.split(':')[0]))
+            macro_data = result.scalars().one()
 
-                    roller = DiceRoller(macro_string)
-                    if dc ==0:
-                        dice_string = await roller.roll_dice()
-                        output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
-                                        f"{dice_string}"
-                    else:
-                        dice_string = await roller.opposed_roll(dc)
-                        output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
-                                        f"{dice_string}"
-                    # print(output_string)
-                    return output_string
+
+
+        if modifier != '':
+            if modifier[0] == '+' or modifier[0] == '-':
+                macro_string = macro_data.macro + modifier
+            else:
+                macro_string = macro_data.macro + '+' + modifier
+        else:
+            macro_string = macro_data.macro
+
+        roller = DiceRoller(macro_string)
+        if dc == 0:
+            dice_string = await roller.roll_dice()
+            output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
+                            f"{dice_string}"
+        else:
+            dice_string = await roller.opposed_roll(dc)
+            output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n" \
+                            f"{dice_string}"
+        # print(output_string)
+        return output_string
 
     # ---------------------------------------------------
     # ---------------------------------------------------
@@ -343,12 +308,13 @@ class MacroCog(commands.Cog):
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
     @option('secret', choices=['Secret', 'Open'])
     @option('dc', description="Number to which dice result will be compared", required=False)
-    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, modifier:str = '', dc:int = 0,
+    async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, modifier: str = '',
+                                 dc: int = 0,
                                  secret: str = "Open"):
         await ctx.response.defer()
         try:
             if secret == "Open":
-                await ctx.send_followup(await self.roll_macro(ctx, character, macro,dc, modifier))
+                await ctx.send_followup(await self.roll_macro(ctx, character, macro, dc, modifier))
             else:
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:

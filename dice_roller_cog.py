@@ -57,7 +57,7 @@ class DiceRollerCog(commands.Cog):
                     )
                 )
                 )
-                guild = result.scalars().one()
+                guild = result.scalar()
             try:
                 if secret == 'Secret':
                         if dc == 0:
