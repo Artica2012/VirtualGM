@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
-from database_models import get_tracker_table, get_condition_table, get_macro_table
+from database_models import get_tracker_table, get_condition_table, get_macro_table, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -183,127 +183,131 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
     # Write the data
     metadata = db.MetaData()
 
-    try:
-        print('Writing Character')
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
-        macro_table = await get_macro_table(ctx, metadata, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # try:
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
             )
-            )
-            guild = result.scalars().one()
+        )
+        )
+        guild = result.scalars().one()
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+    Macro = await get_macro(ctx, engine, id=guild.id)
 
-            initiative = 0
-            if guild.initiative != None:
-                dice = DiceRoller('')
-                try:
-                    # print(f"Init: {init}")
-                    initiative = int(stats['init_string'])
-                except:
-                    try:
-                        roll = await dice.plain_roll(stats['init_string'])
-                        initiative = roll[1]
-                        if type(initiative) != int:
-                            initiative = 0
-                    except:
-                        initiative = 0
-            if guild.system != 'PF2':
-                return False
-            else:
-                stmt = emp.insert().values(
-                    name=name,
-                    init_string=stats['init_string'],
-                    init=initiative,
-                    player=True,
-                    user=ctx.user.id,
-                    current_hp=stats['hp'],
-                    max_hp=stats['hp'],
-                    temp_hp=0
-                )
-                async with engine.begin() as conn:
-                    result = await conn.execute(stmt)
-                    print('Character Created')
-
-                    if guild.initiative != None:
-                        if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-                            # print(f"integrity check was false: init_pos: {guild.initiative}")
-                            for pos, row in enumerate(await get_init_list(ctx, engine)):
-                                await asyncio.sleep(0)
-                                if row[1] == guild.saved_order:
-                                    guild.initiative = pos
-                                    # print(f"integrity checked init_pos: {guild.initiative}")
-                                    await session.commit()
-                    id_stmt = emp.select().where(emp.c.name == name)
-                    id_data = []
-                    for row in await conn.execute(id_stmt):
-                        await asyncio.sleep(0)
-                        id_data.append(row)
-
-                    char_dicts = [{
-                        'character_id': id_data[0][0],
-                        'title': 'AC',
-                        'number': int(stats['ac']),
-                        'counter': True,
-                        'visible': False
-                    },
-                        {
-                            'character_id': id_data[0][0],
-                            'title': 'Fort',
-                            'number': int(stats['fort']),
-                            'counter': True,
-                            'visible': False
-                        },
-                        {
-                            'character_id': id_data[0][0],
-                            'title': 'Reflex',
-                            'number': int(stats['reflex']),
-                            'counter': True,
-                            'visible': False
-                        },
-                        {
-                            'character_id': id_data[0][0],
-                            'title': 'Will',
-                            'number': int(stats['will']),
-                            'counter': True,
-                            'visible': False
-                        },
-                        {
-                            'character_id': id_data[0][0],
-                            'title': 'DC',
-                            'number': int(stats['dc']),
-                            'counter': True,
-                            'visible': False
-                        },
-                    ]
-
-                    con_stmt = con.insert().values(
-                        char_dicts
-                    )
-                    await conn.execute(con_stmt)
-
-                    macro_keys = macro.keys()
-                    for key in macro_keys:
-                        await asyncio.sleep(0)
-                        macro_stmt = macro_table.insert().values(
-                            character_id=id_data[0][0],
-                            name=key,
-                            macro=f"1d20+{macro[key]}"
-                        )
-                        await conn.execute(macro_stmt)
-                await engine.dispose()
-                return True
-    except Exception as e:
-        print(f'create_macro: {e}')
-        report = ErrorReport(ctx, "pathbuilder importer", e, bot)
-        await report.report()
+    initiative = 0
+    if guild.initiative != None:
+        dice = DiceRoller('')
+        try:
+            # print(f"Init: {init}")
+            initiative = int(stats['init_string'])
+        except:
+            try:
+                roll = await dice.plain_roll(stats['init_string'])
+                initiative = roll[1]
+                if type(initiative) != int:
+                    initiative = 0
+            except:
+                initiative = 0
+    if guild.system != 'PF2':
         return False
+    else:
+        async with session.begin():
+            new_char = Tracker(
+                name=name,
+                init_string=stats['init_string'],
+                init=initiative,
+                player=True,
+                user=ctx.user.id,
+                current_hp=stats['hp'],
+                max_hp=stats['hp'],
+                temp_hp=0
+            )
+            session.add(new_char)
+        await session.commit()
+
+        if guild.initiative != None:
+            if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
+                # print(f"integrity check was false: init_pos: {guild.initiative}")
+                for pos, row in enumerate(await get_init_list(ctx, engine)):
+                    await asyncio.sleep(0)
+                    if row.name == guild.saved_order:
+                        guild.initiative = pos
+                        # print(f"integrity checked init_pos: {guild.initiative}")
+                        await session.commit()
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name==name))
+            character = result.scalars().one()
+
+        async with session.begin():
+            new_con = Condition(
+                character_id=character.id,
+                title='AC',
+                number=int(stats['ac']),
+                counter=True,
+                visible=False
+            )
+            session.add(new_con)
+
+            new_con = Condition(
+                character_id=character.id,
+                title='Fort',
+                number=int(stats['fort']),
+                counter=True,
+                visible=False
+            )
+            session.add(new_con)
+
+            new_con = Condition(
+                character_id=character.id,
+                title='Reflex',
+                number=int(stats['reflex']),
+                counter=True,
+                visible=False
+            )
+            session.add(new_con)
+
+            new_con = Condition(
+                character_id=character.id,
+                title='Will',
+                number=int(stats['will']),
+                counter=True,
+                visible=False
+            )
+            session.add(new_con)
+
+            new_con = Condition(
+                character_id=character.id,
+                title='DC',
+                number=int(stats['dc']),
+                counter=True,
+                visible=False
+            )
+            session.add(new_con)
+        await session.commit()
+
+        macro_keys = macro.keys()
+        async with session.begin():
+            for key in macro_keys:
+                await asyncio.sleep(0)
+                new_macro = Macro(
+                    character_id=character.id,
+                    name=key.title(),
+                    macro=f"1d20+{macro[key]}"
+                )
+                session.add(new_macro)
+        await session.commit()
+    await engine.dispose()
+    return True
+    # except Exception as e:
+    #     print(f'create_macro: {e}')
+    #     report = ErrorReport(ctx, "pathbuilder importer", e, bot)
+    #     await report.report()
+    #     return False
 
 
 

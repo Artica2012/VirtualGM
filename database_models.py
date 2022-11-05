@@ -1,6 +1,7 @@
 # database_models.py
 
 import os
+import sys
 
 import discord
 import asyncio
@@ -43,6 +44,7 @@ Base = declarative_base()
 
 # Database Models
 
+# Global Class
 class Global(Base):
     __tablename__ = "global_manager"
     # ID Columns
@@ -74,22 +76,48 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
 
 
-async def get_tracker(ctx: discord.ApplicationContext, metadata, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+#########################################
+#########################################
+# Tracker Table
+
+# Tracker Get Function
+async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
+    if id == None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
+            )
+            guild = result.scalars().one()
+            tablename = f"Tracker_{guild.id}"
 
-    table = TrackerTable(ctx, metadata, guild.id)
-    return table
+    else:
+        tablename = f"Tracker_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Tracker(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {'extend_existing': True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        name = Column(String(), nullable=False, unique=True)
+        init = Column(Integer(), default=0)
+        player = Column(Boolean(), nullable=False)
+        user = Column(BigInteger(), nullable=False)
+        current_hp = Column(Integer(), default=0)
+        max_hp = Column(Integer(), default=1)
+        temp_hp = Column(Integer(), default=0)
+        init_string = Column(String(), nullable=True)
+
+    return Tracker
 
 
+# Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -106,6 +134,7 @@ async def get_tracker_table(ctx, metadata, engine):
     return table
 
 
+# Old Tracker (emp) Class
 class TrackerTable:
     def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
@@ -129,20 +158,44 @@ class TrackerTable:
         return emp
 
 
-async def get_con(ctx, metadata, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
-        guild = result.scalars().one()
+#########################################
+#########################################
+# Condition Table
 
-    table = ConditionTable(ctx, metadata, guild.id)
-    return table
+# Condition Get Function
+async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
+    if id == None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+            tablename = f"Condition_{guild.id}"
+
+    else:
+        tablename = f"Condition_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Condition(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {'extend_existing': True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        character_id = Column(Integer(), nullable=False)
+        counter = Column(Boolean(), default=False)
+        title = Column(String(), nullable=False)
+        number = Column(Integer(), nullable=True, default=False)
+        auto_increment = Column(Boolean(), nullable=False, default=False)
+        time = Column(Boolean(), default=False)
+        visible = Column(Boolean(), default=True)
+
+    return Condition
 
 
 async def get_condition_table(ctx, metadata, engine):
@@ -176,25 +229,54 @@ class ConditionTable:
                        db.Column('number', db.INTEGER(), nullable=True, default=None),
                        db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
                        db.Column('time', db.BOOLEAN, default=False),
-                       db.Column('visible',db.BOOLEAN, default=True)
+                       db.Column('visible', db.BOOLEAN, default=True)
                        )
         return con
 
 
-async def get_macro(ctx, metadata, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
-        guild = result.scalars().one()
+#########################################
+#########################################
+# Macro Table
 
-    table = MacroTable(ctx, metadata, guild.id)
-    return table
+class Macro(Base):
+    __abstract__ = True
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    character_id = Column(Integer(), nullable=False)
+    name = Column(String(), nullable=False, unique=False)
+    macro = Column(String(), nullable=False, unique=False)
+
+
+async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
+    if id == None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+            tablename = f"Macro_{guild.id}"
+
+    else:
+        tablename = f"Macro_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Macro(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {'extend_existing': True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        character_id = Column(Integer(), nullable=False)
+        name = Column(String(), nullable=False, unique=False)
+        macro = Column(String(), nullable=False, unique=False)
+
+    return Macro
 
 
 async def get_macro_table(ctx, metadata, engine):

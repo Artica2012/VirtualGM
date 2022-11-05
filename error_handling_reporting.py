@@ -42,7 +42,7 @@ class ErrorReport:
         output_string = f"```\n" \
                         f"Guild: {guild_id}, {self.ctx.interaction.guild.name} Channel: {channel}, {self.ctx.interaction.channel.name}\n" \
                         f"Owner: {self.ctx.interaction.guild.owner_id}, {self.ctx.interaction.guild.owner.name}\n" \
-                        f"User: {user_id}, {self.ctx.user.name}\n" \
+                        f"User: {user_id}, {self.ctx.interaction.user.name}\n" \
                         f"Function: {self.name}, {self.ctx.interaction.message}\n" \
                         f"Error: {self.error_text}" \
                         f"```"
