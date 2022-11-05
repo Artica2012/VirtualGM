@@ -265,9 +265,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 # Add a character to the database
 async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str):
-    metadata = db.MetaData()
-    dice = DiceRoller('')
-
     try:
         Tracker = await get_tracker(ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1254,7 +1251,6 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 
 
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
-    metadata = db.MetaData()
     try:
         Tracker = await get_tracker(ctx, engine)
         Condition = await get_condition(ctx, engine)
@@ -1301,16 +1297,15 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 
 
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
-    metadata = db.MetaData()
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == character)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
-                # print(row)
+        Tracker = await get_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -1322,12 +1317,16 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return False
 
     try:
-        con = await get_condition_table(ctx, metadata, engine)
-        stmt = delete(con).where(con.c.character_id == data[0][0]).where(con.c.title == condition).where(
-            con.c.visible == True)
-        async with engine.begin() as conn:
-            await conn.execute(stmt)
-            # print(result)
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.visible==True))
+            con_list = result.scalars().all()
+
+        for con in con_list:
+            await asyncio.sleep(0)
+            async with async_session() as session:
+                await session.delete(con)
+                await session.commit()
+
         await update_pinned_tracker(ctx, engine, bot)
         await engine.dispose()
         return True
@@ -1343,16 +1342,14 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 
 
 async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
-    metadata = db.MetaData()
+    Tracker = await get_tracker(ctx, engine)
+    Condition = await get_condition(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
-        emp = await get_tracker_table(ctx, metadata, engine)
-        stmt = emp.select().where(emp.c.name == character)
-        async with engine.begin() as conn:
-            data = []
-            for row in await conn.execute(stmt):
-                await asyncio.sleep(0)
-                data.append(row)
-                # print(row)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -1363,17 +1360,12 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
         await report.report()
 
     try:
-        con = await get_condition_table(ctx, metadata, engine)
-        stmt = con.select().where(con.c.character_id == data[0][0]).where(con.c.counter == True)
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.counter==True))
+            counters = result.scalars().all()
 
-        con_data = []
-        async with engine.begin() as conn:
-            result = await conn.execute(stmt)
-            for row in result:
-                await asyncio.sleep(0)
-                con_data.append(row)
         await engine.dispose()
-        return con_data
+        return counters
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -1387,25 +1379,27 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
 async def check_cc(ctx: discord.ApplicationContext, engine, bot):
-    metadata = db.MetaData()
     current_time = await get_time(ctx, engine, bot)
-    con = await get_condition_table(ctx, metadata, engine)
-    emp = await get_tracker_table(ctx, metadata, engine)
-    stmt = con.select().where(con.c.time == True)
-    async with engine.begin() as conn:
-        for row in await conn.execute(stmt):
-            await asyncio.sleep(0)
-            time_stamp = datetime.datetime.fromtimestamp(row[4])
-            time_left = time_stamp - current_time
-            if time_left.total_seconds() <= 0:
-                char_stmt = emp.select().where(emp.c.id == row[1])
-                char_name = ''
-                for char_row in await conn.execute(char_stmt):
-                    await asyncio.sleep(0)
-                    char_name = char_row[1]
-                del_stmt = delete(con).where(con.c.id == row[0])
-                await ctx.channel.send(f"{row[3]} removed from {char_name}")
-                await conn.execute(del_stmt)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(ctx, engine)
+    Condition = await get_condition(ctx, engine)
+
+    async with async_session() as session:
+        result = await session.execute(select(Condition).where(Condition.time == True))
+        con_list = result.scalars().all()
+
+    for row in con_list:
+        await asyncio.sleep(0)
+        time_stamp = datetime.datetime.fromtimestamp(row.number)
+        time_left = time_stamp - current_time
+        if time_left.total_seconds() <= 0:
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == row.character_id))
+                character = result.scalars().one()
+            async  with async_session() as session:
+                await session.delete(row)
+                await session.commit()
+            await ctx.channel.send(f"{row.title} removed from {character.name}")
     await engine.dispose()
 
 
@@ -2041,7 +2035,7 @@ class InitiativeCog(commands.Cog):
                 output_string = f'```{character}:\n'
                 for row in cc_list:
                     await asyncio.sleep(0)
-                    counter_string = f'{row[3]}: {row[4]}'
+                    counter_string = f'{row.title}: {row.number}'
                     output_string += counter_string
                     output_string += '\n'
                 output_string += "```"
