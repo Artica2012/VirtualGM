@@ -221,7 +221,7 @@ class AttackCog(commands.Cog):
 
     @att.command(description="Saving Throw")
     @option('character', description='Saving Character', autocomplete=character_select_gm)
-    @option('target', description="Character to use DC", autocomplete=character_select, required=False)
+    @option('target', description="Character to use DC", autocomplete=character_select)
     @option('vs', description="Target Attribute",
             autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
