@@ -209,7 +209,7 @@ class D4eCog(commands.Cog):
             )
             guild = result.scalars().one()
             if guild.system == "D4e":
-                output_string = D4e.d4e_functions.save(ctx, self.engine, self.bot, character, condition, modifier)
+                output_string = await D4e.d4e_functions.save(ctx, self.engine, self.bot, character, condition, modifier)
                 await ctx.send_followup(output_string)
             else:
                 await ctx.send_followup("No system set, command inactive.")

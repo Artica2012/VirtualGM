@@ -144,24 +144,28 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, con
             result = await session.execute(select(Tracker).where(Tracker.name == character))
             char = result.scalars().one()
 
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.name == condition)
-                                           .where(Condition.character_id == char.id))
-            target_condition = result.scalars().one()
+        # print(f"Modifier: {modifier}")
+        # print(f"{modifier[0]}")
+        # print(type(modifier[0]))
+        # print(int(modifier[0]))
 
-
-        if modifier != '':
+        if modifier == '':
+            roll = "1d20"
+        else:
             if modifier[0] == '+':
                 roll = "1d20+" + str(modifier[1:])
             elif modifier[0] == '-':
                 roll = "1d20-" + str(modifier[1:])
-            elif type(modifier[0]) == int:
-                roll = "1d20+" + str(modifier)
             else:
-                roll="1d20"
-        else:
-            roll = "1d20"
+                try:
+                    mod_int = int(modifier[0])
+                    roll = "1d20+" + modifier
+                except Exception as e:
+                    roll = "1d20"
+
+        # print(roll)
         dice_result = await roller.attack_roll(roll)
+        # print(dice_result)
         total = dice_result[1]
         dice_string = dice_result[0]
 
@@ -179,14 +183,12 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, con
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
-        return False
+        return "Error"
     except Exception as e:
         print(f'attack: {e}')
-        report = ErrorReport(ctx, "/attack (emp)", e, bot)
+        report = ErrorReport(ctx, "/d4e save", e, bot)
         await report.report()
-        return False
-
-    return output_string
+        return "Error"
 
 
 async def D4e_eval_succss(result_tuple: tuple, goal: int):

@@ -1347,7 +1347,10 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 
     try:
         async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.visible==True))
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == character.id)
+                                           .where(Condition.visible==True)
+                                           .where(Condition.title==condition))
             con_list = result.scalars().all()
 
         for con in con_list:
