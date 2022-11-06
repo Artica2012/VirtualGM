@@ -191,9 +191,10 @@ class D4eCog(commands.Cog):
             report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
             await report.report()
             return False
-    d4e = SlashCommandGroup('d4e', "D&D 4th Edition Specific Commands")
+    dd = SlashCommandGroup('d4e', "D&D 4th Edition Specific Commands")
 
-    @d4e.command(description="D&D 4e auto save")
+    @dd.command(description="D&D 4e auto save")
+    # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('condition', description="Select Condition", autocomplete=cc_select_visible)
     async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
@@ -214,19 +215,6 @@ class D4eCog(commands.Cog):
                 await ctx.send_followup("No system set, command inactive.")
                 return
 
-
-
-    # @d4e.command(description="Pathbuilder Import")
-    # @option('pathbuilder_id', description="Pathbuilder Export ID", required=True)
-    # async def pb_import(self, ctx:discord.ApplicationContext, name:str, pathbuilder_id:int):
-    #     await ctx.response.defer(ephemeral=True)
-    #     response = await pathbuilder_import(ctx, self.engine, self.bot, name, str(pathbuilder_id))
-    #     if response:
-    #         await update_pinned_tracker(ctx, self.engine, self.bot)
-    #         await ctx.send_followup('Success')
-    #
-    #     else:
-    #         await ctx.send_followup('Failed')
 
 
 def setup(bot):
