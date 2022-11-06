@@ -20,6 +20,7 @@ from sqlalchemy.exc import NoResultFound, SAWarning
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
+import D4e.d4e_functions
 import PF2e.pf2_functions
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -1936,6 +1937,30 @@ class InitiativeCog(commands.Cog):
     i = SlashCommandGroup("i", "Initiative Tracker")
     char = SlashCommandGroup("char", "Character Commands")
     cc = SlashCommandGroup("cc", "Conditions and Counters")
+
+    @i.command(description="D&D 4e auto save")
+    # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
+    @option('character', description='Character Attacking', autocomplete=character_select_gm)
+    @option('condition', description="Select Condition", autocomplete=cc_select)
+    async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
+        await ctx.response.defer()
+        async with self.async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+            if guild.system == "D4e":
+                output_string = D4e.d4e_functions.save(ctx, self.engine, self.bot, character, condition, modifier)
+
+                await ctx.send_followup(output_string)
+            else:
+                await ctx.send_followup("No system set, command inactive.")
+                return
+
 
     @char.command(description="Add PC on NPC",
                   # guild_ids=[GUILD]
