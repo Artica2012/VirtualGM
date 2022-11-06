@@ -69,7 +69,7 @@ class OptionsCog(commands.Cog):
     @option('gm', description="@Player to transfer GM permissions to.", required=True)
     @option('channel', description="Player Channel", required=True)
     @option('gm_channel', description="GM Channel", required=True)
-    @option('system', choices=['Generic', 'Pathfinder 2e'], required=False)
+    @option('system', choices=['Generic', 'Pathfinder 2e', 'D&D 4e'], required=False)
     async def start(self, ctx: discord.ApplicationContext,
                     channel: discord.TextChannel,
                     gm_channel: discord.TextChannel,
@@ -185,6 +185,8 @@ class OptionsCog(commands.Cog):
                     system_str = 'Generic'
                 elif guild.system == 'PF2':
                     system_str = 'Pathfinder Second Edition'
+                elif guild.system == "D4e":
+                    system_str = 'D&D 4th Edition'
                 else:
                     system_str = 'Generic'
 

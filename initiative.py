@@ -70,6 +70,8 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
 
     if system == 'Pathfinder 2e':
         g_system = 'PF2'
+    elif system == "D&D 4e":
+        g_system = 'D4e'
     else:
         g_system = None
 
@@ -224,6 +226,12 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                                             player=player_bool, ctx=ctx,
                                             engine=engine, bot=bot, title=name)
             await ctx.send_modal(pf2Modal)
+            return True
+        elif guild.system == 'D4e':
+            D4eModal = D4eAddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
+                                            player=player_bool, ctx=ctx,
+                                            engine=engine, bot=bot, title=name)
+            await ctx.send_modal(D4eModal)
             return True
         else:
             Tracker = await get_tracker(ctx, engine, id=guild.id)
@@ -1625,6 +1633,147 @@ class PF2AddCharacterModal(discord.ui.Modal):
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
 
+# D&D 4e Specific
+class D4eAddCharacterModal(discord.ui.Modal):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
+        self.name = name
+        self.hp = hp
+        self.init = init
+        self.initiative = initiative
+        self.player = player
+        self.ctx = ctx
+        self.engine = engine
+        self.bot = bot
+        super().__init__(
+            discord.ui.InputText(
+                label="AC",
+                placeholder="Armor Class",
+            ),
+            discord.ui.InputText(
+                label="Fort",
+                placeholder="Fortitude",
+            ),
+            discord.ui.InputText(
+                label="Reflex",
+                placeholder="Reflex",
+            ),
+            discord.ui.InputText(
+                label="Will",
+                placeholder="Will",
+            ), *args, **kwargs
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == self.ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+
+        embed = discord.Embed(
+            title="Character Created (D&D 4e)",
+            fields=[
+                discord.EmbedField(
+                    name="Name: ", value=self.name, inline=True
+                ),
+                discord.EmbedField(
+                    name="HP: ", value=f"{self.hp}", inline=True
+                ),
+                discord.EmbedField(
+                    name="AC: ", value=self.children[0].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Fort: ", value=self.children[1].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Reflex: ", value=self.children[2].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Will: ", value=self.children[3].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Initiative: ", value=self.init, inline=True
+                ),
+            ],
+            color=discord.Color.dark_gold(),
+        )
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+            async with session.begin():
+                tracker = Tracker(
+                    name=self.name,
+                    init_string=self.init,
+                    init=self.initiative,
+                    player=self.player,
+                    user=self.ctx.user.id,
+                    current_hp=self.hp,
+                    max_hp=self.hp,
+                    temp_hp=0
+                )
+                session.add(tracker)
+            await session.commit()
+
+        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+
+        async with session.begin():
+            session.add(Condition(
+                character_id=character.id,
+                title='AC',
+                number=int(self.children[0].value),
+                counter=True,
+                visible=False))
+            session.add(Condition(
+                character_id=character.id,
+                title='Fort',
+                number=int(self.children[1].value),
+                counter=True,
+                visible=False
+            ))
+            session.add(Condition(
+                character_id=character.id,
+                title='Reflex',
+                number=int(self.children[2].value),
+                counter=True,
+                visible=False
+            ))
+            session.add(Condition(
+                character_id=character.id,
+                title='Will',
+                number=int(self.children[3].value),
+                counter=True,
+                visible=False
+            ))
+            await session.commit()
+
+        async with session.begin():
+            if guild.initiative != None:
+                if not await init_integrity_check(self.ctx, guild.initiative, guild.saved_order, self.engine):
+                    # print(f"integrity check was false: init_pos: {guild.initiative}")
+                    for pos, row in enumerate(await get_init_list(self.ctx, self.engine)):
+                        await asyncio.sleep(0)
+                        if row.name == guild.saved_order:
+                            guild.initiative = pos
+                            # print(f"integrity checked init_pos: {guild.initiative}")
+                            await session.commit()
+
+        # await update_pinned_tracker(self.ctx, self.engine, self.bot)
+        print('Tracker Updated')
+        await interaction.response.send_message(embeds=[embed])
+
+    async def on_error(self, error: Exception, interaction: Interaction) -> None:
+        print(error)
+
+
 
 #############################################################################
 #############################################################################
@@ -1636,7 +1785,7 @@ class InitiativeCog(commands.Cog):
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.lock = asyncio.Lock()
         self.update_status.start()
-        self.check_latency.start()
+        # self.check_latency.start()
         self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
     def __enter__(self):
@@ -1645,9 +1794,9 @@ class InitiativeCog(commands.Cog):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    @tasks.loop(seconds=5)
-    async def check_latency(self):
-        print(f"{self.bot.latency}: {datetime.datetime.now()}")
+    # @tasks.loop(seconds=5)
+    # async def check_latency(self):
+    #     print(f"{self.bot.latency}: {datetime.datetime.now()}")
 
 
     # Update the bot's status periodically

@@ -47,7 +47,7 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
-PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
+D4e_attributes = ['AC', 'Fort', 'Reflex', 'Will']
 
 
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
@@ -110,23 +110,19 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         await report.report()
         return False
 
-    if vs in ["Fort", "Will", "Reflex"]:
-        goal_value = con_vs.number + 10
-    else:
-        goal_value = con_vs.number
     if target_modifier != '':
         if target_modifier[0] == '+':
-            goal = goal_value + int(target_modifier[1:])
+            goal = con_vs.number + int(target_modifier[1:])
         elif target_modifier[0] == '-':
-            goal = goal_value - int(target_modifier[1:])
+            goal = con_vs.number - int(target_modifier[1:])
         elif type(target_modifier[0]) == int:
-            goal = goal_value + int(target_modifier)
+            goal = con_vs.number + int(target_modifier)
         else:
-            goal = goal_value
+            goal = con_vs.number
     else:
-        goal = goal_value
+        goal = con_vs.number
 
-    success_string = await PF2_eval_succss(dice_result, goal)
+    success_string = await D4e_eval_succss(dice_result, goal)
 
     # print(f"{dice_string}, {total}\n"
     #       f"{vs}, {goal_value}\n {success_string}")
@@ -136,11 +132,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
                     f"{success_string}"
     return output_string
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier:str):
-
-    if target == None:
-        output_string = "Error. No Target Specified."
-        return output_string
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier:str):
     roller = DiceRoller('')
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -153,42 +145,36 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
             char = result.scalars().one()
 
         async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == target))
-            targ = result.scalars().one()
+            result = await session.execute(select(Condition).where(Condition.name == condition)
+                                           .where(Condition.character_id == char.id))
+            target_condition = result.scalars().one()
 
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == targ.id)
-                                           .where(Condition.title == vs))
-            raw_roll = result.scalars().one()
-            roll = f"1d20+{raw_roll.number}"
-
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == char.id)
-                                           .where(Condition.title == 'DC'))
-            raw_dc = result.scalars().one()
-            dc = raw_dc.number
 
         if modifier != '':
             if modifier[0] == '+':
-                goal = dc + int(modifier[1:])
+                roll = "1d20+" + str(modifier[1:])
             elif modifier[0] == '-':
-                goal = dc - int(modifier[1:])
+                roll = "1d20-" + str(modifier[1:])
             elif type(modifier[0]) == int:
-                goal = dc + int(modifier)
+                roll = "1d20+" + str(modifier)
             else:
-                goal = dc
+                roll="1d20"
         else:
-            goal = dc
+            roll = "1d20"
         dice_result = await roller.attack_roll(roll)
         total = dice_result[1]
         dice_string = dice_result[0]
 
-        success_string = await PF2_eval_succss(dice_result, goal)
+        success_string = await D4e_eval_succss(dice_result, 10)
         # Format output string
-        output_string = f"{character} vs {target}\n" \
-                        f" {vs} Save\n" \
+        output_string = f"Save: {character}\n" \
                         f"{dice_string} = {total}\n" \
                         f"{success_string}"
+
+        if total >= 10:
+            await initiative.delete_cc(ctx, engine, character, condition, bot)
+
+        return output_string
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -203,37 +189,22 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
     return output_string
 
 
-async def PF2_eval_succss(result_tuple: tuple, goal: int):
+async def D4e_eval_succss(result_tuple: tuple, goal: int):
     total = result_tuple[1]
     nat_twenty = result_tuple[2]
     nat_one = result_tuple[3]
     result = 0
     success_string = ''
 
-    if total >= goal + 10:
-        result = 4
-    elif total >= goal:
-        result = 3
-    elif goal >= total >= goal - 9:
-        result = 2
+    if total >= goal:
+        success_string = "Success"
     else:
-        result = 1
+        success_string = "Failure"
 
     if nat_twenty:
-        result += 1
-    elif nat_one:
-        result -= 1
-
-    if result >= 4:
-        success_string = "Critical Success"
-    elif result == 3:
         success_string = "Success"
-    elif result == 2:
-        success_string = "Failure"
-    elif result <= 1:
-        success_string = "Critical Failure"
-    else:
-        success_string = "Error"
+    if nat_one:
+        success_string = 'Failure'
 
     return success_string
 

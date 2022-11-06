@@ -1,4 +1,6 @@
-# attack_cog.py
+# d4e_cog.py
+# For slash commands specific to oathfinder 2e
+# system specific module
 
 import os
 
@@ -17,15 +19,14 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import D4e.d4e_functions
-import dice_roller
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
     get_condition_table, get_macro_table, get_condition, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
-from error_handling_reporting import ErrorReport, error_not_initialized
+from error_handling_reporting import ErrorReport
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from PF2e.pathbuilder_importer import pathbuilder_import
-import PF2e.pf2_functions
+from initiative import update_pinned_tracker
 
 # define global variables
 
@@ -46,7 +47,6 @@ else:
 GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
-
 
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
@@ -69,16 +69,15 @@ async def gm_check(ctx, engine):
         else:
             return True
 
-
-class AttackCog(commands.Cog):
+class D4eCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-        # ---------------------------------------------------
-        # ---------------------------------------------------
-        # Autocomplete Methods
+    # ---------------------------------------------------
+    # ---------------------------------------------------
+    # Autocomplete Methods
 
     # Autocomplete to give the full character list
     async def character_select(self, ctx: discord.AutocompleteContext):
@@ -117,7 +116,8 @@ class AttackCog(commands.Cog):
                 if gm_status:
                     char_result = await session.execute(select(Tracker))
                 else:
-                    char_result = await session.execute(select(Tracker).where(Tracker.user == ctx.interaction.user.id))
+                    char_result = await session.execute(
+                        select(Tracker).where(Tracker.user == ctx.interaction.user.id))
                 character = char_result.scalars().all()
                 for char in character:
                     await asyncio.sleep(0)
@@ -130,6 +130,37 @@ class AttackCog(commands.Cog):
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
             await report.report()
             return []
+
+    async def cc_select_visible(self, ctx: discord.AutocompleteContext):
+        character = ctx.options['character']
+
+        con_list = []
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, self.engine)
+            Condition = await get_condition(ctx, self.engine)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(
+                    Tracker.name == character
+                ))
+                char = char_result.scalars().one()
+            async with async_session() as session:
+                con_result = await session.execute(select(Condition)
+                    .where(Condition.character_id == char.id)
+                    .where(Condition.visible == True))
+                condition = con_result.scalars().all()
+            for cond in condition:
+                con_list.append(cond.title)
+            await self.engine.dispose()
+            return con_list
+
+        except Exception as e:
+            print(f'cc_select: {e}')
+            report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
+            await report.report()
+            return []
+
 
     async def a_macro_select(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
@@ -144,7 +175,8 @@ class AttackCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                macro_result = await session.execute(
+                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
             macros = []
             for row in macro_list:
@@ -159,41 +191,12 @@ class AttackCog(commands.Cog):
             report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
             await report.report()
             return False
+    d4e = SlashCommandGroup('d4e', "D&D 4th Edition Specific Commands")
 
-    async def get_attributes(self, ctx: discord.AutocompleteContext):
-        async with self.async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if guild.system == 'PF2':
-                return PF2e.pf2_functions.PF2_attributes
-            elif guild.system == 'D4e':
-                return D4e.d4e_functions.D4e_attributes
-            else:
-                return []
-
-
-    # ---------------------------------------------------
-    # ---------------------------------------------------
-    # Slash commands
-
-    att = SlashCommandGroup("a", "Automatic Attack Commands")
-
-    @att.command(description="Automatic Attack")
+    @d4e.command(description="D&D 4e auto save")
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
-    @option('target', description="Character to Target", autocomplete=character_select)
-    @option('roll', description="Roll or Macro Roll", autocomplete=a_macro_select)
-    @option('vs', description="Target Attribute",
-            autocomplete=get_attributes)
-    @option('attack_modifier', description="Modifier to the macro (defaults to +)", required=False)
-    @option('target_modifier', description="Modifier to the target's dc (defaults to +)", required=False)
-    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str, attack_modifier:str ='', target_modifier:str=''):
-        metadata = db.MetaData()
+    @option('condition', description="Select Condition", autocomplete=cc_select_visible)
+    async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
@@ -204,51 +207,27 @@ class AttackCog(commands.Cog):
             )
             )
             guild = result.scalars().one()
-            if not guild.system:
-                await ctx.respond("No system set, command inactive.")
-                return
-
-            if guild.system == 'PF2':
-                # PF2 specific code
-                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs, attack_modifier, target_modifier)
-            elif guild.system == 'D4e':
-                # D4e specific code
-                output_string = await D4e.d4e_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs,
-                                                                attack_modifier, target_modifier)
-            else:
-                output_string = 'Error'
-            await ctx.send_followup(output_string)
-
-    @att.command(description="Saving Throw")
-    @option('character', description='Saving Character', autocomplete=character_select_gm)
-    @option('target', description="Character to use DC", autocomplete=character_select, required=False)
-    @option('vs', description="Target Attribute",
-            autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
-    @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
-
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier:str=''):
-        await ctx.response.defer()
-        async with self.async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if not guild.system:
-                await ctx.respond("No system set, command inactive.")
-                return
-            # PF2 specific code
-            if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs, modifier)
+            if guild.system == "D4e":
+                output_string = D4e.d4e_functions.save(ctx, self.engine, self.bot, character, condition, modifier)
                 await ctx.send_followup(output_string)
-            elif guild.system == "D4e":
-                await ctx.send_followup('Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
+            else:
+                await ctx.send_followup("No system set, command inactive.")
+                return
 
 
+
+    # @d4e.command(description="Pathbuilder Import")
+    # @option('pathbuilder_id', description="Pathbuilder Export ID", required=True)
+    # async def pb_import(self, ctx:discord.ApplicationContext, name:str, pathbuilder_id:int):
+    #     await ctx.response.defer(ephemeral=True)
+    #     response = await pathbuilder_import(ctx, self.engine, self.bot, name, str(pathbuilder_id))
+    #     if response:
+    #         await update_pinned_tracker(ctx, self.engine, self.bot)
+    #         await ctx.send_followup('Success')
+    #
+    #     else:
+    #         await ctx.send_followup('Failed')
 
 
 def setup(bot):
-    bot.add_cog(AttackCog(bot))
+    bot.add_cog(D4eCog(bot))
