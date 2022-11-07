@@ -1,6 +1,8 @@
 # attack_cog.py
 
 import asyncio
+import datetime
+import inspect
 import os
 
 # imports
@@ -47,6 +49,9 @@ DATABASE = os.getenv('DATABASE')
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
+    # bughunt code
+    print(f"{datetime.datetime.now()} - attack_cog gm_check")
+
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(
@@ -75,6 +80,9 @@ class AttackCog(commands.Cog):
 
     # Autocomplete to give the full character list
     async def character_select(self, ctx: discord.AutocompleteContext):
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog character_select")
+
         character_list = []
 
         try:
@@ -98,6 +106,9 @@ class AttackCog(commands.Cog):
 
     # Autocomplete to return the list of character the user owns, or all if the user is the GM
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog character_select_gm")
+
         character_list = []
 
         gm_status = await gm_check(ctx, self.engine)
@@ -125,6 +136,9 @@ class AttackCog(commands.Cog):
             return []
 
     async def a_macro_select(self, ctx: discord.AutocompleteContext):
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog a_macro_select")
+
         character = ctx.options['character']
         Tracker = await get_tracker(ctx, self.engine)
         Macro = await get_macro(ctx, self.engine)
@@ -155,6 +169,9 @@ class AttackCog(commands.Cog):
             return False
 
     async def get_attributes(self, ctx: discord.AutocompleteContext):
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog get_attributes")
+
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
@@ -187,7 +204,9 @@ class AttackCog(commands.Cog):
     @option('target_modifier', description="Modifier to the target's dc (defaults to +)", required=False)
     async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str,
                      attack_modifier: str = '', target_modifier: str = ''):
-        metadata = db.MetaData()
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog attack")
+
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
@@ -221,6 +240,9 @@ class AttackCog(commands.Cog):
             autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
     async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier: str = ''):
+        # bughunt code
+        print(f"{datetime.datetime.now()} - attack_cog save")
+
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
