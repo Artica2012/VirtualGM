@@ -131,7 +131,7 @@ class D4eCog(commands.Cog):
             await report.report()
             return []
 
-    async def cc_select_visible(self, ctx: discord.AutocompleteContext):
+    async def cc_select_visible_flex(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
 
         con_list = []
@@ -148,7 +148,8 @@ class D4eCog(commands.Cog):
             async with async_session() as session:
                 con_result = await session.execute(select(Condition)
                     .where(Condition.character_id == char.id)
-                    .where(Condition.visible == True))
+                    .where(Condition.visible == True)
+                    .where(Condition.flex == True))
                 condition = con_result.scalars().all()
             for cond in condition:
                 con_list.append(cond.title)
@@ -196,7 +197,7 @@ class D4eCog(commands.Cog):
     @dd.command(description="D&D 4e auto save")
     # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
-    @option('condition', description="Select Condition", autocomplete=cc_select_visible)
+    @option('condition', description="Select Condition", autocomplete=cc_select_visible_flex)
     async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
         await ctx.response.defer()
         async with self.async_session() as session:

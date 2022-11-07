@@ -29,9 +29,9 @@ bot = discord.Bot(intents=intents,
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    print("Updating tables...")
-    database_operations.update_con_table()
-    print("Tables updated")
+    # print("Updating tables...")
+    # database_operations.update_con_table()
+    # print("Tables updated")
     print(f"{bot.user} is connected.")
 
 @bot.event

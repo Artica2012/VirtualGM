@@ -98,5 +98,21 @@ https://discord.gg/CeF4yeAekQ
 
 ### Automated Functions - BETA FUNCTIONALITY
 - These are only active when a system was selected at table setup. This functionality is not availible on the generic tracker
-  - /a attack - Rolls an automated attack 
-  - /a save - Rolls automated saving throw
+  - **/a attack** - Rolls an automated attack 
+  - **/a save** - Rolls automated saving throw
+  - Does not work with D&D 4e, use the _/d4e save_ command instead
+
+
+## System Specific Functionality
+ - This is expanded functionality for specific systems. This must be selected on server setup.
+
+### Systems
+#### Pathfinder Second Edition
+ - /pf2 pb_import - Imports character data from the Pathbuilder 2e app or https://pathbuilder2e.com/
+ - Attacks and saves are enabled via **/a attack** and **/a save**
+
+#### Dungeons and Dragons 4th Edition
+ - Attacks are enabled via **/a attack**
+ - Saves are rolled via **/d4e save** or via the button at the bottom of the initiative tracker.
+ - /d4e save - rolls the save and automatically removes the condition if a DC10 roll is achieved. There is an argument for a modifier to the saving throw roll
+ - **NOTE:** A condition must have the argument _flex_ set to true, to allow it to be auto-deleted by a saving throw

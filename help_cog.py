@@ -221,10 +221,10 @@ class HelpCog(commands.Cog):
             await ctx.respond('Invalid choice', ephemeral=True)
 
     @help.command(description="Automation",
-                      # guild_ids=[GUILD]
-                      )
+                  # guild_ids=[GUILD]
+                  )
     @option('command', choices=[
-            'attack', 'save'])
+        'attack', 'save'])
     async def a(self, ctx: discord.ApplicationContext, command: str):
         if command == 'attack':
             await ctx.respond(
@@ -240,6 +240,32 @@ class HelpCog(commands.Cog):
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
 
+    @help.command(description="System Specific Commands",
+                  # guild_ids=[GUILD]
+                  )
+    @option('command', choices=[
+        'PF2e', 'D&D 4e'])
+    async def system_specific(self, ctx: discord.ApplicationContext, command: str):
+        if command == 'PF2e':
+            await ctx.respond(
+                "```Pathfinder Second Edition\n"
+                " - /pf2 pb_import - Imports character data from the Pathbuilder 2e app or https://pathbuilder2e.com/\n"
+                " - Attacks and saves are enabled via **/a attack** and **/a save**`` "
+                , ephemeral=True
+            )
+        elif command == 'D&D 4e':
+            await ctx.respond("```Dungeons and Dragons 4th Edition\n"
+                              " - Attacks are enabled via **/a attack*\n*"
+                              "- Saves are rolled via **/d4e save** or via the button at the bottom of the initiative "
+                              "tracker\n. "
+                              "- /d4e save - rolls the save and automatically removes the condition if a DC10 roll is "
+                              "achieved. There is an argument for a modifier to the saving throw roll\n "
+                              "- **NOTE:** A condition must have the argument _flex_ set to true, to allow it to be "
+                              "auto-deleted by a saving throw\n "
+                              '```', ephemeral=True
+                              )
+        else:
+            await ctx.respond('Invalid choice', ephemeral=True)
 
 
 def setup(bot):
