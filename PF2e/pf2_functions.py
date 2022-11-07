@@ -51,13 +51,13 @@ PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
 
 
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
-                 attack_modifier:str, target_modifier:str):
+                 attack_modifier: str, target_modifier: str):
     roller = DiceRoller('')
     # try:
 
     # Strip a macro:
     roll_list = roll.split(':')
-    if len(roll_list)==1:
+    if len(roll_list) == 1:
         roll = roll
     else:
         roll = roll_list[1]
@@ -136,8 +136,8 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
                     f"{success_string}"
     return output_string
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier:str):
 
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier: str):
     if target == None:
         output_string = "Error. No Target Specified."
         return output_string
@@ -240,7 +240,7 @@ async def PF2_eval_succss(result_tuple: tuple, goal: int):
 
 # Builds the tracker string. Updated to work with block initiative
 async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
-                            gm: bool = False):
+                          gm: bool = False):
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -331,10 +331,11 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
             output_string += string
 
             for con_row in row['cc']:
+                # print(f"{con_row.number}, {con_row.character_id}")
                 await asyncio.sleep(0)
                 if con_row.visible == True:
                     if gm or not con_row.counter:
-                        if con_row.number != None:
+                        if con_row.number != None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.datetime.fromtimestamp(con_row.number)
                                 current_time = await get_time(ctx, engine, bot)
@@ -342,7 +343,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
                                 processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                                if processed_seconds_left <10:
+                                if processed_seconds_left < 10:
                                     processed_seconds_left = f"0{processed_seconds_left}"
                                 if days_left != 0:
                                     con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
@@ -372,4 +373,3 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         print(f"pf2_get_tracker: {e}")
         report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
         await report.report()
-

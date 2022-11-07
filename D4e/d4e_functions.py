@@ -307,7 +307,7 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                 await asyncio.sleep(0)
                 if con_row.visible == True:
                     if gm or not con_row.counter:
-                        if con_row.number != None:
+                        if con_row.number != None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.datetime.fromtimestamp(con_row.number)
                                 current_time = await get_time(ctx, engine, bot)

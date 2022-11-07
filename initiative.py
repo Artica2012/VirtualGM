@@ -451,8 +451,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
             await session.commit()
         await ctx.channel.send(f"{char.name} Deleted")
 
-
-            # Fix initiative position after delete:
+        # Fix initiative position after delete:
         if guild.initiative is None:
             return True
         elif guild.saved_order == '':
@@ -854,7 +853,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
         await report.report()
 
 
-#Returns the tracker list sorted by initiative
+# Returns the tracker list sorted by initiative
 async def get_init_list(ctx: discord.ApplicationContext, engine):
     try:
         Tracker = await get_tracker(ctx, engine)
@@ -907,9 +906,10 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
             output_string = await generic_block_get_tracker(init_list, selected, ctx, engine, bot, gm)
         return output_string
 
+
 # Builds the tracker string. Updated to work with block initiative
 async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
-                            gm: bool = False):
+                                    gm: bool = False):
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1000,10 +1000,11 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             output_string += string
 
             for con_row in row['cc']:
+                # print(con_row)
                 await asyncio.sleep(0)
                 if con_row.visible == True:
                     if gm or not con_row.counter:
-                        if con_row.number != None:
+                        if con_row.number != None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.datetime.fromtimestamp(con_row.number)
                                 current_time = await get_time(ctx, engine, bot)
@@ -1011,7 +1012,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
                                 processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                                if processed_seconds_left <10:
+                                if processed_seconds_left < 10:
                                     processed_seconds_left = f"0{processed_seconds_left}"
                                 if days_left != 0:
                                     con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
@@ -1131,8 +1132,8 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                 char = result.scalars().one()
             async with async_session() as session:
                 result = await session.execute(select(Condition)
-                                         .where(Condition.character_id == char.id)
-                                         .where(Condition.flex == True))
+                                               .where(Condition.character_id == char.id)
+                                               .where(Condition.flex == True))
                 conditions = result.scalars().all()
             for con in conditions:
                 new_button = D4e.d4e_functions.D4eConditionButton(
@@ -1223,7 +1224,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
 # COUNTER/CONDITION MANAGEMENT
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
-                 unit: str, auto_decrement: bool, bot, flex:bool=False,):
+                 unit: str, auto_decrement: bool, bot, flex: bool = False, ):
     metadata = db.MetaData()
     # Get the Character's data
 
@@ -1257,49 +1258,49 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         return False
 
     try:
-            if not guild.timekeeping or unit == 'Round':
-                async with session.begin():
-                    condition = Condition(
-                        character_id=character.id,
-                        title=title,
-                        number=number,
-                        counter=counter,
-                        auto_increment=auto_decrement,
-                        time=False,
-                        flex=flex
-                    )
-                    session.add(condition)
-                await session.commit()
+        if not guild.timekeeping or unit == 'Round':
+            async with session.begin():
+                condition = Condition(
+                    character_id=character.id,
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_decrement,
+                    time=False,
+                    flex=flex
+                )
+                session.add(condition)
+            await session.commit()
 
-                await update_pinned_tracker(ctx, engine, bot)
-                await engine.dispose()
-                return True
+            await update_pinned_tracker(ctx, engine, bot)
+            await engine.dispose()
+            return True
 
+        else:
+            current_time = await get_time(ctx, engine, bot)
+            if unit == 'Minute':
+                end_time = current_time + datetime.timedelta(minutes=number)
+            elif unit == 'Hour':
+                end_time = current_time + datetime.timedelta(hours=number)
             else:
-                current_time = await get_time(ctx, engine, bot)
-                if unit == 'Minute':
-                    end_time = current_time + datetime.timedelta(minutes=number)
-                elif unit == 'Hour':
-                    end_time = current_time + datetime.timedelta(hours=number)
-                else:
-                    end_time = current_time + datetime.timedelta(days=number)
+                end_time = current_time + datetime.timedelta(days=number)
 
-                timestamp = end_time.timestamp()
+            timestamp = end_time.timestamp()
 
-                async with session.begin():
-                    condition = Condition(
-                        character_id=character.id,
-                        title=title,
-                        number=timestamp,
-                        counter=counter,
-                        auto_increment=True,
-                        time=True
-                    )
-                    session.add(condition)
-                await session.commit()
-                await update_pinned_tracker(ctx, engine, bot)
-                await engine.dispose()
-                return True
+            async with session.begin():
+                condition = Condition(
+                    character_id=character.id,
+                    title=title,
+                    number=timestamp,
+                    counter=counter,
+                    auto_increment=True,
+                    time=True
+                )
+                session.add(condition)
+            await session.commit()
+            await update_pinned_tracker(ctx, engine, bot)
+            await engine.dispose()
+            return True
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -1334,7 +1335,8 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 
     try:
         async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.title == condition))
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == character.id).where(Condition.title == condition))
             condition = result.scalars().one()
 
             if condition.time:
@@ -1382,8 +1384,8 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         async with async_session() as session:
             result = await session.execute(select(Condition)
                                            .where(Condition.character_id == character.id)
-                                           .where(Condition.visible==True)
-                                           .where(Condition.title==condition))
+                                           .where(Condition.visible == True)
+                                           .where(Condition.title == condition))
             con_list = result.scalars().all()
 
         for con in con_list:
@@ -1426,7 +1428,8 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 
     try:
         async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == character.id).where(Condition.counter==True))
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == character.id).where(Condition.counter == True))
             counters = result.scalars().all()
 
         await engine.dispose()
@@ -1670,6 +1673,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
 
+
 # D&D 4e Specific
 class D4eAddCharacterModal(discord.ui.Modal):
     def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
@@ -1811,7 +1815,6 @@ class D4eAddCharacterModal(discord.ui.Modal):
         print(error)
 
 
-
 #############################################################################
 #############################################################################
 # SLASH COMMANDS
@@ -1834,7 +1837,6 @@ class InitiativeCog(commands.Cog):
     # @tasks.loop(seconds=5)
     # async def check_latency(self):
     #     print(f"{self.bot.latency}: {datetime.datetime.now()}")
-
 
     # Update the bot's status periodically
     @tasks.loop(minutes=1)
@@ -1978,7 +1980,7 @@ class InitiativeCog(commands.Cog):
     # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('condition', description="Select Condition", autocomplete=cc_select)
-    async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ''):
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
@@ -1996,7 +1998,6 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.send_followup("No system set, command inactive.")
                 return
-
 
     @char.command(description="Add PC on NPC",
                   # guild_ids=[GUILD]
@@ -2052,7 +2053,6 @@ class InitiativeCog(commands.Cog):
 
     @char.command(description="Delete NPC")
     @option('name', description="Character Name", input_type=str, autocomplete=npc_select, )
-
     async def delete(self, ctx: discord.ApplicationContext, name: str):
         await ctx.response.defer(ephemeral=True)
 
@@ -2130,7 +2130,8 @@ class InitiativeCog(commands.Cog):
                     # tracker cleanup
                     # Delete condition with round timers
                     async  with self.async_session() as session:
-                        result = await session.execute(select(Condition).where(Condition.auto_increment == True).where(Condition.time == False))
+                        result = await session.execute(
+                            select(Condition).where(Condition.auto_increment == True).where(Condition.time == False))
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
                         await asyncio.sleep(0)
@@ -2261,16 +2262,16 @@ class InitiativeCog(commands.Cog):
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
     @cc.command(description="Add conditions and counters",
-               # guild_ids=[GUILD]
-               )
+                # guild_ids=[GUILD]
+                )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    @option('flex', autocomplete= discord.utils.basic_autocomplete(["True", "False"]))
+    @option('flex', autocomplete=discord.utils.basic_autocomplete(["True", "False"]))
     async def new(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
-                 unit: str = "Round",
-                 auto: str = 'Static',
+                  unit: str = "Round",
+                  auto: str = 'Static',
                   flex: str = "False"):
         await ctx.response.defer(ephemeral=True)
         if flex == 'False':
@@ -2295,13 +2296,13 @@ class InitiativeCog(commands.Cog):
             await ctx.send_followup("Failure", ephemeral=True)
 
     @cc.command(description="Edit or remove conditions and counters",
-               # guild_ids=[GUILD]
-               )
+                # guild_ids=[GUILD]
+                )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
     async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
-                      new_value: int = 0):
+                   new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
         if mode == 'delete':
