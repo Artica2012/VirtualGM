@@ -1,19 +1,16 @@
 # database_operations.py
 
-# imports
-import discord
-import asyncio
-import asyncpg
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import create_engine
-import sqlalchemy as db
-from sqlalchemy_utils import database_exists, create_database
-from database_models import ConditionTable, TrackerTable, MacroTable, Global
-from sqlalchemy.orm import Session
-from sqlalchemy import select, update, delete
-
 import os
+
+import sqlalchemy as db
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy import select
+# imports
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import Session
+
+from database_models import Global
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -33,6 +30,7 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
+
 # Get the engine
 def get_asyncio_db_engine(user, password, host, port, db):
     url = f'postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}'
@@ -41,6 +39,7 @@ def get_asyncio_db_engine(user, password, host, port, db):
     #     create_database(url)
     engine = create_async_engine(url, echo=False)
     return engine
+
 
 def get_db_engine(user, password, host, port, db):
     url = f'postgresql://{user}:{password}@{host}:{port}/{db}'
@@ -52,7 +51,6 @@ def get_db_engine(user, password, host, port, db):
 
 
 def update_tracker_table():
-    metadata = db.MetaData()
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     with Session(engine) as session:
@@ -63,8 +61,8 @@ def update_tracker_table():
             with engine.connect() as conn:
                 conn.execute(alter_string)
 
+
 def update_con_table():
-    metadata = db.MetaData()
     engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     with Session(engine) as session:
@@ -77,6 +75,3 @@ def update_con_table():
                     conn.execute(alter_string)
             except Exception as e:
                 print(f'Table {row[0].id} Not Updated')
-
-
-

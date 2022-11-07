@@ -1,30 +1,29 @@
 # initiative.py
 # Initiative Tracker Module
+import asyncio
 import datetime
 import os
 
 # imports
 import discord
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 import sqlalchemy as db
 from discord import option, Interaction
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_, func
-from sqlalchemy import select, update, delete
-from sqlalchemy.exc import NoResultFound, SAWarning
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable
-from database_models import get_tracker_table, get_condition_table, get_macro_table
+from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
+from database_models import get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized

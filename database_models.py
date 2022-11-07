@@ -1,13 +1,8 @@
 # database_models.py
 
 import os
-import sys
 
 import discord
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 import sqlalchemy as db
 from dotenv import load_dotenv
 from sqlalchemy import Column
@@ -15,9 +10,11 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 # define global variables
 
@@ -231,7 +228,7 @@ class ConditionTable:
                        db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
                        db.Column('time', db.BOOLEAN, default=False),
                        db.Column('visible', db.BOOLEAN, default=True),
-                       db,Column('flex', db.BOOLEAN, default=False)
+                       db, Column('flex', db.BOOLEAN, default=False)
                        )
         return con
 

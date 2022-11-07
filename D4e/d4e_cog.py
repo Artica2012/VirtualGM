@@ -2,31 +2,23 @@
 # For slash commands specific to oathfinder 2e
 # system specific module
 
+import asyncio
 import os
 
 # imports
 import discord
-import asyncio
-import sqlalchemy as db
-from discord import option
 from discord.commands import SlashCommandGroup, option
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table, get_condition, get_macro, get_tracker
+from database_models import Global, get_condition, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from PF2e.pathbuilder_importer import pathbuilder_import
-from initiative import update_pinned_tracker
 
 # define global variables
 
@@ -48,6 +40,7 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
+
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # UTILITY FUNCTIONS
@@ -68,6 +61,7 @@ async def gm_check(ctx, engine):
             return False
         else:
             return True
+
 
 class D4eCog(commands.Cog):
     def __init__(self, bot):
@@ -131,6 +125,7 @@ class D4eCog(commands.Cog):
             await report.report()
             return []
 
+    # Provide a list of conditions with the visible and flex tags
     async def cc_select_visible_flex(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
 
@@ -147,9 +142,9 @@ class D4eCog(commands.Cog):
                 char = char_result.scalars().one()
             async with async_session() as session:
                 con_result = await session.execute(select(Condition)
-                    .where(Condition.character_id == char.id)
-                    .where(Condition.visible == True)
-                    .where(Condition.flex == True))
+                                                   .where(Condition.character_id == char.id)
+                                                   .where(Condition.visible == True)
+                                                   .where(Condition.flex == True))
                 condition = con_result.scalars().all()
             for cond in condition:
                 con_list.append(cond.title)
@@ -162,7 +157,7 @@ class D4eCog(commands.Cog):
             await report.report()
             return []
 
-
+    # Returns macros that are not multi-macros
     async def a_macro_select(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
         Tracker = await get_tracker(ctx, self.engine)
@@ -192,13 +187,17 @@ class D4eCog(commands.Cog):
             report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
             await report.report()
             return False
+########################################
+########################################
+    # Slash Commands
+
     dd = SlashCommandGroup('d4e', "D&D 4th Edition Specific Commands")
 
     @dd.command(description="D&D 4e auto save")
     # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('condition', description="Select Condition", autocomplete=cc_select_visible_flex)
-    async def save(self, ctx:discord.ApplicationContext, character:str, condition:str, modifier:str=''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ''):
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
@@ -215,7 +214,6 @@ class D4eCog(commands.Cog):
             else:
                 await ctx.send_followup("No system set, command inactive.")
                 return
-
 
 
 def setup(bot):

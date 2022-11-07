@@ -1,27 +1,22 @@
 # options_cog.py
 
-import datetime
 import os
 
 # imports
 import discord
-import asyncio
-import sqlalchemy as db
-from sqlalchemy.ext.asyncio import AsyncSession
 from discord import option
 from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Base, TrackerTable, ConditionTable
+from database_models import Global
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
 from time_keeping_functions import set_datetime
 
@@ -51,7 +46,7 @@ class OptionsCog(commands.Cog):
         self.bot = bot
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-    async def display_options(self, timekeeping: bool, block: bool, system:str):
+    async def display_options(self, timekeeping: bool, block: bool, system: str):
         embed = discord.Embed(
             title="Optional Modules",
             description=f"Timekeeper: {timekeeping}\n"
@@ -74,7 +69,7 @@ class OptionsCog(commands.Cog):
                     channel: discord.TextChannel,
                     gm_channel: discord.TextChannel,
                     gm: discord.User,
-                    system:str = ''
+                    system: str = ''
                     ):
         await ctx.response.defer(ephemeral=True)
         response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel, system)
@@ -92,7 +87,7 @@ class OptionsCog(commands.Cog):
     @option('gm', description="@Player to transfer GM permissions to.", required=False)
     @option('delete', description="Type 'delete' to confirm delete. This cannot be undone.", required=False)
     async def tracker(self, ctx: discord.ApplicationContext, mode: str,
-                      gm: discord.User = discord.ApplicationContext.user, delete: str = '' ):
+                      gm: discord.User = discord.ApplicationContext.user, delete: str = ''):
         if not await gm_check(ctx, self.engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return

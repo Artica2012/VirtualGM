@@ -1,12 +1,12 @@
 # main.py
 
+import os
+
 # imports
 import discord
 from dotenv import load_dotenv
-import os
-import lookup_parser
-import database_operations
 
+import lookup_parser
 
 # environmental variables
 print(os.environ['PRODUCTION'])

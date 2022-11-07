@@ -1,31 +1,24 @@
 # attack_cog.py
 
+import asyncio
 import os
 
 # imports
 import discord
-import asyncio
 import sqlalchemy as db
-from discord import option
 from discord.commands import SlashCommandGroup, option
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
-import dice_roller
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table, get_condition, get_macro, get_tracker
-from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
-from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from PF2e.pathbuilder_importer import pathbuilder_import
 import PF2e.pf2_functions
+from database_models import Global, get_macro, get_tracker
+from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport
 
 # define global variables
 
@@ -144,7 +137,8 @@ class AttackCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                macro_result = await session.execute(
+                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
             macros = []
             for row in macro_list:
@@ -177,7 +171,6 @@ class AttackCog(commands.Cog):
             else:
                 return []
 
-
     # ---------------------------------------------------
     # ---------------------------------------------------
     # Slash commands
@@ -192,7 +185,8 @@ class AttackCog(commands.Cog):
             autocomplete=get_attributes)
     @option('attack_modifier', description="Modifier to the macro (defaults to +)", required=False)
     @option('target_modifier', description="Modifier to the target's dc (defaults to +)", required=False)
-    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str, attack_modifier:str ='', target_modifier:str=''):
+    async def attack(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, vs: str,
+                     attack_modifier: str = '', target_modifier: str = ''):
         metadata = db.MetaData()
         await ctx.response.defer()
         async with self.async_session() as session:
@@ -210,11 +204,12 @@ class AttackCog(commands.Cog):
 
             if guild.system == 'PF2':
                 # PF2 specific code
-                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs, attack_modifier, target_modifier)
+                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs,
+                                                                attack_modifier, target_modifier)
             elif guild.system == 'D4e':
                 # D4e specific code
                 output_string = await D4e.d4e_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs,
-                                                                attack_modifier, target_modifier)
+                                                               attack_modifier, target_modifier)
             else:
                 output_string = 'Error'
             await ctx.send_followup(output_string)
@@ -225,8 +220,7 @@ class AttackCog(commands.Cog):
     @option('vs', description="Target Attribute",
             autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
-
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier:str=''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier: str = ''):
         await ctx.response.defer()
         async with self.async_session() as session:
             result = await session.execute(select(Global).where(
@@ -242,12 +236,12 @@ class AttackCog(commands.Cog):
                 return
             # PF2 specific code
             if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs, modifier)
+                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs,
+                                                              modifier)
                 await ctx.send_followup(output_string)
             elif guild.system == "D4e":
-                await ctx.send_followup('Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
-
-
+                await ctx.send_followup(
+                    'Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
 
 
 def setup(bot):

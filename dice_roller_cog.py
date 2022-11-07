@@ -8,8 +8,8 @@ from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import select, or_
-from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 import dice_roller
 from database_models import Global
@@ -60,23 +60,23 @@ class DiceRollerCog(commands.Cog):
                 guild = result.scalar()
             try:
                 if secret == 'Secret':
-                        if dc == 0:
-                            if guild.gm_tracker_channel != None:
-                                await ctx.respond(f"Secret Dice Rolled")
-                                await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.roll_dice()}")
-                            else:
-                                await ctx.respond('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
-                                await ctx.channel.send(f"_{roll}_\n{await roller.roll_dice()}")
+                    if dc == 0:
+                        if guild.gm_tracker_channel != None:
+                            await ctx.respond(f"Secret Dice Rolled")
+                            await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                                f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.roll_dice()}")
                         else:
-                            if guild.gm_tracker_channel != None:
-                                await ctx.respond(f"Secret Dice Rolled")
-                                await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                    f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.opposed_roll(dc)}")
-                            else:
-                                await ctx.respond('No GM Channel Initialized. Secret rolls not possible',
-                                                  ephemeral=True)
-                                await ctx.channel.send(f"_{roll}_\n{await roller.opposed_roll(dc)}")
+                            await ctx.respond('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
+                            await ctx.channel.send(f"_{roll}_\n{await roller.roll_dice()}")
+                    else:
+                        if guild.gm_tracker_channel != None:
+                            await ctx.respond(f"Secret Dice Rolled")
+                            await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                                f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.opposed_roll(dc)}")
+                        else:
+                            await ctx.respond('No GM Channel Initialized. Secret rolls not possible',
+                                              ephemeral=True)
+                            await ctx.channel.send(f"_{roll}_\n{await roller.opposed_roll(dc)}")
 
 
                 else:

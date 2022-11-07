@@ -27,8 +27,8 @@ class DiceRoller:
         return results
 
     # Parses out multiple rolls separated by a comma
-    async def multi_roll_parse(self, input_string:str):
-        original_list =  input_string.split(',')
+    async def multi_roll_parse(self, input_string: str):
+        original_list = input_string.split(',')
         roll_list = []
         for item in original_list:
             await asyncio.sleep(0)
@@ -60,8 +60,6 @@ class DiceRoller:
             if "d" in item:
                 parsed_dice[x] = await self.roller(item)
         return parsed_dice
-
-
 
     # Does the addition and subtraction between the dice rolls
     async def _math_equation(self, equation: list):
@@ -100,7 +98,7 @@ class DiceRoller:
     # System Specific Code:
 
     async def _pf2_smart_dice_parse(self, input_string: str):
-        crit_s =False
+        crit_s = False
         crit_f = False
         dice_string = input_string.strip()
         dice_string = dice_string.lower()
@@ -157,11 +155,11 @@ class DiceRoller:
             # print('Doing math')
             calculated_total = await self._math_equation(parsed_dice)
             # print(calculated_total)
-            output_string += f"{ await self._format_output(parsed_text[1], parsed_dice, calculated_total)}\n"
+            output_string += f"{await self._format_output(parsed_text[1], parsed_dice, calculated_total)}\n"
             # print(output_string)
         return output_string
 
-    async def attack_roll(self, dice:str):
+    async def attack_roll(self, dice: str):
         parsed_dice = await self._pf2_smart_dice_parse(dice)
         calculated_total = await self._math_equation(parsed_dice[0])
         dice_string = ""
@@ -176,7 +174,7 @@ class DiceRoller:
         dice_string = ' '.join(map(str, parsed_dice))
         return dice_string, calculated_total
 
-    async def opposed_roll(self, dc:int):
+    async def opposed_roll(self, dc: int):
         # print('parsing Text')
         parsed_text = await self._text_parse(self.input_string)
         # print('Parsing Dice')

@@ -6,8 +6,6 @@ import os
 
 import discord
 import sqlalchemy as db
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, selectinload, sessionmaker
 from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv

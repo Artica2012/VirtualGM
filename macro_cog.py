@@ -1,28 +1,22 @@
 # macro_cog.py
 # Macro-Roller Module for VirtualGM initiative Tracker
-import datetime
+import asyncio
 import os
 
 # imports
 import discord
-import asyncio
-import sqlalchemy as db
-from discord import option
 from discord.commands import SlashCommandGroup, option
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
+from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 
 # define global variables
 
@@ -90,7 +84,8 @@ class MacroCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                macro_result = await session.execute(select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                macro_result = await session.execute(
+                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
             macros = []
             for row in macro_list:
@@ -115,7 +110,6 @@ class MacroCog(commands.Cog):
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
                 char = result.scalars().one()
-
 
             async with session.begin():
                 new_macro = Macro(
@@ -232,8 +226,6 @@ class MacroCog(commands.Cog):
                                            .where(Macro.character_id == char.id)
                                            .where(Macro.name == macro_name.split(':')[0]))
             macro_data = result.scalars().one()
-
-
 
         if modifier != '':
             if modifier[0] == '+' or modifier[0] == '-':

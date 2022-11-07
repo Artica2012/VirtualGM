@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from sqlalchemy import inspect
 
 from database_models import disease_table, feat_table, power_table, monster_table, item_table, ritual_table
-from database_operations import get_asyncio_db_engine,  get_db_engine
+from database_operations import get_db_engine
 
 # define global variables
 

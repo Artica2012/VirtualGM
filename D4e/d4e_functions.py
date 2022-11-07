@@ -1,31 +1,24 @@
 # pf2_functions.py
 
 
+import asyncio
 import os
-
 # imports
 from datetime import datetime
 
 import discord
-import asyncio
-import sqlalchemy as db
-from discord import option
-from discord.commands import SlashCommandGroup, option
-from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlalchemy import or_
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 import initiative
-from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
-from database_operations import get_asyncio_db_engine
+from database_models import Global, get_condition, get_tracker
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
+from time_keeping_functions import output_datetime, check_timekeeper, get_time
 
 # define global variables
 
@@ -49,19 +42,20 @@ DATABASE = os.getenv('DATABASE')
 
 D4e_attributes = ['AC', 'Fort', 'Reflex', 'Will']
 
-
+# Attack function specific for PF2
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
-                 attack_modifier:str, target_modifier:str):
+                 attack_modifier: str, target_modifier: str):
     roller = DiceRoller('')
     # try:
 
     # Strip a macro:
     roll_list = roll.split(':')
-    if len(roll_list)==1:
+    if len(roll_list) == 1:
         roll = roll
     else:
         roll = roll_list[1]
 
+    # Roll the dice
     if attack_modifier != '':
         if attack_modifier[0] == '+' or attack_modifier[0] == '-':
             roll_string = roll + attack_modifier
@@ -69,11 +63,13 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
             roll_string = roll + '+' + attack_modifier
     else:
         roll_string = roll
-    print(roll_string)
+    # print(roll_string)
     dice_result = await roller.attack_roll(roll_string)
     total = dice_result[1]
     dice_string = dice_result[0]
     # return
+
+    #
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx, engine)
     Condition = await get_condition(ctx, engine)
@@ -132,23 +128,10 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
                     f"{success_string}"
     return output_string
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier:str):
+
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier: str):
     roller = DiceRoller('')
-
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(ctx, engine)
-    Condition = await get_condition(ctx, engine)
     try:
-
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == character))
-            char = result.scalars().one()
-
-        # print(f"Modifier: {modifier}")
-        # print(f"{modifier[0]}")
-        # print(type(modifier[0]))
-        # print(int(modifier[0]))
-
         if modifier == '':
             roll = "1d20"
         else:
@@ -195,7 +178,6 @@ async def D4e_eval_succss(result_tuple: tuple, goal: int):
     total = result_tuple[1]
     nat_twenty = result_tuple[2]
     nat_one = result_tuple[3]
-    result = 0
     success_string = ''
 
     if total >= goal:
@@ -213,7 +195,7 @@ async def D4e_eval_succss(result_tuple: tuple, goal: int):
 
 # Builds the tracker string. Updated to work with block initiative
 async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
-                            gm: bool = False):
+                          gm: bool = False):
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -315,7 +297,7 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
                                 processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                                if processed_seconds_left <10:
+                                if processed_seconds_left < 10:
                                     processed_seconds_left = f"0{processed_seconds_left}"
                                 if days_left != 0:
                                     con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n"
@@ -343,8 +325,10 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
         await report.report()
 
+
 async def d4e_condition_buttons():
     pass
+
 
 class D4eConditionButton(discord.ui.Button):
     def __init__(self, condition, ctx: discord.ApplicationContext, engine, bot, character):
@@ -353,7 +337,7 @@ class D4eConditionButton(discord.ui.Button):
         self.bot = bot
         self.character = character
         self.condition = condition
-        super(). __init__(
+        super().__init__(
             label=condition.title,
             style=discord.ButtonStyle.primary,
             custom_id=str(f"{condition.character_id}_{condition.title}"),
@@ -362,7 +346,8 @@ class D4eConditionButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine):
             try:
-                output_string = await save(self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier='')
+                output_string = await save(self.ctx, self.engine, self.bot, self.character.name, self.condition.title,
+                                           modifier='')
             except Exception as e:
                 output_string = 'Unable to process save, perhaps the condition was removed.'
         else:
