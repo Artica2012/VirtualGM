@@ -194,6 +194,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         auto_increment = Column(Boolean(), nullable=False, default=False)
         time = Column(Boolean(), default=False)
         visible = Column(Boolean(), default=True)
+        flex = Column(Boolean(), default=False)
 
     return Condition
 
@@ -229,7 +230,8 @@ class ConditionTable:
                        db.Column('number', db.INTEGER(), nullable=True, default=None),
                        db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
                        db.Column('time', db.BOOLEAN, default=False),
-                       db.Column('visible', db.BOOLEAN, default=True)
+                       db.Column('visible', db.BOOLEAN, default=True),
+                       db,Column('flex', db.BOOLEAN, default=False)
                        )
         return con
 

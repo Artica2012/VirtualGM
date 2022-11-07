@@ -72,11 +72,11 @@ def update_con_table():
         for row in guild:
             print(row[0].id)
             try:
-                alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD visible boolean DEFAULT TRUE'
+                alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD flex boolean DEFAULT FALSE'
                 with engine.connect() as conn:
                     conn.execute(alter_string)
             except Exception as e:
-                print('Table Not Updated')
+                print(f'Table {row[0].id} Not Updated')
 
 
 

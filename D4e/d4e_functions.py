@@ -212,7 +212,7 @@ async def D4e_eval_succss(result_tuple: tuple, goal: int):
 
 
 # Builds the tracker string. Updated to work with block initiative
-async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
+async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
                             gm: bool = False):
     # Get the datetime
     datetime_string = ''
@@ -332,10 +332,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                         con_string = ''
                     output_string += con_string
                 else:
-                    if con_row.title == 'AC' and row['player'] == True:
-                        con_string = f"       {con_row.title}: {con_row.number}\n"
-                    else:
-                        con_string = ''
+                    con_string = ''
                     output_string += con_string
         output_string += f"```"
         # print(output_string)
@@ -343,6 +340,53 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         return output_string
     except Exception as e:
         print(f"pf2_get_tracker: {e}")
-        report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
+        report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
         await report.report()
 
+async def d4e_condition_buttons():
+    pass
+
+class D4eConditionButton(discord.ui.Button):
+    def __init__(self, condition, ctx: discord.ApplicationContext, engine, bot, character):
+        self.ctx = ctx
+        self.engine = engine
+        self.bot = bot
+        self.character = character
+        self.condition = condition
+        super(). __init__(
+            label=condition.title,
+            style=discord.ButtonStyle.primary,
+            custom_id=str(f"{condition.character_id}_{condition.title}"),
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine):
+            try:
+                output_string = await save(self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier='')
+            except Exception as e:
+                output_string = 'Unable to process save, perhaps the condition was removed.'
+        else:
+            output_string = "Roll your own save!"
+        await interaction.response.send_message(output_string)
+        # await self.ctx.channel.send(output_string)
+
+
+# Checks to see if the user of the slash command is the GM, returns a boolean
+async def gm_check(ctx, engine):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+            if int(guild.gm) != int(ctx.interaction.user.id):
+                return False
+            else:
+                return True
+    except Exception as e:
+        return False

@@ -901,6 +901,8 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
 
         if guild.system == 'PF2':
             output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm)
+        elif guild.system == "D4e":
+            output_string = await D4e.d4e_functions.d4e_get_tracker(init_list, selected, ctx, engine, bot, gm)
         else:
             output_string = await generic_block_get_tracker(init_list, selected, ctx, engine, bot, gm)
         return output_string
@@ -1095,29 +1097,59 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             )
             )
             guild = result.scalars().one()
-            if guild.block:
-                turn_list = await get_turn_list(ctx, engine, bot)
-                block = True
-                # print(f"block_post_init: \n {turn_list}")
-            else:
-                block = False
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
-            init_list = await get_init_list(ctx, engine)
-            tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
-            try:
-                ping_string = ''
-                if block:
-                    for character in turn_list:
-                        await asyncio.sleep(0)
-                        user = bot.get_user(character.user)
-                        ping_string += f"{user.mention}, it's your turn.\n"
-                else:
-                    user = bot.get_user(init_list[guild.initiative].user)
+        if guild.block:
+            turn_list = await get_turn_list(ctx, engine, bot)
+            block = True
+            # print(f"block_post_init: \n {turn_list}")
+        else:
+            block = False
+
+        init_list = await get_init_list(ctx, engine)
+        tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
+        try:
+            ping_string = ''
+            if block:
+                for character in turn_list:
+                    await asyncio.sleep(0)
+                    user = bot.get_user(character.user)
                     ping_string += f"{user.mention}, it's your turn.\n"
-            except Exception as e:
-                # print(f'post_init: {e}')
-                ping_string = ''
+            else:
+                user = bot.get_user(init_list[guild.initiative].user)
+                ping_string += f"{user.mention}, it's your turn.\n"
+        except Exception as e:
+            # print(f'post_init: {e}')
+            ping_string = ''
 
+        # Check for systems:
+        if guild.system == 'D4e':
+            view = discord.ui.View()
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+                char = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                         .where(Condition.character_id == char.id)
+                                         .where(Condition.flex == True))
+                conditions = result.scalars().all()
+            for con in conditions:
+                new_button = D4e.d4e_functions.D4eConditionButton(
+                    con,
+                    ctx, engine, bot,
+                    char,
+                )
+                view.add_item(new_button)
+
+            if ctx.channel.id == guild.tracker_channel:
+                await ctx.send_followup(f"{tracker_string}\n"
+                                        f"{ping_string}", view=view)
+            else:
+                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                  f"{ping_string}", view=view)
+                await ctx.send_followup("Initiative Advanced.")
+        else:
             # Always post the tracker to the player channel
             if ctx.channel.id == guild.tracker_channel:
                 await ctx.send_followup(f"{tracker_string}\n"
@@ -1191,7 +1223,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
 # COUNTER/CONDITION MANAGEMENT
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
-                 unit: str, auto_decrement: bool, bot):
+                 unit: str, auto_decrement: bool, bot, flex:bool=False,):
     metadata = db.MetaData()
     # Get the Character's data
 
@@ -1233,7 +1265,8 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
                         number=number,
                         counter=counter,
                         auto_increment=auto_decrement,
-                        time=False
+                        time=False,
+                        flex=flex
                     )
                     session.add(condition)
                 await session.commit()
@@ -2227,17 +2260,24 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, self.engine, self.bot)
 
-    @i.command(description="Add conditions and counters",
+    @cc.command(description="Add conditions and counters",
                # guild_ids=[GUILD]
                )
     @option("character", description="Character to select", autocomplete=character_select)
     @option('type', choices=['Condition', 'Counter'])
     @option('auto', description="Auto Decrement", choices=['Auto Decrement', 'Static'])
     @option('unit', autocomplete=time_check_ac)
-    async def cc(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
+    @option('flex', autocomplete= discord.utils.basic_autocomplete(["True", "False"]))
+    async def new(self, ctx: discord.ApplicationContext, character: str, title: str, type: str, number: int = None,
                  unit: str = "Round",
-                 auto: str = 'Static'):
+                 auto: str = 'Static',
+                  flex: str = "False"):
         await ctx.response.defer(ephemeral=True)
+        if flex == 'False':
+            flex_bool = False
+        else:
+            flex_bool = True
+
         if type == "Condition":
             counter_bool = False
         else:
@@ -2247,19 +2287,20 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = await set_cc(ctx, self.engine, character, title, counter_bool, number, unit, auto_bool, self.bot)
+        response = await set_cc(ctx, self.engine, character, title, counter_bool, number, unit, auto_bool, self.bot,
+                                flex=flex_bool)
         if response:
             await ctx.send_followup("Success", ephemeral=True)
         else:
             await ctx.send_followup("Failure", ephemeral=True)
 
-    @i.command(description="Edit or remove conditions and counters",
+    @cc.command(description="Edit or remove conditions and counters",
                # guild_ids=[GUILD]
                )
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
-    async def cc_edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
+    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
                       new_value: int = 0):
         result = False
         await ctx.response.defer(ephemeral=True)
@@ -2277,9 +2318,9 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.send_followup("Failed", ephemeral=True)
 
-    @i.command(description="Show Custom Counters")
+    @cc.command(description="Show Custom Counters")
     @option("character", description="Character to select", autocomplete=character_select_gm)
-    async def cc_show(self, ctx: discord.ApplicationContext, character: str):
+    async def show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
         try:
             if not await player_check(ctx, self.engine, self.bot, character) and not await gm_check(ctx, self.engine):
