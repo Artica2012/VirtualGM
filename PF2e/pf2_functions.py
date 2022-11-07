@@ -337,7 +337,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                     if gm or not con_row.counter:
                         if con_row.number != None and con_row.number > 0:
                             if con_row.time:
-                                time_stamp = datetime.datetime.fromtimestamp(con_row.number)
+                                time_stamp = datetime.fromtimestamp(con_row.number)
                                 current_time = await get_time(ctx, engine, bot)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
