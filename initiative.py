@@ -1148,7 +1148,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                                         f"{ping_string}", view=view)
             else:
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                  f"{ping_string}", view=view)
+                                                                  f"{ping_string}", view=view, )
                 await ctx.send_followup("Initiative Advanced.")
         else:
             # Always post the tracker to the player channel
