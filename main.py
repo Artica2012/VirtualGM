@@ -7,6 +7,10 @@ import discord
 from dotenv import load_dotenv
 
 import lookup_parser
+import logging
+logging.basicConfig(level=logging.INFO)
+logging.info("Script Started")
+
 
 # environmental variables
 print(os.environ['PRODUCTION'])
@@ -32,12 +36,12 @@ async def on_ready():
     # print("Updating tables...")
     # database_operations.update_con_table()
     # print("Tables updated")
-    print(f"{bot.user} is connected.")
+    logging.info(f"{bot.user} is connected.")
 
 @bot.event
 async def on_disconnect():
     # await bot.connect()
-    print('Disconnected')
+    logging.warning('Disconnected')
 
 # Initialize the database
 lookup_parser.parser()
@@ -54,4 +58,5 @@ bot.load_extension("options_cog")
 bot.load_extension("PF2e.pf2_cog")
 bot.load_extension("attack_cog")
 bot.load_extension("D4e.d4e_cog")
+
 bot.run(TOKEN)
