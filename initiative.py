@@ -2,6 +2,7 @@
 # Initiative Tracker Module
 import asyncio
 import datetime
+import logging
 import os
 
 # imports
@@ -1835,7 +1836,7 @@ class InitiativeCog(commands.Cog):
 
     @tasks.loop(seconds=30)
     async def check_latency(self):
-        print(f"{self.bot.latency}: {datetime.datetime.now()}")
+        logging.info(f"{self.bot.latency}: {datetime.datetime.now()}")
 
     # Update the bot's status periodically
     @tasks.loop(minutes=1)

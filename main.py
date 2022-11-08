@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 import lookup_parser
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logging.info("Script Started")
 
 
