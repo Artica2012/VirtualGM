@@ -696,11 +696,13 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             )
             )
             guild = result.scalars().one()
+            logging.info(f"BAI1: guild: {guild.id}")
 
             Tracker = await get_tracker(ctx, engine, id=guild.id)
             async with async_session() as t_session:
                 char_result = await t_session.execute(select(Tracker))
                 character = char_result.scalars().all()
+                logging.info(f"BAI2: character: {character.id}")
 
                 # print(f"guild.initiative: {guild.initiative}")
                 if guild.initiative == None:
@@ -718,6 +720,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     init_pos = int(guild.initiative)
 
             init_list = await get_init_list(ctx, engine)
+            logging.info(f"BAI3: init_list gotten")
 
             if guild.saved_order == '':
                 current_character = init_list[0].name
@@ -725,6 +728,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 current_character = guild.saved_order
             # Record the initial to break an infinite loop
             iterations = 0
+            logging.info(f"BAI4: iteration: {iterations}")
 
             while not block_done:
                 # make sure that the current character is at the same place in initiative as it was before
@@ -733,7 +737,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
                     # if its not, set the init position to the position of the current character before advancing it
                     # print("Yes guild.block")
+                    logging.info(f"BAI5: guild.block: {guild.block}")
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                        logging.info(f"BAI6: init_itegrity failied")
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             await asyncio.sleep(0)
@@ -746,10 +752,12 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                         init_pos = 0
                         guild.round += 1
                         if guild.timekeeping:  # if timekeeping is enable on the server
+                            logging.info(f"BAI7: timekeeping")
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
                             await advance_time(ctx, engine, bot, second=guild.time)
                             await check_cc(ctx, engine, bot)
+                            logging.info(f"BAI8: cc checked")
 
                 try:
                     async with async_session() as session:
@@ -757,8 +765,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             Tracker.name == current_character
                         ))
                         cur_char = char_result.scalars().one()
+                        logging.info(f"BAI9: cur_char: {cur_char.id}")
                 except Exception as e:
-                    print(f'advance_initiative: {e}')
+                    logging.error(f'advance_initiative: {e}')
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
                     await report.report()
                     return False
@@ -771,8 +780,10 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             Condition.character_id == cur_char.id
                         ))
                         con_list = char_result.scalars().all()
+                        logging.info(f"BAI9: condition's retrieved")
 
                     for con_row in con_list:
+                        logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
                         await asyncio.sleep(0)
                         if con_row.auto_increment and not con_row.time:  # If auto-increment and NOT time
                             if con_row.number >= 2:  # if number >= 2
@@ -784,8 +795,10 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                     del_row = del_result.scalars().one()
                                     await session.delete(del_row)
                                     await session.commit()
+                                    logging.info(f"BAI11: Condition Deleted")
                                 await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
                         elif con_row.time:  # If time is true
+                            logging.info(f"BAI12: time checked")
                             time_stamp = datetime.datetime.fromtimestamp(con_row.number)  # The number is a timestamp
                             # for the expiration, not a round count
                             current_time = await get_time(ctx, engine, bot)
@@ -797,17 +810,20 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                     del_row = del_result.scalars().one()
                                     await session.delete(del_row)
                                     await session.commit()
+                                    logging.info(f"BAI13: Condition deleted ")
                                 await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
 
                 except Exception as e:
-                    print(f'block_advance_initiative: {e}')
+                    logging.error(f'block_advance_initiative: {e}')
                     report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
                     await report.report()
 
                 if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
+                    logging.info(f"BAI14: Not Block")
                     # print("Not guild.block")
                     # if its not, set the init position to the position of the current character before advancing it
                     if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                        logging.info(f"BAI15: Integrity check failed")
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(init_list):
                             await asyncio.sleep(0)
@@ -824,8 +840,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             # seconds ala D&D standard
                             await advance_time(ctx, engine, bot, second=guild.time)
                             await check_cc(ctx, engine, bot)
+                            logging.info(f"BAI16: cc checked")
 
-                # block initiative loop
+                            # block initiative loop
                 # check to see if the next character is player vs npc
                 # print(init_list)
                 # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
@@ -854,15 +871,18 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             )
             )
             guild = result.scalars().one()
+            logging.info(f"BAI17: guild updated: {guild.id}")
             # Out side while statement - for reference
             guild.initiative = init_pos  # set it
             # print(f"final init_pos: {init_pos}")
             guild.saved_order = str(init_list[init_pos].name)
+            logging.info(f"BAI18: saved order: {guild.saved_order}")
             await session.commit()
+            logging.info(f"BAI19: Writted")
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"block_advance_initiative: {e}")
+        logging.error(f"block_advance_initiative: {e}")
         report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
         await report.report()
 
@@ -877,29 +897,14 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
         async with async_session() as session:
             result = await session.execute(select(Tracker).order_by(Tracker.init.desc()).order_by(Tracker.id.desc()))
             init_list = result.scalars().all()
+            logging.info(f"GIL: Init list gotten")
             # print(init_list)
         await engine.dispose()
         return init_list
 
     except Exception as e:
-        print("error in get_init_list")
+        logging.error("error in get_init_list")
         return []
-
-
-async def parse_init_list(init_list: list):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    parsed_list = []
-    for row in init_list:
-        await asyncio.sleep(0)
-        parsed_list.append(row.name)
-    return parsed_list
-
-
-async def ping_player_on_init(init_list: list, selected: int):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    selected_char = init_list[selected]
-    user = selected_char.user
-    return f"<@{user}>, it's your turn."
 
 
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
@@ -915,6 +920,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         )
         )
         guild = result.scalars().one()
+        logging.info(f"BGT: Guild: {guild.id}")
 
         if guild.system == 'PF2':
             output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm)
@@ -941,12 +947,14 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         )
         )
         guild = result.scalars().one()
+        logging.info(f"BGT1: Guild: {guild.id}")
         if guild.block and guild.initiative != None:
             turn_list = await get_turn_list(ctx, engine, bot)
             block = True
         else:
             block = False
         round = guild.round
+        logging.info(f"BGT2: round: {guild.round}")
     try:
         if await check_timekeeper(ctx, engine):
             datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
@@ -955,8 +963,9 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         await ctx.channel.send(
             error_not_initialized,
             delete_after=30)
+        logging.info("Channel Not Set Up")
     except Exception as e:
-        print(f'get_tracker: {e}')
+        logging.error(f'get_tracker: {e}')
         report = ErrorReport(ctx, "get_tracker", e, bot)
         await report.report()
 
@@ -966,6 +975,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         for row in init_list:
             async with async_session() as session:
                 result = await session.execute(select(Condition).where(Condition.character_id == row.id))
+                logging.info(f"BGT3: condition queried {row.id}")
                 con = result.scalars().all()
             row_data.append({'id': row.id,
                              'name': row.name,
@@ -986,6 +996,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         output_string = f"```{datetime_string}" \
                         f"Initiative: {round_string}\n"
         for x, row in enumerate(row_data):
+            logging.info(f"BGT4: for row x in enumerare(row_data): {x}")
             await asyncio.sleep(0)
             sel_bool = False
             selector = ''
@@ -1019,6 +1030,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             output_string += string
 
             for con_row in row['cc']:
+                logging.info(f"BGT5: con_row in row[cc] {con_row.title} {con_row.id}")
                 # print(con_row)
                 await asyncio.sleep(0)
                 if con_row.visible == True:
@@ -1055,7 +1067,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         await engine.dispose()
         return output_string
     except Exception as e:
-        print(f"block_get_tracker: {e}")
+        logging.info(f"block_get_tracker: {e}")
         report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
         await report.report()
 
@@ -1074,6 +1086,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
             )
             )
             guild = result.scalars().one()
+            logging.info(f"UPT1: Guild: {guild.id}")
 
             tracker = guild.tracker
             tracker_channel = guild.tracker_channel

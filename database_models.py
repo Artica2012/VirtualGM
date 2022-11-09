@@ -1,6 +1,7 @@
 # database_models.py
 
 import os
+import logging
 
 import discord
 import sqlalchemy as db
@@ -91,6 +92,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
             )
             guild = result.scalars().one()
             tablename = f"Tracker_{guild.id}"
+            logging.info(f"get_tracker: Guild: {guild.id}")
 
     else:
         tablename = f"Tracker_{id}"
@@ -111,6 +113,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
         temp_hp = Column(Integer(), default=0)
         init_string = Column(String(), nullable=True)
 
+    logging.info(f"get_tracker: returning tracker")
     return Tracker
 
 
@@ -173,6 +176,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             )
             guild = result.scalars().one()
             tablename = f"Condition_{guild.id}"
+            logging.info(f"get_condition: Guild: {guild.id}")
 
     else:
         tablename = f"Condition_{id}"
@@ -193,6 +197,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         visible = Column(Boolean(), default=True)
         flex = Column(Boolean(), default=False)
 
+    logging.info(f"get_condition: returning condition")
     return Condition
 
 
@@ -259,6 +264,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
             )
             )
             guild = result.scalars().one()
+            logging.info(f"get_macro: Guild: {guild.id}")
             tablename = f"Macro_{guild.id}"
 
     else:
@@ -275,6 +281,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
         name = Column(String(), nullable=False, unique=False)
         macro = Column(String(), nullable=False, unique=False)
 
+    logging.info(f"get_macro: returning macro {guild.id}")
     return Macro
 
 
