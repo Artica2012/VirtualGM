@@ -1874,7 +1874,7 @@ class InitiativeCog(commands.Cog):
         self.bot = bot
         self.lock = asyncio.Lock()
         self.update_status.start()
-        self.check_latency.start()
+        # self.check_latency.start()
 
     def __enter__(self):
         return self
@@ -1882,9 +1882,9 @@ class InitiativeCog(commands.Cog):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    @tasks.loop(seconds=30)
-    async def check_latency(self):
-        logging.info(f"{self.bot.latency}: {datetime.datetime.now()}")
+    # @tasks.loop(seconds=30)
+    # async def check_latency(self):
+    #     logging.info(f"{self.bot.latency}: {datetime.datetime.now()}")
 
     # Update the bot's status periodically
     @tasks.loop(minutes=1)

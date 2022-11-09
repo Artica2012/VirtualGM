@@ -1,4 +1,5 @@
 # options_cog.py
+import asyncio
 import inspect
 import logging
 import os
@@ -7,9 +8,10 @@ import os
 from datetime import datetime
 
 import discord
+import datetime as dt
 from discord import option
 from discord.commands import SlashCommandGroup
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -17,7 +19,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global
+from database_models import Global, Reminder
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
@@ -45,6 +47,73 @@ DATABASE = os.getenv('DATABASE')
 
 
 class ReminderCog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot:discord.Bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #     self.lock = asyncio.Lock()
+    #     self.reminder_check.start()
+    #
+    # @tasks.loop(minutes=1)
+    # async def reminder_check(self):
+    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    #     async with async_session() as session:
+    #         result = await session.execute(select(Reminder)
+    #                                        .where(Reminder.timestamp <= datetime.now()))
+    #         reminder = result.scalars().all()
+    #     for item in reminder:
+    #         await asyncio.sleep(0)
+    #         await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
+    #                                                                          f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+    #                                                                                f"{item.message}")
+    #     await engine.dispose()
+    #
+    #
+    # # Don't start the loop unti the bot is ready
+    # @reminder_check.before_loop
+    # async def before_reminder_status(self):
+    #     await self.bot.wait_until_ready()
+
+    @commands.slash_command(name="remind", description="Set a Reminder")
+    @option("time_unit", autocomplete=discord.utils.basic_autocomplete(['Minutes', 'Hours', 'Days', 'Months']))
+    async def remind_me(self, ctx: discord.ApplicationContext, number: int, time_unit: str, message: str):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        await ctx.response.defer(ephemeral=True)
+        try:
+            # Get the time to remind at
+            if time_unit == "Minutes":
+                reminder_time = dt.datetime.now() + dt.timedelta(minutes=number)
+            elif time_unit == "Hours":
+                reminder_time = dt.datetime.now() + dt.timedelta(hours=number)
+            elif time_unit == "Days":
+                reminder_time = dt.datetime.now() + dt.timedelta(days=number)
+            elif time_unit == "Months":
+                reminder_time = dt.datetime.now() + dt.timedelta(days=(number * 30))
+            else:
+                reminder_time = dt.datetime.now() + dt.timedelta(days=number)
+
+            # Write to the database
+            async with async_session() as session:
+                async with session.begin():
+                    new_reminder = Reminder(
+                        user=str(ctx.user.id),
+                        guild_id=ctx.guild_id,
+                        channel=ctx.channel_id,
+                        message=message,
+                        timestamp=reminder_time
+                    )
+                    session.add(new_reminder)
+                await session.commit()
+            await engine.dispose()
+
+
+
+        except Exception as e:
+            logging.warning(f"remind_me: {e}")
+            report = ErrorReport(ctx, "remind_me", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Reminder Failed", ephemeral=True)
+
+
+def setup(bot):
+    bot.add_cog(ReminderCog(bot))

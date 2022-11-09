@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 import lookup_parser
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logging.info("Script Started")
 
 
@@ -37,7 +37,7 @@ async def on_ready():
     # print("Updating tables...")
     # database_operations.update_con_table()
     # print("Tables updated")
-    logging.info(f"{bot.user} is connected.")
+    logging.warning(f"{bot.user} is connected.")
 
 @bot.event
 async def on_disconnect():
@@ -59,5 +59,6 @@ bot.load_extension("options_cog")
 bot.load_extension("PF2e.pf2_cog")
 bot.load_extension("attack_cog")
 bot.load_extension("D4e.d4e_cog")
+bot.load_extension("reminder_cog")
 
 bot.run(TOKEN)
