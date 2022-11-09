@@ -47,7 +47,6 @@ DATABASE = os.getenv('DATABASE')
 class OptionsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     async def display_options(self, timekeeping: bool, block: bool, system: str):
         embed = discord.Embed(
@@ -74,9 +73,10 @@ class OptionsCog(commands.Cog):
                     gm: discord.User,
                     system: str = ''
                     ):
-        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
-        response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel, system)
+        response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
         if response:
             await ctx.send_followup("Server Setup", ephemeral=True)
             return
@@ -92,15 +92,16 @@ class OptionsCog(commands.Cog):
     @option('delete', description="Type 'delete' to confirm delete. This cannot be undone.", required=False)
     async def tracker(self, ctx: discord.ApplicationContext, mode: str,
                       gm: discord.User = discord.ApplicationContext.user, delete: str = ''):
-        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
-        if not await gm_check(ctx, self.engine):
+        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        if not await gm_check(ctx, engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
             try:
                 if mode == 'reset trackers':
                     await ctx.response.defer(ephemeral=True)
-                    response = await repost_trackers(ctx, self.engine, self.bot)
+                    response = await repost_trackers(ctx, engine, self.bot)
                     if response:
                         await ctx.send_followup("Trackers Placed",
                                                 ephemeral=True)
@@ -109,7 +110,7 @@ class OptionsCog(commands.Cog):
 
                 elif mode == 'transfer gm':
                     if gm != None:
-                        response = await set_gm(ctx, gm, self.engine, self.bot)
+                        response = await set_gm(ctx, gm, engine, self.bot)
                     else:
                         response = False
 
@@ -120,7 +121,7 @@ class OptionsCog(commands.Cog):
                 elif mode == "delete tracker":
                     result = False
                     if delete.lower() == "delete":
-                        result = await delete_tracker(ctx, self.engine, self.bot)
+                        result = await delete_tracker(ctx, engine, self.bot)
                     if result:
                         await ctx.respond("Successfully Deleted")
                     else:
@@ -140,14 +141,15 @@ class OptionsCog(commands.Cog):
     @option('toggle', choices=['On', 'Off'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
-        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         if toggle == 'On':
             toggler = True
         else:
             toggler = False
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(select(Global).where(
                     or_(
@@ -162,11 +164,11 @@ class OptionsCog(commands.Cog):
                     pass
                 elif module == 'Timekeeper':
                     if toggler and guild.time_year is None:
-                        await set_datetime(ctx, self.engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
+                        await set_datetime(ctx, engine, self.bot, second=0, minute=0, hour=6, day=1, month=1,
                                            year=2001, time=time)
                     else:
                         guild.timekeeping = toggler
-                    await update_pinned_tracker(ctx, self.engine, self.bot)
+                    await update_pinned_tracker(ctx, engine, self.bot)
                 elif module == 'Block Initiative':
                     guild.block = toggler
                 else:
@@ -193,7 +195,7 @@ class OptionsCog(commands.Cog):
 
                 embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
                 await ctx.send_followup(embed=embed)
-            await self.engine.dispose()
+            await engine.dispose()
         except NoResultFound as e:
             await ctx.channel.send(
                 error_not_initialized,

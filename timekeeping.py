@@ -39,20 +39,20 @@ DATABASE = os.getenv('DATABASE')
 class TimekeeperCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     timekeeper = SlashCommandGroup('time', 'Time Keeper')
 
     @timekeeper.command(description="Set Date/Time")
     async def set(self, ctx: discord.ApplicationContext, minute: int = None, hour: int = None, day: int = None,
                   month: int = None):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
-            result = await set_datetime(ctx, self.engine, self.bot, second=0, minute=minute, hour=hour, day=day,
+            result = await set_datetime(ctx, engine, self.bot, second=0, minute=minute, hour=hour, day=day,
                                         month=month, year=None)
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
-                await check_cc(ctx, self.engine, self.bot)
-                await update_pinned_tracker(ctx, self.engine, self.bot)
+                await check_cc(ctx, engine, self.bot)
+                await update_pinned_tracker(ctx, engine, self.bot)
             else:
                 await ctx.respond("Error Setting Date and Time", ephemeral=True)
         except NoResultFound as e:
@@ -70,20 +70,21 @@ class TimekeeperCog(commands.Cog):
     @option('amount', description="Amount to advance")
     @option('unit', choices=['minute', 'hour', 'day'])
     async def advance(self, ctx: discord.ApplicationContext, amount: int, unit: str = "minute"):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if unit == "minute":
-            result = await advance_time(ctx, self.engine, self.bot, minute=amount)
+            result = await advance_time(ctx, engine, self.bot, minute=amount)
         elif unit == "hour":
-            result = await advance_time(ctx, self.engine, self.bot, hour=amount)
+            result = await advance_time(ctx, engine, self.bot, hour=amount)
         elif unit == "day":
-            result = await advance_time(ctx, self.engine, self.bot, day=amount)
+            result = await advance_time(ctx, engine, self.bot, day=amount)
         else:
             result = False
 
         if result:
             await ctx.respond(
-                f"Time advanced to by {amount} {unit}(s). New time is: {await output_datetime(ctx, self.engine, self.bot)}")
-            await check_cc(ctx, self.engine, self.bot)
-            await update_pinned_tracker(ctx, self.engine, self.bot)
+                f"Time advanced to by {amount} {unit}(s). New time is: {await output_datetime(ctx, engine, self.bot)}")
+            await check_cc(ctx, engine, self.bot)
+            await update_pinned_tracker(ctx, engine, self.bot)
         else:
             await ctx.respond("Failed to advance time.")
 
