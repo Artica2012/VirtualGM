@@ -49,29 +49,32 @@ DATABASE = os.getenv('DATABASE')
 class ReminderCog(commands.Cog):
     def __init__(self, bot:discord.Bot):
         self.bot = bot
-    #     self.lock = asyncio.Lock()
-    #     self.reminder_check.start()
-    #
-    # @tasks.loop(minutes=1)
-    # async def reminder_check(self):
-    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    #     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    #     async with async_session() as session:
-    #         result = await session.execute(select(Reminder)
-    #                                        .where(Reminder.timestamp <= datetime.now()))
-    #         reminder = result.scalars().all()
-    #     for item in reminder:
-    #         await asyncio.sleep(0)
-    #         await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
-    #                                                                          f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
-    #                                                                                f"{item.message}")
-    #     await engine.dispose()
-    #
-    #
-    # # Don't start the loop unti the bot is ready
-    # @reminder_check.before_loop
-    # async def before_reminder_status(self):
-    #     await self.bot.wait_until_ready()
+        self.lock = asyncio.Lock()
+        self.reminder_check.start()
+
+    @tasks.loop(minutes=1)
+    async def reminder_check(self):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Reminder)
+                                           .where(Reminder.timestamp <= datetime.now().timestamp()))
+            reminder = result.scalars().all()
+        for item in reminder:
+            await asyncio.sleep(0)
+            await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
+                                                                             f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+                                                                                   f"{item.message}")
+            async with async_session() as session:
+                await session.delete(item)
+                await session.commit()
+        await engine.dispose()
+
+
+    # Don't start the loop unti the bot is ready
+    @reminder_check.before_loop
+    async def before_reminder_status(self):
+        await self.bot.wait_until_ready()
 
     @commands.slash_command(name="remind", description="Set a Reminder")
     @option("time_unit", autocomplete=discord.utils.basic_autocomplete(['Minutes', 'Hours', 'Days', 'Months']))
@@ -100,10 +103,11 @@ class ReminderCog(commands.Cog):
                         guild_id=ctx.guild_id,
                         channel=ctx.channel_id,
                         message=message,
-                        timestamp=reminder_time
+                        timestamp=reminder_time.timestamp()
                     )
                     session.add(new_reminder)
                 await session.commit()
+            await ctx.send_followup("Reminder Set")
             await engine.dispose()
 
 

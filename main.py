@@ -6,6 +6,7 @@ import os
 import discord
 from dotenv import load_dotenv
 
+import database_operations
 import lookup_parser
 import logging
 logging.basicConfig(level=logging.WARNING)
@@ -34,9 +35,10 @@ bot = discord.Bot(intents=intents,
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    # print("Updating tables...")
+    # logging.warning("Updating tables...")
     # database_operations.update_con_table()
-    # print("Tables updated")
+    database_operations.create_reminder_table()
+    # logging.warning("Tables updated")
     logging.warning(f"{bot.user} is connected.")
 
 @bot.event

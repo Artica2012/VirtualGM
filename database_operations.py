@@ -1,16 +1,16 @@
 # database_operations.py
-
+import logging
 import os
 
 import sqlalchemy as db
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 # imports
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Session
 
-from database_models import Global
+from database_models import Global, reminder_table, Base
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -75,3 +75,12 @@ def update_con_table():
                     conn.execute(alter_string)
             except Exception as e:
                 print(f'Table {row[0].id} Not Updated')
+
+def create_reminder_table():
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    metadata = db.MetaData()
+    try:
+        Base.metadata.create_all(engine)
+        logging.warning("Creating Reminder Table")
+    except Exception as e:
+        logging.warning(e)

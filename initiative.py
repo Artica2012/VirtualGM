@@ -2031,31 +2031,6 @@ class InitiativeCog(commands.Cog):
     char = SlashCommandGroup("char", "Character Commands")
     cc = SlashCommandGroup("cc", "Conditions and Counters")
 
-    @i.command(description="D&D 4e auto save")
-    # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
-    @option('character', description='Character Attacking', autocomplete=character_select_gm)
-    @option('condition', description="Select Condition", autocomplete=cc_select)
-    async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ''):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if guild.system == "D4e":
-                output_string = D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
-
-                await ctx.send_followup(output_string)
-            else:
-                await ctx.send_followup("No system set, command inactive.")
-                return
-
     @char.command(description="Add PC on NPC",
                   # guild_ids=[GUILD]
                   )
