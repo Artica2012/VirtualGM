@@ -37,7 +37,7 @@ bot = discord.Bot(intents=intents,
 async def on_ready():
     # logging.warning("Updating tables...")
     # database_operations.update_con_table()
-    database_operations.create_reminder_table()
+    # database_operations.create_reminder_table()
     # logging.warning("Tables updated")
     logging.warning(f"{bot.user} is connected.")
 
