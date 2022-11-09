@@ -698,170 +698,171 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             guild = result.scalars().one()
             logging.info(f"BAI1: guild: {guild.id}")
 
-            Tracker = await get_tracker(ctx, engine, id=guild.id)
-            async with async_session() as t_session:
-                char_result = await t_session.execute(select(Tracker))
-                character = char_result.scalars().all()
-                logging.info(f"BAI2: character: {character.id}")
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker))
+            character = char_result.scalars().all()
+            logging.info(f"BAI2: character: {character.id}")
 
-                # print(f"guild.initiative: {guild.initiative}")
-                if guild.initiative == None:
-                    dice = DiceRoller('')
-                    init_pos = -1
-                    guild.round = 1
-                    first_pass = True
-                    for char in character:
+            # print(f"guild.initiative: {guild.initiative}")
+            if guild.initiative == None:
+                dice = DiceRoller('')
+                init_pos = -1
+                guild.round = 1
+                first_pass = True
+                for char in character:
+                    await asyncio.sleep(0)
+                    if char.init == 0:
                         await asyncio.sleep(0)
-                        if char.init == 0:
-                            await asyncio.sleep(0)
-                            roll = await dice.plain_roll(char.init_string)
-                            await set_init(ctx, bot, char.name, roll[1], engine)
-                else:
-                    init_pos = int(guild.initiative)
-
-            init_list = await get_init_list(ctx, engine)
-            logging.info(f"BAI3: init_list gotten")
-
-            if guild.saved_order == '':
-                current_character = init_list[0].name
+                        roll = await dice.plain_roll(char.init_string)
+                        await set_init(ctx, bot, char.name, roll[1], engine)
             else:
-                current_character = guild.saved_order
-            # Record the initial to break an infinite loop
-            iterations = 0
-            logging.info(f"BAI4: iteration: {iterations}")
+                init_pos = int(guild.initiative)
 
-            while not block_done:
-                # make sure that the current character is at the same place in initiative as it was before
-                # decrement any conditions with the decrement flag
+        init_list = await get_init_list(ctx, engine)
+        logging.info(f"BAI3: init_list gotten")
 
-                if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
-                    # if its not, set the init position to the position of the current character before advancing it
-                    # print("Yes guild.block")
-                    logging.info(f"BAI5: guild.block: {guild.block}")
-                    if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
-                        logging.info(f"BAI6: init_itegrity failied")
-                        # print(f"integrity check was false: init_pos: {init_pos}")
-                        for pos, row in enumerate(init_list):
-                            await asyncio.sleep(0)
-                            if row.name == current_character:
-                                init_pos = pos
-                                # print(f"integrity checked init_pos: {init_pos}")
-                    init_pos += 1  # increase the init position by 1
-                    # print(f"new init_pos: {init_pos}")
-                    if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
-                        init_pos = 0
-                        guild.round += 1
-                        if guild.timekeeping:  # if timekeeping is enable on the server
-                            logging.info(f"BAI7: timekeeping")
-                            # Advance time time by the number of seconds in the guild.time column. Default is 6
-                            # seconds ala D&D standard
-                            await advance_time(ctx, engine, bot, second=guild.time)
-                            await check_cc(ctx, engine, bot)
-                            logging.info(f"BAI8: cc checked")
+        if guild.saved_order == '':
+            current_character = init_list[0].name
+        else:
+            current_character = guild.saved_order
+        # Record the initial to break an infinite loop
+        iterations = 0
+        logging.info(f"BAI4: iteration: {iterations}")
 
-                try:
-                    async with async_session() as session:
-                        char_result = await session.execute(select(Tracker).where(
-                            Tracker.name == current_character
-                        ))
-                        cur_char = char_result.scalars().one()
-                        logging.info(f"BAI9: cur_char: {cur_char.id}")
-                except Exception as e:
-                    logging.error(f'advance_initiative: {e}')
-                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                    await report.report()
-                    return False
+        while not block_done:
+            # make sure that the current character is at the same place in initiative as it was before
+            # decrement any conditions with the decrement flag
 
-                try:
-                    Condition = await get_condition(ctx, engine, id=guild.id)
-                    # con = await get_condition_table(ctx, metadata, engine)
-                    async with async_session() as session:
-                        char_result = await session.execute(select(Condition).where(
-                            Condition.character_id == cur_char.id
-                        ))
-                        con_list = char_result.scalars().all()
-                        logging.info(f"BAI9: condition's retrieved")
-
-                    for con_row in con_list:
-                        logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
+            if guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
+                # if its not, set the init position to the position of the current character before advancing it
+                # print("Yes guild.block")
+                logging.info(f"BAI5: guild.block: {guild.block}")
+                if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                    logging.info(f"BAI6: init_itegrity failied")
+                    # print(f"integrity check was false: init_pos: {init_pos}")
+                    for pos, row in enumerate(init_list):
                         await asyncio.sleep(0)
-                        if con_row.auto_increment and not con_row.time:  # If auto-increment and NOT time
-                            if con_row.number >= 2:  # if number >= 2
-                                con_row.number -= 1
-                            else:
-                                async with async_session() as session:
-                                    del_result = await session.execute(
-                                        select(Condition).where(Condition.id == con_row.id))
-                                    del_row = del_result.scalars().one()
-                                    await session.delete(del_row)
-                                    await session.commit()
-                                    logging.info(f"BAI11: Condition Deleted")
-                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
-                        elif con_row.time:  # If time is true
-                            logging.info(f"BAI12: time checked")
-                            time_stamp = datetime.datetime.fromtimestamp(con_row.number)  # The number is a timestamp
-                            # for the expiration, not a round count
-                            current_time = await get_time(ctx, engine, bot)
-                            time_left = time_stamp - current_time
-                            if time_left.total_seconds() <= 0:
-                                async with async_session() as session:
-                                    del_result = await session.execute(
-                                        select(Condition).where(Condition.id == con_row.id))
-                                    del_row = del_result.scalars().one()
-                                    await session.delete(del_row)
-                                    await session.commit()
-                                    logging.info(f"BAI13: Condition deleted ")
-                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                        if row.name == current_character:
+                            init_pos = pos
+                            # print(f"integrity checked init_pos: {init_pos}")
+                init_pos += 1  # increase the init position by 1
+                # print(f"new init_pos: {init_pos}")
+                if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
+                    init_pos = 0
+                    guild.round += 1
+                    if guild.timekeeping:  # if timekeeping is enable on the server
+                        logging.info(f"BAI7: timekeeping")
+                        # Advance time time by the number of seconds in the guild.time column. Default is 6
+                        # seconds ala D&D standard
+                        await advance_time(ctx, engine, bot, second=guild.time)
+                        await check_cc(ctx, engine, bot)
+                        logging.info(f"BAI8: cc checked")
 
-                except Exception as e:
-                    logging.error(f'block_advance_initiative: {e}')
-                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                    await report.report()
+            try:
+                async with async_session() as session:
+                    char_result = await session.execute(select(Tracker).where(
+                        Tracker.name == current_character
+                    ))
+                    cur_char = char_result.scalars().one()
+                    logging.info(f"BAI9: cur_char: {cur_char.id}")
+            except Exception as e:
+                logging.error(f'advance_initiative: {e}')
+                report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
+                await report.report()
+                return False
 
-                if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
-                    logging.info(f"BAI14: Not Block")
-                    # print("Not guild.block")
-                    # if its not, set the init position to the position of the current character before advancing it
-                    if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
-                        logging.info(f"BAI15: Integrity check failed")
-                        # print(f"integrity check was false: init_pos: {init_pos}")
-                        for pos, row in enumerate(init_list):
-                            await asyncio.sleep(0)
-                            if row.name == current_character:
-                                init_pos = pos
-                                # print(f"integrity checked init_pos: {init_pos}")
-                    init_pos += 1  # increase the init position by 1
-                    # print(f"new init_pos: {init_pos}")
-                    if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
-                        init_pos = 0
-                        guild.round += 1
-                        if guild.timekeeping:  # if timekeeping is enable on the server
-                            # Advance time time by the number of seconds in the guild.time column. Default is 6
-                            # seconds ala D&D standard
-                            await advance_time(ctx, engine, bot, second=guild.time)
-                            await check_cc(ctx, engine, bot)
-                            logging.info(f"BAI16: cc checked")
+            try:
+                Condition = await get_condition(ctx, engine, id=guild.id)
+                # con = await get_condition_table(ctx, metadata, engine)
+                async with async_session() as session:
+                    char_result = await session.execute(select(Condition).where(
+                        Condition.character_id == cur_char.id
+                    ))
+                    con_list = char_result.scalars().all()
+                    logging.info(f"BAI9: condition's retrieved")
 
-                            # block initiative loop
-                # check to see if the next character is player vs npc
-                # print(init_list)
-                # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
-                if init_pos >= len(init_list) - 1:
-                    # print(f"init_pos: {init_pos}")
-                    if init_list[init_pos].player != init_list[0].player:
-                        block_done = True
-                elif init_list[init_pos].player != init_list[init_pos + 1].player:
+                for con_row in con_list:
+                    logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
+                    await asyncio.sleep(0)
+                    if con_row.auto_increment and not con_row.time:  # If auto-increment and NOT time
+                        if con_row.number >= 2:  # if number >= 2
+                            con_row.number -= 1
+                        else:
+                            async with async_session() as session:
+                                del_result = await session.execute(
+                                    select(Condition).where(Condition.id == con_row.id))
+                                del_row = del_result.scalars().one()
+                                await session.delete(del_row)
+                                await session.commit()
+                                logging.info(f"BAI11: Condition Deleted")
+                            await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                    elif con_row.time:  # If time is true
+                        logging.info(f"BAI12: time checked")
+                        time_stamp = datetime.datetime.fromtimestamp(con_row.number)  # The number is a timestamp
+                        # for the expiration, not a round count
+                        current_time = await get_time(ctx, engine, bot)
+                        time_left = time_stamp - current_time
+                        if time_left.total_seconds() <= 0:
+                            async with async_session() as session:
+                                del_result = await session.execute(
+                                    select(Condition).where(Condition.id == con_row.id))
+                                del_row = del_result.scalars().one()
+                                await session.delete(del_row)
+                                await session.commit()
+                                logging.info(f"BAI13: Condition deleted ")
+                            await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+
+            except Exception as e:
+                logging.error(f'block_advance_initiative: {e}')
+                report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
+                await report.report()
+
+            if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
+                logging.info(f"BAI14: Not Block")
+                # print("Not guild.block")
+                # if its not, set the init position to the position of the current character before advancing it
+                if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                    logging.info(f"BAI15: Integrity check failed")
+                    # print(f"integrity check was false: init_pos: {init_pos}")
+                    for pos, row in enumerate(init_list):
+                        await asyncio.sleep(0)
+                        if row.name == current_character:
+                            init_pos = pos
+                            # print(f"integrity checked init_pos: {init_pos}")
+                init_pos += 1  # increase the init position by 1
+                # print(f"new init_pos: {init_pos}")
+                if init_pos >= len(init_list):  # if it has reached the end, loop back to the beginning
+                    init_pos = 0
+                    guild.round += 1
+                    if guild.timekeeping:  # if timekeeping is enable on the server
+                        # Advance time time by the number of seconds in the guild.time column. Default is 6
+                        # seconds ala D&D standard
+                        await advance_time(ctx, engine, bot, second=guild.time)
+                        await check_cc(ctx, engine, bot)
+                        logging.info(f"BAI16: cc checked")
+
+                        # block initiative loop
+            # check to see if the next character is player vs npc
+            # print(init_list)
+            # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
+            if init_pos >= len(init_list) - 1:
+                # print(f"init_pos: {init_pos}")
+                if init_list[init_pos].player != init_list[0].player:
                     block_done = True
-                if not guild.block:
-                    block_done = True
+            elif init_list[init_pos].player != init_list[init_pos + 1].player:
+                block_done = True
+            if not guild.block:
+                block_done = True
 
-                turn_list.append(init_list[init_pos].name)
-                current_character = init_list[init_pos].name
-                iterations += 1
-                if iterations >= len(init_list):  # stop an infinite loop
-                    block_done = True
+            turn_list.append(init_list[init_pos].name)
+            current_character = init_list[init_pos].name
+            iterations += 1
+            if iterations >= len(init_list):  # stop an infinite loop
+                block_done = True
 
-                # print(turn_list)
+            # print(turn_list)
+
         async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
