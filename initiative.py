@@ -4,6 +4,8 @@ import asyncio
 import datetime
 import logging
 import os
+import inspect
+import sys
 
 # imports
 import discord
@@ -64,6 +66,8 @@ DATABASE = os.getenv('DATABASE')
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel, system: str):
     # Check to make sure bot has permissions in both channels
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
     if not channel.can_send() or not gm_channel.can_send():
         await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
@@ -122,6 +126,7 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
 
 # Transfer gm permissions
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -148,6 +153,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
 # delete the tracker
 async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         # Everything in the opposite order of creation
         metadata = db.MetaData()
@@ -193,7 +199,7 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
 # Add a character to the database
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int,
                         player_bool: bool, init: str):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -275,6 +281,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 # Add a character to the database
 async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -310,7 +317,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
 
 async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str, new_name: str):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     dice = DiceRoller('')
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -405,7 +412,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
 # Delete a character
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         # load tables
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -474,6 +481,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
 
 
 async def calculate_hp(chp, maxhp):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     hp = chp / maxhp
     if hp == 1:
         hp_string = 'Uninjured'
@@ -490,6 +498,7 @@ async def calculate_hp(chp, maxhp):
 
 
 async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine)
@@ -511,7 +520,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
 
 
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine)
@@ -567,6 +576,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
 
 # Reposts new trackers in the pre-assigned channels
 async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -597,6 +607,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
 
 # Function sets the pinned trackers and records their position in the Global table.
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -636,6 +647,7 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
 
 # Set the initiative
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine)
@@ -657,6 +669,7 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 
 # Check to make sure that the character is in the right place in initiative
 async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     init_list = await get_init_list(ctx, engine)
     if init_list[init_pos].name == current_character:
         return True
@@ -666,7 +679,8 @@ async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, c
 
 # Upgraded Advance Initiative Function to work with block initiative options
 async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
     block_done = False
     turn_list = []
     first_pass = False
@@ -855,6 +869,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
 
 # Returns the tracker list sorted by initiative
 async def get_init_list(ctx: discord.ApplicationContext, engine):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -872,6 +887,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
 
 
 async def parse_init_list(init_list: list):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     parsed_list = []
     for row in init_list:
         await asyncio.sleep(0)
@@ -880,6 +896,7 @@ async def parse_init_list(init_list: list):
 
 
 async def ping_player_on_init(init_list: list, selected: int):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     selected_char = init_list[selected]
     user = selected_char.user
     return f"<@{user}>, it's your turn."
@@ -887,6 +904,7 @@ async def ping_player_on_init(init_list: list, selected: int):
 
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
                             gm: bool = False):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(
@@ -910,6 +928,7 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
 # Builds the tracker string. Updated to work with block initiative
 async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
                                     gm: bool = False):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1043,6 +1062,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         try:
@@ -1086,6 +1106,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
 
 
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Query the initiative position for the tracker and post it
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1148,7 +1169,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                                         f"{ping_string}", view=view)
             else:
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                  f"{ping_string}", view=view, )
+                                                                  f"{ping_string}", view=view,)
                 await ctx.send_followup("Initiative Advanced.")
         else:
             # Always post the tracker to the player channel
@@ -1171,6 +1192,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 
 # Note: Works backwards
 async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     turn_list = []
     block_done = False
     try:
@@ -1225,7 +1247,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
                  unit: str, auto_decrement: bool, bot, flex: bool = False, ):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Get the Character's data
 
     try:
@@ -1314,6 +1336,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
 
 
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
         Condition = await get_condition(ctx, engine)
@@ -1361,6 +1384,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 
 
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
         Condition = await get_condition(ctx, engine)
@@ -1409,6 +1433,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 
 
 async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     Tracker = await get_tracker(ctx, engine)
     Condition = await get_condition(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1447,6 +1472,7 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
 async def check_cc(ctx: discord.ApplicationContext, engine, bot):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     current_time = await get_time(ctx, engine, bot)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx, engine)
@@ -1477,6 +1503,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
@@ -1499,7 +1526,7 @@ async def gm_check(ctx, engine):
 # checks to see if the player is the ower of the character
 # possibly depreciated due to auto-complete
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
-    metadata = db.MetaData()
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

@@ -2,6 +2,10 @@
 # Macro-Roller Module for VirtualGM initiative Tracker
 import asyncio
 import os
+import logging
+import sys
+import datetime
+import inspect
 
 # imports
 import discord
@@ -50,6 +54,7 @@ class MacroCog(commands.Cog):
 
     # Autocomplete
     async def character_select(self, ctx: discord.AutocompleteContext):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         character_list = []
 
         try:
@@ -102,6 +107,7 @@ class MacroCog(commands.Cog):
 
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(ctx, self.engine)
@@ -128,6 +134,7 @@ class MacroCog(commands.Cog):
             return False
 
     async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(ctx, self.engine)
@@ -161,6 +168,7 @@ class MacroCog(commands.Cog):
             return False
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, self.engine)
         Macro = await get_macro(ctx, self.engine)
@@ -187,6 +195,7 @@ class MacroCog(commands.Cog):
             return False
 
     async def delete_macro_all(self, ctx: discord.ApplicationContext, character: str):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, self.engine)
         Macro = await get_macro(ctx, self.engine)
@@ -214,6 +223,7 @@ class MacroCog(commands.Cog):
 
     async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int,
                          modifier: str):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, self.engine)
         Macro = await get_macro(ctx, self.engine)

@@ -377,3 +377,25 @@ def ritual_table(metadata):
                    db.Column('URL', db.String(255), default=''),
                    )
     return emp
+
+# Global Class
+class Reminder(Base):
+    __tablename__ = "reminder_table"
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    user = Column(String())
+    guild_id = Column(BigInteger())
+    channel = Column(BigInteger(), nullable=False, unique=False)
+    message = Column(String(), nullable=False)
+    timestamp = Column(Integer(), nullable=False)
+
+def reminder_table(metadata):
+    tablename = f"reminder_table"
+    emp = db.Table(tablename, metadata,
+                   db.Column('id', db.INTEGER(), primary_key=True, autoincrement=True),
+                   db.Column('user', db.String(255)),
+                   db.Column('guild_id', db.BigInteger()),
+                   db.Column('channel', db.BigInteger(), nullable=False, unique=False),
+                   db.Column('message', db.String(), nullable=False),
+                   db.Column('timestamp', db.INTEGER(), nullable=False)
+                   )
+    return emp

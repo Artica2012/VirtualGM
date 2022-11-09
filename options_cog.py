@@ -1,8 +1,11 @@
 # options_cog.py
-
+import inspect
+import logging
 import os
 
 # imports
+from datetime import datetime
+
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
@@ -71,6 +74,7 @@ class OptionsCog(commands.Cog):
                     gm: discord.User,
                     system: str = ''
                     ):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
         response = await setup_tracker(ctx, self.engine, self.bot, gm, channel, gm_channel, system)
         if response:
@@ -88,6 +92,7 @@ class OptionsCog(commands.Cog):
     @option('delete', description="Type 'delete' to confirm delete. This cannot be undone.", required=False)
     async def tracker(self, ctx: discord.ApplicationContext, mode: str,
                       gm: discord.User = discord.ApplicationContext.user, delete: str = ''):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         if not await gm_check(ctx, self.engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
@@ -135,6 +140,7 @@ class OptionsCog(commands.Cog):
     @option('toggle', choices=['On', 'Off'], required=False)
     @option('time', description='Number of Seconds per round (optional)', required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
+        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer()
         if toggle == 'On':
             toggler = True
