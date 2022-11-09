@@ -72,8 +72,6 @@ async def gm_check(ctx, engine):
 class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # ---------------------------------------------------
         # ---------------------------------------------------
@@ -83,12 +81,12 @@ class AttackCog(commands.Cog):
     async def character_select(self, ctx: discord.AutocompleteContext):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog character_select")
-
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         character_list = []
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker))
@@ -96,7 +94,7 @@ class AttackCog(commands.Cog):
                 for char in character:
                     await asyncio.sleep(0)
                     character_list.append(char.name)
-                await self.engine.dispose()
+                await engine.dispose()
                 return character_list
 
         except Exception as e:
@@ -109,14 +107,15 @@ class AttackCog(commands.Cog):
     async def character_select_gm(self, ctx: discord.AutocompleteContext):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
         character_list = []
 
-        gm_status = await gm_check(ctx, self.engine)
+        gm_status = await gm_check(ctx, engine)
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
                 if gm_status:
@@ -127,7 +126,7 @@ class AttackCog(commands.Cog):
                 for char in character:
                     await asyncio.sleep(0)
                     character_list.append(char.name)
-                await self.engine.dispose()
+                await engine.dispose()
                 return character_list
 
         except Exception as e:
@@ -140,10 +139,11 @@ class AttackCog(commands.Cog):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog a_macro_select")
 
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         character = ctx.options['character']
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
             async with async_session() as session:
@@ -161,7 +161,7 @@ class AttackCog(commands.Cog):
                 if not ',' in row.macro:
                     macros.append(f"{row.name}: {row.macro}")
 
-            await self.engine.dispose()
+            await engine.dispose()
             return macros
         except Exception as e:
             print(f'a_macro_select: {e}')
@@ -173,7 +173,10 @@ class AttackCog(commands.Cog):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
 
-        async with self.async_session() as session:
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
@@ -182,12 +185,13 @@ class AttackCog(commands.Cog):
             )
             )
             guild = result.scalars().one()
-            if guild.system == 'PF2':
-                return PF2e.pf2_functions.PF2_attributes
-            elif guild.system == 'D4e':
-                return D4e.d4e_functions.D4e_attributes
-            else:
-                return []
+        await engine.dispose()
+        if guild.system == 'PF2':
+            return PF2e.pf2_functions.PF2_attributes
+        elif guild.system == 'D4e':
+            return D4e.d4e_functions.D4e_attributes
+        else:
+            return []
 
     # ---------------------------------------------------
     # ---------------------------------------------------
@@ -208,8 +212,11 @@ class AttackCog(commands.Cog):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog attack")
 
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
         await ctx.response.defer()
-        async with self.async_session() as session:
+        async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
@@ -224,15 +231,16 @@ class AttackCog(commands.Cog):
 
             if guild.system == 'PF2':
                 # PF2 specific code
-                output_string = await PF2e.pf2_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs,
+                output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
                                                                 attack_modifier, target_modifier)
             elif guild.system == 'D4e':
                 # D4e specific code
-                output_string = await D4e.d4e_functions.attack(ctx, self.engine, self.bot, character, target, roll, vs,
+                output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
                                                                attack_modifier, target_modifier)
             else:
                 output_string = 'Error'
-            await ctx.send_followup(output_string)
+        await ctx.send_followup(output_string)
+        await engine.dispose()
 
     @att.command(description="Saving Throw")
     @option('character', description='Saving Character', autocomplete=character_select_gm)
@@ -244,8 +252,10 @@ class AttackCog(commands.Cog):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
 
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer()
-        async with self.async_session() as session:
+        async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
@@ -259,12 +269,13 @@ class AttackCog(commands.Cog):
                 return
             # PF2 specific code
             if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, self.engine, self.bot, character, target, vs,
+                output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, vs,
                                                               modifier)
                 await ctx.send_followup(output_string)
             elif guild.system == "D4e":
                 await ctx.send_followup(
                     'Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
+        await engine.dispose()
 
 
 def setup(bot):

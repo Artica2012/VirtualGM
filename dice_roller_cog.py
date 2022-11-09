@@ -39,7 +39,6 @@ DATABASE = os.getenv('DATABASE')
 class DiceRollerCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     # Takes a string and then parses out the string and rolls the dice
     @commands.slash_command(name="r", description="Dice Roller")
@@ -48,7 +47,8 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = 0, secret: str = 'Open'):
         try:
             roller = dice_roller.DiceRoller(roll)
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(select(Global).where(
                     or_(
@@ -85,7 +85,7 @@ class DiceRollerCog(commands.Cog):
                     else:
                         await ctx.respond(f"_{roll}_\n{await roller.opposed_roll(dc)}")
 
-                await self.engine.dispose()
+                await engine.dispose()
             except Exception as e:
                 print(f'dice_roller_cog, post: {e}')
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)

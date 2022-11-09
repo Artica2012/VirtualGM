@@ -46,7 +46,6 @@ DATABASE = os.getenv('DATABASE')
 class MacroCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     # ---------------------------------------------------
     # ---------------------------------------------------
@@ -55,11 +54,12 @@ class MacroCog(commands.Cog):
     # Autocomplete
     async def character_select(self, ctx: discord.AutocompleteContext):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         character_list = []
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker))
@@ -67,8 +67,8 @@ class MacroCog(commands.Cog):
                 for char in character:
                     await asyncio.sleep(0)
                     character_list.append(char.name)
-                await self.engine.dispose()
-                return character_list
+            await engine.dispose()
+            return character_list
 
         except Exception as e:
             print(f'character_select: {e}')
@@ -78,9 +78,10 @@ class MacroCog(commands.Cog):
 
     async def macro_select(self, ctx: discord.AutocompleteContext):
         character = ctx.options['character']
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
             async with async_session() as session:
@@ -97,7 +98,7 @@ class MacroCog(commands.Cog):
                 await asyncio.sleep(0)
                 macros.append(f"{row.name}: {row.macro}")
 
-            await self.engine.dispose()
+            await engine.dispose()
             return macros
         except Exception as e:
             print(f'a_macro_select: {e}')
@@ -108,10 +109,11 @@ class MacroCog(commands.Cog):
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
-            Macro = await get_macro(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
+            Macro = await get_macro(ctx, engine)
 
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -125,7 +127,7 @@ class MacroCog(commands.Cog):
                 )
                 session.add(new_macro)
             await session.commit()
-            await self.engine.dispose()
+            await engine.dispose()
             return True
         except Exception as e:
             print(f'create_macro: {e}')
@@ -135,10 +137,11 @@ class MacroCog(commands.Cog):
 
     async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
-            Macro = await get_macro(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
+            Macro = await get_macro(ctx, engine)
 
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -159,7 +162,7 @@ class MacroCog(commands.Cog):
                     )
                     session.add(new_macro)
             await session.commit()
-            await self.engine.dispose()
+            await engine.dispose()
             return True
         except Exception as e:
             print(f'mass_add: {e}')
@@ -169,9 +172,10 @@ class MacroCog(commands.Cog):
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
 
         try:
             async with async_session() as session:
@@ -186,7 +190,7 @@ class MacroCog(commands.Cog):
                 await session.delete(con)
                 await session.commit()
 
-            await self.engine.dispose()
+            await engine.dispose()
             return True
         except Exception as e:
             print(f'delete_macro: {e}')
@@ -196,9 +200,10 @@ class MacroCog(commands.Cog):
 
     async def delete_macro_all(self, ctx: discord.ApplicationContext, character: str):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
         try:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -213,7 +218,7 @@ class MacroCog(commands.Cog):
                     await session.delete(row)
                     await session.commit()
 
-            await self.engine.dispose()
+            await engine.dispose()
             return True
         except Exception as e:
             print(f'delete_macro: {e}')
@@ -224,9 +229,10 @@ class MacroCog(commands.Cog):
     async def roll_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int,
                          modifier: str):
         logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -313,12 +319,13 @@ class MacroCog(commands.Cog):
     async def roll_macro_command(self, ctx: discord.ApplicationContext, character: str, macro: str, modifier: str = '',
                                  dc: int = 0,
                                  secret: str = "Open"):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         try:
             if secret == "Open":
                 await ctx.send_followup(await self.roll_macro(ctx, character, macro, dc, modifier))
             else:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
                     result = await session.execute(select(Global).where(
                         or_(
@@ -337,7 +344,7 @@ class MacroCog(commands.Cog):
                         await ctx.send_followup('No GM Channel Initialized. Secret rolls not possible', ephemeral=True)
                         await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc, modifier))
 
-            await self.engine.dispose()
+            await engine.dispose()
         except Exception as e:
             print(f"roll_macro: {e}")
             report = ErrorReport(ctx, "roll_macro", e, self.bot)
