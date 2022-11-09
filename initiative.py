@@ -1100,6 +1100,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
                 channel = bot.get_channel(tracker_channel)
                 message = await channel.fetch_message(tracker)
                 await message.edit(tracker_display_string)
+                logging.info(f"UPT2: tracker updated")
 
             # Update the GM tracker
             if gm_tracker is not None:
@@ -1108,12 +1109,13 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
                 gm_channel = bot.get_channel(gm_tracker_channel)
                 gm_message = await gm_channel.fetch_message(gm_tracker)
                 await gm_message.edit(gm_tracker_display_string)
+                logging.info(f"UPT3: gm tracker updated")
         except NoResultFound as e:
             await ctx.channel.send(
                 error_not_initialized,
                 delete_after=30)
         except Exception as e:
-            print(f'update_pinned_tracker: {e}')
+            logging.error(f'update_pinned_tracker: {e}')
             report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
             await report.report()
 
@@ -1132,6 +1134,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             )
             )
             guild = result.scalars().one()
+            logging.info(f"BPI1: guild: {guild.id}")
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
 
@@ -1145,6 +1148,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         init_list = await get_init_list(ctx, engine)
         tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
         try:
+            logging.info(f"BPI2")
             ping_string = ''
             if block:
                 for character in turn_list:
@@ -1160,6 +1164,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 
         # Check for systems:
         if guild.system == 'D4e':
+            logging.info(f"BPI3: d4e")
             view = discord.ui.View()
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
@@ -1184,6 +1189,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}", view=view,)
                 await ctx.send_followup("Initiative Advanced.")
+                logging.info(f"BPI4")
         else:
             # Always post the tracker to the player channel
             if ctx.channel.id == guild.tracker_channel:
@@ -1193,12 +1199,13 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}")
                 await ctx.send_followup("Initiative Advanced.")
+                logging.info(f"BPI5")
         await engine.dispose()
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
     except Exception as e:
-        print(f"block_post_init: {e}")
+        logging.error(f"block_post_init: {e}")
         report = ErrorReport(ctx, block_post_init.__name__, e, bot)
         await report.report()
 
@@ -1219,6 +1226,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
             )
             )
             guild = result.scalars().one()
+            logging.info(f"GTL1: guild: {guild.id}")
             iteration = 0
             init_pos = guild.initiative
             # print(f"init_pos: {init_pos}")
@@ -1246,6 +1254,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
                 if iteration >= length:
                     block_done = True
             await engine.dispose()
+            logging.info(f"GTL2 {turn_list }")
             return turn_list
     except Exception as e:
         print(f'get_turn_list: {e}')
