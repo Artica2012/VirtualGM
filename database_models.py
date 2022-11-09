@@ -233,7 +233,7 @@ class ConditionTable:
                        db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
                        db.Column('time', db.BOOLEAN, default=False),
                        db.Column('visible', db.BOOLEAN, default=True),
-                       db, Column('flex', db.BOOLEAN, default=False)
+                       db.Column('flex', db.BOOLEAN, default=False)
                        )
         return con
 

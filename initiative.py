@@ -155,60 +155,44 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 # delete the tracker
 async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    # try:
-    # Everything in the opposite order of creation
-    metadata = db.MetaData()
-    # delete each table
-    # emp = await get_tracker_table(ctx, metadata, engine)
-    # con = await get_condition_table(ctx, metadata, engine)
-    # macro = await get_macro_table(ctx, metadata, engine)
-    #
-    # async with engine.begin() as conn:
-    #     await conn.execute(DropTable(macro, if_exists=True))
-    #     await conn.execute(DropTable(con, if_exists=True))
-    #     await conn.execute(DropTable(emp, if_exists=True))
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        # Everything in the opposite order of creation
+        metadata = db.MetaData()
+        # delete each table
+        emp = await get_tracker_table(ctx, metadata, engine)
+        con = await get_condition_table(ctx, metadata, engine)
+        macro = await get_macro_table(ctx, metadata, engine)
 
-    # async with async_session() as session:
-    #     async with engine.begin() as conn:
-    #
-    #         Base = database_models.Base
-    #         macro = await get_macro(ctx, engine)
-    #         await conn.run_sync(macro.__table__.drop(engine))
-    #         # await macro.__table__.drop(engine)
-    #         con = await get_condition(ctx, engine)
-    #         await conn.run_sync(con.__table__.drop(engine))
-    #
-    #         # await con.__table__.drop(engine)
-    #         tracker = await get_tracker(ctx, engine)
-    #         await conn.run_sync(tracker.__table__.drop(engine))
-    #
-    #         # await tracker.__tabel__.drop(engine)
-    #     await session.commit()
+        async with engine.begin() as conn:
+            await conn.execute(DropTable(macro, if_exists=True))
+            await conn.execute(DropTable(con, if_exists=True))
+            await conn.execute(DropTable(emp, if_exists=True))
 
-    # try:
-    # delete the row from Global
 
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
-        guild = result.scalars().one()
-        await session.delete(guild)
-        await session.commit()
-    # except Exception as e:
-    #     print(f"guild: delete tracker: {e}")
-    #     report = ErrorReport(ctx, "guild: delete_tracker", e, bot)
-    #     await report.report()
-    return True
-    # except Exception as e:
-    #     print(f"delete tracker: {e}")
-    #     report = ErrorReport(ctx, "delete_tracker", e, bot)
-    #     await report.report()
+        try:
+            # delete the row from Global
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )
+                )
+                )
+                guild = result.scalars().one()
+                await session.delete(guild)
+                await session.commit()
+        except Exception as e:
+            print(f"guild: delete tracker: {e}")
+            report = ErrorReport(ctx, "guild: delete_tracker", e, bot)
+            await report.report()
+        return True
+    except Exception as e:
+        print(f"delete tracker: {e}")
+        report = ErrorReport(ctx, "delete_tracker", e, bot)
+        await report.report()
 
 
 # ---------------------------------------------------------------

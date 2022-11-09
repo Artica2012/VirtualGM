@@ -98,43 +98,43 @@ class OptionsCog(commands.Cog):
             await ctx.respond("GM Restricted Command", ephemeral=True)
             return
         else:
-            # try:
-            if mode == 'reset trackers':
-                await ctx.response.defer(ephemeral=True)
-                response = await repost_trackers(ctx, engine, self.bot)
-                if response:
-                    await ctx.send_followup("Trackers Placed",
-                                            ephemeral=True)
-                else:
-                    await ctx.send_followup("Error setting trackers")
+            try:
+                if mode == 'reset trackers':
+                    await ctx.response.defer(ephemeral=True)
+                    response = await repost_trackers(ctx, engine, self.bot)
+                    if response:
+                        await ctx.send_followup("Trackers Placed",
+                                                ephemeral=True)
+                    else:
+                        await ctx.send_followup("Error setting trackers")
 
-            elif mode == 'transfer gm':
-                if gm != None:
-                    response = await set_gm(ctx, gm, engine, self.bot)
-                else:
-                    response = False
+                elif mode == 'transfer gm':
+                    if gm != None:
+                        response = await set_gm(ctx, gm, engine, self.bot)
+                    else:
+                        response = False
 
-                if response:
-                    await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                    if response:
+                        await ctx.respond(f"GM Permissions transferred to {gm.mention}")
+                    else:
+                        await ctx.respond("Permission Transfer Failed", ephemeral=True)
+                elif mode == "delete tracker":
+                    result = False
+                    if delete.lower() == "delete":
+                        result = await delete_tracker(ctx, engine, self.bot)
+                    if result:
+                        await ctx.respond("Successfully Deleted")
+                    else:
+                        await ctx.respond("Delete Action Failed.")
                 else:
-                    await ctx.respond("Permission Transfer Failed", ephemeral=True)
-            elif mode == "delete tracker":
-                result = False
-                if delete.lower() == "delete":
-                    result = await delete_tracker(ctx, engine, self.bot)
-                if result:
-                    await ctx.respond("Successfully Deleted")
-                else:
-                    await ctx.respond("Delete Action Failed.")
-            else:
-                await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
-            # except NoResultFound as e:
-            #     await ctx.respond(
-            #         error_not_initialized, ephemeral=True)
-            # except Exception as e:
-            #     print(f"/admin tracker: {e}")
-            #     report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
-            #     await report.report()
+                    await ctx.respond("Failed. Check your syntax and spellings.", ephemeral=True)
+            except NoResultFound as e:
+                await ctx.respond(
+                    error_not_initialized, ephemeral=True)
+            except Exception as e:
+                print(f"/admin tracker: {e}")
+                report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
+                await report.report()
 
     @setup.command(description="Optional Modules")
     @option('module', choices=['View Modules', 'Timekeeper', 'Block Initiative', ])
