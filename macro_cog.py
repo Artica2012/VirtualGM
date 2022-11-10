@@ -102,7 +102,7 @@ class MacroCog(commands.Cog):
             return macros
         except Exception as e:
             print(f'a_macro_select: {e}')
-            report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
+            report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)
             await report.report()
             return False
 
