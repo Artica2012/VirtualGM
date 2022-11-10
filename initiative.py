@@ -469,9 +469,10 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         else:
             init_pos = int(guild.initiative)
             current_character = guild.saved_order
+            print(f"Init Pos: {init_pos}, Current:{current_character}, length: {len(await get_init_list(ctx, engine))}")
             if not await init_integrity_check(ctx, init_pos, current_character, engine):
                 for pos, row in enumerate(await get_init_list(ctx, engine)):
-                    if row[1] == current_character:
+                    if row.name == current_character:
                         guild.initiative = pos
             await session.commit()
         await engine.dispose()
@@ -674,10 +675,17 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     init_list = await get_init_list(ctx, engine)
-    if init_list[init_pos].name == current_character:
-        return True
-    else:
+    try:
+        if init_list[init_pos].name == current_character:
+            return True
+        else:
+            return False
+    except IndexError as e:
         return False
+    except Exception as e:
+        print(f'init_integrity_check: {e}')
+        return False
+
 
 
 # Upgraded Advance Initiative Function to work with block initiative options
@@ -2095,29 +2103,38 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer(ephemeral=True)
-
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )
                 )
-            )
-            )
-            guild = result.scalars().one()
+                )
+                guild = result.scalars().one()
 
-        if name == guild.saved_order:
-            await ctx.send_followup(
-                f"Please wait until {name} is not the active character in initiative before "
-                f"deleting it.", ephemeral=True)
-        else:
-            result = await delete_character(ctx, name, engine, self.bot)
-            if result:
-                await ctx.send_followup(f'{name} deleted', ephemeral=True)
-                await update_pinned_tracker(ctx, engine, self.bot)
+            if name == guild.saved_order:
+                await ctx.send_followup(
+                    f"Please wait until {name} is not the active character in initiative before "
+                    f"deleting it.", ephemeral=True)
             else:
-                await ctx.send_followup('Delete Operation Failed', ephemeral=True)
-        await engine.dispose()
+                result = await delete_character(ctx, name, engine, self.bot)
+                if result:
+                    await ctx.send_followup(f'{name} deleted', ephemeral=True)
+                    await update_pinned_tracker(ctx, engine, self.bot)
+                else:
+                    await ctx.send_followup('Delete Operation Failed', ephemeral=True)
+            await engine.dispose()
+        except NoResultFound as e:
+            await ctx.respond(
+                error_not_initialized,
+                ephemeral=True)
+            return False
+        except IndexError as e:
+            await ctx.respond("Ensure that you have added characters to the initiative list.")
+        except Exception as e:
+            await ctx.respond("Failed")
 
     @i.command(description="Manage Initiative",
                # guild_ids=[GUILD]
@@ -2199,6 +2216,8 @@ class InitiativeCog(commands.Cog):
                     await update_pinned_tracker(ctx, engine, self.bot)
                     await ctx.send_followup("Initiative Ended.")
                 elif mode == 'delete character':
+                    print(f'Character {character}')
+                    print(f'Saved: {guild.saved_order}')
                     if character == guild.saved_order:
                         await ctx.respond(
                             f"Please wait until {character} is not the active character in initiative before "

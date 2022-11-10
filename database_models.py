@@ -281,7 +281,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
         name = Column(String(), nullable=False, unique=False)
         macro = Column(String(), nullable=False, unique=False)
 
-    logging.info(f"get_macro: returning macro {guild.id}")
+    logging.info(f"get_macro: returning macro")
     return Macro
 
 
