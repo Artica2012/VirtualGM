@@ -14,6 +14,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -96,7 +97,8 @@ class AttackCog(commands.Cog):
                     character_list.append(char.name)
                 await engine.dispose()
                 return character_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -128,7 +130,8 @@ class AttackCog(commands.Cog):
                     character_list.append(char.name)
                 await engine.dispose()
                 return character_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'character_select_gm: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -163,6 +166,8 @@ class AttackCog(commands.Cog):
 
             await engine.dispose()
             return macros
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'a_macro_select: {e}')
             report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)

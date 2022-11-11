@@ -1,5 +1,7 @@
 # initiative.py
 # Initiative Tracker Module
+
+# imports
 import asyncio
 import datetime
 import logging
@@ -7,15 +9,14 @@ import os
 import inspect
 import sys
 
-# imports
+
 import discord
 import sqlalchemy as db
 from discord import option, Interaction
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,7 +25,6 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
-import database_models
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -1933,7 +1933,8 @@ class InitiativeCog(commands.Cog):
                     character_list.append(char.name)
                 await engine.dispose()
                 return character_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -1962,7 +1963,8 @@ class InitiativeCog(commands.Cog):
                     character_list.append(char.name)
                 await engine.dispose()
                 return character_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'character_select_gm: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -1986,7 +1988,8 @@ class InitiativeCog(commands.Cog):
                     character_list.append(char.name)
                 await engine.dispose()
                 return character_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'character_select: {e}')
             report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
@@ -2017,7 +2020,8 @@ class InitiativeCog(commands.Cog):
                 con_list.append(cond.title)
             await engine.dispose()
             return con_list
-
+        except NoResultFound as e:
+            return []
         except Exception as e:
             print(f'cc_select: {e}')
             report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
