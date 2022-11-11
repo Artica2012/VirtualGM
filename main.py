@@ -3,6 +3,8 @@
 import os
 
 # imports
+import sys
+
 import discord
 from dotenv import load_dotenv
 
@@ -45,6 +47,10 @@ async def on_ready():
 async def on_disconnect():
     # await bot.connect()
     logging.warning('Disconnected')
+
+@bot.event
+async def on_error():
+    logging.error(f"on_error: {sys.exc_info()}")
 
 # Initialize the database
 lookup_parser.parser()
