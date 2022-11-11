@@ -283,7 +283,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 
 # Add a character to the database
-async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str):
+async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str, player: discord.User):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         Tracker = await get_tracker(ctx, engine)
@@ -293,15 +293,12 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
             result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = result.scalars().one()
 
-            if hp != None and init != None:
-                character.init_string = str(init)
+            if hp != None:
                 character.max_hp = hp
-            elif hp != None and init == None:
-                character.max_hp = hp
-            elif hp == None and init != None:
+            if init != None:
                 character.init_string = str(init)
-            else:
-                return False
+            if player != None:
+                character.user = player.id
 
             await session.commit()
         await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
@@ -2072,11 +2069,11 @@ class InitiativeCog(commands.Cog):
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
     @option('hp', description='Total HP', input_type=int, required=False)
     @option('initiative', description="Initiative Roll (XdY+Z)", required=False, input_type=str)
-    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int, initiative: str):
+    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int=None, initiative: str=None, player: discord.User=None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
 
-        response = await edit_character(ctx, engine, self.bot, name, hp, initiative)
+        response = await edit_character(ctx, engine, self.bot, name, hp, initiative, player)
         if not response:
             await ctx.respond(f"Error Editing Character", ephemeral=True)
 
