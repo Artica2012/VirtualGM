@@ -57,6 +57,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
 
     # Strip a macro:
     roll_list = roll.split(':')
+    print(roll_list)
     if len(roll_list) == 1:
         roll = roll
     else:

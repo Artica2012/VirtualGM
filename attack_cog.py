@@ -230,12 +230,48 @@ class AttackCog(commands.Cog):
 
             if guild.system == 'PF2':
                 # PF2 specific code
-                output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
+                try:
+                    output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
                                                                 attack_modifier, target_modifier)
+                except Exception as e:
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Macro = await get_macro(ctx, engine, id=guild.id)
+
+                    async with async_session() as session:
+                        result = await session.execute(select(Tracker).where(Tracker.name == character))
+                        char = result.scalars().one()
+
+                    async with async_session() as session:
+                        result = await session.execute(select(Macro.macro)
+                                                       .where(Macro.character_id == char.id)
+                                                       .where(Macro.name == roll))
+                        macro_roll = result.scalars().one()
+                    output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, macro_roll, vs,
+                                                                attack_modifier, target_modifier)
+
+
+
             elif guild.system == 'D4e':
                 # D4e specific code
-                output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
-                                                               attack_modifier, target_modifier)
+                try:
+                    output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
+                                                                           attack_modifier, target_modifier)
+                except Exception as e:
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Macro = await get_macro(ctx, engine, id=guild.id)
+
+                    async with async_session() as session:
+                        result = await session.execute(select(Tracker).where(Tracker.name == character))
+                        char = result.scalars().one()
+
+                    async with async_session() as session:
+                        result = await session.execute(select(Macro.macro)
+                                                       .where(Macro.character_id == char.id)
+                                                       .where(Macro.name == roll))
+                        macro_roll = result.scalars().one()
+                    output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, macro_roll, vs,
+                                                                   attack_modifier, target_modifier)
+
             else:
                 output_string = 'Error'
         await ctx.send_followup(output_string)
