@@ -43,6 +43,30 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
+class MacroButton(discord.ui.Button):
+    def __init__(self, ctx: discord.ApplicationContext, engine, bot, character, macro):
+        self.ctx = ctx
+        self.engine = engine
+        self.bot = bot
+        self.character = character
+        self.macro = macro
+        super().__init__(
+            label=f"{macro.name}: {macro.macro}",
+            style=discord.ButtonStyle.primary,
+            custom_id=str(f"{character.id}_{macro.id}"),
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        roller = DiceRoller(self.macro.macro)
+
+        dice_string = await roller.roll_dice()
+        output_string = f"{self.character.name}:\n{self.macro.name.split(':')[0]} {self.macro.macro}\n" \
+                        f"{dice_string}"
+
+        await interaction.response.send_message(output_string)
+
+
+
 
 class MacroCog(commands.Cog):
     def __init__(self, bot):
@@ -256,8 +280,45 @@ class MacroCog(commands.Cog):
         else:
             await ctx.respond("Action Failed", ephemeral=True)
 
+    @macro.command(description="Display Macros")
+    @option("character", description="Character", autocomplete=character_select, )
+    async def show(self, ctx: discord.ApplicationContext, character: str):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        await ctx.response.defer(ephemeral=True)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
 
-    # @macro.command(description="Display Macros")
+
+
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, engine, id=guild.id)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
+        async with async_session() as session:
+            result = await session.execute(select(Macro).where(Macro.character_id == character.id))
+            macro_list = result.scalars().all()
+
+            view = discord.ui.View(timeout=None)
+            for row in macro_list:
+                await asyncio.sleep(0)
+                button = MacroButton(ctx, engine, self.bot, character, row)
+                if len(view.children) == 24:
+                    await ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
+                    view.clear_items()
+                view.add_item(button)
+            await ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
+
 
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )
