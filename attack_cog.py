@@ -12,7 +12,7 @@ import sqlalchemy as db
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_
+from sqlalchemy import or_, not_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,13 +90,9 @@ class AttackCog(commands.Cog):
             Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker))
+                char_result = await session.execute(select(Tracker.name))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await engine.dispose()
-                return character_list
+            return character
         except NoResultFound as e:
             return []
         except Exception as e:
@@ -111,8 +107,6 @@ class AttackCog(commands.Cog):
         logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        character_list = []
-
         gm_status = await gm_check(ctx, engine)
 
         try:
@@ -121,15 +115,11 @@ class AttackCog(commands.Cog):
 
             async with async_session() as session:
                 if gm_status:
-                    char_result = await session.execute(select(Tracker))
+                    char_result = await session.execute(select(Tracker.name))
                 else:
-                    char_result = await session.execute(select(Tracker).where(Tracker.user == ctx.interaction.user.id))
+                    char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await engine.dispose()
-                return character_list
+                return character
         except NoResultFound as e:
             return []
         except Exception as e:
@@ -156,16 +146,20 @@ class AttackCog(commands.Cog):
                 char = char_result.scalars().one()
             async with async_session() as session:
                 macro_result = await session.execute(
-                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                    select(Macro.name)
+                        .where(Macro.character_id == char.id)
+                        .where(not_(Macro.macro.contains(',')))
+                        .order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
-            macros = []
-            for row in macro_list:
-                await asyncio.sleep(0)
-                if not ',' in row.macro:
-                    macros.append(f"{row.name}: {row.macro}")
-
-            await engine.dispose()
-            return macros
+            return macro_list
+            # macros = []
+            # for row in macro_list:
+            #     await asyncio.sleep(0)
+            #     if not ',' in row.macro:
+            #         macros.append(f"{row.name}: {row.macro}")
+            #
+            # await engine.dispose()
+            # return macros
         except NoResultFound as e:
             return []
         except Exception as e:

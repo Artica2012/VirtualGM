@@ -62,13 +62,9 @@ class MacroCog(commands.Cog):
             Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker))
+                char_result = await session.execute(select(Tracker.name))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-            await engine.dispose()
-            return character_list
+            return character
 
         except Exception as e:
             print(f'character_select: {e}')
@@ -89,17 +85,24 @@ class MacroCog(commands.Cog):
                     Tracker.name == character
                 ))
                 char = char_result.scalars().one()
+
+            # async with async_session() as session:
+            #     macro_result = await session.execute(
+            #         select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+            #     macro_list = macro_result.scalars().all()
+
             async with async_session() as session:
                 macro_result = await session.execute(
-                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                    select(Macro.name).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
                 macro_list = macro_result.scalars().all()
-            macros = []
-            for row in macro_list:
-                await asyncio.sleep(0)
-                macros.append(f"{row.name}: {row.macro}")
+            #
+            # macros = []
+            # for row in macro_list:
+            #     await asyncio.sleep(0)
+            #     macros.append(f"{row.name}: {row.macro}")
 
-            await engine.dispose()
-            return macros
+            # await engine.dispose()
+            return macro_list
         except Exception as e:
             print(f'a_macro_select: {e}')
             report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)

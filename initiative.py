@@ -66,9 +66,9 @@ DATABASE = os.getenv('DATABASE')
 # Set up the tracker if it does not exist
 async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discord.User, channel: discord.TextChannel,
                         gm_channel: discord.TextChannel, system: str):
-    # Check to make sure bot has permissions in both channels
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
 
+    # Check to make sure bot has permissions in both channels
     if not channel.can_send() or not gm_channel.can_send():
         await ctx.respond("Setup Failed. Ensure VirtualGM has message posting permissions in both channels.",
                           ephemeral=True)
@@ -1926,13 +1926,9 @@ class InitiativeCog(commands.Cog):
             Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker))
+                char_result = await session.execute(select(Tracker.name))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await engine.dispose()
-                return character_list
+            return character
         except NoResultFound as e:
             return []
         except Exception as e:
@@ -1954,15 +1950,11 @@ class InitiativeCog(commands.Cog):
 
             async with async_session() as session:
                 if gm_status:
-                    char_result = await session.execute(select(Tracker))
+                    char_result = await session.execute(select(Tracker.name))
                 else:
-                    char_result = await session.execute(select(Tracker).where(Tracker.user == ctx.interaction.user.id))
+                    char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await engine.dispose()
-                return character_list
+            return character
         except NoResultFound as e:
             return []
         except Exception as e:
@@ -1981,13 +1973,9 @@ class InitiativeCog(commands.Cog):
             Tracker = await get_tracker(ctx, engine)
 
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.player == False))
+                char_result = await session.execute(select(Tracker.name).where(Tracker.player == False))
                 character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await engine.dispose()
-                return character_list
+            return character
         except NoResultFound as e:
             return []
         except Exception as e:
@@ -2012,14 +2000,11 @@ class InitiativeCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                con_result = await session.execute(select(Condition).where(
+                con_result = await session.execute(select(Condition.title).where(
                     Condition.character_id == char.id
                 ))
                 condition = con_result.scalars().all()
-            for cond in condition:
-                con_list.append(cond.title)
-            await engine.dispose()
-            return con_list
+            return condition
         except NoResultFound as e:
             return []
         except Exception as e:
