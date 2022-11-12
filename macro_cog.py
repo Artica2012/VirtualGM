@@ -21,6 +21,7 @@ from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
+from auto_complete import character_select, macro_select
 
 # define global variables
 
@@ -50,64 +51,6 @@ class MacroCog(commands.Cog):
     # ---------------------------------------------------
     # ---------------------------------------------------
     # Functions
-
-    # Autocomplete
-    async def character_select(self, ctx: discord.AutocompleteContext):
-        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character_list = []
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.name))
-                character = char_result.scalars().all()
-            return character
-
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    async def macro_select(self, ctx: discord.AutocompleteContext):
-        character = ctx.options['character']
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Tracker = await get_tracker(ctx, engine)
-        Macro = await get_macro(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        try:
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(
-                    Tracker.name == character
-                ))
-                char = char_result.scalars().one()
-
-            # async with async_session() as session:
-            #     macro_result = await session.execute(
-            #         select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
-            #     macro_list = macro_result.scalars().all()
-
-            async with async_session() as session:
-                macro_result = await session.execute(
-                    select(Macro.name).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
-                macro_list = macro_result.scalars().all()
-            #
-            # macros = []
-            # for row in macro_list:
-            #     await asyncio.sleep(0)
-            #     macros.append(f"{row.name}: {row.macro}")
-
-            # await engine.dispose()
-            return macro_list
-        except Exception as e:
-            print(f'a_macro_select: {e}')
-            report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)
-            await report.report()
-            return False
 
     # Database
     async def create_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro_string: str):
@@ -312,6 +255,9 @@ class MacroCog(commands.Cog):
             await ctx.respond("Macros Created Successfully", ephemeral=True)
         else:
             await ctx.respond("Action Failed", ephemeral=True)
+
+
+    # @macro.command(description="Display Macros")
 
     @commands.slash_command(name="m", description="Roll Macro")
     @option("character", description="Character", autocomplete=character_select, )

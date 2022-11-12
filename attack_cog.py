@@ -23,6 +23,7 @@ import PF2e.pf2_functions
 from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from auto_complete import character_select, character_select_gm, a_macro_select
 
 # define global variables
 
@@ -50,123 +51,10 @@ DATABASE = os.getenv('DATABASE')
 # UTILITY FUNCTIONS
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
-async def gm_check(ctx, engine):
-    # bughunt code
-    logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
-
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
-        guild = result.scalars().one()
-        if int(guild.gm) != int(ctx.interaction.user.id):
-            return False
-        else:
-            return True
-
 
 class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-        # ---------------------------------------------------
-        # ---------------------------------------------------
-        # Autocomplete Methods
-
-    # Autocomplete to give the full character list
-    async def character_select(self, ctx: discord.AutocompleteContext):
-        # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog character_select")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character_list = []
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.name))
-                character = char_result.scalars().all()
-            return character
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    # Autocomplete to return the list of character the user owns, or all if the user is the GM
-    async def character_select_gm(self, ctx: discord.AutocompleteContext):
-        # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-        gm_status = await gm_check(ctx, engine)
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                if gm_status:
-                    char_result = await session.execute(select(Tracker.name))
-                else:
-                    char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
-                character = char_result.scalars().all()
-                return character
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'character_select_gm: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    async def a_macro_select(self, ctx: discord.AutocompleteContext):
-        # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog a_macro_select")
-
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character = ctx.options['character']
-        Tracker = await get_tracker(ctx, engine)
-        Macro = await get_macro(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        try:
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(
-                    Tracker.name == character
-                ))
-                char = char_result.scalars().one()
-            async with async_session() as session:
-                macro_result = await session.execute(
-                    select(Macro.name)
-                        .where(Macro.character_id == char.id)
-                        .where(not_(Macro.macro.contains(',')))
-                        .order_by(Macro.name.asc()))
-                macro_list = macro_result.scalars().all()
-            return macro_list
-            # macros = []
-            # for row in macro_list:
-            #     await asyncio.sleep(0)
-            #     if not ',' in row.macro:
-            #         macros.append(f"{row.name}: {row.macro}")
-            #
-            # await engine.dispose()
-            # return macros
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'a_macro_select: {e}')
-            report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
-            await report.report()
-            return False
 
     async def get_attributes(self, ctx: discord.AutocompleteContext):
         # bughunt code

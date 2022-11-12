@@ -19,6 +19,7 @@ import D4e.d4e_functions
 from database_models import Global, get_condition, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from auto_complete import character_select_gm
 
 # define global variables
 
@@ -66,74 +67,21 @@ async def gm_check(ctx, engine):
 class D4eCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        self.async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
     # ---------------------------------------------------
     # ---------------------------------------------------
     # Autocomplete Methods
 
-    # Autocomplete to give the full character list
-    async def character_select(self, ctx: discord.AutocompleteContext):
-        character_list = []
-
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker))
-                character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await self.engine.dispose()
-                return character_list
-
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    # Autocomplete to return the list of character the user owns, or all if the user is the GM
-    async def character_select_gm(self, ctx: discord.AutocompleteContext):
-        character_list = []
-
-        gm_status = await gm_check(ctx, self.engine)
-
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
-
-            async with async_session() as session:
-                if gm_status:
-                    char_result = await session.execute(select(Tracker))
-                else:
-                    char_result = await session.execute(
-                        select(Tracker).where(Tracker.user == ctx.interaction.user.id))
-                character = char_result.scalars().all()
-                for char in character:
-                    await asyncio.sleep(0)
-                    character_list.append(char.name)
-                await self.engine.dispose()
-                return character_list
-
-        except Exception as e:
-            print(f'character_select_gm: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
     # Provide a list of conditions with the visible and flex tags
     async def cc_select_visible_flex(self, ctx: discord.AutocompleteContext):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         character = ctx.options['character']
 
         con_list = []
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, self.engine)
-            Condition = await get_condition(ctx, self.engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx, engine)
+            Condition = await get_condition(ctx, engine)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(
@@ -148,7 +96,7 @@ class D4eCog(commands.Cog):
                 condition = con_result.scalars().all()
             for cond in condition:
                 con_list.append(cond.title)
-            await self.engine.dispose()
+            await engine.dispose()
             return con_list
 
         except Exception as e:
@@ -159,10 +107,11 @@ class D4eCog(commands.Cog):
 
     # Returns macros that are not multi-macros
     async def a_macro_select(self, ctx: discord.AutocompleteContext):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         character = ctx.options['character']
-        Tracker = await get_tracker(ctx, self.engine)
-        Macro = await get_macro(ctx, self.engine)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine)
+        Macro = await get_macro(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
             async with async_session() as session:
@@ -198,8 +147,10 @@ class D4eCog(commands.Cog):
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('condition', description="Select Condition", autocomplete=cc_select_visible_flex)
     async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ''):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer()
-        async with self.async_session() as session:
+        async with async_session() as session:
             result = await session.execute(select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
@@ -209,7 +160,7 @@ class D4eCog(commands.Cog):
             )
             guild = result.scalars().one()
             if guild.system == "D4e":
-                output_string = await D4e.d4e_functions.save(ctx, self.engine, self.bot, character, condition, modifier)
+                output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
                 await ctx.send_followup(output_string)
             else:
                 await ctx.send_followup("No system set, command inactive.")

@@ -32,6 +32,7 @@ from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
+from auto_complete import character_select, character_select_gm,cc_select, npc_select
 
 # define global variables
 
@@ -1911,107 +1912,6 @@ class InitiativeCog(commands.Cog):
     @update_status.before_loop
     async def before_update_status(self):
         await self.bot.wait_until_ready()
-
-    # ---------------------------------------------------
-    # ---------------------------------------------------
-    # Autocomplete Methods
-
-    # Autocomplete to give the full character list
-    async def character_select(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character_list = []
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.name))
-                character = char_result.scalars().all()
-            return character
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    # Autocomplete to return the list of character the user owns, or all if the user is the GM
-    async def character_select_gm(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character_list = []
-
-        gm_status = await gm_check(ctx, engine)
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                if gm_status:
-                    char_result = await session.execute(select(Tracker.name))
-                else:
-                    char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
-                character = char_result.scalars().all()
-            return character
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'character_select_gm: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    # Autocomplete to return only non-player characters
-    async def npc_select(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character_list = []
-
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.name).where(Tracker.player == False))
-                character = char_result.scalars().all()
-            return character
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'character_select: {e}')
-            report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-            await report.report()
-            return []
-
-    async def cc_select(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character = ctx.options['character']
-
-        con_list = []
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-            Condition = await get_condition(ctx, engine)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(
-                    Tracker.name == character
-                ))
-                char = char_result.scalars().one()
-            async with async_session() as session:
-                con_result = await session.execute(select(Condition.title).where(
-                    Condition.character_id == char.id
-                ))
-                condition = con_result.scalars().all()
-            return condition
-        except NoResultFound as e:
-            return []
-        except Exception as e:
-            print(f'cc_select: {e}')
-            report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
-            await report.report()
-            return []
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
