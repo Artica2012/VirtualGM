@@ -89,15 +89,13 @@ class D4eCog(commands.Cog):
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
-                con_result = await session.execute(select(Condition)
+                con_result = await session.execute(select(Condition.title)
                                                    .where(Condition.character_id == char.id)
                                                    .where(Condition.visible == True)
                                                    .where(Condition.flex == True))
                 condition = con_result.scalars().all()
-            for cond in condition:
-                con_list.append(cond.title)
             await engine.dispose()
-            return con_list
+            return condition
 
         except Exception as e:
             print(f'cc_select: {e}')
@@ -105,37 +103,6 @@ class D4eCog(commands.Cog):
             await report.report()
             return []
 
-    # Returns macros that are not multi-macros
-    async def a_macro_select(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character = ctx.options['character']
-        Tracker = await get_tracker(ctx, engine)
-        Macro = await get_macro(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        try:
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(
-                    Tracker.name == character
-                ))
-                char = char_result.scalars().one()
-            async with async_session() as session:
-                macro_result = await session.execute(
-                    select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
-                macro_list = macro_result.scalars().all()
-            macros = []
-            for row in macro_list:
-                await asyncio.sleep(0)
-                if not ',' in row.macro:
-                    macros.append(f"{row.name}: {row.macro}")
-
-            await self.engine.dispose()
-            return macros
-        except Exception as e:
-            print(f'a_macro_select: {e}')
-            report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
-            await report.report()
-            return False
 ########################################
 ########################################
     # Slash Commands
@@ -161,9 +128,11 @@ class D4eCog(commands.Cog):
             guild = result.scalars().one()
             if guild.system == "D4e":
                 output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
+                await engine.dispose()
                 await ctx.send_followup(output_string)
             else:
                 await ctx.send_followup("No system set, command inactive.")
+                await engine.dispose()
                 return
 
 

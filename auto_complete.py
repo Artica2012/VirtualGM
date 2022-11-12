@@ -49,7 +49,7 @@ DATABASE = os.getenv('DATABASE')
 async def gm_check(ctx, engine):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
-
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global).where(
@@ -61,8 +61,10 @@ async def gm_check(ctx, engine):
         )
         guild = result.scalars().one()
         if int(guild.gm) != int(ctx.interaction.user.id):
+            await engine.dispose()
             return False
         else:
+            await engine.dispose()
             return True
 
 
@@ -77,6 +79,7 @@ async def character_select(self, ctx: discord.AutocompleteContext):
         async with async_session() as session:
             char_result = await session.execute(select(Tracker.name))
             character = char_result.scalars().all()
+        await engine.dispose()
         return character
     except NoResultFound as e:
         return []
@@ -104,7 +107,8 @@ async def character_select_gm(self, ctx: discord.AutocompleteContext):
             else:
                 char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
             character = char_result.scalars().all()
-            return character
+        await engine.dispose()
+        return character
     except NoResultFound as e:
         return []
     except Exception as e:
@@ -115,7 +119,6 @@ async def character_select_gm(self, ctx: discord.AutocompleteContext):
 
 async def npc_select(self, ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    character_list = []
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -124,6 +127,7 @@ async def npc_select(self, ctx: discord.AutocompleteContext):
         async with async_session() as session:
             char_result = await session.execute(select(Tracker.name).where(Tracker.player == False))
             character = char_result.scalars().all()
+        await engine.dispose()
         return character
     except NoResultFound as e:
         return []
@@ -148,22 +152,11 @@ async def macro_select(self, ctx: discord.AutocompleteContext):
             ))
             char = char_result.scalars().one()
 
-        # async with async_session() as session:
-        #     macro_result = await session.execute(
-        #         select(Macro).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
-        #     macro_list = macro_result.scalars().all()
-
         async with async_session() as session:
             macro_result = await session.execute(
                 select(Macro.name).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
             macro_list = macro_result.scalars().all()
-        #
-        # macros = []
-        # for row in macro_list:
-        #     await asyncio.sleep(0)
-        #     macros.append(f"{row.name}: {row.macro}")
-
-        # await engine.dispose()
+        await engine.dispose()
         return macro_list
     except Exception as e:
         print(f'a_macro_select: {e}')
@@ -195,15 +188,9 @@ async def a_macro_select(self, ctx: discord.AutocompleteContext):
                     .where(not_(Macro.macro.contains(',')))
                     .order_by(Macro.name.asc()))
             macro_list = macro_result.scalars().all()
+        await engine.dispose()
         return macro_list
-        # macros = []
-        # for row in macro_list:
-        #     await asyncio.sleep(0)
-        #     if not ',' in row.macro:
-        #         macros.append(f"{row.name}: {row.macro}")
-        #
-        # await engine.dispose()
-        # return macros
+
     except NoResultFound as e:
         return []
     except Exception as e:
@@ -232,6 +219,7 @@ async def cc_select(self, ctx: discord.AutocompleteContext):
                 Condition.character_id == char.id
             ))
             condition = con_result.scalars().all()
+        await engine.dispose()
         return condition
     except NoResultFound as e:
         return []
