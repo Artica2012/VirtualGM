@@ -77,7 +77,7 @@ async def character_select(self, ctx: discord.AutocompleteContext):
         Tracker = await get_tracker(ctx, engine)
 
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker.name))
+            char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
             character = char_result.scalars().all()
         await engine.dispose()
         return character
@@ -103,9 +103,10 @@ async def character_select_gm(self, ctx: discord.AutocompleteContext):
 
         async with async_session() as session:
             if gm_status:
-                char_result = await session.execute(select(Tracker.name))
+                char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
             else:
-                char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id))
+                char_result = await session.execute(select(Tracker.name).where(Tracker.user == ctx.interaction.user.id)
+                                                    .order_by(Tracker.name.asc()))
             character = char_result.scalars().all()
         await engine.dispose()
         return character
@@ -125,7 +126,8 @@ async def npc_select(self, ctx: discord.AutocompleteContext):
         Tracker = await get_tracker(ctx, engine)
 
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker.name).where(Tracker.player == False))
+            char_result = await session.execute(select(Tracker.name).where(Tracker.player == False)
+                                                .order_by(Tracker.name.asc()))
             character = char_result.scalars().all()
         await engine.dispose()
         return character
@@ -216,8 +218,8 @@ async def cc_select(self, ctx: discord.AutocompleteContext):
             char = char_result.scalars().one()
         async with async_session() as session:
             con_result = await session.execute(select(Condition.title).where(
-                Condition.character_id == char.id
-            ))
+                Condition.character_id == char.id)
+            .order_by(Condition.title.asc()))
             condition = con_result.scalars().all()
         await engine.dispose()
         return condition
