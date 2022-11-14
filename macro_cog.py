@@ -306,7 +306,8 @@ class MacroCog(commands.Cog):
             character = result.scalars().one()
 
         async with async_session() as session:
-            result = await session.execute(select(Macro).where(Macro.character_id == character.id))
+            result = await session.execute(select(Macro).where(Macro.character_id == character.id)
+                                           .order_by(Macro.name.asc()))
             macro_list = result.scalars().all()
 
             view = discord.ui.View(timeout=None)
