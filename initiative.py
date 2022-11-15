@@ -1378,7 +1378,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             output_string += string
 
             for con_row in condition_list:
-                logging.info(f"BGT5: con_row in row[cc] {con_row.title} {con_row.id}")
+                logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
                 # print(con_row)
                 await asyncio.sleep(0)
                 if gm or not con_row.counter:
@@ -1401,7 +1401,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
                     else:
                         con_string = f"       {con_row.title}\n"
 
-                elif con_row.counter == True and sel_bool and row['player']:
+                elif con_row.counter == True and sel_bool and row.player:
                     con_string = f"       {con_row.title}: {con_row.number}\n"
                 else:
                     con_string = ''
