@@ -1002,33 +1002,29 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 for con_row in con_list:
                     logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
                     await asyncio.sleep(0)
-                    if con_row.auto_increment and not con_row.time:  # If auto-increment and NOT time
-                        if con_row.number >= 2:  # if number >= 2
-                            con_row.number -= 1
-                        else:
-                            async with async_session() as session:
-                                del_result = await session.execute(
-                                    select(Condition).where(Condition.id == con_row.id))
-                                del_row = del_result.scalars().one()
-                                await session.delete(del_row)
-                                await session.commit()
+                    async with async_session() as session:
+                        result = await session.execute(select(Condition).where(Condition.id == con_row.id))
+                        selected_condition = result.scalars().one()
+                        if selected_condition.auto_increment and not selected_condition.time:  # If auto-increment and NOT time
+                            if selected_condition.number >= 2:  # if number >= 2
+                                selected_condition.number -= 1
+                            else:
+                                await session.delete(selected_condition)
+                                # await session.commit()
                                 logging.info(f"BAI11: Condition Deleted")
-                            await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
-                    elif con_row.time:  # If time is true
-                        logging.info(f"BAI12: time checked")
-                        time_stamp = datetime.datetime.fromtimestamp(con_row.number)  # The number is a timestamp
-                        # for the expiration, not a round count
-                        current_time = await get_time(ctx, engine, bot)
-                        time_left = time_stamp - current_time
-                        if time_left.total_seconds() <= 0:
-                            async with async_session() as session:
-                                del_result = await session.execute(
-                                    select(Condition).where(Condition.id == con_row.id))
-                                del_row = del_result.scalars().one()
-                                await session.delete(del_row)
-                                await session.commit()
+                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                            await session.commit()
+                        elif selected_condition.time:  # If time is true
+                            logging.info(f"BAI12: time checked")
+                            time_stamp = datetime.datetime.fromtimestamp(selected_condition.number)  # The number is a timestamp
+                            # for the expiration, not a round count
+                            current_time = await get_time(ctx, engine, bot)
+                            time_left = time_stamp - current_time
+                            if time_left.total_seconds() <= 0:
+                                await session.delete(selected_condition)
                                 logging.info(f"BAI13: Condition deleted ")
-                            await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                            await session.commit()
 
             except Exception as e:
                 logging.error(f'block_advance_initiative: {e}')
