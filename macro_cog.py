@@ -211,7 +211,17 @@ class MacroCog(commands.Cog):
             result = await session.execute(select(Macro)
                                            .where(Macro.character_id == char.id)
                                            .where(Macro.name == macro_name.split(':')[0]))
+        try:
             macro_data = result.scalars().one()
+        except Exception as e:
+            async with async_session() as session:
+                result = await session.execute(select(Macro)
+                                               .where(Macro.character_id == char.id)
+                                               .where(Macro.name == macro_name.split(':')[0]))
+                macro_list = result.scalars().all()
+            # print(macro_list)
+            macro_data = macro_list[0]
+            await ctx.channel.send("Error: Duplicate Macros with the Same Name. Rolling one macro, but please ensure that you do not have duplicate names.")
 
         if modifier != '':
             if modifier[0] == '+' or modifier[0] == '-':

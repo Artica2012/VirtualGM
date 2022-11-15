@@ -298,7 +298,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                                                    .where(Condition.visible == False)
                                                    .where(Condition.title == 'AC'))
                     armor_class = result.scalars().one()
-                    print(armor_class.number)
+                    # print(armor_class.number)
                     ac = armor_class.number
             except Exception as e:
                 ac = ""
