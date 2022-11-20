@@ -68,7 +68,7 @@ async def gm_check(ctx, engine):
             return True
 
 
-async def character_select(self, ctx: discord.AutocompleteContext):
+async def character_select(ctx: discord.AutocompleteContext):
     logging.info(f"{datetime.datetime.now()} - character_select")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
@@ -84,13 +84,11 @@ async def character_select(self, ctx: discord.AutocompleteContext):
     except NoResultFound as e:
         return []
     except Exception as e:
-        print(f'character_select: {e}')
-        report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-        await report.report()
+        logging.warning(f'character_select: {e}')
         return []
 
 
-async def character_select_gm(self, ctx: discord.AutocompleteContext):
+async def character_select_gm(ctx: discord.AutocompleteContext):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -113,12 +111,10 @@ async def character_select_gm(self, ctx: discord.AutocompleteContext):
     except NoResultFound as e:
         return []
     except Exception as e:
-        print(f'character_select_gm: {e}')
-        report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-        await report.report()
+        logging.warning(f'character_select_gm: {e}')
         return []
 
-async def npc_select(self, ctx: discord.AutocompleteContext):
+async def npc_select(ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     try:
@@ -134,13 +130,11 @@ async def npc_select(self, ctx: discord.AutocompleteContext):
     except NoResultFound as e:
         return []
     except Exception as e:
-        print(f'character_select: {e}')
-        report = ErrorReport(ctx, self.character_select.__name__, e, self.bot)
-        await report.report()
+        logging.warning(f'npc_select: {e}')
         return []
 
 
-async def macro_select(self, ctx: discord.AutocompleteContext):
+async def macro_select(ctx: discord.AutocompleteContext):
     character = ctx.options['character']
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     Tracker = await get_tracker(ctx, engine)
@@ -161,13 +155,11 @@ async def macro_select(self, ctx: discord.AutocompleteContext):
         await engine.dispose()
         return macro_list
     except Exception as e:
-        print(f'a_macro_select: {e}')
-        report = ErrorReport(ctx, self.macro_select.__name__, e, self.bot)
-        await report.report()
-        return False
+        logging.warning(f'a_macro_select: {e}')
+        return []
 
 
-async def a_macro_select(self, ctx: discord.AutocompleteContext):
+async def a_macro_select(ctx: discord.AutocompleteContext):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog a_macro_select")
 
@@ -196,16 +188,13 @@ async def a_macro_select(self, ctx: discord.AutocompleteContext):
     except NoResultFound as e:
         return []
     except Exception as e:
-        print(f'a_macro_select: {e}')
-        report = ErrorReport(ctx, self.a_macro_select.__name__, e, self.bot)
-        await report.report()
-        return False
+        logging.warning(f'a_macro_select: {e}')
+        return []
 
-async def cc_select(self, ctx: discord.AutocompleteContext):
+async def cc_select(ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     character = ctx.options['character']
 
-    con_list = []
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine)
@@ -226,7 +215,5 @@ async def cc_select(self, ctx: discord.AutocompleteContext):
     except NoResultFound as e:
         return []
     except Exception as e:
-        print(f'cc_select: {e}')
-        report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
-        await report.report()
+        logging.warning(f'cc_select: {e}')
         return []
