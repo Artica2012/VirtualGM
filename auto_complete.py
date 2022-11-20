@@ -67,7 +67,8 @@ async def gm_check(ctx, engine):
             await engine.dispose()
             return True
 
-
+# Autocompletes
+# returns a list of all characters
 async def character_select(ctx: discord.AutocompleteContext):
     logging.info(f"{datetime.datetime.now()} - character_select")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -87,7 +88,7 @@ async def character_select(ctx: discord.AutocompleteContext):
         logging.warning(f'character_select: {e}')
         return []
 
-
+# Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")

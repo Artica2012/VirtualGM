@@ -128,13 +128,8 @@ class MacroCog(commands.Cog):
                 char = result.scalars().one()
 
             async with async_session() as session:
-                result = await session.execute(select(Macro).where(Macro.character_id == char.id))
-                name_check = result.scalars().all()
-                macro_list = []
-                for row in name_check:
-                    await asyncio.sleep(0)
-                    macro_list.append(row.name)
-
+                result = await session.execute(select(Macro.name).where(Macro.character_id == char.id))
+                macro_list = result.scalars().all()
 
             # Process data
             processed_data = data.split(';')
