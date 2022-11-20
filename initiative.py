@@ -738,8 +738,11 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     await asyncio.sleep(0)
                     if char.init == 0:
                         await asyncio.sleep(0)
-                        roll = await dice.plain_roll(char.init_string)
-                        await set_init(ctx, bot, char.name, roll[1], engine)
+                        try:
+                            roll = await dice.plain_roll(char.init_string)
+                            await set_init(ctx, bot, char.name, roll[1], engine)
+                        except ValueError as e:
+                            await set_init(ctx, bot, char.name, 0, engine)
             else:
                 init_pos = int(guild.initiative)
 
