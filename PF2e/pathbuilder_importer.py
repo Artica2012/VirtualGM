@@ -289,11 +289,18 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
             async with session.begin():
                 for key in macro_keys:
                     await asyncio.sleep(0)
-                    new_macro = Macro(
-                        character_id=character.id,
-                        name=key.title(),
-                        macro=f"1d20+{macro[key]}"
-                    )
+                    if macro[key] >= 0:
+                        new_macro = Macro(
+                            character_id=character.id,
+                            name=key.title(),
+                            macro=f"1d20+{macro[key]}"
+                        )
+                    else:
+                        new_macro = Macro(
+                            character_id=character.id,
+                            name=key.title(),
+                            macro=f"1d20{macro[key]}"
+                        )
                     session.add(new_macro)
             await session.commit()
         await engine.dispose()

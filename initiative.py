@@ -202,7 +202,7 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int,
                         player_bool: bool, init: str):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-
+    dice = DiceRoller('')
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -218,7 +218,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
             initiative = 0
             if guild.initiative != None:
-                dice = DiceRoller('')
                 try:
                     # print(f"Init: {init}")
                     initiative = int(init)
@@ -230,6 +229,13 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                             initiative = 0
                     except:
                         initiative = 0
+
+        try:
+            roll_die = await dice.plain_roll(init)
+        except ValueError as e:
+            await ctx.channel.send("Invalid Initiative String, Please check and try again.")
+            return False
+
         if guild.system == 'PF2':
             pf2Modal = PF2AddCharacterModal(name=name, hp=hp, init=init, initiative=initiative,
                                             player=player_bool, ctx=ctx,
