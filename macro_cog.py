@@ -85,9 +85,19 @@ class MacroCog(commands.Cog):
             Tracker = await get_tracker(ctx, engine)
             Macro = await get_macro(ctx, engine)
 
+
+
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
                 char = result.scalars().one()
+
+            async with async_session() as session:
+                result = await session.execute(select(Macro).where(Macro.character_id == char.id)
+                                               .where(Macro.name == macro_name))
+                name_check = result.scalars().all()
+                if len(name_check) >0:
+                    await ctx.channel.send("Duplicate Macro Name. Please use a different name or delete the old macro first")
+                    return False
 
             async with session.begin():
                 new_macro = Macro(
@@ -117,22 +127,37 @@ class MacroCog(commands.Cog):
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
                 char = result.scalars().one()
 
+            async with async_session() as session:
+                result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                name_check = result.scalars().all()
+                macro_list = []
+                for row in name_check:
+                    await asyncio.sleep(0)
+                    macro_list.append(row.name)
+
+
             # Process data
             processed_data = data.split(';')
             # print(processed_data)
-
+            error_list = []
             async with session.begin():
                 for row in processed_data[:-1]:
                     await asyncio.sleep(0)
                     macro_split = row.split(',')
-                    new_macro = Macro(
-                        character_id=char.id,
-                        name=macro_split[0].strip(),
-                        macro=macro_split[1].strip()
-                    )
-                    session.add(new_macro)
+                    if macro_split[0].strip() in macro_list:
+                        error_list.append(macro_split[0].strip())
+                    else:
+                        macro_list.append(macro_split[0].strip())
+                        new_macro = Macro(
+                            character_id=char.id,
+                            name=macro_split[0].strip(),
+                            macro=macro_split[1].strip()
+                        )
+                        session.add(new_macro)
             await session.commit()
             await engine.dispose()
+            if len(error_list) >0:
+                await ctx.channel.send(f"Unable to add following macros due to duplicate names:\n{error_list}")
             return True
         except Exception as e:
             print(f'mass_add: {e}')
