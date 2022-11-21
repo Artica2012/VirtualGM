@@ -8,7 +8,7 @@ from datetime import datetime
 import discord
 import asyncio
 import sqlalchemy as db
-from discord import option
+from discord import option, Interaction
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -18,6 +18,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import database_models
 import initiative
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
     get_condition_table, get_macro_table, get_macro, get_condition, get_tracker
@@ -374,3 +375,139 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         logging.info(f"block_get_tracker: {e}")
         report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
         await report.report()
+
+async def edit_stats(ctx, engine, bot, name:str):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # try:
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )
+        )
+        )
+        guild = result.scalars().one()
+
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).where(Tracker.name == name))
+        character =  result.scalars().one()
+
+    Condition = await get_condition(ctx, engine, id=guild.id)
+    async with async_session() as session:
+        result = await session.execute(select(Condition).where(Condition.character_id == character.id))
+        conditions = result.scalars().all()
+    condition_dict = {}
+    for con in conditions:
+        await asyncio.sleep(0)
+        condition_dict[con.title] = con.number
+    editModal = PF2EditCharacterModal(character=character, cons = condition_dict, ctx=ctx, engine=engine, bot=bot, title=character.name)
+    await ctx.send_modal(editModal)
+
+    return True
+
+    # except Exception as e:
+    #     return  False
+
+
+class PF2EditCharacterModal(discord.ui.Modal):
+    def __init__(self, character, cons:dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+        self.character = character,
+        self.cons = cons,
+        self.name = character.name
+        self.player = ctx.user.id
+        self.ctx = ctx
+        self.engine = engine
+        self.bot = bot
+        super().__init__(
+            discord.ui.InputText(
+                label="AC",
+                placeholder="Armor Class",
+                value= cons['AC']
+            ),
+            discord.ui.InputText(
+                label="Fort",
+                placeholder="Fortitude",
+                value=cons['Fort']
+            ),
+            discord.ui.InputText(
+                label="Reflex",
+                placeholder="Reflex",
+                value=cons['Reflex']
+            ),
+            discord.ui.InputText(
+                label="Will",
+                placeholder="Will",
+                value=cons['Will']
+            ),
+            discord.ui.InputText(
+                label="DC",
+                placeholder="DC",
+                value=cons['DC']
+            ), *args, **kwargs
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == self.ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+                )
+            )
+            )
+            guild = result.scalars().one()
+
+        embed = discord.Embed(
+            title="Character Updated (PF2)",
+            fields=[
+                discord.EmbedField(
+                    name="Name: ", value=self.name, inline=True
+                ),
+                discord.EmbedField(
+                    name="AC: ", value=self.children[0].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Fort: ", value=self.children[1].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Reflex: ", value=self.children[2].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Will: ", value=self.children[3].value, inline=True
+                ),
+                discord.EmbedField(
+                    name="Class/Spell DC: ", value=self.children[4].value, inline=True
+                ),
+            ],
+            color=discord.Color.dark_gold(),
+        )
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+
+        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+
+        for item in self.children:
+
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id==character.id)
+                                               .where(Condition.title == item.label))
+                condition = result.scalars().one()
+                condition.number = int(item.value)
+                await session.commit()
+
+        await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
+        # print('Tracker Updated')
+        await interaction.response.send_message(embeds=[embed])
+
+    # async def on_error(self, error: Exception, interaction: Interaction) -> None:
+    #     print(error)
+
+

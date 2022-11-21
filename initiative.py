@@ -293,8 +293,15 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                          player: discord.User):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
-        Tracker = await get_tracker(ctx, engine)
+
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id)))
+            guild = result.scalars().one()
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
@@ -308,6 +315,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 character.user = player.id
 
             await session.commit()
+
         await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
         await engine.dispose()
         return True
