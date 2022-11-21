@@ -57,6 +57,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
 
     # Interpeting the JSON
     stats['level'] = pb['build']['level']
+    print(stats['level'])
     # print(stats['level'])
 
     # Modifiers
