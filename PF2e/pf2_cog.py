@@ -68,17 +68,17 @@ class PF2Cog(commands.Cog):
         else:
             await ctx.send_followup('Failed')
 
-    @pf2.command(description="Edit PC or NPC Stats")
-    @option('name', description="Character Name", input_type=str, autocomplete=auto_complete.character_select_gm, )
-    async def edit(self, ctx: discord.ApplicationContext, name: str,):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        response = False
-
-        response = await edit_stats(ctx, engine, self.bot, name)
-        if not response:
-            await ctx.respond(f"Error Editing Character", ephemeral=True)
-        else:
-            await update_pinned_tracker(ctx, engine, self.bot)
+    # @pf2.command(description="Edit PC or NPC Stats")
+    # @option('name', description="Character Name", input_type=str, autocomplete=auto_complete.character_select_gm, )
+    # async def edit(self, ctx: discord.ApplicationContext, name: str,):
+    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #     response = False
+    #
+    #     response = await edit_stats(ctx, engine, self.bot, name)
+    #     if not response:
+    #         await ctx.respond(f"Error Editing Character", ephemeral=True)
+    #     else:
+    #         await update_pinned_tracker(ctx, engine, self.bot)
 
 
 def setup(bot):

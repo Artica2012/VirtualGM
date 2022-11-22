@@ -315,10 +315,24 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 character.user = player.id
 
             await session.commit()
-
-        await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
-        await engine.dispose()
-        return True
+        if guild.system == 'PF2':
+            response = await PF2e.pf2_functions.edit_stats(ctx, engine, bot, name)
+            if response:
+                await update_pinned_tracker(ctx, engine, bot)
+                return True
+            else:
+                return False
+        elif guild.system == 'D4e':
+            response = await D4e.d4e_functions.edit_stats(ctx, engine, bot, name)
+            if response:
+                await update_pinned_tracker(ctx, engine, bot)
+                return True
+            else:
+                return False
+        else:
+            await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+            await engine.dispose()
+            return True
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -349,6 +363,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, engine, id=guild.id)
 
         # Load up the old character
         async with async_session() as session:
@@ -410,6 +425,23 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 )
                 session.add(new_condition)
             await session.commit()
+
+        async with async_session() as session:
+            macro_result = await session.execute(select(Macro).where(
+                Macro.character_id == character.id))
+            macros = macro_result.scalars().all()
+
+        async with session.begin():
+            for mac in macros:
+                await asyncio.sleep(0)
+                new_macro = Macro(
+                    character_id=new_character.id,
+                    name=mac.name,
+                    macro=mac.macro
+                )
+                session.add(new_macro)
+            await session.commit()
+
 
         await engine.dispose()
         return True

@@ -378,37 +378,37 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
 
 async def edit_stats(ctx, engine, bot, name:str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    # try:
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
+            )
+            guild = result.scalars().one()
 
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    async with async_session() as session:
-        result = await session.execute(select(Tracker).where(Tracker.name == name))
-        character =  result.scalars().one()
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character =  result.scalars().one()
 
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    async with async_session() as session:
-        result = await session.execute(select(Condition).where(Condition.character_id == character.id))
-        conditions = result.scalars().all()
-    condition_dict = {}
-    for con in conditions:
-        await asyncio.sleep(0)
-        condition_dict[con.title] = con.number
-    editModal = PF2EditCharacterModal(character=character, cons = condition_dict, ctx=ctx, engine=engine, bot=bot, title=character.name)
-    await ctx.send_modal(editModal)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == character.id))
+            conditions = result.scalars().all()
+        condition_dict = {}
+        for con in conditions:
+            await asyncio.sleep(0)
+            condition_dict[con.title] = con.number
+        editModal = PF2EditCharacterModal(character=character, cons = condition_dict, ctx=ctx, engine=engine, bot=bot, title=character.name)
+        await ctx.send_modal(editModal)
 
-    return True
+        return True
 
-    # except Exception as e:
-    #     return  False
+    except Exception as e:
+        return  False
 
 
 class PF2EditCharacterModal(discord.ui.Modal):
@@ -507,7 +507,7 @@ class PF2EditCharacterModal(discord.ui.Modal):
         # print('Tracker Updated')
         await interaction.response.send_message(embeds=[embed])
 
-    # async def on_error(self, error: Exception, interaction: Interaction) -> None:
-    #     print(error)
+    async def on_error(self, error: Exception, interaction: Interaction) -> None:
+        print(error)
 
 

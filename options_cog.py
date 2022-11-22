@@ -183,17 +183,17 @@ class OptionsCog(commands.Cog):
                     )
                 )
                 )
-                guild = result.scalars().one()
-                if guild.system == None:
+                updated_guild = result.scalars().one()
+                if updated_guild.system == None:
                     system_str = 'Generic'
-                elif guild.system == 'PF2':
+                elif updated_guild.system == 'PF2':
                     system_str = 'Pathfinder Second Edition'
-                elif guild.system == "D4e":
+                elif updated_guild.system == "D4e":
                     system_str = 'D&D 4th Edition'
                 else:
                     system_str = 'Generic'
 
-                embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
+                embed = await self.display_options(timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str)
                 await ctx.send_followup(embed=embed)
             await engine.dispose()
         except NoResultFound as e:
