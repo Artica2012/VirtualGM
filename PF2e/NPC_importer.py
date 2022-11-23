@@ -50,7 +50,7 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 
-async def npc_lookup(ctx:discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str):
+async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(NPC)
@@ -65,11 +65,12 @@ async def npc_lookup(ctx:discord.ApplicationContext, engine, lookup_engine, bot,
         button = PF2NpcSelectButton(ctx, engine, bot, item, name)
         view.add_item(button)
     await ctx.send_followup(view=view)
+    # print(ctx.message.id)
     return True
 
 
 class PF2NpcSelectButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, engine, bot:discord.Bot, data, name):
+    def __init__(self, ctx: discord.ApplicationContext, engine, bot: discord.Bot, data, name):
         self.ctx = ctx
         self.engine = engine
         self.bot = bot
@@ -82,139 +83,142 @@ class PF2NpcSelectButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         # Add the character
+        print(interaction.message.id)
+        message = interaction.message
+        await message.delete()
 
-
-        dice = DiceRoller('')
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == self.ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
+        try:
+            dice = DiceRoller('')
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == self.ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == self.ctx.interaction.channel_id
+                    )
                 )
-            )
-            )
-            guild = result.scalars().one()
+                )
+                guild = result.scalars().one()
 
-            initiative_num = 0
-            if guild.initiative != None:
-                try:
-                    # print(f"Init: {init}")
-                    initiative_num = int(self.data.init)
-                except:
+                initiative_num = 0
+                if guild.initiative != None:
                     try:
-                        roll = await dice.plain_roll(self.data.init)
-                        initiative_num = roll[1]
-                        if type(initiative_num) != int:
-                            initiative_num = 0
+                        # print(f"Init: {init}")
+                        initiative_num = int(self.data.init)
                     except:
-                        initiative_num = 0
+                        try:
+                            roll = await dice.plain_roll(self.data.init)
+                            initiative_num = roll[1]
+                            if type(initiative_num) != int:
+                                initiative_num = 0
+                        except:
+                            initiative_num = 0
 
-        async with async_session() as session:
-            Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+            async with async_session() as session:
+                Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+                async with session.begin():
+                    tracker = Tracker(
+                        name=self.name,
+                        init_string=self.data.init,
+                        init=initiative_num,
+                        player=False,
+                        user=self.ctx.user.id,
+                        current_hp=self.data.hp,
+                        max_hp=self.data.hp,
+                        temp_hp=0
+                    )
+                    session.add(tracker)
+                await session.commit()
+
+            Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+                character = char_result.scalars().one()
+
             async with session.begin():
-                tracker = Tracker(
-                    name=self.name,
-                    init_string=self.data.init,
-                    init=initiative_num,
-                    player=False,
-                    user=self.ctx.user.id,
-                    current_hp=self.data.hp,
-                    max_hp=self.data.hp,
-                    temp_hp=0
-                )
-                session.add(tracker)
-            await session.commit()
-
-        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
-            character = char_result.scalars().one()
-
-        async with session.begin():
-            session.add(Condition(
-                character_id=character.id,
-                title='AC',
-                number=self.data.ac,
-                counter=True,
-                visible=False))
-            session.add(Condition(
-                character_id=character.id,
-                title='Fort',
-                number=self.data.fort,
-                counter=True,
-                visible=False
-            ))
-            session.add(Condition(
-                character_id=character.id,
-                title='Reflex',
-                number=self.data.reflex,
-                counter=True,
-                visible=False
-            ))
-            session.add(Condition(
-                character_id=character.id,
-                title='Will',
-                number=self.data.will,
-                counter=True,
-                visible=False
-            ))
-            session.add(Condition(
-                character_id=character.id,
-                title='DC',
-                number=self.data.dc,
-                counter=True,
-                visible=False
-            ))
-            await session.commit()
-
-        # Parse Macros
-        attack_list = self.data.macros.split('::')
-        Macro = await get_macro(self.ctx,self.engine, id=guild.id)
-        async with session.begin():
-            for attack in attack_list[:-1]:
-                await asyncio.sleep(0)
-                #split the attack
-                print(attack)
-                split_string = attack.split(';')
-                print(split_string)
-                base_name = split_string[0].strip()
-                attack_string =split_string[1].strip()
-                damage_string = split_string[2].strip()
-                attack_macro = Macro(
+                session.add(Condition(
                     character_id=character.id,
-                    name=f"{base_name} - Attack",
-                    macro=attack_string
-                    )
-                session.add(attack_macro)
-                print('Attack Added')
-                damage_macro = Macro(
+                    title='AC',
+                    number=self.data.ac,
+                    counter=True,
+                    visible=False))
+                session.add(Condition(
                     character_id=character.id,
-                    name=f"{base_name} - Damage",
-                    macro=damage_string
+                    title='Fort',
+                    number=self.data.fort,
+                    counter=True,
+                    visible=False
+                ))
+                session.add(Condition(
+                    character_id=character.id,
+                    title='Reflex',
+                    number=self.data.reflex,
+                    counter=True,
+                    visible=False
+                ))
+                session.add(Condition(
+                    character_id=character.id,
+                    title='Will',
+                    number=self.data.will,
+                    counter=True,
+                    visible=False
+                ))
+                session.add(Condition(
+                    character_id=character.id,
+                    title='DC',
+                    number=self.data.dc,
+                    counter=True,
+                    visible=False
+                ))
+                await session.commit()
+
+            # Parse Macros
+            attack_list = self.data.macros.split('::')
+            Macro = await get_macro(self.ctx, self.engine, id=guild.id)
+            async with session.begin():
+                for attack in attack_list[:-1]:
+                    await asyncio.sleep(0)
+                    # split the attack
+                    print(attack)
+                    split_string = attack.split(';')
+                    print(split_string)
+                    base_name = split_string[0].strip()
+                    attack_string = split_string[1].strip()
+                    damage_string = split_string[2].strip()
+                    attack_macro = Macro(
+                        character_id=character.id,
+                        name=f"{base_name} - Attack",
+                        macro=attack_string
                     )
-                session.add(damage_macro)
-                print("Damage Added")
-            await session.commit()
-        print("Committed")
+                    session.add(attack_macro)
+                    print('Attack Added')
+                    damage_macro = Macro(
+                        character_id=character.id,
+                        name=f"{base_name} - Damage",
+                        macro=damage_string
+                    )
+                    session.add(damage_macro)
+                    print("Damage Added")
+                await session.commit()
+            print("Committed")
 
+            async with session.begin():
+                if guild.initiative != None:
+                    if not await initiative.init_integrity_check(self.ctx, guild.initiative, guild.saved_order,
+                                                                 self.engine):
+                        # print(f"integrity check was false: init_pos: {guild.initiative}")
+                        for pos, row in enumerate(await initiative.get_init_list(self.ctx, self.engine)):
+                            await asyncio.sleep(0)
+                            if row.name == guild.saved_order:
+                                guild.initiative = pos
+                                # print(f"integrity checked init_pos: {guild.initiative}")
+                                await session.commit()
 
-        async with session.begin():
-            if guild.initiative != None:
-                if not await initiative.init_integrity_check(self.ctx, guild.initiative, guild.saved_order, self.engine):
-                    # print(f"integrity check was false: init_pos: {guild.initiative}")
-                    for pos, row in enumerate(await initiative.get_init_list(self.ctx, self.engine)):
-                        await asyncio.sleep(0)
-                        if row.name == guild.saved_order:
-                            guild.initiative = pos
-                            # print(f"integrity checked init_pos: {guild.initiative}")
-                            await session.commit()
+            await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
+            # view=View()
+            # await interaction.message.edit("Complete", view=view)
+            output_string = f"{self.data.name} added as {self.name}"
 
-        await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
-
-        self.disabled=True
-        # await message.delete()
-        output_string=  f"{self.data.name} added as {self.name}"
-
-        await interaction.response.send_message(output_string)
-        # await self.ctx.channel.send(output_string)
+            await self.ctx.channel.send(output_string)
+        except Exception as e:
+            await self.ctx.channel.send("Action Failed, please try again", delete_after=60)
