@@ -75,9 +75,7 @@ class PF2Cog(commands.Cog):
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup)
-        if response:
-            pass
-        else:
+        if not response:
             await ctx.send_followup('Failed')
 
 

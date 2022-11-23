@@ -69,7 +69,7 @@ async def npc_lookup(ctx:discord.ApplicationContext, engine, lookup_engine, bot,
 
 
 class PF2NpcSelectButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, engine, bot, data, name):
+    def __init__(self, ctx: discord.ApplicationContext, engine, bot:discord.Bot, data, name):
         self.ctx = ctx
         self.engine = engine
         self.bot = bot
@@ -212,7 +212,9 @@ class PF2NpcSelectButton(discord.ui.Button):
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
 
-        message =  interaction.delete_original_response()
+        self.disabled=True
         # await message.delete()
-        await interaction.response.send_message(f"{self.data.name} added as {self.name}", delete_after=60)
+        output_string=  f"{self.data.name} added as {self.name}"
+
+        await interaction.response.send_message(output_string)
         # await self.ctx.channel.send(output_string)
