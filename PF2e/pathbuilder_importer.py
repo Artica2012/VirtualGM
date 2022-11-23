@@ -183,6 +183,8 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
             macro['thievery'] = stats['dex_mod'] + pb['build']['proficiencies']['thievery'] + stats['level']
     except Exception as e:
         return False
+
+
     # Write the data
 
     try:
