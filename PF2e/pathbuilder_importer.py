@@ -55,128 +55,134 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
             pb = await resp.json(content_type='text/html')
             # print(pb)
 
-    # Interpeting the JSON
-    stats['level'] = pb['build']['level']
-    print(stats['level'])
-    # print(stats['level'])
+    if pb['success'] == False:
+        await ctx.channel.send("Unsuccessful Pathbuilder Export. Please try to export again.", delete_after=90)
+        return False
+    try:
 
-    # Modifiers
-    stats['str_mod'] = floor((pb['build']['abilities']['str'] - 10) / 2)
-    # print(stats['str_mod'])
-    stats['dex_mod'] = floor((pb['build']['abilities']['dex'] - 10) / 2)
-    stats['con_mod'] = floor((pb['build']['abilities']['con'] - 10) / 2)
-    stats['int_mod'] = floor((pb['build']['abilities']['int'] - 10) / 2)
-    stats['wis_mod'] = floor((pb['build']['abilities']['wis'] - 10) / 2)
-    stats['cha_mod'] = floor((pb['build']['abilities']['cha'] - 10) / 2)
+        # Interpeting the JSON
+        stats['level'] = pb['build']['level']
+        print(stats['level'])
+        # print(stats['level'])
 
-    # AC
-    stats['ac'] = pb['build']['acTotal']['acTotal']
-    stats['hp'] = pb['build']['attributes']['ancestryhp'] + pb['build']['attributes']['classhp'] + \
-                  pb['build']['attributes']['bonushp'] + (stats['level'] * (
-                pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel']))
+        # Modifiers
+        stats['str_mod'] = floor((pb['build']['abilities']['str'] - 10) / 2)
+        # print(stats['str_mod'])
+        stats['dex_mod'] = floor((pb['build']['abilities']['dex'] - 10) / 2)
+        stats['con_mod'] = floor((pb['build']['abilities']['con'] - 10) / 2)
+        stats['int_mod'] = floor((pb['build']['abilities']['int'] - 10) / 2)
+        stats['wis_mod'] = floor((pb['build']['abilities']['wis'] - 10) / 2)
+        stats['cha_mod'] = floor((pb['build']['abilities']['cha'] - 10) / 2)
 
-    # Initiative
-    stats['initiative'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
-    stats['init_string'] = f"1d20+{stats['initiative']}"
+        # AC
+        stats['ac'] = pb['build']['acTotal']['acTotal']
+        stats['hp'] = pb['build']['attributes']['ancestryhp'] + pb['build']['attributes']['classhp'] + \
+                      pb['build']['attributes']['bonushp'] + (stats['level'] * (
+                    pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel']))
 
-    # Saves
-    stats['fort'] = stats['con_mod'] + pb['build']['proficiencies']['fortitude'] + stats['level']
-    stats['will'] = stats['wis_mod'] + pb['build']['proficiencies']['will'] + stats['level']
-    stats['reflex'] = stats['dex_mod'] + pb['build']['proficiencies']['reflex'] + stats['level']
+        # Initiative
+        stats['initiative'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
+        stats['init_string'] = f"1d20+{stats['initiative']}"
 
-    # DC
-    dc_list = []
-    dc_list.append(stats[f"{pb['build']['keyability']}_mod"] + pb['build']['proficiencies']['classDC'] + stats['level'])
-    dc_list.append(pb['build']['proficiencies']['castingArcane'] + stats['int_mod'] + stats['level'])
-    dc_list.append(pb['build']['proficiencies']['castingDivine'] + stats['wis_mod'] + stats['level'])
-    dc_list.append(pb['build']['proficiencies']['castingPrimal'] + stats['wis_mod'] + stats['level'])
-    dc_list.append(pb['build']['proficiencies']['castingOccult'] + stats['cha_mod'] + stats['level'])
-    stats['dc'] = max(dc_list)
+        # Saves
+        stats['fort'] = stats['con_mod'] + pb['build']['proficiencies']['fortitude'] + stats['level']
+        stats['will'] = stats['wis_mod'] + pb['build']['proficiencies']['will'] + stats['level']
+        stats['reflex'] = stats['dex_mod'] + pb['build']['proficiencies']['reflex'] + stats['level']
 
-    # Stats
+        # DC
+        dc_list = []
+        dc_list.append(stats[f"{pb['build']['keyability']}_mod"] + pb['build']['proficiencies']['classDC'] + stats['level'])
+        dc_list.append(pb['build']['proficiencies']['castingArcane'] + stats['int_mod'] + stats['level'])
+        dc_list.append(pb['build']['proficiencies']['castingDivine'] + stats['wis_mod'] + stats['level'])
+        dc_list.append(pb['build']['proficiencies']['castingPrimal'] + stats['wis_mod'] + stats['level'])
+        dc_list.append(pb['build']['proficiencies']['castingOccult'] + stats['cha_mod'] + stats['level'])
+        stats['dc'] = 10 + max(dc_list)
 
-    macro['perception'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
+        # Stats
 
-    if pb['build']['proficiencies']['athletics'] == 0:
-        macro['athletics'] = stats['str_mod']
-    else:
-        macro['athletics'] = stats['str_mod'] + pb['build']['proficiencies']['athletics'] + stats['level']
+        macro['perception'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
 
-    if pb['build']['proficiencies']['acrobatics'] == 0:
-        macro['acrobatics'] = stats['dex_mod']
-    else:
-        macro['acrobatics'] = stats['dex_mod'] + pb['build']['proficiencies']['acrobatics'] + stats['level']
+        if pb['build']['proficiencies']['athletics'] == 0:
+            macro['athletics'] = stats['str_mod']
+        else:
+            macro['athletics'] = stats['str_mod'] + pb['build']['proficiencies']['athletics'] + stats['level']
 
-    if pb['build']['proficiencies']['arcana'] == 0:
-        macro['arcana'] = stats['int_mod']
-    else:
-        macro['arcana'] = stats['int_mod'] + pb['build']['proficiencies']['arcana'] + stats['level']
+        if pb['build']['proficiencies']['acrobatics'] == 0:
+            macro['acrobatics'] = stats['dex_mod']
+        else:
+            macro['acrobatics'] = stats['dex_mod'] + pb['build']['proficiencies']['acrobatics'] + stats['level']
 
-    if pb['build']['proficiencies']['crafting'] == 0:
-        macro['crafting'] = stats['int_mod']
-    else:
-        macro['crafting'] = stats['int_mod'] + pb['build']['proficiencies']['crafting'] + stats['level']
+        if pb['build']['proficiencies']['arcana'] == 0:
+            macro['arcana'] = stats['int_mod']
+        else:
+            macro['arcana'] = stats['int_mod'] + pb['build']['proficiencies']['arcana'] + stats['level']
 
-    if pb['build']['proficiencies']['deception'] == 0:
-        macro['deception'] = stats['cha_mod']
-    else:
-        macro['deception'] = stats['cha_mod'] + pb['build']['proficiencies']['deception'] + stats['level']
+        if pb['build']['proficiencies']['crafting'] == 0:
+            macro['crafting'] = stats['int_mod']
+        else:
+            macro['crafting'] = stats['int_mod'] + pb['build']['proficiencies']['crafting'] + stats['level']
 
-    if pb['build']['proficiencies']['diplomacy'] == 0:
-        macro['diplomacy'] = stats['cha_mod']
-    else:
-        macro['diplomacy'] = stats['cha_mod'] + pb['build']['proficiencies']['diplomacy'] + stats['level']
+        if pb['build']['proficiencies']['deception'] == 0:
+            macro['deception'] = stats['cha_mod']
+        else:
+            macro['deception'] = stats['cha_mod'] + pb['build']['proficiencies']['deception'] + stats['level']
 
-    if pb['build']['proficiencies']['intimidation'] == 0:
-        macro['intimidation'] = stats['cha_mod']
-    else:
-        macro['intimidation'] = stats['cha_mod'] + pb['build']['proficiencies']['intimidation'] + stats['level']
+        if pb['build']['proficiencies']['diplomacy'] == 0:
+            macro['diplomacy'] = stats['cha_mod']
+        else:
+            macro['diplomacy'] = stats['cha_mod'] + pb['build']['proficiencies']['diplomacy'] + stats['level']
 
-    if pb['build']['proficiencies']['medicine'] == 0:
-        macro['medicine'] = stats['wis_mod']
-    else:
-        macro['medicine'] = stats['wis_mod'] + pb['build']['proficiencies']['medicine'] + stats['level']
+        if pb['build']['proficiencies']['intimidation'] == 0:
+            macro['intimidation'] = stats['cha_mod']
+        else:
+            macro['intimidation'] = stats['cha_mod'] + pb['build']['proficiencies']['intimidation'] + stats['level']
 
-    if pb['build']['proficiencies']['nature'] == 0:
-        macro['nature'] = stats['wis_mod']
-    else:
-        macro['nature'] = stats['wis_mod'] + pb['build']['proficiencies']['nature'] + stats['level']
+        if pb['build']['proficiencies']['medicine'] == 0:
+            macro['medicine'] = stats['wis_mod']
+        else:
+            macro['medicine'] = stats['wis_mod'] + pb['build']['proficiencies']['medicine'] + stats['level']
 
-    if pb['build']['proficiencies']['occultism'] == 0:
-        macro['occultism'] = stats['int_mod']
-    else:
-        macro['occultism'] = stats['int_mod'] + pb['build']['proficiencies']['occultism'] + stats['level']
+        if pb['build']['proficiencies']['nature'] == 0:
+            macro['nature'] = stats['wis_mod']
+        else:
+            macro['nature'] = stats['wis_mod'] + pb['build']['proficiencies']['nature'] + stats['level']
 
-    if pb['build']['proficiencies']['performance'] == 0:
-        macro['performance'] = stats['cha_mod']
-    else:
-        macro['performance'] = stats['cha_mod'] + pb['build']['proficiencies']['performance'] + stats['level']
+        if pb['build']['proficiencies']['occultism'] == 0:
+            macro['occultism'] = stats['int_mod']
+        else:
+            macro['occultism'] = stats['int_mod'] + pb['build']['proficiencies']['occultism'] + stats['level']
 
-    if pb['build']['proficiencies']['religion'] == 0:
-        macro['religion'] = stats['wis_mod']
-    else:
-        macro['religion'] = stats['wis_mod'] + pb['build']['proficiencies']['religion'] + stats['level']
+        if pb['build']['proficiencies']['performance'] == 0:
+            macro['performance'] = stats['cha_mod']
+        else:
+            macro['performance'] = stats['cha_mod'] + pb['build']['proficiencies']['performance'] + stats['level']
 
-    if pb['build']['proficiencies']['society'] == 0:
-        macro['society'] = stats['int_mod']
-    else:
-        macro['society'] = stats['int_mod'] + pb['build']['proficiencies']['society'] + stats['level']
+        if pb['build']['proficiencies']['religion'] == 0:
+            macro['religion'] = stats['wis_mod']
+        else:
+            macro['religion'] = stats['wis_mod'] + pb['build']['proficiencies']['religion'] + stats['level']
 
-    if pb['build']['proficiencies']['stealth'] == 0:
-        macro['stealth'] = stats['dex_mod']
-    else:
-        macro['stealth'] = stats['dex_mod'] + pb['build']['proficiencies']['stealth'] + stats['level']
+        if pb['build']['proficiencies']['society'] == 0:
+            macro['society'] = stats['int_mod']
+        else:
+            macro['society'] = stats['int_mod'] + pb['build']['proficiencies']['society'] + stats['level']
 
-    if pb['build']['proficiencies']['survival'] == 0:
-        macro['survival'] = stats['wis_mod']
-    else:
-        macro['survival'] = stats['wis_mod'] + pb['build']['proficiencies']['survival'] + stats['level']
+        if pb['build']['proficiencies']['stealth'] == 0:
+            macro['stealth'] = stats['dex_mod']
+        else:
+            macro['stealth'] = stats['dex_mod'] + pb['build']['proficiencies']['stealth'] + stats['level']
 
-    if pb['build']['proficiencies']['thievery'] == 0:
-        macro['thievery'] = stats['dex_mod']
-    else:
-        macro['thievery'] = stats['dex_mod'] + pb['build']['proficiencies']['thievery'] + stats['level']
+        if pb['build']['proficiencies']['survival'] == 0:
+            macro['survival'] = stats['wis_mod']
+        else:
+            macro['survival'] = stats['wis_mod'] + pb['build']['proficiencies']['survival'] + stats['level']
 
+        if pb['build']['proficiencies']['thievery'] == 0:
+            macro['thievery'] = stats['dex_mod']
+        else:
+            macro['thievery'] = stats['dex_mod'] + pb['build']['proficiencies']['thievery'] + stats['level']
+    except Exception as e:
+        return False
     # Write the data
 
     try:
