@@ -418,7 +418,7 @@ class PF2EditCharacterModal(discord.ui.Modal):
         self.name = character.name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = engine
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         super().__init__(
             discord.ui.InputText(
@@ -504,8 +504,9 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 await session.commit()
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
-        # print('Tracker Updated')
-        await interaction.response.send_message(embeds=[embed])
+        print('Tracker Updated')
+        await self.ctx.channel.send(embeds=[embed])
+        await interaction.response.send_message('Updated.')
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)

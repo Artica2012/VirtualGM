@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 
 import initiative
 from database_models import Global, get_condition, get_tracker
+from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
@@ -334,7 +335,8 @@ async def d4e_condition_buttons():
 class D4eConditionButton(discord.ui.Button):
     def __init__(self, condition, ctx: discord.ApplicationContext, engine, bot, character):
         self.ctx = ctx
-        self.engine = engine
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
         self.bot = bot
         self.character = character
         self.condition = condition

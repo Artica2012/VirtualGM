@@ -49,23 +49,26 @@ DATABASE = os.getenv('DATABASE')
 async def gm_check(ctx, engine):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
+    try:
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )
             )
-        )
-        )
-        guild = result.scalars().one()
-        if int(guild.gm) != int(ctx.interaction.user.id):
-            await engine.dispose()
-            return False
-        else:
-            await engine.dispose()
-            return True
+            )
+            guild = result.scalars().one()
+            if int(guild.gm) != int(ctx.interaction.user.id):
+                await engine.dispose()
+                return False
+            else:
+                await engine.dispose()
+                return True
+    except Exception as e:
+        return False
 
 # Autocompletes
 # returns a list of all characters
