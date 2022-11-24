@@ -60,7 +60,7 @@ async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot
     if len(lookup_list) == 0:
         await ctx.send_followup("Nothing Found, Try Again.")
         return False
-    for item in lookup_list:
+    for item in lookup_list[:20:]:
         await asyncio.sleep(0)
         button = PF2NpcSelectButton(ctx, engine, bot, item, name)
         view.add_item(button)
