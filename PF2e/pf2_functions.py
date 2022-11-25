@@ -504,9 +504,9 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 await session.commit()
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
-        print('Tracker Updated')
-        await self.ctx.channel.send(embeds=[embed])
-        await interaction.response.send_message('Updated.')
+        # print('Tracker Updated')
+        self.stop()
+        await interaction.response.send_message(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
