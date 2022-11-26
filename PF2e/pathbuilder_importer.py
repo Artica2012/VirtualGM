@@ -77,8 +77,8 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
         # AC
         stats['ac'] = pb['build']['acTotal']['acTotal']
         stats['hp'] = pb['build']['attributes']['ancestryhp'] + pb['build']['attributes']['classhp'] + \
-                      pb['build']['attributes']['bonushp'] + (stats['level'] * (
-                    pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel']))
+                      pb['build']['attributes']['bonushp'] + stats['con_mod'] + ((stats['level'] - 1) * (
+                    pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel'] + stats['con_mod']))
 
         # Initiative
         stats['initiative'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
