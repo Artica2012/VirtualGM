@@ -508,76 +508,11 @@ class PF2EditCharacterModal(discord.ui.Modal):
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
 
-        await self.ctx.channel.send(embeds=[embed])
+        await self.ctx.channel.send(embed= await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
         self.stop()
 
 
-async def pf2_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.Bot, name: str):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )))
-        guild = result.scalars().one()
-
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-
-    async with async_session() as session:
-        result = await session.execute(select(Tracker).where(Tracker.name == name))
-        character = result.scalars().one()
-    async with async_session() as session:
-        result = await session.execute(select(Condition).where(Condition.character_id == character.id))
-        condition_list = result.scalars().all()
-
-    user = bot.get_user(character.user).name
-    if character.player:
-        status = "PC:"
-    else:
-        status = 'NPC:'
-    con_dict= {}
-    for item in condition_list:
-        con_dict[item.title] = item.number
-
-    embed = discord.Embed(
-        title=f"{name}",
-        fields=[
-            discord.EmbedField(
-                name="Name: ", value=character.name, inline=False
-            ),
-            discord.EmbedField(
-                name=status, value=user, inline=False
-            ),
-            discord.EmbedField(
-                name="HP: ", value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)", inline=False
-            ),
-            discord.EmbedField(
-                name="Initiative: ", value=character.init_string,
-                inline=False
-            ),
-            discord.EmbedField(
-                name="AC: ", value=con_dict['AC'], inline=True
-            ),
-            discord.EmbedField(
-                name="Fort: ", value=con_dict['Fort'], inline=True
-            ),
-            discord.EmbedField(
-                name="Reflex: ", value=con_dict['Reflex'], inline=True
-            ),
-            discord.EmbedField(
-                name="Will: ", value=con_dict['Will'], inline=True
-            ),
-            discord.EmbedField(
-                name="Class/Spell DC: ", value=con_dict['DC'], inline=True
-            ),
-        ],
-        color=discord.Color.dark_gold(),
-    )
-
-    return embed
 

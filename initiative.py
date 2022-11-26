@@ -24,6 +24,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
+import auto_complete
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -442,7 +443,6 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 session.add(new_macro)
             await session.commit()
 
-
         await engine.dispose()
         return True
 
@@ -526,6 +526,72 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         report = ErrorReport(ctx, delete_character.__name__, e, bot)
         await report.report()
         return False
+
+
+async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.Bot, name: str):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
+            guild = result.scalars().one()
+
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character = result.scalars().one()
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == character.id).order_by(Condition.title.asc()))
+            condition_list = result.scalars().all()
+
+        user = bot.get_user(character.user).name
+        if character.player:
+            status = "PC:"
+        else:
+            status = 'NPC:'
+        con_dict = {}
+
+        for item in condition_list:
+            con_dict[item.title] = item.number
+
+        embed = discord.Embed(
+            title=f"{name}",
+            fields=[
+                discord.EmbedField(
+                    name="Name: ", value=character.name, inline=False
+                ),
+                discord.EmbedField(
+                    name=status, value=user, inline=False
+                ),
+                discord.EmbedField(
+                    name="HP: ", value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)",
+                    inline=False
+                ),
+                discord.EmbedField(
+                    name="Initiative: ", value=character.init_string,
+                    inline=False
+                ),
+            ],
+            color=discord.Color.dark_gold(),
+        )
+
+        for item in condition_list:
+            await asyncio.sleep(0)
+            if not item.visible:
+                embed.fields.append(
+                    discord.EmbedField(
+                        name=item.title, value=item.number, inline=True))
+
+        return embed
+    except Exception as e:
+        logging.info(f"get character sheet: {e}")
+        report = ErrorReport(ctx, get_char_sheet.__name__, e, bot)
+        await report.report()
 
 
 async def calculate_hp(chp, maxhp):
@@ -741,7 +807,6 @@ async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, c
         return False
 
 
-
 # Upgraded Advance Initiative Function to work with block initiative options
 async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
@@ -867,7 +932,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                             await session.commit()
                         elif selected_condition.time:  # If time is true
                             logging.info(f"BAI12: time checked")
-                            time_stamp = datetime.datetime.fromtimestamp(selected_condition.number)  # The number is a timestamp
+                            time_stamp = datetime.datetime.fromtimestamp(
+                                selected_condition.number)  # The number is a timestamp
                             # for the expiration, not a round count
                             current_time = await get_time(ctx, engine, bot)
                             time_left = time_stamp - current_time
@@ -996,11 +1062,9 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         return output_string
 
 
-
-
 # Builds the tracker string. Updated to work with block initiative
 async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine,
-                                            bot, gm: bool = False):
+                                    bot, gm: bool = False):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Get the datetime
     datetime_string = ''
@@ -1262,7 +1326,6 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(guild.gm_tracker)
             await gm_message.edit(gm_tracker_display_string)
-
 
         await engine.dispose()
     except NoResultFound as e:
@@ -2008,8 +2071,6 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.respond(f"Error Adding Character", ephemeral=True)
 
-
-
     @char.command(description="Edit PC on NPC")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
     @option('hp', description='Total HP', input_type=int, required=False)
@@ -2018,12 +2079,15 @@ class InitiativeCog(commands.Cog):
                    player: discord.User = None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
+        if await auto_complete.hard_lock(ctx, name):
+            response = await edit_character(ctx, engine, self.bot, name, hp, initiative, player)
+            if not response:
+                await ctx.respond(f"Error Editing Character", ephemeral=True)
 
-        response = await edit_character(ctx, engine, self.bot, name, hp, initiative, player)
-        if not response:
-            await ctx.respond(f"Error Editing Character", ephemeral=True)
+            await update_pinned_tracker(ctx, engine, self.bot)
+        else:
+            await ctx.respond("You do not have the appropriate permissions to edit this character.")
 
-        await update_pinned_tracker(ctx, engine, self.bot)
 
     @char.command(description="Duplicate Character")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
@@ -2046,38 +2110,53 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer(ephemeral=True)
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id
+        if await auto_complete.hard_lock(ctx, name):
+            try:
+                async with async_session() as session:
+                    result = await session.execute(select(Global).where(
+                        or_(
+                            Global.tracker_channel == ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == ctx.interaction.channel_id
+                        )
                     )
-                )
-                )
-                guild = result.scalars().one()
+                    )
+                    guild = result.scalars().one()
 
-            if name == guild.saved_order:
-                await ctx.send_followup(
-                    f"Please wait until {name} is not the active character in initiative before "
-                    f"deleting it.", ephemeral=True)
-            else:
-                result = await delete_character(ctx, name, engine, self.bot)
-                if result:
-                    await ctx.send_followup(f'{name} deleted', ephemeral=True)
-                    await update_pinned_tracker(ctx, engine, self.bot)
+                if name == guild.saved_order:
+                    await ctx.send_followup(
+                        f"Please wait until {name} is not the active character in initiative before "
+                        f"deleting it.", ephemeral=True)
                 else:
-                    await ctx.send_followup('Delete Operation Failed', ephemeral=True)
-            await engine.dispose()
-        except NoResultFound as e:
-            await ctx.respond(
-                error_not_initialized,
-                ephemeral=True)
-            return False
-        except IndexError as e:
-            await ctx.respond("Ensure that you have added characters to the initiative list.")
-        except Exception as e:
-            await ctx.respond("Failed")
+                    result = await delete_character(ctx, name, engine, self.bot)
+                    if result:
+                        await ctx.send_followup(f'{name} deleted', ephemeral=True)
+                        await update_pinned_tracker(ctx, engine, self.bot)
+                    else:
+                        await ctx.send_followup('Delete Operation Failed', ephemeral=True)
+                await engine.dispose()
+            except NoResultFound as e:
+                await ctx.respond(
+                    error_not_initialized,
+                    ephemeral=True)
+                return False
+            except IndexError as e:
+                await ctx.respond("Ensure that you have added characters to the initiative list.")
+            except Exception as e:
+                await ctx.respond("Failed")
+        else:
+            await ctx.respond("You do not have the appropriate permissions to delete this character.")
+
+
+    @char.command(description="Display Character Sheet")
+    @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
+    async def sheet(self, ctx: discord.ApplicationContext, name: str):
+        await ctx.response.defer(ephemeral=True)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        if await auto_complete.hard_lock(ctx, name):
+            embed = await get_char_sheet(ctx, engine, self.bot, name)
+            await ctx.send_followup(embed=embed)
+        else:
+            ctx.send_followup("You do not have the appropriate permissions to view this character.")
 
     @i.command(description="Manage Initiative",
                # guild_ids=[GUILD]
