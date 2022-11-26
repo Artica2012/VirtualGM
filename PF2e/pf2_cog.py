@@ -20,14 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import auto_complete
 from database_models import Global, Base, TrackerTable, ConditionTable, MacroTable, get_tracker_table, \
-    get_condition_table, get_macro_table
+    get_condition_table, get_macro_table, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from PF2e.pathbuilder_importer import pathbuilder_import
 from PF2e.NPC_importer import npc_lookup
-from PF2e.pf2_functions import edit_stats
+from PF2e.pf2_functions import edit_stats, pf2_char_sheet
 from initiative import update_pinned_tracker
 
 # define global variables
@@ -90,6 +90,27 @@ class PF2Cog(commands.Cog):
     #         await ctx.respond(f"Error Editing Character", ephemeral=True)
     #     else:
     #         await update_pinned_tracker(ctx, engine, self.bot)
+
+    @pf2.command(description="Display Character Sheet")
+    @option('name', description="Character Name", input_type=str, autocomplete=auto_complete.character_select_gm, )
+    async def show_char_sheet(self, ctx:discord.ApplicationContext, name:str):
+        await ctx.response.defer(ephemeral=True)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+        Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker.user).where(Tracker.name == name))
+            user = result.scalars().one()
+            print(user)
+            print(ctx.user.id)
+
+
+        if await auto_complete.gm_check(ctx, engine) or ctx.user.id == user:
+            embed = await pf2_char_sheet(ctx, engine, self.bot, name)
+            await ctx.send_followup(embed=embed)
+        else:
+            ctx.send_followup("You do not have the appropriate permissions to view this character.")
 
 
 def setup(bot):

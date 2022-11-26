@@ -450,6 +450,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        self.stop()
+        await interaction.response.send_message(f'{self.name} Updated')
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(
@@ -504,7 +506,7 @@ class D4eEditCharacterModal(discord.ui.Modal):
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
-        await interaction.response.send_message(embeds=[embed])
+        await self.ctx.channel.send(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)

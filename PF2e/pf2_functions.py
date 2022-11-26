@@ -304,7 +304,6 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
             except Exception as e:
                 ac = ""
 
-
             await asyncio.sleep(0)
             sel_bool = False
             selector = ''
@@ -376,7 +375,8 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
         await report.report()
 
-async def edit_stats(ctx, engine, bot, name:str):
+
+async def edit_stats(ctx, engine, bot, name: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
@@ -392,7 +392,7 @@ async def edit_stats(ctx, engine, bot, name:str):
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character =  result.scalars().one()
+            character = result.scalars().one()
 
         Condition = await get_condition(ctx, engine, id=guild.id)
         async with async_session() as session:
@@ -402,17 +402,18 @@ async def edit_stats(ctx, engine, bot, name:str):
         for con in conditions:
             await asyncio.sleep(0)
             condition_dict[con.title] = con.number
-        editModal = PF2EditCharacterModal(character=character, cons = condition_dict, ctx=ctx, engine=engine, bot=bot, title=character.name)
+        editModal = PF2EditCharacterModal(character=character, cons=condition_dict, ctx=ctx, engine=engine, bot=bot,
+                                          title=character.name)
         await ctx.send_modal(editModal)
 
         return True
 
     except Exception as e:
-        return  False
+        return False
 
 
 class PF2EditCharacterModal(discord.ui.Modal):
-    def __init__(self, character, cons:dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+    def __init__(self, character, cons: dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
         self.character = character,
         self.cons = cons,
         self.name = character.name
@@ -424,7 +425,7 @@ class PF2EditCharacterModal(discord.ui.Modal):
             discord.ui.InputText(
                 label="AC",
                 placeholder="Armor Class",
-                value= cons['AC']
+                value=cons['AC']
             ),
             discord.ui.InputText(
                 label="Fort",
@@ -449,6 +450,8 @@ class PF2EditCharacterModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        self.stop()
+        await interaction.response.send_message(f'{self.name} Updated')
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(
@@ -494,10 +497,9 @@ class PF2EditCharacterModal(discord.ui.Modal):
             character = char_result.scalars().one()
 
         for item in self.children:
-
             async with async_session() as session:
                 result = await session.execute(select(Condition)
-                                               .where(Condition.character_id==character.id)
+                                               .where(Condition.character_id == character.id)
                                                .where(Condition.title == item.label))
                 condition = result.scalars().one()
                 condition.number = int(item.value)
@@ -505,10 +507,77 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
-        self.stop()
-        await interaction.response.send_message(embeds=[embed])
+
+        await self.ctx.channel.send(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
+        self.stop()
 
+
+async def pf2_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.Bot, name: str):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(
+            or_(
+                Global.tracker_channel == ctx.interaction.channel_id,
+                Global.gm_tracker_channel == ctx.interaction.channel_id
+            )))
+        guild = result.scalars().one()
+
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).where(Tracker.name == name))
+        character = result.scalars().one()
+    async with async_session() as session:
+        result = await session.execute(select(Condition).where(Condition.character_id == character.id))
+        condition_list = result.scalars().all()
+
+    user = bot.get_user(character.user).name
+    if character.player:
+        status = "PC:"
+    else:
+        status = 'NPC:'
+    con_dict= {}
+    for item in condition_list:
+        con_dict[item.title] = item.number
+
+    embed = discord.Embed(
+        title=f"{name}",
+        fields=[
+            discord.EmbedField(
+                name="Name: ", value=character.name, inline=False
+            ),
+            discord.EmbedField(
+                name=status, value=user, inline=False
+            ),
+            discord.EmbedField(
+                name="HP: ", value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)", inline=False
+            ),
+            discord.EmbedField(
+                name="Initiative: ", value=character.init_string,
+                inline=False
+            ),
+            discord.EmbedField(
+                name="AC: ", value=con_dict['AC'], inline=True
+            ),
+            discord.EmbedField(
+                name="Fort: ", value=con_dict['Fort'], inline=True
+            ),
+            discord.EmbedField(
+                name="Reflex: ", value=con_dict['Reflex'], inline=True
+            ),
+            discord.EmbedField(
+                name="Will: ", value=con_dict['Will'], inline=True
+            ),
+            discord.EmbedField(
+                name="Class/Spell DC: ", value=con_dict['DC'], inline=True
+            ),
+        ],
+        color=discord.Color.dark_gold(),
+    )
+
+    return embed
 
