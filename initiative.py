@@ -25,6 +25,7 @@ from sqlalchemy.sql.ddl import DropTable
 import D4e.d4e_functions
 import PF2e.pf2_functions
 import auto_complete
+import time_keeping_functions
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -579,6 +580,16 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
             ],
             color=discord.Color.dark_gold(),
         )
+        condition_embed = discord.Embed(
+            title=f"Conditions",
+            fields=[],
+            color=discord.Color.dark_teal(),
+        )
+        counter_embed = discord.Embed(
+            title=f"Counters",
+            fields=[],
+            color=discord.Color.dark_magenta(),
+        )
 
         for item in condition_list:
             await asyncio.sleep(0)
@@ -586,8 +597,31 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
                 embed.fields.append(
                     discord.EmbedField(
                         name=item.title, value=item.number, inline=True))
+            elif item.visible and not item.time:
 
-        return embed
+                if not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title, value=item.number
+                        )
+                    )
+                elif item.counter:
+                    counter_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title, value=item.number
+                        )
+                    )
+            elif item.visible and item.time and not item.counter:
+                condition_embed.fields.append(
+                    discord.EmbedField(
+                        name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
+                    )
+                )
+
+
+
+
+        return [embed, counter_embed, condition_embed]
     except Exception as e:
         logging.info(f"get character sheet: {e}")
         report = ErrorReport(ctx, get_char_sheet.__name__, e, bot)
@@ -2154,7 +2188,7 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await auto_complete.hard_lock(ctx, name):
             embed = await get_char_sheet(ctx, engine, self.bot, name)
-            await ctx.send_followup(embed=embed)
+            await ctx.send_followup(embeds=embed)
         else:
             ctx.send_followup("You do not have the appropriate permissions to view this character.")
 

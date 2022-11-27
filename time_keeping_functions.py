@@ -208,3 +208,18 @@ async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int
         report = ErrorReport(ctx, "advance_time", e, bot)
         await report.report()
         return False
+
+async def time_left(ctx:discord.ApplicationContext, engine, bot, con_time):
+    time_stamp = datetime.datetime.fromtimestamp(con_time)
+    current_time = await get_time(ctx, engine, bot)
+    time_left = time_stamp - current_time
+    days_left = time_left.days
+    processed_minutes_left = divmod(time_left.seconds, 60)[0]
+    processed_seconds_left = divmod(time_left.seconds, 60)[1]
+    if processed_seconds_left < 10:
+        processed_seconds_left = f"0{processed_seconds_left}"
+    if days_left != 0:
+        con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}"
+    else:
+        con_string = f"{processed_minutes_left}:{processed_seconds_left}"
+    return con_string

@@ -506,7 +506,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
 
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
-        await self.ctx.channel.send(embeds=[embed])
+        await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
+        self.stop()
