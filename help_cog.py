@@ -78,7 +78,7 @@ class HelpCog(commands.Cog):
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'char add', 'char edit', 'char copy', 'manage', 'next', 'init', 'hp', 'cc new', 'cc_edit', 'cc_show'
+        'char add', 'char edit', 'char copy', 'char delete', 'char sheet', 'manage', 'next', 'init', 'hp', 'cc new', 'cc_edit'
     ])
     async def initiative(self, ctx: discord.ApplicationContext, command: str):
         if command == 'char add':
@@ -96,6 +96,16 @@ class HelpCog(commands.Cog):
         elif command == 'char copy':
             await ctx.respond("```Copies a character or NPC including any system specific stats. Does not copy and "
                               "conditions or counters. Will roll a new initiative if initiative is active.```")
+        elif command == "char delete":
+            await ctx.respond("``` Delete an  NPC"
+                              "- Deletes an NPC. Locked to the GM and the owner of the NPC"
+                              "  ```"
+                              )
+        elif command == "char sheet":
+            await ctx.respond("``` Show the character sheet"
+                              "- Shows a simplified character sheet for the character, including any system specific stats, conditions and counters"
+                              "  ```"
+                              )
         elif command == 'manage':
             await ctx.respond("```"
                               "manage - Mange Initiative (GM Restricted)\n"
@@ -147,12 +157,12 @@ class HelpCog(commands.Cog):
                               "which will overwrite the previous counter/condition\n "
                               "  - delete - Deletes the indicated condition or counter"
                               "```", ephemeral=True)
-        elif command == '/cc show':
-            await ctx.respond("```"
-                              "cc show - Show Custom Counters\n"
-                              "- Displays a popup visible only to the user which displays the custom counters for the "
-                              "selected character. Only the GM can see the custom counters of NPCs.\n "
-                              "```", ephemeral=True)
+        # elif command == '/cc show':
+        #     await ctx.respond("```"
+        #                       "cc show - Show Custom Counters\n"
+        #                       "- Displays a popup visible only to the user which displays the custom counters for the "
+        #                       "selected character. Only the GM can see the custom counters of NPCs.\n "
+        #                       "```", ephemeral=True)
         else:
             await ctx.respond('Invalid choice', ephemeral=True)
 
@@ -160,7 +170,7 @@ class HelpCog(commands.Cog):
                   # guild_ids=[GUILD]
                   )
     @option('command', choices=[
-        'm', 'create', 'remove', 'remove_all', "bulk_create"])
+        'm', 'create', 'show', 'remove', 'remove_all', "bulk_create"])
     async def macro(self, ctx: discord.ApplicationContext, command: str):
         if command == 'm':
             await ctx.respond(
@@ -183,6 +193,11 @@ class HelpCog(commands.Cog):
         elif command == "remove":
             await ctx.respond("```Remove Macro\n"
                               "- Select the character and the macro, and this will delete it"
+                              "```", ephemeral=True
+                              )
+        elif command == "show":
+            await ctx.respond("```Show Macros\n"
+                              "- Will display all macros for a character (including any over the 25 item limit in the autocomplete box). You can roll macros by selecting them from the list."
                               "```", ephemeral=True
                               )
         elif command == 'remove_all':
@@ -250,6 +265,7 @@ class HelpCog(commands.Cog):
             await ctx.respond(
                 "```Pathfinder Second Edition\n"
                 " - /pf2 pb_import - Imports character data from the Pathbuilder 2e app or https://pathbuilder2e.com/\n"
+                " - /pf2 add_npc - Allows the searching of all enemies and NPCs in the official published works, with the ability to add the NPC directly into the tracker\n"
                 " - Attacks and saves are enabled via **/a attack** and **/a save**`` "
                 , ephemeral=True
             )

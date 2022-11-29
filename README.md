@@ -37,7 +37,7 @@ https://discord.gg/CeF4yeAekQ
   - _transfer gm_ - Transfers the GM permissions to another user
   - _reset trackers_ - Will post and pin new copies of the trackers. Run this if the old tracker is deleted or lost for some reason.
 - **/admin options** - View and toggle additional modules
-  - _View Modules_ - Displays the current availible modules and if they are enabled for this table
+  - _View Modules_ - Displays the current available modules and if they are enabled for this table
   - _Timekeeper_ - Toggles the Timekeeper Module (See below for details)
     - Optional second input to set the number of seconds elapse per round. Default is 6 (D&D/Pathfinder)
   - _Block Initiative_ - This will toggle block initiative when the next initiative is started or advanced.
@@ -49,6 +49,8 @@ https://discord.gg/CeF4yeAekQ
  - **/char edit** - Edit a PC or NPC
    - Edit the max hp and/or initiative string of a character you control
  - **/char copy** - Copies a character or NPC including any system specific stats. Does not copy and conditions or counters. Will roll a new initiative if initiative is active.
+ - **/char delete** - Deletes an NPC. Locked to the GM and the owner of the NPC
+ - **/char sheet** - Shows a simplified character sheet for the character, including any system specific stats, conditions and counters
  - **/i manage** - Mange Initiative (GM Restricted)
    - _start_ - Starts Initiative
    - _stop_ - Stops Initiative
@@ -73,9 +75,6 @@ https://discord.gg/CeF4yeAekQ
  - **/cc edit** - Edit or Delete Counters or Conditions
    - _edit_ - Inputs the character's name, the name of the condition and the value, which will overwrite the previous counter/condition
    - _delete_ - Deletes the indicated condition or counter
- - **/cc show** - Show Custom Counters
-   - Displays a popup visible only to the user which displays the custom counters for the selected character. 
-   - Only the GM can see the custom counters of NPCs.
  
 ### Macro Commands
 - **/m** - Roll Macro 
@@ -84,6 +83,7 @@ https://discord.gg/CeF4yeAekQ
 - **/macro create** - Create a Macro
   - Select a character which you have control over and input the name of the macro and the string to roll (XdY+Z format).
   - Note: The bot will not validate the roll string at the time of creation, so if the syntax of the roll is invalid, the bot will still except the macro, although errors will be given when you attempt to use it.
+- **/macro show** - Will display all macros for a character (including any over the 25 item limit in the autocomplete box). You can roll macros by selecting them from the list.
 - **/macro remove** - Remove a Macro
   - Select the character and the macro, and this will delete it
 - **/macro remove_all** - Deletes all macros owned by a given character
@@ -108,8 +108,9 @@ https://discord.gg/CeF4yeAekQ
 
 ### Systems
 #### Pathfinder Second Edition
- - /pf2 pb_import - Imports character data from the Pathbuilder 2e app or https://pathbuilder2e.com/
+ - **/pf2 pb_import** - Imports character data from the Pathbuilder 2e app or https://pathbuilder2e.com/
  - Attacks and saves are enabled via **/a attack** and **/a save**
+ - **/pf2 add_npc** - Allows the searching of all enemies and NPCs in the official published works, with the ability to add the NPC directly into the tracker
 
 #### Dungeons and Dragons 4th Edition
  - Attacks are enabled via **/a attack**
