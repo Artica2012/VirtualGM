@@ -45,7 +45,8 @@ GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
-async def hard_lock(ctx: discord.ApplicationContext, name:str):
+
+async def hard_lock(ctx: discord.ApplicationContext, name: str):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     Tracker = await get_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -63,7 +64,6 @@ async def hard_lock(ctx: discord.ApplicationContext, name:str):
     except Exception as e:
         logging.error("hard_lock")
         return False
-
 
 
 async def gm_check(ctx, engine):
@@ -90,6 +90,7 @@ async def gm_check(ctx, engine):
     except Exception as e:
         return False
 
+
 # Autocompletes
 # returns a list of all characters
 async def character_select(ctx: discord.AutocompleteContext):
@@ -110,6 +111,7 @@ async def character_select(ctx: discord.AutocompleteContext):
     except Exception as e:
         logging.warning(f'character_select: {e}')
         return []
+
 
 # Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
@@ -137,6 +139,7 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
     except Exception as e:
         logging.warning(f'character_select_gm: {e}')
         return []
+
 
 async def npc_select(ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -215,6 +218,7 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
         logging.warning(f'a_macro_select: {e}')
         return []
 
+
 async def cc_select(ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     character = ctx.options['character']
@@ -226,13 +230,13 @@ async def cc_select(ctx: discord.AutocompleteContext):
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(
-                Tracker.name == character
-            ))
+                Tracker.name == character))
             char = char_result.scalars().one()
         async with async_session() as session:
-            con_result = await session.execute(select(Condition.title).where(
-                Condition.character_id == char.id)
-            .order_by(Condition.title.asc()))
+            con_result = await session.execute(select(Condition.title)
+                                               .where(Condition.character_id == char.id)
+                                               .where(Condition.visible == True)
+                                               .order_by(Condition.title.asc()))
             condition = con_result.scalars().all()
         await engine.dispose()
         return condition

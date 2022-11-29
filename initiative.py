@@ -1594,6 +1594,9 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
                                            .where(Condition.visible == True)
                                            .where(Condition.title == condition))
             con_list = result.scalars().all()
+        if len(con_list) ==0:
+            await engine.dispose()
+            return False
 
         for con in con_list:
             await asyncio.sleep(0)
@@ -2439,27 +2442,27 @@ class InitiativeCog(commands.Cog):
         if not result:
             await ctx.send_followup("Failed", ephemeral=True)
 
-    @cc.command(description="Show Custom Counters")
-    @option("character", description="Character to select", autocomplete=character_select_gm)
-    async def show(self, ctx: discord.ApplicationContext, character: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer(ephemeral=True)
-        try:
-            if not await player_check(ctx, engine, self.bot, character) and not await gm_check(ctx, engine):
-                await ctx.send_followup(f'Viewing NPC counters is restricted to the GM only.', ephemeral=True)
-            else:
-                cc_list = await get_cc(ctx, engine, self.bot, character)
-                output_string = f'```{character}:\n'
-                for row in cc_list:
-                    await asyncio.sleep(0)
-                    counter_string = f'{row.title}: {row.number}'
-                    output_string += counter_string
-                    output_string += '\n'
-                output_string += "```"
-                await ctx.send_followup(output_string, ephemeral=True)
-        except Exception as e:
-            print(f'cc_show: {e}')
-            await ctx.send_followup(f'Failed: Ensure that {character} is a valid character', ephemeral=True)
+    # @cc.command(description="Show Custom Counters")
+    # @option("character", description="Character to select", autocomplete=character_select_gm)
+    # async def show(self, ctx: discord.ApplicationContext, character: str):
+    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #     await ctx.response.defer(ephemeral=True)
+    #     try:
+    #         if not await auto_complete.hard_lock(ctx, character):
+    #             await ctx.send_followup(f'Viewing NPC counters is restricted to the GM only.', ephemeral=True)
+    #         else:
+    #             cc_list = await get_cc(ctx, engine, self.bot, character)
+    #             output_string = f'```{character}:\n'
+    #             for row in cc_list:
+    #                 await asyncio.sleep(0)
+    #                 counter_string = f'{row.title}: {row.number}'
+    #                 output_string += counter_string
+    #                 output_string += '\n'
+    #             output_string += "```"
+    #             await ctx.send_followup(output_string, ephemeral=True)
+    #     except Exception as e:
+    #         print(f'cc_show: {e}')
+    #         await ctx.send_followup(f'Failed: Ensure that {character} is a valid character', ephemeral=True)
 
 
 def setup(bot):
