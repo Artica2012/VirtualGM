@@ -965,17 +965,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                 await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
                             await session.commit()
                         elif selected_condition.time:  # If time is true
-                            logging.info(f"BAI12: time checked")
-                            time_stamp = datetime.datetime.fromtimestamp(
-                                selected_condition.number)  # The number is a timestamp
-                            # for the expiration, not a round count
-                            current_time = await get_time(ctx, engine, bot)
-                            time_left = time_stamp - current_time
-                            if time_left.total_seconds() <= 0:
-                                await session.delete(selected_condition)
-                                logging.info(f"BAI13: Condition deleted ")
-                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
-                            await session.commit()
+                            await check_cc(ctx, engine, bot)
 
             except Exception as e:
                 logging.error(f'block_advance_initiative: {e}')
@@ -1674,7 +1664,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
         time_left = time_stamp - current_time
         if time_left.total_seconds() <= 0:
             async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == row.character_id))
+                result = await session.execute(select(Tracker).where(Tracker.id == row.character_id))
                 character = result.scalars().one()
             async  with async_session() as session:
                 await session.delete(row)
