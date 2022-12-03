@@ -2306,7 +2306,10 @@ class InitiativeCog(commands.Cog):
 
         except NoResultFound as e:
             await ctx.respond(error_not_initialized, ephemeral=True)
+        except PermissionError as e:
+            await ctx.message.delete()
         except Exception as e:
+            await ctx.respond('Error', ephemeral=True)
             print(f"/i next: {e}")
             report = ErrorReport(ctx, "slash command /i next", e, self.bot)
             await report.report()

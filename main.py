@@ -31,6 +31,7 @@ DATABASE = os.getenv("DATABASE")
 
 # set up the bot/intents
 intents = discord.Intents.default()
+intents.members = True
 bot = discord.Bot(intents=intents,
                   allowed_mention=discord.AllowedMentions.all()
                   # debug_guilds=[GUILD]
