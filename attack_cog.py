@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
+import auto_complete
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
@@ -188,9 +189,9 @@ class AttackCog(commands.Cog):
     @option('character', description='Saving Character', autocomplete=character_select_gm)
     @option('target', description="Character to use DC", autocomplete=character_select)
     @option('vs', description="Target Attribute",
-            autocomplete=discord.utils.basic_autocomplete(PF2e.pf2_functions.PF2_attributes))
+            autocomplete=auto_complete.save_select)
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, modifier: str = ''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, dc:int = None, modifier: str = ''):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
 
@@ -212,7 +213,7 @@ class AttackCog(commands.Cog):
             # PF2 specific code
             if guild.system == 'PF2':
                 output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, vs,
-                                                              modifier)
+                                                              dc, modifier)
                 await ctx.send_followup(output_string)
             elif guild.system == "D4e":
                 await ctx.send_followup(

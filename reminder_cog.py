@@ -134,29 +134,29 @@ class ReminderCog(commands.Cog):
             await report.report()
             await ctx.send_followup("Reminder Failed", ephemeral=True)
 
-    @remind.command(description="Show Reminders")
-    async def show(self, ctx:discord.ApplicationContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        await ctx.response.defer(ephemeral=True)
-
-        # try:
-        async with async_session() as session:
-            result = await session.execute(select(Reminder).where(Reminder.user == str(ctx.user.id)))
-            reminder_list = result.scalars().all()
-        view = discord.ui.View()
-        for item in reminder_list[:24]:
-            end_time = dt.datetime.fromtimestamp(item.timestamp)
-            time_til = end_time - dt.datetime.now()
-            #TODO WORK ON THIS
-            print(time_til)
-            view.add_item(ReminderButton(ctx, self.bot, item, str(time_til)))
-        await ctx.respond(view=view)
-
-
-
-        # except Exception as e:
-        #     pass
+    # @remind.command(description="Show Reminders")
+    # async def show(self, ctx:discord.ApplicationContext):
+    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    #     await ctx.response.defer(ephemeral=True)
+    #
+    #     # try:
+    #     async with async_session() as session:
+    #         result = await session.execute(select(Reminder).where(Reminder.user == str(ctx.user.id)))
+    #         reminder_list = result.scalars().all()
+    #     view = discord.ui.View()
+    #     for item in reminder_list[:24]:
+    #         end_time = dt.datetime.fromtimestamp(item.timestamp)
+    #         time_til = end_time - dt.datetime.now()
+    #         #TODO WORK ON THIS
+    #         print(time_til)
+    #         view.add_item(ReminderButton(ctx, self.bot, item, str(time_til)))
+    #     await ctx.respond(view=view)
+    #
+    #
+    #
+    #     # except Exception as e:
+    #     #     pass
 
 
 def setup(bot):

@@ -20,6 +20,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import PF2e.pf2_functions
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
@@ -240,6 +241,30 @@ async def cc_select(ctx: discord.AutocompleteContext):
             condition = con_result.scalars().all()
         await engine.dispose()
         return condition
+    except NoResultFound as e:
+        return []
+    except Exception as e:
+        logging.warning(f'cc_select: {e}')
+        return []
+
+
+async def save_select(ctx: discord.AutocompleteContext):
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+    try:
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
+            guild = result.scalars().one()
+        if guild.system == 'PF2':
+            return PF2e.pf2_functions.PF2_saves
+        else:
+            return []
     except NoResultFound as e:
         return []
     except Exception as e:

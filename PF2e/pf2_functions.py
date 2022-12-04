@@ -48,6 +48,7 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 PF2_attributes = ['AC', 'Fort', 'Reflex', 'Will', 'DC']
+PF2_saves = ['Fort', 'Reflex', 'Will']
 
 
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
@@ -138,7 +139,7 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
     return output_string
 
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, modifier: str):
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, dc:int,  modifier: str):
     if target == None:
         output_string = "Error. No Target Specified."
         return output_string
@@ -163,11 +164,12 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
             raw_roll = result.scalars().one()
             roll = f"1d20+{raw_roll.number}"
 
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == char.id)
-                                           .where(Condition.title == 'DC'))
-            raw_dc = result.scalars().one()
-            dc = raw_dc.number
+        if dc == None:
+            async with async_session() as session:
+                result = await session.execute(select(Condition.number).where(Condition.character_id == char.id)
+                                               .where(Condition.title == 'DC'))
+                dc = result.scalars().one()
+
 
         if modifier != '':
             if modifier[0] == '+':
