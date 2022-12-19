@@ -21,7 +21,7 @@ from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from auto_complete import character_select, macro_select
+from auto_complete import character_select, macro_select, character_select_gm
 
 # define global variables
 
@@ -352,7 +352,7 @@ class MacroCog(commands.Cog):
 
 
     @commands.slash_command(name="m", description="Roll Macro")
-    @option("character", description="Character", autocomplete=character_select, )
+    @option("character", description="Character", autocomplete=character_select_gm, )
     @option('macro', description="Macro Name", autocomplete=macro_select, )
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
     @option('secret', choices=['Secret', 'Open'])
