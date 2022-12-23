@@ -606,11 +606,18 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
                         )
                     )
                 elif item.counter:
-                    counter_embed.fields.append(
-                        discord.EmbedField(
-                            name=item.title, value=item.number
+                    if item.number != 0:
+                        counter_embed.fields.append(
+                            discord.EmbedField(
+                                name=item.title, value=item.number
+                            )
                         )
-                    )
+                    else:
+                        counter_embed.fields.append(
+                            discord.EmbedField(
+                                name=item.title, value='_'
+                            )
+                        )
             elif item.visible and item.time and not item.counter:
                 condition_embed.fields.append(
                     discord.EmbedField(
