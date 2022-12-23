@@ -116,15 +116,19 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         goal_value = con_vs.number + 10
     else:
         goal_value = con_vs.number
+
     if target_modifier != '':
-        if target_modifier[0] == '+':
-            goal = goal_value + int(target_modifier[1:])
-        elif target_modifier[0] == '-':
-            goal = goal_value - int(target_modifier[1:])
-        elif type(target_modifier[0]) == int:
+
+        try:
+            target_modifier = int(target_modifier)
             goal = goal_value + int(target_modifier)
-        else:
-            goal = goal_value
+        except:
+            if target_modifier[0] == '+':
+                goal = goal_value + int(target_modifier[1:])
+            elif target_modifier[0] == '-':
+                goal = goal_value - int(target_modifier[1:])
+            else:
+                goal = goal_value
     else:
         goal = goal_value
 
