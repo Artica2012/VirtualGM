@@ -2243,9 +2243,10 @@ class InitiativeCog(commands.Cog):
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
                         await asyncio.sleep(0)
-                        async  with async_session() as session:
+                        print(con.title)
+                        async with async_session() as session:
                             await session.delete(con)
-                            await session.commit
+                            await session.commit()
 
                     # Delete any dead NPCs
                     async with async_session() as session:
