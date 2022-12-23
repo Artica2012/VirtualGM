@@ -367,7 +367,10 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                         con_string = f"       {con_row.title}\n"
 
                 elif con_row.counter == True and sel_bool and row.player:
-                    con_string = f"       {con_row.title}: {con_row.number}\n"
+                    if con_row.number != 0:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                    else:
+                        con_string = f"       {con_row.title}\n"
                 else:
                     con_string = ''
                 output_string += con_string
