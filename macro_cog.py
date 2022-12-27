@@ -311,7 +311,7 @@ class MacroCog(commands.Cog):
             await ctx.respond("Action Failed", ephemeral=True)
 
     @macro.command(description="Display Macros")
-    @option("character", description="Character", autocomplete=character_select, )
+    @option("character", description="Character", autocomplete=character_select_gm, )
     async def show(self, ctx: discord.ApplicationContext, character: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
