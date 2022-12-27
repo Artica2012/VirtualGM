@@ -2280,13 +2280,13 @@ class InitiativeCog(commands.Cog):
                             f"Please wait until {character} is not the active character in initiative before "
                             f"deleting it.", ephemeral=True)
                     else:
-                        await ctx.response.defer()
+                        await ctx.response.defer(ephemeral=True)
                         result = await delete_character(ctx, character, engine, self.bot)
                         if result:
                             await ctx.send_followup(f'{character} deleted', ephemeral=True)
                             await update_pinned_tracker(ctx, engine, self.bot)
                         else:
-                            await ctx.send_followup('Delete Operation Failed')
+                            await ctx.send_followup('Delete Operation Failed', ephemeral=True)
             await engine.dispose()
         except NoResultFound as e:
             await ctx.respond(
