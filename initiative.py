@@ -1311,7 +1311,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         # Check for systems:
         if guild.system == 'D4e':
             logging.info(f"BPI3: d4e")
-            view = discord.ui.View()
+            view = discord.ui.View(timeout=None)
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
                 char = result.scalars().one()
@@ -1414,7 +1414,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
     # Check for systems:
     if guild.system == 'D4e':
         logging.info(f"BPI3: d4e")
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=None)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
             char = result.scalars().one()
