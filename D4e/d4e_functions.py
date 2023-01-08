@@ -353,11 +353,15 @@ class D4eConditionButton(discord.ui.Button):
             try:
                 output_string = await save(self.ctx, self.engine, self.bot, self.character.name, self.condition.title,
                                            modifier='')
+                await interaction.response.send_message(output_string)
+                await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot)
             except Exception as e:
                 output_string = 'Unable to process save, perhaps the condition was removed.'
+                await interaction.response.send_message(output_string)
         else:
             output_string = "Roll your own save!"
-        await interaction.response.send_message(output_string)
+            await interaction.response.send_message(output_string)
+
         # await self.ctx.channel.send(output_string)
 
 
