@@ -1,12 +1,15 @@
 # ui_components.py
 
 import datetime
+import logging
 import os
 
 import discord
 from dotenv import load_dotenv
 
 # define global variables
+import initiative
+from database_operations import get_asyncio_db_engine
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -60,53 +63,20 @@ class QueryLinkButton(discord.ui.Button):
             url=link
         )
 
-# Button to delete a condition in the init condition table
-# class ConditionDeleteButton(discord.ui.Button):
-#     def __init__(self, id_value: str, interaction: discord.Interaction):
-#         self.id_value = id_value
-#         self.interaction = interaction
-#         super().__init__(
-#             label='Delete',
-#             style=discord.ButtonStyle.primary,
-#             custom_id=id_value
-#         )
-#
-#     async def callback(self, interaction: discord.Interaction):
-#         # Called when button is pressed
-#         message = interaction.message
-#         await message.delete()
-#         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-#         metadata = db.MetaData()
-#         try:
-#             con = ConditionTable(self.interaction.guild, metadata, engine).condition_table()
-#             stmt = delete(con).where(con.c.id == self.id_value)
-#             compiled = stmt.compile()
-#             with engine.connect() as conn:
-#                 result = conn.execute(stmt)
-#         except Exception as e:
-#             print(e)
-#             return
-#
-#
-# class ConditionDropdown(discord.ui.Select):
-#     def __init__(self, bot_: discord.Bot, options: list):
-#         self.bot = bot_
-#         options = options
-#
-#         super().__init__(
-#             placeholder="Condition / Counter",
-#             min_values=1,
-#             max_values=1,
-#             options=options
-#         )
-#
-#     async def callback(self, interaction: discord.Interaction):
-#         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-#         metadata = db.MetaData()
-#         view = discord.ui.View()
-#         # print("Selected")
-#         # print(self.values)
-#         select.disable = True
-#         delete_button = ConditionDeleteButton(self.values[0], interaction)
-#         view.add_item(item=delete_button)
-#         await interaction.response.send_message(view=view)
+class InitRefreshButton(discord.ui.Button):
+    def __init__(self, ctx: discord.ApplicationContext, bot):
+        self.ctx = ctx
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        super().__init__(
+            style=discord.ButtonStyle.primary,
+            emoji="🔁"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Refreshed", ephemeral=True)
+            await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot)
+        except Exception as e:
+            print(f'Error: {e}')
+            logging.info(e)

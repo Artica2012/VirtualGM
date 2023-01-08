@@ -26,6 +26,7 @@ import D4e.d4e_functions
 import PF2e.pf2_functions
 import auto_complete
 import time_keeping_functions
+import ui_components
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
 from database_models import get_tracker_table, get_condition_table, get_macro_table
@@ -1326,6 +1327,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                     char,
                 )
                 view.add_item(new_button)
+            view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
             if ctx.channel.id == guild.tracker_channel:
                 await ctx.send_followup(f"{tracker_string}\n"
@@ -1428,6 +1430,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
                 char,
             )
             view.add_item(new_button)
+        view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
         # await ctx.message.edit(tracker_string, view=view)
         edit_message = bot.get_message(edit_id)
