@@ -63,6 +63,7 @@ class Global(Base):
     gm_tracker = Column(BigInteger(), nullable=True)
     gm_tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     rp_channel = Column(BigInteger(), nullable=True, unique=True)
+    last_tracker = Column(BigInteger(), nullable=True)
     # Timekeeper Functionality
     timekeeping = Column(Boolean(), default=False)
     time = Column(BigInteger(), default=6, nullable=False)
