@@ -1330,22 +1330,22 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
             if ctx.channel.id == guild.tracker_channel:
-                await ctx.send_followup(f"{tracker_string}\n"
-                                        f"{ping_string}", view=view)
+                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                      f"{ping_string}", view=view)
             else:
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}", view=view, )
-                await ctx.send_followup("Initiative Advanced.")
+                tracker_msg = await ctx.send_followup("Initiative Advanced.")
                 logging.info(f"BPI4")
         else:
             # Always post the tracker to the player channel
             if ctx.channel.id == guild.tracker_channel:
-                await ctx.send_followup(f"{tracker_string}\n"
-                                        f"{ping_string}")
+                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                      f"{ping_string}")
             else:
                 await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}")
-                await ctx.send_followup("Initiative Advanced.")
+                tracker_msg = await ctx.send_followup("Initiative Advanced.")
                 logging.info(f"BPI5")
         if guild.tracker is not None:
             channel = bot.get_channel(guild.tracker_channel)
@@ -1357,6 +1357,31 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(guild.gm_tracker)
             await gm_message.edit(gm_tracker_display_string)
+
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id)))
+            guild = result.scalars().one()
+            print(f"Saved last tracker: {guild.last_tracker}")
+            # old_tracker = guild.last_tracker
+            try:
+                if guild.last_tracker != None:
+                    # print(old_tracker)
+                    tracker_channel = bot.get_channel(guild.tracker_channel)
+                    old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
+                    # # print(old_tracker_msg)
+                    # print(old_tracker_msg.components)
+                    # old_tracker_txt = old_tracker_msg.content
+                    # print(old_tracker_txt)
+                    await old_tracker_msg.edit(view=None)
+            except Exception as e:
+                print(e)
+            guild.last_tracker = tracker_msg.id
+            print()
+            await session.commit()
+
 
         await engine.dispose()
     except NoResultFound as e:
