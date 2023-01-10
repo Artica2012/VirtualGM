@@ -13,7 +13,13 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer, BigInteger
+from sqlalchemy import String, Boolean
+from sqlalchemy import or_
+from sqlalchemy import select
 
 import initiative
 from database_models import Global, get_condition, get_tracker
@@ -521,3 +527,85 @@ class D4eEditCharacterModal(discord.ui.Modal):
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
         self.stop()
+
+async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_list):
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+    view = discord.ui.View(timeout=None)
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+        char = result.scalars().one()
+    async with async_session() as session:
+        result = await session.execute(select(Condition)
+                                       .where(Condition.character_id == char.id)
+                                       .where(Condition.flex == True))
+        conditions = result.scalars().all()
+    for con in conditions:
+        new_button = D4eConditionButton(
+            con,
+            ctx, engine, bot,
+            char,
+        )
+        view.add_item(new_button)
+    return view
+
+async def D4eTrackerButtonsIndependent(bot, guild, init_list):
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class TrackerClass(DynamicBase):
+        __tablename__ = f"Tracker_{guild.id}"
+        __table_args__ = {'extend_existing': True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        name = Column(String(), nullable=False, unique=True)
+        init = Column(Integer(), default=0)
+        player = Column(Boolean(), nullable=False)
+        user = Column(BigInteger(), nullable=False)
+        current_hp = Column(Integer(), default=0)
+        max_hp = Column(Integer(), default=1)
+        temp_hp = Column(Integer(), default=0)
+        init_string = Column(String(), nullable=True)
+
+    class ConditionClass(DynamicBase):
+        __tablename__ = f"Condition_{guild.id}"
+        __table_args__ = {'extend_existing': True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        character_id = Column(Integer(), nullable=False)
+        counter = Column(Boolean(), default=False)
+        title = Column(String(), nullable=False)
+        number = Column(Integer(), nullable=True, default=False)
+        auto_increment = Column(Boolean(), nullable=False, default=False)
+        time = Column(Boolean(), default=False)
+        visible = Column(Boolean(), default=True)
+        flex = Column(Boolean(), default=False)
+
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = TrackerClass()
+    Condition = ConditionClass()
+
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).order_by(Tracker.init.desc()).order_by(Tracker.id.desc()))
+        init_list = result.scalars().all()
+    await engine.dispose()
+
+    view = discord.ui.View(timeout=None)
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+        char = result.scalars().one()
+    async with async_session() as session:
+        result = await session.execute(select(Condition)
+                                       .where(Condition.character_id == char.id)
+                                       .where(Condition.flex == True))
+        conditions = result.scalars().all()
+    # for con in conditions:
+    #     new_button = D4eConditionButton(
+    #         con,
+    #         ctx, engine, bot, # Not going to work unless I can figure out a way to get the ctx into the button on restart, which I dont think is possible
+    #         char,
+    #     )
+    #     view.add_item(new_button)
+    return view

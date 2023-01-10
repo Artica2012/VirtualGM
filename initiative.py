@@ -1311,22 +1311,23 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         # Check for systems:
         if guild.system == 'D4e':
             logging.info(f"BPI3: d4e")
-            view = discord.ui.View(timeout=None)
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
-                char = result.scalars().one()
-            async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == char.id)
-                                               .where(Condition.flex == True))
-                conditions = result.scalars().all()
-            for con in conditions:
-                new_button = D4e.d4e_functions.D4eConditionButton(
-                    con,
-                    ctx, engine, bot,
-                    char,
-                )
-                view.add_item(new_button)
+            view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+
+            # async with async_session() as session:
+            #     result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+            #     char = result.scalars().one()
+            # async with async_session() as session:
+            #     result = await session.execute(select(Condition)
+            #                                    .where(Condition.character_id == char.id)
+            #                                    .where(Condition.flex == True))
+            #     conditions = result.scalars().all()
+            # for con in conditions:
+            #     new_button = D4e.d4e_functions.D4eConditionButton(
+            #         con,
+            #         ctx, engine, bot,
+            #         char,
+            #     )
+            #     view.add_item(new_button)
             view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
             if ctx.channel.id == guild.tracker_channel:

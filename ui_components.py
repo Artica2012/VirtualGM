@@ -70,7 +70,8 @@ class InitRefreshButton(discord.ui.Button):
         self.bot = bot
         super().__init__(
             style=discord.ButtonStyle.primary,
-            emoji="🔁"
+            emoji="🔁",
+            custom_id=str(ctx.channel.id)
         )
 
     async def callback(self, interaction: discord.Interaction):
