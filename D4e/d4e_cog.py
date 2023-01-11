@@ -66,7 +66,7 @@ async def gm_check(ctx, engine):
 
 
 class D4eCog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Bot):
         self.bot = bot
 
     # ---------------------------------------------------
@@ -136,35 +136,38 @@ class D4eCog(commands.Cog):
                 await engine.dispose()
                 return
 
-    # @commands.Cog.listener()
-    # async def on_ready(self):
-    #     print("4e Cog Loaded")
-    #     """
-    #     This method is called every time the bot restarts.
-    #     If a view was already created before (with the same custom IDs for buttons),
-    #     it will be loaded and the bot will start watching for button clicks again.
-    #     """
-    #     # We recreate the view as we did in the /post command.
-    #     view = discord.ui.View(timeout=None)
-    #
-    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    #     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    #     async with async_session() as session:
-    #         result = await session.execute(select(Global).where(
-    #                 Global.system == "D4e"))
-    #         guild = result.scalars().all()
-    #
-    #         for item in guild:
-    #
-    #
-    #
-    #     # Make sure to set the guild ID here to whatever server you want the buttons in!
-    #     for role_id in role_ids:
-    #         role = guild.get_role(role_id)
-    #         view.add_item(RoleButton(role))
-    #
-    #     # Add the view to the bot so that it will watch for button interactions.
-    #     self.bot.add_view(view)
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("4e Cog Loaded")
+        # We recreate the view as we did in the /post command.
+        view = discord.ui.View(timeout=None)
+
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(
+                    Global.system == "D4e"))
+            guild_list = result.scalars().all()
+
+            for guild in guild_list:
+                tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+
+                # view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
+
+                # view = discord.ui.View.from_message(last_tracker, timeout=None)
+                # print(view)
+                # self.bot.add_view(view, message_id=guild.last_tracker)
+                await last_tracker.edit(view=None)
+
+
+        # # Make sure to set the guild ID here to whatever server you want the buttons in!
+        # for role_id in role_ids:
+        #     role = guild.get_role(role_id)
+        #     view.add_item(RoleButton(role))
+        #
+        # # Add the view to the bot so that it will watch for button interactions.
+        # self.bot.add_view(view)
 
 def setup(bot):
     bot.add_cog(D4eCog(bot))

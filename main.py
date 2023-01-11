@@ -12,7 +12,7 @@ import lookup_parser
 import logging
 
 # Set up logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logging.info("Script Started")
 
 
