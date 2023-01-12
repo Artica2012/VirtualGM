@@ -153,12 +153,14 @@ class D4eCog(commands.Cog):
                 tracker_channel = self.bot.get_channel(guild.tracker_channel)
                 last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
 
-                # view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
+                view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
 
                 # view = discord.ui.View.from_message(last_tracker, timeout=None)
-                # print(view)
+                print(view)
+                await last_tracker.edit(view=view)
+                print("View Updated")
                 # self.bot.add_view(view, message_id=guild.last_tracker)
-                await last_tracker.edit(view=None)
+                # await last_tracker.edit(view=None)
 
 
         # # Make sure to set the guild ID here to whatever server you want the buttons in!

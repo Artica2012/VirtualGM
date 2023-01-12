@@ -1049,10 +1049,14 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
 
 
 # Returns the tracker list sorted by initiative
-async def get_init_list(ctx: discord.ApplicationContext, engine):
+async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     try:
-        Tracker = await get_tracker(ctx, engine)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -1069,24 +1073,30 @@ async def get_init_list(ctx: discord.ApplicationContext, engine):
 
 
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
-                            gm: bool = False):
+                            gm: bool = False, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
         guild = result.scalars().one()
         logging.info(f"BGT: Guild: {guild.id}")
 
         if guild.system == 'PF2':
             output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm)
         elif guild.system == "D4e":
-            output_string = await D4e.d4e_functions.d4e_get_tracker(init_list, selected, ctx, engine, bot, gm)
+            output_string = await D4e.d4e_functions.d4e_get_tracker(init_list, selected, ctx, engine, bot, gm, guild=guild)
         else:
             output_string = await generic_block_get_tracker(init_list, selected, ctx, engine, bot, gm)
         return output_string
@@ -1219,18 +1229,25 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
 
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
-async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
+async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     async with async_session() as session:
         try:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
             logging.info(f"UPT1: Guild: {guild.id}")
 
@@ -1241,8 +1258,8 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
 
             # Update the tracker
             if tracker is not None:
-                tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine), guild.initiative,
-                                                                 ctx, engine, bot)
+                tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild), guild.initiative,
+                                                                 ctx, engine, bot, guild=guild)
                 channel = bot.get_channel(tracker_channel)
                 message = await channel.fetch_message(tracker)
                 await message.edit(tracker_display_string)
@@ -1250,16 +1267,17 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot):
 
             # Update the GM tracker
             if gm_tracker is not None:
-                gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine), guild.initiative,
-                                                                    ctx, engine, bot, gm=True)
+                gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild), guild.initiative,
+                                                                    ctx, engine, bot, gm=True, guild=guild)
                 gm_channel = bot.get_channel(gm_tracker_channel)
                 gm_message = await gm_channel.fetch_message(gm_tracker)
                 await gm_message.edit(gm_tracker_display_string)
                 logging.info(f"UPT3: gm tracker updated")
         except NoResultFound as e:
-            await ctx.channel.send(
-                error_not_initialized,
-                delete_after=30)
+            if ctx != None:
+                await ctx.channel.send(
+                    error_not_initialized,
+                    delete_after=30)
         except Exception as e:
             logging.error(f'update_pinned_tracker: {e}')
             report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
@@ -1383,7 +1401,6 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             print()
             await session.commit()
 
-
         await engine.dispose()
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
@@ -1395,19 +1412,25 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 
 
 async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
-                            bot: discord.Bot):
+                            bot: discord.Bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     # Query the initiative position for the tracker and post it
     # try:
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
         guild = result.scalars().one()
         logging.info(f"BPI1: guild: {guild.id}")
     Tracker = await get_tracker(ctx, engine, id=guild.id)
@@ -1420,8 +1443,8 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
     else:
         block = False
 
-    init_list = await get_init_list(ctx, engine)
-    tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot)
+    init_list = await get_init_list(ctx, engine, guild=guild)
+    tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
     try:
         logging.info(f"BPI2")
         ping_string = ''
@@ -1453,10 +1476,11 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             new_button = D4e.d4e_functions.D4eConditionButton(
                 con,
                 ctx, engine, bot,
-                char,
+                char, guild=guild
             )
             view.add_item(new_button)
-        view.add_item(ui_components.InitRefreshButton(ctx, bot))
+        if ctx != None:
+            view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
         # await ctx.message.edit(tracker_string, view=view)
         edit_message = bot.get_message(edit_id)
@@ -1503,21 +1527,27 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
 
 
 # Note: Works backwards
-async def get_turn_list(ctx: discord.ApplicationContext, engine, bot):
+async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     turn_list = []
     block_done = False
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
+
             logging.info(f"GTL1: guild: {guild.id}")
             iteration = 0
             init_pos = guild.initiative

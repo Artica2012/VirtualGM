@@ -12,7 +12,6 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from database_models import Global
 from error_handling_reporting import ErrorReport
 
@@ -37,28 +36,34 @@ SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
 
 
-async def get_time(ctx: discord.ApplicationContext, engine, bot):
+async def get_time(ctx: discord.ApplicationContext, engine, bot, guild=None):
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
+
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
                                      hour=guild.time_hour, minute=guild.time_minute, second=guild.time_second)
         await engine.dispose()
         return time
 
     except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
+        if ctx != None:
+            await ctx.channel.send(
+                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                delete_after=30)
         return None
     except Exception as e:
         print(f'output_datetime: {e}')
@@ -67,17 +72,21 @@ async def get_time(ctx: discord.ApplicationContext, engine, bot):
         return None
 
 
-async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
+async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=None):
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
 
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
@@ -88,10 +97,11 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
         return output_string
 
     except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
+        if ctx != None:
+            await ctx.channel.send(
+                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                delete_after=30)
         return ""
     except Exception as e:
         print(f'output_datetime: {e}')
@@ -100,17 +110,22 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot):
         return ""
 
 
-async def check_timekeeper(ctx, engine):
+async def check_timekeeper(ctx, engine, guild=None):
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
         await engine.dispose()
         return guild.timekeeping
@@ -209,7 +224,8 @@ async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int
         await report.report()
         return False
 
-async def time_left(ctx:discord.ApplicationContext, engine, bot, con_time):
+
+async def time_left(ctx: discord.ApplicationContext, engine, bot, con_time):
     time_stamp = datetime.datetime.fromtimestamp(con_time)
     current_time = await get_time(ctx, engine, bot)
     time_left = time_stamp - current_time

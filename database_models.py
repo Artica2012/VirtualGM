@@ -81,6 +81,8 @@ class Global(Base):
 
 # Tracker Get Function
 async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx == None and id==None:
+        raise Exception
     if id == None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -165,6 +167,8 @@ class TrackerTable:
 
 # Condition Get Function
 async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx == None and id==None:
+        raise Exception
     if id == None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -254,6 +258,8 @@ class Macro(Base):
 
 
 async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx == None and id==None:
+        raise Exception
     if id == None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
