@@ -145,31 +145,29 @@ class D4eCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                    Global.system == "D4e"))
+            result = await session.execute(select(Global).where(Global.last_tracker != None))
             guild_list = result.scalars().all()
 
             for guild in guild_list:
-                tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                if guild.system == 'D4e':
+                    view.clear_items()
+                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                    last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
 
-                view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
+                    view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
+                    view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                    await last_tracker.edit(view=view)
+                    print("D4e View Updated")
+                else:
+                    view.clear_items()
+                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                    last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                    view = discord.ui.View(timeout=None)
+                    view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                    await last_tracker.edit(view=view)
+                    print("View Updated")
 
-                # view = discord.ui.View.from_message(last_tracker, timeout=None)
-                print(view)
-                await last_tracker.edit(view=view)
-                print("View Updated")
-                # self.bot.add_view(view, message_id=guild.last_tracker)
-                # await last_tracker.edit(view=None)
 
-
-        # # Make sure to set the guild ID here to whatever server you want the buttons in!
-        # for role_id in role_ids:
-        #     role = guild.get_role(role_id)
-        #     view.add_item(RoleButton(role))
-        #
-        # # Add the view to the bot so that it will watch for button interactions.
-        # self.bot.add_view(view)
 
 def setup(bot):
     bot.add_cog(D4eCog(bot))

@@ -64,20 +64,21 @@ class QueryLinkButton(discord.ui.Button):
         )
 
 class InitRefreshButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, bot):
+    def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
         self.ctx = ctx
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
+        self.guild = guild
         super().__init__(
             style=discord.ButtonStyle.primary,
-            emoji="🔁",
-            custom_id=str(ctx.channel.id)
+            emoji="🔁"
         )
 
     async def callback(self, interaction: discord.Interaction):
         try:
             await interaction.response.send_message("Refreshed", ephemeral=True)
-            await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot)
+            print(interaction.message.id)
+            await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild)
         except Exception as e:
             print(f'Error: {e}')
             logging.info(e)

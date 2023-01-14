@@ -247,34 +247,42 @@ async def PF2_eval_succss(result_tuple: tuple, goal: int):
 
 # Builds the tracker string. Updated to work with block initiative
 async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
-                          gm: bool = False):
+                          gm: bool = False, guild=None):
+    print("PF2 Get Tracker")
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
         guild = result.scalars().one()
         logging.info(f"BGT1: Guild: {guild.id}")
         if guild.block and guild.initiative != None:
-            turn_list = await initiative.get_turn_list(ctx, engine, bot)
+            turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
             block = True
         else:
             block = False
         logging.info(f"BGT2: round: {guild.round}")
     try:
-        if await check_timekeeper(ctx, engine):
-            datetime_string = f" {await output_datetime(ctx, engine, bot)}\n" \
+        if await check_timekeeper(ctx, engine, guild=guild):
+            datetime_string = f" {await output_datetime(ctx, engine, bot, guild=guild)}\n" \
                               f"________________________\n"
     except NoResultFound as e:
-        await ctx.channel.send(
-            error_not_initialized,
-            delete_after=30)
+        if ctx != None:
+            await ctx.channel.send(
+                error_not_initialized,
+                delete_after=30)
         logging.info("Channel Not Set Up")
     except Exception as e:
         logging.error(f'get_tracker: {e}')
@@ -350,7 +358,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                     if con_row.number != None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(ctx, engine, bot)
+                            current_time = await get_time(ctx, engine, bot, guild=guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -381,8 +389,9 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         return output_string
     except Exception as e:
         logging.info(f"block_get_tracker: {e}")
-        report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
-        await report.report()
+        if ctx !=  None:
+            report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
+            await report.report()
 
 
 async def edit_stats(ctx, engine, bot, name: str):

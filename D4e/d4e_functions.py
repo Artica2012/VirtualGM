@@ -340,10 +340,10 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         await engine.dispose()
         return output_string
     except Exception as e:
-        print(f"pf2_get_tracker: {e}")
-        report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
-        await report.report()
-
+        if ctx != None:
+            report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
+            await report.report()
+        logging.info(f"pf2_get_tracker: {e}")
 
 async def d4e_condition_buttons():
     pass
@@ -553,9 +553,13 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
     Tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
+    print("Here")
+    print(init_list)
+    print(guild.initiative)
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
         char = result.scalars().one()
+        print(char)
     async with async_session() as session:
         result = await session.execute(select(Condition)
                                        .where(Condition.character_id == char.id)
@@ -565,7 +569,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
         new_button = D4eConditionButton(
             con,
             ctx, engine, bot,
-            char,
+            char, guild=guild
         )
         view.add_item(new_button)
     return view
