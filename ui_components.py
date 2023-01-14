@@ -82,3 +82,22 @@ class InitRefreshButton(discord.ui.Button):
         except Exception as e:
             print(f'Error: {e}')
             logging.info(e)
+
+class NextButton(discord.ui.Button):
+    def __init__(self, bot, guild=None):
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.guild = guild
+        super().__init__(
+            style=discord.ButtonStyle.primary,
+            emoji="➡️"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+            await initiative.block_advance_initiative(None, self.engine, self.bot, guild=self.guild)
+            await initiative.block_post_init(None, self.engine, self.bot, guild=self.guild)
+        except Exception as e:
+            print(f'Error: {e}')
+            logging.info(e)

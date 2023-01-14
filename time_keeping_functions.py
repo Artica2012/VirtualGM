@@ -1,6 +1,7 @@
 # time_keeping_functions.py
 
 import datetime
+import logging
 import os
 
 # imports
@@ -185,17 +186,21 @@ async def set_datetime(ctx: discord.ApplicationContext, engine, bot, second: int
 
 
 async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int = 0, minute: int = 0, hour: int = 0,
-                       day: int = 0):
+                       day: int = 0, guild=None):
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
 
             time = datetime.datetime(year=guild.time_year, month=guild.time_month, day=guild.time_day,
@@ -213,13 +218,14 @@ async def advance_time(ctx: discord.ApplicationContext, engine, bot, second: int
         return True
 
     except NoResultFound as e:
-        await ctx.channel.send(
-            "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
-            "proper channel or run `/i admin setup` to setup the initiative tracker",
-            delete_after=30)
+        if ctx != None:
+            await ctx.channel.send(
+                "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
+                "proper channel or run `/i admin setup` to setup the initiative tracker",
+                delete_after=30)
         return False
     except Exception as e:
-        print(f'advance_time: {e}')
+        logging.error(f'advance_time: {e}')
         report = ErrorReport(ctx, "advance_time", e, bot)
         await report.report()
         return False

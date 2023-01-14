@@ -810,11 +810,17 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
 
 
 # Set the initiative
-async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine):
+async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
+        if ctx != None:
+            Tracker = await get_tracker(ctx, engine)
+        else:
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(
@@ -825,16 +831,17 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
             await session.commit()
         return True
     except Exception as e:
-        print(f'set_init: {e}')
-        report = ErrorReport(ctx, set_init.__name__, e, bot)
-        await report.report()
+        logging.error(f'set_init: {e}')
+        if ctx != None:
+            report = ErrorReport(ctx, set_init.__name__, e, bot)
+            await report.report()
         return False
 
 
 # Check to make sure that the character is in the right place in initiative
-async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine):
+async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    init_list = await get_init_list(ctx, engine)
+    init_list = await get_init_list(ctx, engine, guild=guild)
     try:
         if init_list[init_pos].name == current_character:
             return True
@@ -843,13 +850,16 @@ async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, c
     except IndexError as e:
         return False
     except Exception as e:
-        print(f'init_integrity_check: {e}')
+        logging.error(f'init_integrity_check: {e}')
         return False
 
 
 # Upgraded Advance Initiative Function to work with block initiative options
-async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot):
+async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
 
     block_done = False
     turn_list = []
@@ -858,13 +868,15 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
             logging.info(f"BAI1: guild: {guild.id}")
 
@@ -886,9 +898,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                         await asyncio.sleep(0)
                         try:
                             roll = await dice.plain_roll(char.init_string)
-                            await set_init(ctx, bot, char.name, roll[1], engine)
+                            await set_init(ctx, bot, char.name, roll[1], engine, guild=guild)
                         except ValueError as e:
-                            await set_init(ctx, bot, char.name, 0, engine)
+                            await set_init(ctx, bot, char.name, 0, engine, guild=guild)
             else:
                 init_pos = int(guild.initiative)
 
@@ -911,7 +923,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                 # if its not, set the init position to the position of the current character before advancing it
                 # print("Yes guild.block")
                 logging.info(f"BAI5: guild.block: {guild.block}")
-                if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                if not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild) and not first_pass:
                     logging.info(f"BAI6: init_itegrity failied")
                     # print(f"integrity check was false: init_pos: {init_pos}")
                     for pos, row in enumerate(init_list):
@@ -928,8 +940,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                         logging.info(f"BAI7: timekeeping")
                         # Advance time time by the number of seconds in the guild.time column. Default is 6
                         # seconds ala D&D standard
-                        await advance_time(ctx, engine, bot, second=guild.time)
-                        await check_cc(ctx, engine, bot)
+                        await advance_time(ctx, engine, bot, second=guild.time, guild=guild)
+                        await check_cc(ctx, engine, bot, guild=guild)
                         logging.info(f"BAI8: cc checked")
 
             try:
@@ -941,8 +953,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     logging.info(f"BAI9: cur_char: {cur_char.id}")
             except Exception as e:
                 logging.error(f'advance_initiative: {e}')
-                report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                await report.report()
+                if ctx != None:
+                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
+                    await report.report()
                 return False
 
             try:
@@ -968,21 +981,26 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                                 await session.delete(selected_condition)
                                 # await session.commit()
                                 logging.info(f"BAI11: Condition Deleted")
-                                await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                                if ctx != None:
+                                    await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
+                                else:
+                                    tracker_channel = bot.get_channel(guild.tracker_channel)
+                                    tracker_channel.send(f"{con_row.title} removed from {cur_char.name}")
                             await session.commit()
                         elif selected_condition.time:  # If time is true
-                            await check_cc(ctx, engine, bot)
+                            await check_cc(ctx, engine, bot, guild=guild)
 
             except Exception as e:
                 logging.error(f'block_advance_initiative: {e}')
-                report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                await report.report()
+                if ctx != None:
+                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
+                    await report.report()
 
             if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
                 logging.info(f"BAI14: Not Block")
                 # print("Not guild.block")
                 # if its not, set the init position to the position of the current character before advancing it
-                if not await init_integrity_check(ctx, init_pos, current_character, engine) and not first_pass:
+                if not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild) and not first_pass:
                     logging.info(f"BAI15: Integrity check failed")
                     # print(f"integrity check was false: init_pos: {init_pos}")
                     for pos, row in enumerate(init_list):
@@ -998,8 +1016,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
                     if guild.timekeeping:  # if timekeeping is enable on the server
                         # Advance time time by the number of seconds in the guild.time column. Default is 6
                         # seconds ala D&D standard
-                        await advance_time(ctx, engine, bot, second=guild.time)
-                        await check_cc(ctx, engine, bot)
+                        await advance_time(ctx, engine, bot, second=guild.time, guild=guild)
+                        await check_cc(ctx, engine, bot, guild=guild)
                         logging.info(f"BAI16: cc checked")
 
                         # block initiative loop
@@ -1024,13 +1042,15 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
             # print(turn_list)
 
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
             logging.info(f"BAI17: guild updated: {guild.id}")
             # Out side while statement - for reference
@@ -1044,8 +1064,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot)
         return True
     except Exception as e:
         logging.error(f"block_advance_initiative: {e}")
-        report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-        await report.report()
+        if ctx != None:
+            report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
+            await report.report()
 
 
 # Returns the tracker list sorted by initiative
@@ -1297,23 +1318,29 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, gu
             await report.report()
 
 
-async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot):
+async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Query the initiative position for the tracker and post it
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
             logging.info(f"BPI1: guild: {guild.id}")
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        # Tracker = await get_tracker(ctx, engine, id=guild.id)
+        # Condition = await get_condition(ctx, engine, id=guild.id)
 
         if guild.block:
             turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
@@ -1342,63 +1369,66 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         # Check for systems:
         if guild.system == 'D4e':
             logging.info(f"BPI3: d4e")
-            view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+            # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+            view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
             print('Buttons Generated')
+            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+            view.add_item(ui_components.NextButton(bot, guild=guild))
 
-            # async with async_session() as session:
-            #     result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
-            #     char = result.scalars().one()
-            # async with async_session() as session:
-            #     result = await session.execute(select(Condition)
-            #                                    .where(Condition.character_id == char.id)
-            #                                    .where(Condition.flex == True))
-            #     conditions = result.scalars().all()
-            # for con in conditions:
-            #     new_button = D4e.d4e_functions.D4eConditionButton(
-            #         con,
-            #         ctx, engine, bot,
-            #         char,
-            #     )
-            #     view.add_item(new_button)
-            view.add_item(ui_components.InitRefreshButton(ctx, bot))
 
-            if ctx.channel.id == guild.tracker_channel:
+            if ctx != None:
+                if ctx.channel.id == guild.tracker_channel:
 
-                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                      f"{ping_string}", view=view)
+                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                          f"{ping_string}", view=view)
+                else:
+                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                      f"{ping_string}", view=view, )
+                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                    logging.info(f"BPI4")
             else:
-                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}", view=view, )
-                tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                logging.info(f"BPI4")
+                logging.info("BPI4 Guild")
         else:
             view = discord.ui.View(timeout=None)
             view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+            view.add_item(ui_components.NextButton(bot, guild=guild))
             # Always post the tracker to the player channel
-            if ctx.channel.id == guild.tracker_channel:
-                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                      f"{ping_string}", view=view)
+            if ctx != None:
+                if ctx.channel.id == guild.tracker_channel:
+                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                          f"{ping_string}", view=view)
+                else:
+                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                      f"{ping_string}", view=view)
+                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                    logging.info(f"BPI5")
             else:
-                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
                                                                   f"{ping_string}", view=view)
-                tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                logging.info(f"BPI5")
+                logging.info(f"BPI5 Guild")
         if guild.tracker is not None:
             channel = bot.get_channel(guild.tracker_channel)
             message = await channel.fetch_message(guild.tracker)
             await message.edit(tracker_string)
         if guild.gm_tracker is not None:
             gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
-                                                                ctx, engine, bot, gm=True)
+                                                                ctx, engine, bot, gm=True, guild=guild)
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(guild.gm_tracker)
             await gm_message.edit(gm_tracker_display_string)
 
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id)))
+            if ctx == None:
+                result = await session.execute(select(Global).where(
+                    Global.id == guild.id))
+            else:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
             guild = result.scalars().one()
             print(f"Saved last tracker: {guild.last_tracker}")
             # old_tracker = guild.last_tracker
@@ -1415,12 +1445,14 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 
         await engine.dispose()
     except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
+        if ctx != None:
+            await ctx.channel.send(error_not_initialized,
                                delete_after=30)
     except Exception as e:
         logging.error(f"block_post_init: {e}")
-        report = ErrorReport(ctx, block_post_init.__name__, e, bot)
-        await report.report()
+        if ctx != None:
+            report = ErrorReport(ctx, block_post_init.__name__, e, bot)
+            await report.report()
 
 
 async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
@@ -1816,12 +1848,16 @@ async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
 
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
-async def check_cc(ctx: discord.ApplicationContext, engine, bot):
+async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    current_time = await get_time(ctx, engine, bot)
+    current_time = await get_time(ctx, engine, bot, guild=guild)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(ctx, engine)
-    Condition = await get_condition(ctx, engine)
+    if ctx != None:
+        Tracker = await get_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+    else:
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
     async with async_session() as session:
         result = await session.execute(select(Condition).where(Condition.time == True))
@@ -1838,7 +1874,11 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot):
             async  with async_session() as session:
                 await session.delete(row)
                 await session.commit()
-            await ctx.channel.send(f"{row.title} removed from {character.name}")
+            if ctx != None:
+                await ctx.channel.send(f"{row.title} removed from {character.name}")
+            else:
+                tracker_channel = bot.get_channel(guild.tracker_channel)
+                tracker_channel.send(f"{row.title} removed from {character.name}")
     await engine.dispose()
 
 

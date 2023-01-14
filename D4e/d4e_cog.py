@@ -156,6 +156,7 @@ class D4eCog(commands.Cog):
 
                     view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
                     view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                    view.add_item(ui_components.NextButton(self.bot, guild=guild))
                     await last_tracker.edit(view=view)
                     print("D4e View Updated")
                 else:
@@ -164,6 +165,7 @@ class D4eCog(commands.Cog):
                     last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
                     view = discord.ui.View(timeout=None)
                     view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                    view.add_item(ui_components.NextButton(self.bot, guild=guild))
                     await last_tracker.edit(view=view)
                     print("View Updated")
 
