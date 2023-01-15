@@ -78,13 +78,25 @@ class ReminderCog(commands.Cog):
                                            .where(Reminder.timestamp <= datetime.now().timestamp()))
             reminder = result.scalars().all()
         for item in reminder:
-            await asyncio.sleep(0)
-            await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
-                                                                             f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
-                                                                                   f"{item.message}")
+            try:
+                await asyncio.sleep(0)
+                this_guild = self.bot.get_guild(item.guild_id)
+                # logging.warning(this_guild)
+                this_channel = this_guild.get_channel(item.channel)
+                # logging.warning(this_channel)
+                await this_channel.send(f"``` Reminder ```\n"
+                                                                                 f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+                                                                                       f"{item.message}")
+                # await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
+                #                                                                  f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+                #                                                                        f"{item.message}")
+
+            except Exception as e:
+                logging.warning("Reminder Unable to Fire")
             async with async_session() as session:
                 await session.delete(item)
                 await session.commit()
+
         await engine.dispose()
 
 
