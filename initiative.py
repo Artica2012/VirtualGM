@@ -60,7 +60,24 @@ DATABASE = os.getenv('DATABASE')
 #################################################################
 #################################################################
 # FUNCTIONS
+# General Functions
+async def get_guild(ctx, guild):
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
 
+    async with async_session() as session:
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
+        return result.scalars().one()
 
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
@@ -673,9 +690,10 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
         return False
 
 
-async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool):
+async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
+        guild = await get_guild(ctx, guild)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine)
         async with async_session() as session:
@@ -697,7 +715,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             if not heal:
                 if thp == 0:
                     new_hp = chp - amount
-                    if new_hp < 0:
+                    if new_hp < 0 and guild.system != "D4e":
                         new_hp = 0
                 else:
                     if thp > amount:
@@ -706,11 +724,11 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
                     else:
                         new_thp = 0
                         new_hp = chp - amount + thp
-                    if new_hp < 0:
+                    if new_hp < 0 and guild.system != "D4e":
                         new_hp = 0
-                if new_hp == 0:
-                    dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
-                    await ctx.channel.send(embed=dead_embed)
+                # if new_hp <= 0:
+                    # dead_embed = discord.Embed(title=name, description=f"{name} has reached {new_hp} HP")
+                    # await ctx.channel.send(embed=dead_embed)
 
             character.current_hp = new_hp
             character.temp_hp = new_thp
