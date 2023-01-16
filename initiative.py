@@ -310,17 +310,12 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 # Add a character to the database
 async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str,
-                         player: discord.User):
+                         player: discord.User, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
 
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id)))
-            guild = result.scalars().one()
+        guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
 
         async with async_session() as session:
@@ -1543,13 +1538,14 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             )
             view.add_item(new_button)
         view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+        view.add_item((ui_components.NextButton(bot, guild=guild)))
         tracker_channel = bot.get_channel(guild.tracker_channel)
         edit_message = await tracker_channel.fetch_message(edit_id)
         await edit_message.edit(tracker_string, view=view)
 
     else:
         view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-
+        view.add_item((ui_components.NextButton(bot, guild=guild)))
         tracker_channel = bot.get_channel(guild.tracker_channel)
         edit_message = await tracker_channel.fetch_message(edit_id)
         await edit_message.edit(tracker_string, view=view)
@@ -1715,6 +1711,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             await update_pinned_tracker(ctx, engine, bot)
             await engine.dispose()
             return True
+
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
