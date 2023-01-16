@@ -704,6 +704,8 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             new_thp = 0
 
             if heal:
+                if guild.system == 'D4e' and chp < 0:
+                    chp = 0
                 new_hp = chp + amount
                 if new_hp > maxhp:
                     new_hp = maxhp
