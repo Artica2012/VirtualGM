@@ -21,6 +21,8 @@ from sqlalchemy.orm import sessionmaker
 import D4e.d4e_functions
 import PF2e.pf2_functions
 import auto_complete
+import dice_roller
+import initiative
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
@@ -245,54 +247,28 @@ class AttackCog(commands.Cog):
             await ctx.respond("No system set, command inactive.")
             return
 
-        if guild.system == 'PF2':
-            # PF2 specific code
-            try:
-                output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
-                                                                attack_modifier, target_modifier)
-            except Exception as e:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                Macro = await get_macro(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, engine, id = guild.id)
 
-                async with async_session() as session:
-                    result = await session.execute(select(Tracker).where(Tracker.name == character))
-                    char = result.scalars().one()
+        # Rolls
+        roller = dice_roller.DiceRoller('')
+        try:
+            roll_result = await roller.plain_roll(roll)
+        except:
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
 
-                async with async_session() as session:
-                    result = await session.execute(select(Macro.macro)
-                                                   .where(Macro.character_id == char.id)
-                                                   .where(Macro.name == roll))
-                    macro_roll = result.scalars().one()
-                output_string = await PF2e.pf2_functions.attack(ctx, engine, self.bot, character, target, macro_roll,
-                                                                vs,
-                                                                attack_modifier, target_modifier)
-
-
-
-        elif guild.system == 'D4e':
-            # D4e specific code
-            try:
-                output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, roll, vs,
-                                                               attack_modifier, target_modifier)
-            except Exception as e:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                Macro = await get_macro(ctx, engine, id=guild.id)
-
-                async with async_session() as session:
-                    result = await session.execute(select(Tracker).where(Tracker.name == character))
-                    char = result.scalars().one()
-
-                async with async_session() as session:
-                    result = await session.execute(select(Macro.macro)
-                                                   .where(Macro.character_id == char.id)
-                                                   .where(Macro.name == roll))
-                    macro_roll = result.scalars().one()
-                output_string = await D4e.d4e_functions.attack(ctx, engine, self.bot, character, target, macro_roll, vs,
-                                                               attack_modifier, target_modifier)
-
-        else:
-            output_string = 'Error'
+            async with async_session() as session:
+                result = await session.execute(select(Macro.macro)
+                                               .where(Macro.character_id == char.id)
+                                               .where(Macro.name == roll))
+                macro_roll = result.scalars().one()
+            roll_result = await roller.plain_roll(macro_roll)
+        output_string= f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
         await ctx.send_followup(output_string)
+        await initiative.change_hp(ctx, engine, self.bot, target, roll_result[1], False, guild=guild)
+        await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)
         await engine.dispose()
 
 

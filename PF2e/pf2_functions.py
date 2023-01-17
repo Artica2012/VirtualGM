@@ -118,12 +118,13 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         goal_value = con_vs.number
 
     logging.info(f"Target Modifier: {target_modifier}")
-    if target_modifier[0] == '-' or target_modifier[0] =='+':
-        target_modifier_string = target_modifier
-    else:
-        target_modifier_string = f"+{target_modifier}"
 
     if target_modifier != '':
+
+        if target_modifier[0] == '-' or target_modifier[0] == '+':
+            target_modifier_string = target_modifier
+        else:
+            target_modifier_string = f"+{target_modifier}"
 
         try:
             target_modifier = int(target_modifier)
