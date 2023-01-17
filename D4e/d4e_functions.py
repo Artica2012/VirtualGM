@@ -116,6 +116,12 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
         await report.report()
         return False
 
+    logging.info(f"Target Modifier: {target_modifier}")
+    if target_modifier[0] == '-' or target_modifier[0] =='+':
+        target_modifier_string = target_modifier
+    else:
+        target_modifier_string = f"+{target_modifier}"
+
     if target_modifier != '':
         try:
             target_modifier = int(target_modifier)
@@ -135,9 +141,14 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
     # print(f"{dice_string}, {total}\n"
     #       f"{vs}, {goal_value}\n {success_string}")
     # Format output string
-    output_string = f"{character} vs {target} {vs}:\n" \
-                    f"{dice_string} = {total}\n" \
-                    f"{success_string}"
+    if target_modifier != '':
+        output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n" \
+                        f"{dice_string} = {total}\n" \
+                        f"{success_string}"
+    else:
+        output_string = f"{character} vs {target} {vs}:\n" \
+                        f"{dice_string} = {total}\n" \
+                        f"{success_string}"
     return output_string
 
 

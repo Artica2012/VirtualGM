@@ -117,11 +117,18 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
     else:
         goal_value = con_vs.number
 
+    logging.info(f"Target Modifier: {target_modifier}")
+    if target_modifier[0] == '-' or target_modifier[0] =='+':
+        target_modifier_string = target_modifier
+    else:
+        target_modifier_string = f"+{target_modifier}"
+
     if target_modifier != '':
 
         try:
             target_modifier = int(target_modifier)
             goal = goal_value + int(target_modifier)
+
         except:
             if target_modifier[0] == '+':
                 goal = goal_value + int(target_modifier[1:])
@@ -131,15 +138,21 @@ async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, t
                 goal = goal_value
     else:
         goal = goal_value
+    logging.info(f"Goal: {goal}")
 
     success_string = await PF2_eval_succss(dice_result, goal)
 
     # print(f"{dice_string}, {total}\n"
     #       f"{vs}, {goal_value}\n {success_string}")
     # Format output string
-    output_string = f"{character} vs {target} {vs}:\n" \
-                    f"{dice_string} = {total}\n" \
-                    f"{success_string}"
+    if target_modifier != '':
+        output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n" \
+                        f"{dice_string} = {total}\n" \
+                        f"{success_string}"
+    else:
+        output_string = f"{character} vs {target} {vs}:\n" \
+                        f"{dice_string} = {total}\n" \
+                        f"{success_string}"
     return output_string
 
 

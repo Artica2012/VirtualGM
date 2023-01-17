@@ -67,7 +67,7 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup('Success')
 
         else:
-            await ctx.send_followup('Failed')
+            await ctx.send_followup('Import Failed')
 
     @pf2.command(description="Pathbuilder Import")
     async def add_npc(self, ctx:discord.ApplicationContext, name:str, lookup:str):
@@ -76,7 +76,7 @@ class PF2Cog(commands.Cog):
         await ctx.response.defer()
         response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup)
         if not response:
-            await ctx.send_followup('Failed')
+            await ctx.send_followup('Import Failed')
 
 
     # @pf2.command(description="Edit PC or NPC Stats")
