@@ -666,7 +666,7 @@ async def calculate_hp(chp, maxhp):
     hp = chp / maxhp
     if hp == 1:
         hp_string = 'Uninjured'
-    elif hp >= .5:
+    elif hp > .5:
         hp_string = 'Injured'
     elif hp >= .1:
         hp_string = 'Bloodied'
