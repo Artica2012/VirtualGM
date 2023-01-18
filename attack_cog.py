@@ -226,9 +226,13 @@ class AttackCog(commands.Cog):
     @option('character', description='Character Attacking', autocomplete=character_select_gm)
     @option('target', description="Character to Target", autocomplete=character_select)
     @option('roll', description="Roll or Macro Roll", autocomplete=a_macro_select)
-    async def damage(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str):
+    @option('damage_heal', description='Damage or Heal', choices=['Damage', 'Heal'], required=False)
+    async def damage(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, damage_heal:str = 'Damage'):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog damage")
+        heal=False
+        if damage_heal == 'Heal':
+            heal=True
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -267,7 +271,7 @@ class AttackCog(commands.Cog):
             roll_result = await roller.plain_roll(macro_roll)
         output_string= f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
         await ctx.send_followup(output_string)
-        await initiative.change_hp(ctx, engine, self.bot, target, roll_result[1], False, guild=guild)
+        await initiative.change_hp(ctx, engine, self.bot, target, roll_result[1], heal, guild=guild)
         await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)
         await engine.dispose()
 
