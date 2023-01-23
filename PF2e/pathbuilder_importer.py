@@ -110,7 +110,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
                     untrained_prof = math.floor(stats['level'] /2)
                 else:
                     untrained_prof = stats['level']
-
+        # print(untrained_prof)
 
         if pb['build']['proficiencies']['athletics'] == 0:
             macro['athletics'] = stats['str_mod']+untrained_prof
