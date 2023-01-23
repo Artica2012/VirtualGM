@@ -2,6 +2,7 @@
 
 # Code to facilitate the importing of data directly from pathbuilder
 import asyncio
+import math
 import os
 from math import floor
 
@@ -102,83 +103,92 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
 
         macro['perception'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
 
+        untrained_prof = 0
+        for item in pb['build']['feats']:
+            if "Untrained Improvisation" in item:
+                if stats['level'] < 7:
+                    untrained_prof = math.floor(stats['level'] /2)
+                else:
+                    untrained_prof = stats['level']
+
+
         if pb['build']['proficiencies']['athletics'] == 0:
-            macro['athletics'] = stats['str_mod']
+            macro['athletics'] = stats['str_mod']+untrained_prof
         else:
             macro['athletics'] = stats['str_mod'] + pb['build']['proficiencies']['athletics'] + stats['level']
 
         if pb['build']['proficiencies']['acrobatics'] == 0:
-            macro['acrobatics'] = stats['dex_mod']
+            macro['acrobatics'] = stats['dex_mod']+untrained_prof
         else:
             macro['acrobatics'] = stats['dex_mod'] + pb['build']['proficiencies']['acrobatics'] + stats['level']
 
         if pb['build']['proficiencies']['arcana'] == 0:
-            macro['arcana'] = stats['int_mod']
+            macro['arcana'] = stats['int_mod']+untrained_prof
         else:
             macro['arcana'] = stats['int_mod'] + pb['build']['proficiencies']['arcana'] + stats['level']
 
         if pb['build']['proficiencies']['crafting'] == 0:
-            macro['crafting'] = stats['int_mod']
+            macro['crafting'] = stats['int_mod']+untrained_prof
         else:
             macro['crafting'] = stats['int_mod'] + pb['build']['proficiencies']['crafting'] + stats['level']
 
         if pb['build']['proficiencies']['deception'] == 0:
-            macro['deception'] = stats['cha_mod']
+            macro['deception'] = stats['cha_mod']+untrained_prof
         else:
             macro['deception'] = stats['cha_mod'] + pb['build']['proficiencies']['deception'] + stats['level']
 
         if pb['build']['proficiencies']['diplomacy'] == 0:
-            macro['diplomacy'] = stats['cha_mod']
+            macro['diplomacy'] = stats['cha_mod']+untrained_prof
         else:
             macro['diplomacy'] = stats['cha_mod'] + pb['build']['proficiencies']['diplomacy'] + stats['level']
 
         if pb['build']['proficiencies']['intimidation'] == 0:
-            macro['intimidation'] = stats['cha_mod']
+            macro['intimidation'] = stats['cha_mod']+untrained_prof
         else:
             macro['intimidation'] = stats['cha_mod'] + pb['build']['proficiencies']['intimidation'] + stats['level']
 
         if pb['build']['proficiencies']['medicine'] == 0:
-            macro['medicine'] = stats['wis_mod']
+            macro['medicine'] = stats['wis_mod']+untrained_prof
         else:
             macro['medicine'] = stats['wis_mod'] + pb['build']['proficiencies']['medicine'] + stats['level']
 
         if pb['build']['proficiencies']['nature'] == 0:
-            macro['nature'] = stats['wis_mod']
+            macro['nature'] = stats['wis_mod']+untrained_prof
         else:
             macro['nature'] = stats['wis_mod'] + pb['build']['proficiencies']['nature'] + stats['level']
 
         if pb['build']['proficiencies']['occultism'] == 0:
-            macro['occultism'] = stats['int_mod']
+            macro['occultism'] = stats['int_mod']+untrained_prof
         else:
             macro['occultism'] = stats['int_mod'] + pb['build']['proficiencies']['occultism'] + stats['level']
 
         if pb['build']['proficiencies']['performance'] == 0:
-            macro['performance'] = stats['cha_mod']
+            macro['performance'] = stats['cha_mod']+untrained_prof
         else:
             macro['performance'] = stats['cha_mod'] + pb['build']['proficiencies']['performance'] + stats['level']
 
         if pb['build']['proficiencies']['religion'] == 0:
-            macro['religion'] = stats['wis_mod']
+            macro['religion'] = stats['wis_mod']+untrained_prof
         else:
             macro['religion'] = stats['wis_mod'] + pb['build']['proficiencies']['religion'] + stats['level']
 
         if pb['build']['proficiencies']['society'] == 0:
-            macro['society'] = stats['int_mod']
+            macro['society'] = stats['int_mod']+untrained_prof
         else:
             macro['society'] = stats['int_mod'] + pb['build']['proficiencies']['society'] + stats['level']
 
         if pb['build']['proficiencies']['stealth'] == 0:
-            macro['stealth'] = stats['dex_mod']
+            macro['stealth'] = stats['dex_mod']+untrained_prof
         else:
             macro['stealth'] = stats['dex_mod'] + pb['build']['proficiencies']['stealth'] + stats['level']
 
         if pb['build']['proficiencies']['survival'] == 0:
-            macro['survival'] = stats['wis_mod']
+            macro['survival'] = stats['wis_mod']+untrained_prof
         else:
             macro['survival'] = stats['wis_mod'] + pb['build']['proficiencies']['survival'] + stats['level']
 
         if pb['build']['proficiencies']['thievery'] == 0:
-            macro['thievery'] = stats['dex_mod']
+            macro['thievery'] = stats['dex_mod']+untrained_prof
         else:
             macro['thievery'] = stats['dex_mod'] + pb['build']['proficiencies']['thievery'] + stats['level']
     except Exception as e:

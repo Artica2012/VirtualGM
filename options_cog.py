@@ -155,9 +155,7 @@ class OptionsCog(commands.Cog):
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )
-                )
-                )
+                    )))
                 guild = result.scalars().one()
 
                 if module == 'View Modules':
@@ -180,9 +178,7 @@ class OptionsCog(commands.Cog):
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )
-                )
-                )
+                    )))
                 updated_guild = result.scalars().one()
                 if updated_guild.system == None:
                     system_str = 'Generic'
@@ -193,7 +189,8 @@ class OptionsCog(commands.Cog):
                 else:
                     system_str = 'Generic'
 
-                embed = await self.display_options(timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str)
+                embed = await self.display_options(timekeeping=updated_guild.timekeeping, block=updated_guild.block,
+                                                   system=system_str)
                 await ctx.send_followup(embed=embed)
             await engine.dispose()
         except NoResultFound as e:
