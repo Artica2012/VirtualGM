@@ -63,6 +63,7 @@ class QueryLinkButton(discord.ui.Button):
             url=link
         )
 
+
 class InitRefreshButton(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
         self.ctx = ctx
@@ -78,10 +79,12 @@ class InitRefreshButton(discord.ui.Button):
         try:
             await interaction.response.send_message("Refreshed", ephemeral=True)
             print(interaction.message.id)
-            await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild)
+            await initiative.block_update_init(self.ctx, interaction.message.id, self.engine, self.bot,
+                                               guild=self.guild)
         except Exception as e:
             print(f'Error: {e}')
             logging.info(e)
+
 
 class NextButton(discord.ui.Button):
     def __init__(self, bot, guild=None):
@@ -98,6 +101,55 @@ class NextButton(discord.ui.Button):
             await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
             await initiative.block_advance_initiative(None, self.engine, self.bot, guild=self.guild)
             await initiative.block_post_init(None, self.engine, self.bot, guild=self.guild)
+        except Exception as e:
+            print(f'Error: {e}')
+            logging.info(e)
+
+
+class ConditionAdd(discord.ui.Button):
+    def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
+        self.ctx = ctx
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.character = character
+        self.condition = condition
+        self.guild = guild
+        super().__init__(
+            style=discord.ButtonStyle.primary,
+            emoji="➕"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await initiative.increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
+            output = await initiative.edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
+            print(output[0])
+            await interaction.response.edit_message(content=output[0], view=output[1])
+            await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
+        except Exception as e:
+            print(f'Error: {e}')
+            logging.info(e)
+
+class ConditionMinus(discord.ui.Button):
+    def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
+        self.ctx = ctx
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.character = character
+        self.condition = condition
+        self.guild = guild
+        super().__init__(
+            style=discord.ButtonStyle.primary,
+            emoji="➖"
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await initiative.increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
+            output = await initiative.edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
+            print(output[0])
+            await interaction.response.edit_message(content=output[0], view=output[1])
+            await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         except Exception as e:
             print(f'Error: {e}')
             logging.info(e)

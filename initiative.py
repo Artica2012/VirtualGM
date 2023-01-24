@@ -1787,6 +1787,59 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         await report.report()
         return False
 
+async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character:str, condition:str, bot, guild=None):
+    logging.info("edit_cc_interface")
+    view = discord.ui.View()
+    try:
+        guild = await get_guild(ctx, guild)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            char = result.scalars().one()
+            print(char.name)
+    except NoResultFound as e:
+        if ctx != None:
+            await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return [None, None]
+    except Exception as e:
+        logging.info(f'edit_cc: {e}')
+        if ctx != None:
+            report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
+            await report.report()
+        return [None, None]
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == char.id).where(Condition.title == condition))
+            cond = result.scalars().one()
+
+            if cond.time or cond.number == None:
+                await ctx.send_followup("Unable to edit. Try again in a future update.",
+                                        ephemeral=True)
+                return [None, None]
+            else:
+                output_string = f"{cond.title}: {cond.number}"
+                view.add_item(ui_components.ConditionMinus(ctx, bot, character, condition, guild))
+                view.add_item(ui_components.ConditionAdd(ctx, bot, character, condition, guild))
+                return output_string, view
+    except NoResultFound as e:
+        if ctx != None:
+            await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return [None, None]
+    except Exception as e:
+        logging.info(f'edit_cc: {e}')
+        if ctx != None:
+            report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
+            await report.report()
+        return [None, None]
+
+
+
 
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
@@ -1834,6 +1887,61 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
         await report.report()
         return False
+
+async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, add:bool, bot, guild=None):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    try:
+        guild = await get_guild(ctx, guild)
+
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            character = result.scalars().one()
+
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
+    except Exception as e:
+        logging.info(f'edit_cc: {e}')
+        if ctx != None:
+            report = ErrorReport(ctx, increment_cc.__name__, e, bot)
+            await report.report()
+        return False
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == character.id).where(Condition.title == condition))
+            condition = result.scalars().one()
+            current_value = condition.number
+
+            if condition.time or condition.number == None:
+                await ctx.send_followup("Unable to edit. Try again in a future update.",
+                                        ephemeral=True)
+                return False
+            else:
+                if add == True:
+                    condition.number = current_value + 1
+                else:
+                    condition.number = current_value -1
+                await session.commit()
+        # await update_pinned_tracker(ctx, engine, bot)
+        await engine.dispose()
+        return True
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
+    except Exception as e:
+        print(f'edit_cc: {e}')
+        report = ErrorReport(ctx, edit_cc.__name__, e, bot)
+        await report.report()
+        return False
+
 
 
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
@@ -2709,24 +2817,26 @@ class InitiativeCog(commands.Cog):
     @option('mode', choices=['edit', 'delete'])
     @option("character", description="Character to select", autocomplete=character_select)
     @option("condition", description="Condition", autocomplete=cc_select)
-    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str,
-                   new_value: int = 0):
+    async def edit(self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         result = False
-        await ctx.response.defer()
+        await ctx.response.defer(ephemeral=True)
         if mode == 'delete':
             result = await delete_cc(ctx, engine, character, condition, self.bot)
             if result:
-                await ctx.send_followup(f"{condition} on {character} deleted.")
+                await ctx.send_followup('Successful Delete', ephemeral=True)
+                await ctx.send(f"{condition} on {character} deleted.")
         elif mode == 'edit':
-            result = await edit_cc(ctx, engine, character, condition, new_value, self.bot)
-            if result:
-                await ctx.send_followup(f"{condition} on {character} updated.")
+            output= await edit_cc_interface(ctx, engine, character, condition, self.bot)
+            if output[0] != None:
+                await ctx.send_followup(output[0], view=output[1], ephemeral=True)
+            else:
+                await ctx.send_followup('Error')
+            # result = await edit_cc(ctx, engine, character, condition, new_value, self.bot)
+            # if result:
+            #     await ctx.send_followup(f"{condition} on {character} updated.")
         else:
             await ctx.send_followup("Invalid Input", ephemeral=True)
-
-        if not result:
-            await ctx.send_followup("Failed", ephemeral=True)
 
     # @cc.command(description="Show Custom Counters")
     # @option("character", description="Character to select", autocomplete=character_select_gm)
