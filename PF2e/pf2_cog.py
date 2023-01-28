@@ -70,11 +70,12 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup('Import Failed')
 
     @pf2.command(description="Pathbuilder Import")
-    async def add_npc(self, ctx:discord.ApplicationContext, name:str, lookup:str):
+    @option('elite_weak', choices=['weak', 'elite'], required=False)
+    async def add_npc(self, ctx:discord.ApplicationContext, name:str, lookup:str, elite_weak:str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
-        response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup)
+        response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
         if not response:
             await ctx.send_followup('Import Failed')
 
