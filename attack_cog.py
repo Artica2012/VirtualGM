@@ -188,8 +188,8 @@ class AttackCog(commands.Cog):
         await engine.dispose()
 
     @att.command(description="Saving Throw")
-    @option('character', description='Saving Character', autocomplete=character_select_gm)
-    @option('target', description="Character to use DC", autocomplete=character_select)
+    @option('character', description='Character forcing the sae', autocomplete=character_select_gm)
+    @option('target', description="Saving Character", autocomplete=character_select)
     @option('vs', description="Target Attribute",
             autocomplete=auto_complete.save_select)
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
