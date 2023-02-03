@@ -166,6 +166,7 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx, engine)
     Condition = await get_condition(ctx, engine)
+    orig_dc = dc
     try:
 
         async with async_session() as session:
@@ -206,15 +207,26 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
 
         success_string = await PF2_eval_succss(dice_result, goal)
         # Format output string
-        output_string = f"{target} makes a {vs} save!\n" \
-                        f"{character} forced the save.\n" \
-                        f"{dice_string} = {total}\n" \
-                        f"{success_string}"
+        if character == target:
+            if orig_dc == None:
+                output_string = f"{character} makes a {vs} save!\n" \
+                                f"{dice_string} = {total}\n"
 
-        # output_string = f"{character} vs {target}\n" \
-        #                 f" {vs} Save\n" \
-        #                 f"{dice_string} = {total}\n" \
-        #                 f"{success_string}"
+            else:
+                output_string = f"{character} makes a {vs} save!\n" \
+                                f"{dice_string} = {total}\n" \
+                                f"{success_string}"
+
+        else:
+            output_string = f"{target} makes a {vs} save!\n" \
+                            f"{character} forced the save.\n" \
+                            f"{dice_string} = {total}\n" \
+                            f"{success_string}"
+
+            # output_string = f"{character} vs {target}\n" \
+            #                 f" {vs} Save\n" \
+            #                 f"{dice_string} = {total}\n" \
+            #                 f"{success_string}"
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
