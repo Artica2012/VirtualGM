@@ -206,10 +206,15 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
 
         success_string = await PF2_eval_succss(dice_result, goal)
         # Format output string
-        output_string = f"{character} vs {target}\n" \
-                        f" {vs} Save\n" \
+        output_string = f"{target} makes a {vs} save!\n" \
+                        f"{character} forced the save.\n" \
                         f"{dice_string} = {total}\n" \
                         f"{success_string}"
+
+        # output_string = f"{character} vs {target}\n" \
+        #                 f" {vs} Save\n" \
+        #                 f"{dice_string} = {total}\n" \
+        #                 f"{success_string}"
 
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
