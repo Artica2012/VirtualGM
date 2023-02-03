@@ -190,10 +190,10 @@ class AttackCog(commands.Cog):
     @att.command(description="Saving Throw")
     @option('character', description='Character forcing the sae', autocomplete=character_select_gm)
     @option('target', description="Saving Character", autocomplete=character_select)
-    @option('vs', description="Target Attribute",
+    @option('save', description="Save",
             autocomplete=auto_complete.save_select)
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, vs: str, dc:int = None, modifier: str = ''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, save: str, dc:int = None, modifier: str = ''):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
 
@@ -214,7 +214,7 @@ class AttackCog(commands.Cog):
                 return
             # PF2 specific code
             if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, vs,
+                output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save,
                                                               dc, modifier)
                 await ctx.send_followup(output_string)
             elif guild.system == "D4e":
