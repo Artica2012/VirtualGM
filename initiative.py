@@ -881,7 +881,7 @@ async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, c
     except IndexError as e:
         return False
     except Exception as e:
-        logging.error(f'init_integrity_check: {e}')
+        logging.error(f'init_integrity_check: {e} {ctx.interaction.message.id}')
         return False
 
 
