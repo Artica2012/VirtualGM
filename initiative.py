@@ -108,6 +108,7 @@ async def fix_init_order(ctx, engine, guild=None):
                     await session.commit()
     return True
 
+
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # SETUP
@@ -505,7 +506,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
             async with async_session() as session:
                 await session.delete(mac)
                 await session.commit()
-         # Delete the Character
+        # Delete the Character
         async with async_session() as session:
             await session.delete(char)
             await session.commit()
@@ -519,12 +520,13 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         await report.report()
         return False
 
+
 # Generate the character sheet
 async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.Bot, name: str, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         # Load the tables
-        if guild==None:
+        if guild == None:
             guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
@@ -618,6 +620,7 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
         report = ErrorReport(ctx, get_char_sheet.__name__, e, bot)
         await report.report()
 
+
 # Calculates the HP String
 async def calculate_hp(chp, maxhp):
     logging.info(f"Calculate hp {chp}/{maxhp}")
@@ -656,6 +659,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
         report = ErrorReport(ctx, add_thp.__name__, e, bot)
         await report.report()
         return False
+
 
 # Edit HP
 async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amount: int, heal: bool, guild=None):
@@ -725,7 +729,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
 
 # Reposts new trackers in the pre-assigned channels
 async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"repost_trackers")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -733,9 +737,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
                     Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+                )))
             guild = result.scalars().one()
             channel = bot.get_channel(guild.tracker_channel)
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
@@ -756,7 +758,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
 
 # Function sets the pinned trackers and records their position in the Global table.
 async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, channel: discord.TextChannel, gm=False):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"set_pinned_tracker")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -764,9 +766,7 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
                     Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+                )))
             guild = result.scalars().one()
 
             try:
@@ -796,7 +796,7 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
 
 # Set the initiative
 async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, engine, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"set_init {name} {init}")
     if ctx == None and guild == None:
         raise LookupError("No guild reference")
 
@@ -826,7 +826,7 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 # Check to make sure that the character is in the right place in initiative
 async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine,
                                guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"init_integrity_check")
     init_list = await get_init_list(ctx, engine, guild=guild)
     print(init_list)
     try:
@@ -843,7 +843,6 @@ async def init_integrity_check(ctx: discord.ApplicationContext, init_pos: int, c
 
 async def init_integrity(ctx, engine, guild=None):
     logging.info("Checking Initiative Integrity")
-
     if ctx == None and guild == None:
         raise LookupError("No guild reference")
 
@@ -2638,7 +2637,7 @@ class InitiativeCog(commands.Cog):
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        # await ctx.response.defer(ephemeral=True)
+        await ctx.response.defer(ephemeral=True)
         response = False
         player_bool = False
         if player == 'player':
@@ -2648,9 +2647,9 @@ class InitiativeCog(commands.Cog):
 
         response = await add_character(ctx, engine, self.bot, name, hp, player_bool, initiative)
         if response:
-            await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
+            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
         else:
-            await ctx.respond(f"Error Adding Character", ephemeral=True)
+            await ctx.send_followup(f"Error Adding Character", ephemeral=True)
 
     @char.command(description="Edit PC on NPC")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
