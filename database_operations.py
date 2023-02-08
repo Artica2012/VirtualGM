@@ -51,15 +51,18 @@ def get_db_engine(user, password, host, port, db):
 
 
 def update_tracker_table():
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
     with Session(engine) as session:
         guild = session.execute(select(Global)).all()
         for row in guild:
-            print(row[0].id)
-            alter_string = f'ALTER TABLE "Tracker_{row[0].id}" ADD active boolean DEFAULT TRUE'
-            with engine.connect() as conn:
-                conn.execute(alter_string)
+            try:
+                print(row[0].id)
+                alter_string = f'ALTER TABLE "Tracker_{row[0].id}" ADD active boolean DEFAULT TRUE'
+                with engine.connect() as conn:
+                    conn.execute(alter_string)
+            except:
+                pass
 
 
 def update_con_table():

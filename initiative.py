@@ -1377,12 +1377,15 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
         logging.info(f"BGT: Guild: {guild.id}")
 
         if guild.system == 'PF2':
+            logging.info('PF2')
             output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm,
                                                                      guild=guild)
         elif guild.system == "D4e":
+            logging.info('D4e')
             output_string = await D4e.d4e_functions.d4e_get_tracker(init_list, selected, ctx, engine, bot, gm,
                                                                     guild=guild)
         else:
+            logging.info('generic')
             output_string = await generic_block_get_tracker(init_list, selected, ctx, engine, bot, gm, guild=guild)
         return output_string
 
@@ -1416,10 +1419,13 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             block = False
         logging.info(f"BGT2: round: {guild.round}")
 
+
+    active_length = len(init_list)
+    print(f'Active Length: {active_length}')
     inactive_list = await get_inactive_list(ctx, engine, guild)
     if len(inactive_list) > 0:
-        init_list.append('X')
-        init_list.append(inactive_list)
+        init_list.extend(inactive_list)
+        print(f'Total Length: {len(init_list)}')
 
 
     try:
@@ -1437,99 +1443,100 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         report = ErrorReport(ctx, "get_tracker", e, bot)
         await report.report()
 
-    try:
-        Condition = await get_condition(ctx, engine, id=guild.id)
+    # try:
+    Condition = await get_condition(ctx, engine, id=guild.id)
 
-        if guild.round != 0:
-            round_string = f"Round: {guild.round}"
+    if guild.round != 0:
+        round_string = f"Round: {guild.round}"
+    else:
+        round_string = ""
+
+    output_string = f"```{datetime_string}" \
+                    f"Initiative: {round_string}\n"
+    # Iterate through the init list
+    for x, row in enumerate(init_list):
+        logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
+        if len(init_list) > active_length and x == active_length:
+            output_string += '-----------------\n'
+        print(f'row.id= {row.id}')
+        async with async_session() as session:
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == row.id)
+                                           .where(Condition.visible == True))
+            condition_list = result.scalars().all()
+
+        await asyncio.sleep(0)
+        sel_bool = False
+        selector = ''
+
+        # don't show an init if not in combat
+        if row.init == 0 or row.active == False:
+            init_string = ""
         else:
-            round_string = ""
+            init_string = f"{row.init}"
 
-        output_string = f"```{datetime_string}" \
-                        f"Initiative: {round_string}\n"
-        # Iterate through the init list
-        for x, row in enumerate(init_list):
-            logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-            if row == 'X':
-                output_string += '-----------------'
+        if block:
+            for character in turn_list:
+                print(f'character.id = {character.id}')
+                if row.id == character.id:
+                    sel_bool = True
+        else:
+            if x == selected:
+                sel_bool = True
+
+        # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+        if sel_bool:
+            selector = '>>'
+        if row.player or gm:
+            if row.temp_hp != 0:
+                string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
             else:
+                string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
+        else:
+            hp_string = await calculate_hp(row.current_hp, row.max_hp)
+            string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
+        output_string += string
 
-                async with async_session() as session:
-                    result = await session.execute(select(Condition)
-                                                   .where(Condition.character_id == row.id)
-                                                   .where(Condition.visible == True))
-                    condition_list = result.scalars().all()
-
-                await asyncio.sleep(0)
-                sel_bool = False
-                selector = ''
-
-                # don't show an init if not in combat
-                if row.init == 0:
-                    init_string = ""
-                else:
-                    init_string = f"{row.init}"
-
-                if block:
-                    for character in turn_list:
-                        if row.id == character.id:
-                            sel_bool = True
-                else:
-                    if x == selected:
-                        sel_bool = True
-
-                # print(f"{row['name']}: x: {x}, selected: {selected}")
-
-                if sel_bool:
-                    selector = '>>'
-                if row.player or gm:
-                    if row.temp_hp != 0:
-                        string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
-                    else:
-                        string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
-                else:
-                    hp_string = await calculate_hp(row.current_hp, row.max_hp)
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
-                output_string += string
-
-                for con_row in condition_list:
-                    logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
-                    # print(con_row)
-                    await asyncio.sleep(0)
-                    if gm or not con_row.counter:
-                        if con_row.number != None and con_row.number > 0:
-                            if con_row.time:
-                                time_stamp = datetime.datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(ctx, engine, bot, guild=guild)
-                                time_left = time_stamp - current_time
-                                days_left = time_left.days
-                                processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                                processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                                if processed_seconds_left < 10:
-                                    processed_seconds_left = f"0{processed_seconds_left}"
-                                if days_left != 0:
-                                    con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
-                                else:
-                                    con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
-                            else:
-                                con_string = f"       {con_row.title}: {con_row.number}\n"
+        for con_row in condition_list:
+            print(f'con_row.id = {con_row.id}')
+            logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
+            # print(con_row)
+            await asyncio.sleep(0)
+            if gm or not con_row.counter:
+                if con_row.number != None and con_row.number > 0:
+                    if con_row.time:
+                        time_stamp = datetime.datetime.fromtimestamp(con_row.number)
+                        current_time = await get_time(ctx, engine, bot, guild=guild)
+                        time_left = time_stamp - current_time
+                        days_left = time_left.days
+                        processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                        processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                        if processed_seconds_left < 10:
+                            processed_seconds_left = f"0{processed_seconds_left}"
+                        if days_left != 0:
+                            con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
                         else:
-                            con_string = f"       {con_row.title}\n"
-
-                    elif con_row.counter == True and sel_bool and row.player:
-                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                            con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
                     else:
-                        con_string = ''
-                    output_string += con_string
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                else:
+                    con_string = f"       {con_row.title}\n"
 
-        output_string += f"```"
-        # print(output_string)
-        await engine.dispose()
-        return output_string
-    except Exception as e:
-        logging.info(f"block_get_tracker 2: {e}")
-        report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
-        await report.report()
+            elif con_row.counter == True and sel_bool and row.player:
+                con_string = f"       {con_row.title}: {con_row.number}\n"
+            else:
+                con_string = ''
+            output_string += con_string
+
+    output_string += f"```"
+    # print(output_string)
+    await engine.dispose()
+    return output_string
+    # except Exception as e:
+    #     logging.info(f"block_get_tracker 2: {e}")
+    #     report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
+    #     await report.report()
 
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
@@ -1608,133 +1615,135 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
     if ctx == None and guild == None:
         raise LookupError("No guild reference")
 
+    # try:
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
+        guild = result.scalars().one()
+        logging.info(f"BPI1: guild: {guild.id}")
+    # Tracker = await get_tracker(ctx, engine, id=guild.id)
+    # Condition = await get_condition(ctx, engine, id=guild.id)
+
+    if guild.block:
+        turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
+        block = True
+        # print(f"block_post_init: \n {turn_list}")
+    else:
+        block = False
+
+    init_list = await get_init_list(ctx, engine, guild=guild)
+    print(init_list)
+    tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
+    print(tracker_string)
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            if ctx == None:
-                result = await session.execute(select(Global).where(
-                    Global.id == guild.id))
-            else:
-                result = await session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )))
-            guild = result.scalars().one()
-            logging.info(f"BPI1: guild: {guild.id}")
-        # Tracker = await get_tracker(ctx, engine, id=guild.id)
-        # Condition = await get_condition(ctx, engine, id=guild.id)
-
-        if guild.block:
-            turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
-            block = True
-            # print(f"block_post_init: \n {turn_list}")
-        else:
-            block = False
-
-        init_list = await get_init_list(ctx, engine, guild=guild)
-        tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
-        try:
-            logging.info(f"BPI2")
-            ping_string = ''
-            if block:
-                for character in turn_list:
-                    await asyncio.sleep(0)
-                    user = bot.get_user(character.user)
-                    ping_string += f"{user.mention}, it's your turn.\n"
-            else:
-                user = bot.get_user(init_list[guild.initiative].user)
+        logging.info(f"BPI2")
+        ping_string = ''
+        if block:
+            for character in turn_list:
+                await asyncio.sleep(0)
+                user = bot.get_user(character.user)
                 ping_string += f"{user.mention}, it's your turn.\n"
-        except Exception as e:
-            # print(f'post_init: {e}')
-            ping_string = ''
-
-        # Check for systems:
-        if guild.system == 'D4e':
-            logging.info(f"BPI3: d4e")
-            # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
-            view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
-            print('Buttons Generated')
-            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-            view.add_item(ui_components.NextButton(bot, guild=guild))
-
-            if ctx != None:
-                if ctx.channel.id == guild.tracker_channel:
-
-                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                          f"{ping_string}", view=view)
-                else:
-                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                      f"{ping_string}", view=view, )
-                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                    logging.info(f"BPI4")
-            else:
-                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                                f"{ping_string}", view=view, )
-                logging.info("BPI4 Guild")
         else:
-            view = discord.ui.View(timeout=None)
-            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-            view.add_item(ui_components.NextButton(bot, guild=guild))
-            # Always post the tracker to the player channel
-            if ctx != None:
-                if ctx.channel.id == guild.tracker_channel:
-                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                          f"{ping_string}", view=view)
-                else:
-                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                      f"{ping_string}", view=view)
-                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                    logging.info(f"BPI5")
-            else:
-                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                                f"{ping_string}", view=view)
-                logging.info(f"BPI5 Guild")
-        if guild.tracker is not None:
-            channel = bot.get_channel(guild.tracker_channel)
-            message = await channel.fetch_message(guild.tracker)
-            await message.edit(tracker_string)
-        if guild.gm_tracker is not None:
-            gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
-                                                                ctx, engine, bot, gm=True, guild=guild)
-            gm_channel = bot.get_channel(guild.gm_tracker_channel)
-            gm_message = await gm_channel.fetch_message(guild.gm_tracker)
-            await gm_message.edit(gm_tracker_display_string)
-
-        async with async_session() as session:
-            if ctx == None:
-                result = await session.execute(select(Global).where(
-                    Global.id == guild.id))
-            else:
-                result = await session.execute(select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )))
-            guild = result.scalars().one()
-            print(f"Saved last tracker: {guild.last_tracker}")
-            # old_tracker = guild.last_tracker
-            try:
-                if guild.last_tracker != None:
-                    tracker_channel = bot.get_channel(guild.tracker_channel)
-                    old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
-                    await old_tracker_msg.edit(view=None)
-            except Exception as e:
-                print(e)
-            guild.last_tracker = tracker_msg.id
-            print()
-            await session.commit()
-
-        await engine.dispose()
-    except NoResultFound as e:
-        if ctx != None:
-            await ctx.channel.send(error_not_initialized,
-                                   delete_after=30)
+            user = bot.get_user(init_list[guild.initiative].user)
+            ping_string += f"{user.mention}, it's your turn.\n"
     except Exception as e:
-        logging.error(f"block_post_init: {e}")
+        # print(f'post_init: {e}')
+        ping_string = ''
+
+    # Check for systems:
+    if guild.system == 'D4e':
+        logging.info(f"BPI3: d4e")
+        # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+        view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
+        print('Buttons Generated')
+        view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+        view.add_item(ui_components.NextButton(bot, guild=guild))
+
         if ctx != None:
-            report = ErrorReport(ctx, block_post_init.__name__, e, bot)
-            await report.report()
+            if ctx.channel.id == guild.tracker_channel:
+
+                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                      f"{ping_string}", view=view)
+            else:
+                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                  f"{ping_string}", view=view, )
+                tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                logging.info(f"BPI4")
+        else:
+            tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                            f"{ping_string}", view=view, )
+            logging.info("BPI4 Guild")
+    else:
+        view = discord.ui.View(timeout=None)
+        view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+        view.add_item(ui_components.NextButton(bot, guild=guild))
+        # Always post the tracker to the player channel
+        if ctx != None:
+            if ctx.channel.id == guild.tracker_channel:
+                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                      f"{ping_string}", view=view)
+            else:
+                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                  f"{ping_string}", view=view)
+                tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                logging.info(f"BPI5")
+        else:
+            tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                            f"{ping_string}", view=view)
+            logging.info(f"BPI5 Guild")
+    if guild.tracker is not None:
+        channel = bot.get_channel(guild.tracker_channel)
+        message = await channel.fetch_message(guild.tracker)
+        await message.edit(tracker_string)
+    if guild.gm_tracker is not None:
+        gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
+                                                            ctx, engine, bot, gm=True, guild=guild)
+        gm_channel = bot.get_channel(guild.gm_tracker_channel)
+        gm_message = await gm_channel.fetch_message(guild.gm_tracker)
+        await gm_message.edit(gm_tracker_display_string)
+
+    async with async_session() as session:
+        if ctx == None:
+            result = await session.execute(select(Global).where(
+                Global.id == guild.id))
+        else:
+            result = await session.execute(select(Global).where(
+                or_(
+                    Global.tracker_channel == ctx.interaction.channel_id,
+                    Global.gm_tracker_channel == ctx.interaction.channel_id
+                )))
+        guild = result.scalars().one()
+        print(f"Saved last tracker: {guild.last_tracker}")
+        # old_tracker = guild.last_tracker
+        try:
+            if guild.last_tracker != None:
+                tracker_channel = bot.get_channel(guild.tracker_channel)
+                old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
+                await old_tracker_msg.edit(view=None)
+        except Exception as e:
+            print(e)
+        guild.last_tracker = tracker_msg.id
+        print()
+        await session.commit()
+
+    await engine.dispose()
+    # except NoResultFound as e:
+    #     if ctx != None:
+    #         await ctx.channel.send(error_not_initialized,
+    #                                delete_after=30)
+    # except Exception as e:
+    #     logging.error(f"block_post_init: {e}")
+    #     if ctx != None:
+    #         report = ErrorReport(ctx, block_post_init.__name__, e, bot)
+    #         await report.report()
 
 
 async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
@@ -1836,8 +1845,8 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
     except Exception as e:
-        logging.error(f"block_post_init: {e}")
-        report = ErrorReport(ctx, block_post_init.__name__, e, bot)
+        logging.error(f"block_update_init: {e}")
+        report = ErrorReport(ctx, block_update_init.__name__, e, bot)
         await report.report()
 
 
