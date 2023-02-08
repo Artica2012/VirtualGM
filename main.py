@@ -43,10 +43,11 @@ bot = discord.Bot(intents=intents,
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    # logging.warning("Updating tables...")
+    logging.warning("Updating tables...")
+    database_operations.update_tracker_table()
     # database_operations.update_con_table()
     # database_operations.create_reminder_table()
-    # logging.warning("Tables updated")
+    logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
 

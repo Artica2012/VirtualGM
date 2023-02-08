@@ -57,7 +57,7 @@ def update_tracker_table():
         guild = session.execute(select(Global)).all()
         for row in guild:
             print(row[0].id)
-            alter_string = f'ALTER TABLE "Tracker_{row[0].id}" ADD init_string varchar(255)'
+            alter_string = f'ALTER TABLE "Tracker_{row[0].id}" ADD active boolean DEFAULT TRUE'
             with engine.connect() as conn:
                 conn.execute(alter_string)
 

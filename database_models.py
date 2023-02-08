@@ -115,6 +115,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
         max_hp = Column(Integer(), default=1)
         temp_hp = Column(Integer(), default=0)
         init_string = Column(String(), nullable=True)
+        active = Column(Boolean(), default=True)
 
     logging.info(f"get_tracker: returning tracker")
     return Tracker
@@ -156,7 +157,8 @@ class TrackerTable:
                        db.Column('current_hp', db.INTEGER(), default=0),
                        db.Column('max_hp', db.INTEGER(), default=1),
                        db.Column('temp_hp', db.INTEGER(), default=0),
-                       db.Column('init_string', db.String(255), nullable=True)
+                       db.Column('init_string', db.String(255), nullable=True),
+                       db.Column('active', db.BOOLEAN, default=True)
                        )
         return emp
 
