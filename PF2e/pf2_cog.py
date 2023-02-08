@@ -1,7 +1,7 @@
 # pf2_cog.py
 # For slash commands specific to oathfinder 2e
 # system specific module
-
+import logging
 import os
 
 # imports
@@ -61,13 +61,35 @@ class PF2Cog(commands.Cog):
     async def pb_import(self, ctx:discord.ApplicationContext, name:str, pathbuilder_id:int):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
-        response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
-        if response:
-            await update_pinned_tracker(ctx, engine, self.bot)
-            await ctx.send_followup('Success')
 
-        else:
-            await ctx.send_followup('Import Failed')
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id
+                    )))
+                guild = result.scalars().one()
+
+                if guild.system == 'PF2':
+                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
+                    if response:
+                        await update_pinned_tracker(ctx, engine, self.bot)
+                        await ctx.send_followup('Success')
+
+                    else:
+                        await ctx.send_followup('Import Failed')
+                else:
+                    await ctx.send_followup('System not assigned as Pathfinder 2e. Please ensure that the correct system '
+                                      'was set at table setup')
+        except Exception as e:
+            await ctx.send_followup('Error')
+            logging.info(f"pb_import: {e}")
+            report = ErrorReport(ctx, "pb_import", e, self.bot)
+            await report.report()
+
+
 
     @pf2.command(description="Pathbuilder Import")
     @option('elite_weak', choices=['weak', 'elite'], required=False)
