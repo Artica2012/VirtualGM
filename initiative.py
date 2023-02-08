@@ -317,7 +317,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 
 # Add a character to the database
-async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str,
+async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str, active:bool,
                          player: discord.User, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
@@ -336,6 +336,8 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 character.init_string = str(init)
             if player != None:
                 character.user = player.id
+            if active != None:
+                character.active=active
 
             await session.commit()
         if guild.system == 'PF2':
@@ -1306,7 +1308,42 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
-            result = await session.execute(select(Tracker).order_by(Tracker.init.desc()).order_by(Tracker.id.desc()))
+            result = await session.execute(select(Tracker)
+                                           .where(Tracker.active == True)
+                                           .order_by(Tracker.init.desc())
+                                           .order_by(Tracker.id.desc()))
+            init_list = result.scalars().all()
+            logging.info(f"GIL: Init list gotten")
+            # print(init_list)
+        await engine.dispose()
+        return init_list
+
+    except Exception as e:
+        logging.error("error in get_init_list")
+        return []
+
+# Returns the tracker list sorted by initiative
+async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
+    try:
+        if guild != None:
+            try:
+                Tracker = await get_tracker(ctx, engine, id=guild.id)
+            except:
+                Tracker = await get_tracker(ctx, engine)
+        else:
+            Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(select(Tracker)
+                                           .where(Tracker.active == False)
+                                           .order_by(Tracker.init.desc())
+                                           .order_by(Tracker.id.desc()))
             init_list = result.scalars().all()
             logging.info(f"GIL: Init list gotten")
             # print(init_list)
@@ -1378,6 +1415,13 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         else:
             block = False
         logging.info(f"BGT2: round: {guild.round}")
+
+    inactive_list = await get_inactive_list(ctx, engine, guild)
+    if len(inactive_list) > 0:
+        init_list.append('X')
+        init_list.append(inactive_list)
+
+
     try:
         if await check_timekeeper(ctx, engine, guild=guild):
             datetime_string = f" {await output_datetime(ctx, engine, bot, guild=guild)}\n" \
@@ -1403,75 +1447,81 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
 
         output_string = f"```{datetime_string}" \
                         f"Initiative: {round_string}\n"
+        # Iterate through the init list
         for x, row in enumerate(init_list):
             logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-            async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == row.id)
-                                               .where(Condition.visible == True))
-                condition_list = result.scalars().all()
-
-            await asyncio.sleep(0)
-            sel_bool = False
-            selector = ''
-
-            # don't show an init if not in combat
-            if row.init == 0:
-                init_string = ""
+            if row == 'X':
+                output_string += '-----------------'
             else:
-                init_string = f"{row.init}"
 
-            if block:
-                for character in turn_list:
-                    if row.id == character.id:
-                        sel_bool = True
-            else:
-                if x == selected:
-                    sel_bool = True
+                async with async_session() as session:
+                    result = await session.execute(select(Condition)
+                                                   .where(Condition.character_id == row.id)
+                                                   .where(Condition.visible == True))
+                    condition_list = result.scalars().all()
 
-            # print(f"{row['name']}: x: {x}, selected: {selected}")
-
-            if sel_bool:
-                selector = '>>'
-            if row.player or gm:
-                if row.temp_hp != 0:
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
-                else:
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
-            else:
-                hp_string = await calculate_hp(row.current_hp, row.max_hp)
-                string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
-            output_string += string
-
-            for con_row in condition_list:
-                logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
-                # print(con_row)
                 await asyncio.sleep(0)
-                if gm or not con_row.counter:
-                    if con_row.number != None and con_row.number > 0:
-                        if con_row.time:
-                            time_stamp = datetime.datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(ctx, engine, bot, guild=guild)
-                            time_left = time_stamp - current_time
-                            days_left = time_left.days
-                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                            if processed_seconds_left < 10:
-                                processed_seconds_left = f"0{processed_seconds_left}"
-                            if days_left != 0:
-                                con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
-                            else:
-                                con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
-                        else:
-                            con_string = f"       {con_row.title}: {con_row.number}\n"
-                    else:
-                        con_string = f"       {con_row.title}\n"
+                sel_bool = False
+                selector = ''
 
-                elif con_row.counter == True and sel_bool and row.player:
-                    con_string = f"       {con_row.title}: {con_row.number}\n"
+                # don't show an init if not in combat
+                if row.init == 0:
+                    init_string = ""
                 else:
-                    con_string = ''
-                output_string += con_string
+                    init_string = f"{row.init}"
+
+                if block:
+                    for character in turn_list:
+                        if row.id == character.id:
+                            sel_bool = True
+                else:
+                    if x == selected:
+                        sel_bool = True
+
+                # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+                if sel_bool:
+                    selector = '>>'
+                if row.player or gm:
+                    if row.temp_hp != 0:
+                        string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
+                    else:
+                        string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
+                else:
+                    hp_string = await calculate_hp(row.current_hp, row.max_hp)
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
+                output_string += string
+
+                for con_row in condition_list:
+                    logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
+                    # print(con_row)
+                    await asyncio.sleep(0)
+                    if gm or not con_row.counter:
+                        if con_row.number != None and con_row.number > 0:
+                            if con_row.time:
+                                time_stamp = datetime.datetime.fromtimestamp(con_row.number)
+                                current_time = await get_time(ctx, engine, bot, guild=guild)
+                                time_left = time_stamp - current_time
+                                days_left = time_left.days
+                                processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                                processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                                if processed_seconds_left < 10:
+                                    processed_seconds_left = f"0{processed_seconds_left}"
+                                if days_left != 0:
+                                    con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
+                                else:
+                                    con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                            else:
+                                con_string = f"       {con_row.title}: {con_row.number}\n"
+                        else:
+                            con_string = f"       {con_row.title}\n"
+
+                    elif con_row.counter == True and sel_bool and row.player:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
+                    else:
+                        con_string = ''
+                    output_string += con_string
+
         output_string += f"```"
         # print(output_string)
         await engine.dispose()
@@ -2655,12 +2705,13 @@ class InitiativeCog(commands.Cog):
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
     @option('hp', description='Total HP', input_type=int, required=False)
     @option('initiative', description="Initiative Roll (XdY+Z)", required=False, input_type=str)
-    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int = None, initiative: str = None,
+    @option('active', description='Active State', required=False, input_type=bool)
+    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int = None, initiative: str = None, active:bool=None,
                    player: discord.User = None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         if await auto_complete.hard_lock(ctx, name):
-            response = await edit_character(ctx, engine, self.bot, name, hp, initiative, player)
+            response = await edit_character(ctx, engine, self.bot, name, hp, initiative, active, player)
             if not response:
                 await ctx.respond(f"Error Editing Character", ephemeral=True)
 
