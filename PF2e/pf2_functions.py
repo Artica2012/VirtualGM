@@ -366,7 +366,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
             selector = ''
 
             # don't show an init if not in combat
-            if row.init == 0:
+            if row.init == 0 or row.active == False:
                 init_string = ""
             else:
                 init_string = f"{row.init}"

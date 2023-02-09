@@ -270,21 +270,6 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
 
     try:
         Condition = await get_condition(ctx, engine, id=guild.id)
-        row_data = []
-        for row in init_list:
-            async with async_session() as session:
-                result = await session.execute(select(Condition).where(Condition.character_id == row.id))
-                con = result.scalars().all()
-            row_data.append({'id': row.id,
-                             'name': row.name,
-                             'init': row.init,
-                             'player': row.player,
-                             'user': row.user,
-                             'chp': row.current_hp,
-                             'maxhp': row.max_hp,
-                             'thp': row.temp_hp,
-                             'cc': con
-                             })
 
         if round != 0:
             round_string = f"Round: {round}"
@@ -294,20 +279,31 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         output_string = f"```{datetime_string}" \
                         f"Initiative: {round_string}\n"
 
-        for x, row in enumerate(row_data):
+        for x, row in enumerate(init_list):
+            logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
+            if len(init_list) > active_length and x == active_length:
+                output_string += '-----------------\n'  # Put in the divider
+            # print(f'row.id= {row.id}')
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id == row.id)
+                                               .where(Condition.visible == True))
+                condition_list = result.scalars().all()
+
+
             await asyncio.sleep(0)
             sel_bool = False
             selector = ''
 
             # don't show an init if not in combat
-            if row['init'] == 0:
+            if row.init == 0 or row.active == False:
                 init_string = ""
             else:
-                init_string = f"{row['init']}"
+                init_string = f"{row.init}"
 
             if block:
                 for character in turn_list:
-                    if row['id'] == character.id:
+                    if row.id == character.id:
                         sel_bool = True
             else:
                 if x == selected:
@@ -317,17 +313,17 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
 
             if sel_bool:
                 selector = '>>'
-            if row['player'] or gm:
-                if row['thp'] != 0:
-                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']} ({row['thp']}) Temp\n"
+            if row.player or gm:
+                if row.temp_hp != 0:
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
                 else:
-                    string = f"{selector}  {init_string} {str(row['name']).title()}: {row['chp']}/{row['maxhp']}\n"
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
             else:
-                hp_string = await initiative.calculate_hp(row['chp'], row['maxhp'])
-                string = f"{selector}  {init_string} {str(row['name']).title()}: {hp_string} \n"
+                hp_string = await initiative.calculate_hp(row.current_hp, row.max_hp)
+                string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
             output_string += string
 
-            for con_row in row['cc']:
+            for con_row in condition_list:
                 await asyncio.sleep(0)
                 if con_row.visible == True:
                     if gm or not con_row.counter:
@@ -350,7 +346,7 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                         else:
                             con_string = f"       {con_row.title}\n"
 
-                    elif con_row.counter == True and sel_bool and row['player']:
+                    elif con_row.counter == True and sel_bool and row.player:
                         con_string = f"       {con_row.title}: {con_row.number}\n"
                     else:
                         con_string = ''
@@ -366,7 +362,7 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         if ctx != None:
             report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
             await report.report()
-        logging.info(f"pf2_get_tracker: {e}")
+        logging.info(f"d4e_get_tracker: {e}")
 
 async def d4e_condition_buttons():
     pass
