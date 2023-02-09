@@ -2696,7 +2696,7 @@ class InitiativeCog(commands.Cog):
     async def add(self, ctx: discord.ApplicationContext, name: str, hp: int,
                   player: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer(ephemeral=True)
+        # await ctx.response.defer(ephemeral=True)
         response = False
         player_bool = False
         if player == 'player':
@@ -2706,9 +2706,9 @@ class InitiativeCog(commands.Cog):
 
         response = await add_character(ctx, engine, self.bot, name, hp, player_bool, initiative)
         if response:
-            await ctx.send_followup(f"Character {name} added successfully.", ephemeral=True)
+            await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
         else:
-            await ctx.send_followup(f"Error Adding Character", ephemeral=True)
+            await ctx.respond(f"Error Adding Character", ephemeral=True)
 
     @char.command(description="Edit PC on NPC")
     @option('name', description="Character Name", input_type=str, autocomplete=character_select_gm, )
