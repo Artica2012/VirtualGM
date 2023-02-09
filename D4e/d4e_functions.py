@@ -245,6 +245,15 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         else:
             block = False
         round = guild.round
+
+    # Code for appending the inactive list onto the init_list
+    active_length = len(init_list)
+    # print(f'Active Length: {active_length}')
+    inactive_list = await initiative.get_inactive_list(ctx, engine, guild)
+    if len(inactive_list) > 0:
+        init_list.extend(inactive_list)
+        # print(f'Total Length: {len(init_list)}')
+
     try:
         if await check_timekeeper(ctx, engine, guild=guild):
             datetime_string = f" {await output_datetime(ctx, engine, bot, guild=guild)}\n" \
@@ -284,6 +293,7 @@ async def d4e_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
 
         output_string = f"```{datetime_string}" \
                         f"Initiative: {round_string}\n"
+
         for x, row in enumerate(row_data):
             await asyncio.sleep(0)
             sel_bool = False

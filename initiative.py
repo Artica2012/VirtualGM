@@ -1419,13 +1419,13 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             block = False
         logging.info(f"BGT2: round: {guild.round}")
 
-
+    # Code for appending the inactive list onto the init_list
     active_length = len(init_list)
-    print(f'Active Length: {active_length}')
+    # print(f'Active Length: {active_length}')
     inactive_list = await get_inactive_list(ctx, engine, guild)
     if len(inactive_list) > 0:
         init_list.extend(inactive_list)
-        print(f'Total Length: {len(init_list)}')
+        # print(f'Total Length: {len(init_list)}')
 
 
     try:
@@ -1443,100 +1443,100 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         report = ErrorReport(ctx, "get_tracker", e, bot)
         await report.report()
 
-    # try:
-    Condition = await get_condition(ctx, engine, id=guild.id)
+    try:
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
-    if guild.round != 0:
-        round_string = f"Round: {guild.round}"
-    else:
-        round_string = ""
-
-    output_string = f"```{datetime_string}" \
-                    f"Initiative: {round_string}\n"
-    # Iterate through the init list
-    for x, row in enumerate(init_list):
-        logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-        if len(init_list) > active_length and x == active_length:
-            output_string += '-----------------\n'
-        print(f'row.id= {row.id}')
-        async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == row.id)
-                                           .where(Condition.visible == True))
-            condition_list = result.scalars().all()
-
-        await asyncio.sleep(0)
-        sel_bool = False
-        selector = ''
-
-        # don't show an init if not in combat
-        if row.init == 0 or row.active == False:
-            init_string = ""
+        if guild.round != 0:
+            round_string = f"Round: {guild.round}"
         else:
-            init_string = f"{row.init}"
+            round_string = ""
 
-        if block:
-            for character in turn_list:
-                print(f'character.id = {character.id}')
-                if row.id == character.id:
-                    sel_bool = True
-        else:
-            if x == selected:
-                sel_bool = True
+        output_string = f"```{datetime_string}" \
+                        f"Initiative: {round_string}\n"
+        # Iterate through the init list
+        for x, row in enumerate(init_list):
+            logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
+            if len(init_list) > active_length and x == active_length:
+                output_string += '-----------------\n' #Put in the divider
+            # print(f'row.id= {row.id}')
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id == row.id)
+                                               .where(Condition.visible == True))
+                condition_list = result.scalars().all()
 
-        # print(f"{row['name']}: x: {x}, selected: {selected}")
-
-        if sel_bool:
-            selector = '>>'
-        if row.player or gm:
-            if row.temp_hp != 0:
-                string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
-            else:
-                string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
-        else:
-            hp_string = await calculate_hp(row.current_hp, row.max_hp)
-            string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
-        output_string += string
-
-        for con_row in condition_list:
-            print(f'con_row.id = {con_row.id}')
-            logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
-            # print(con_row)
             await asyncio.sleep(0)
-            if gm or not con_row.counter:
-                if con_row.number != None and con_row.number > 0:
-                    if con_row.time:
-                        time_stamp = datetime.datetime.fromtimestamp(con_row.number)
-                        current_time = await get_time(ctx, engine, bot, guild=guild)
-                        time_left = time_stamp - current_time
-                        days_left = time_left.days
-                        processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                        processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                        if processed_seconds_left < 10:
-                            processed_seconds_left = f"0{processed_seconds_left}"
-                        if days_left != 0:
-                            con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
-                        else:
-                            con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
-                    else:
-                        con_string = f"       {con_row.title}: {con_row.number}\n"
-                else:
-                    con_string = f"       {con_row.title}\n"
+            sel_bool = False
+            selector = ''
 
-            elif con_row.counter == True and sel_bool and row.player:
-                con_string = f"       {con_row.title}: {con_row.number}\n"
+            # don't show an init if not in combat
+            if row.init == 0 or row.active == False:
+                init_string = ""
             else:
-                con_string = ''
-            output_string += con_string
+                init_string = f"{row.init}"
 
-    output_string += f"```"
-    # print(output_string)
-    await engine.dispose()
-    return output_string
-    # except Exception as e:
-    #     logging.info(f"block_get_tracker 2: {e}")
-    #     report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
-    #     await report.report()
+            if block:
+                for character in turn_list:
+                    print(f'character.id = {character.id}')
+                    if row.id == character.id:
+                        sel_bool = True
+            else:
+                if x == selected:
+                    sel_bool = True
+
+            # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+            if sel_bool:
+                selector = '>>'
+            if row.player or gm:
+                if row.temp_hp != 0:
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp\n"
+                else:
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp}\n"
+            else:
+                hp_string = await calculate_hp(row.current_hp, row.max_hp)
+                string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
+            output_string += string
+
+            for con_row in condition_list:
+                print(f'con_row.id = {con_row.id}')
+                logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
+                # print(con_row)
+                await asyncio.sleep(0)
+                if gm or not con_row.counter:
+                    if con_row.number != None and con_row.number > 0:
+                        if con_row.time:
+                            time_stamp = datetime.datetime.fromtimestamp(con_row.number)
+                            current_time = await get_time(ctx, engine, bot, guild=guild)
+                            time_left = time_stamp - current_time
+                            days_left = time_left.days
+                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                            if processed_seconds_left < 10:
+                                processed_seconds_left = f"0{processed_seconds_left}"
+                            if days_left != 0:
+                                con_string = f"       {con_row.title}: {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
+                            else:
+                                con_string = f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                        else:
+                            con_string = f"       {con_row.title}: {con_row.number}\n"
+                    else:
+                        con_string = f"       {con_row.title}\n"
+
+                elif con_row.counter == True and sel_bool and row.player:
+                    con_string = f"       {con_row.title}: {con_row.number}\n"
+                else:
+                    con_string = ''
+                output_string += con_string
+
+        output_string += f"```"
+        # print(output_string)
+        await engine.dispose()
+        return output_string
+    except Exception as e:
+        logging.info(f"block_get_tracker 2: {e}")
+        report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
+        await report.report()
 
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
