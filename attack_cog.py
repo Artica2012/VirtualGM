@@ -71,9 +71,7 @@ class AttackCog(commands.Cog):
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id
-                    )
-                )
-                )
+                    )))
                 guild = result.scalars().one()
             await engine.dispose()
             if guild.system == 'PF2':
@@ -124,15 +122,7 @@ class AttackCog(commands.Cog):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
+        guild = await initiative.get_guild(ctx, None)
         if not guild.system:
             await ctx.respond("No system set, command inactive.")
             return
@@ -193,33 +183,26 @@ class AttackCog(commands.Cog):
     @option('save', description="Save",
             autocomplete=auto_complete.save_select)
     @option('modifier', description="Modifier to the macro (defaults to +)", required=False)
-    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, save: str, dc:int = None, modifier: str = ''):
+    async def save(self, ctx: discord.ApplicationContext, character: str, target: str, save: str, dc: int = None,
+                   modifier: str = ''):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if not guild.system:
-                await ctx.respond("No system set, command inactive.")
-                return
-            # PF2 specific code
-            if guild.system == 'PF2':
-                output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save,
-                                                              dc, modifier)
-                await ctx.send_followup(output_string)
-            elif guild.system == "D4e":
-                await ctx.send_followup(
-                    'Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
+        guild = await initiative.get_guild(ctx, None)
+        if not guild.system:
+            await ctx.respond("No system set, command inactive.")
+            return
+        # PF2 specific code
+        if guild.system == 'PF2':
+            output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save,
+                                                          dc, modifier)
+            await ctx.send_followup(output_string)
+        elif guild.system == "D4e":
+            await ctx.send_followup(
+                'Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`')
         await engine.dispose()
 
     @att.command(description="Automatic Attack")
@@ -227,32 +210,25 @@ class AttackCog(commands.Cog):
     @option('target', description="Character to Target", autocomplete=character_select)
     @option('roll', description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option('damage_heal', description='Damage or Heal', choices=['Damage', 'Heal'], required=False)
-    async def damage(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, damage_heal:str = 'Damage'):
+    async def damage(self, ctx: discord.ApplicationContext, character: str, target: str, roll: str,
+                     damage_heal: str = 'Damage'):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog damage")
-        heal=False
+        heal = False
         if damage_heal == 'Heal':
-            heal=True
+            heal = True
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
+        guild = await initiative.get_guild(ctx, None)
         if not guild.system:
             await ctx.respond("No system set, command inactive.")
             return
 
         Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Macro = await get_macro(ctx, engine, id = guild.id)
+        Macro = await get_macro(ctx, engine, id=guild.id)
 
         # Rolls
         roller = dice_roller.DiceRoller('')
@@ -269,7 +245,10 @@ class AttackCog(commands.Cog):
                                                .where(Macro.name == roll))
                 macro_roll = result.scalars().one()
             roll_result = await roller.plain_roll(macro_roll)
-        output_string= f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
+        if damage_heal == 'Damage':
+            output_string = f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
+        else:
+            output_string = f"{character} heals {target} for: \n{roll_result[0]} = {roll_result[1]}"
         await ctx.send_followup(output_string)
         await initiative.change_hp(ctx, engine, self.bot, target, roll_result[1], heal, guild=guild)
         await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)

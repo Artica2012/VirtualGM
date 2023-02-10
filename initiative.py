@@ -82,33 +82,6 @@ async def get_guild(ctx, guild):
         return result.scalars().one()
 
 
-async def fix_init_order(ctx, engine, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if ctx == None and guild == None:
-        raise LookupError("No guild reference")
-
-    async with async_session() as session:
-        if ctx == None:
-            result = await session.execute(select(Global).where(
-                Global.id == guild.id))
-        else:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-
-        if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-            for pos, row in enumerate(await get_init_list(ctx, engine)):
-                await asyncio.sleep(0)
-                if row.name == guild.saved_order:
-                    guild.initiative = pos
-                    # print(f"integrity checked init_pos: {guild.initiative}")
-                    await session.commit()
-    return True
-
-
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # SETUP
@@ -669,7 +642,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
     try:
         guild = await get_guild(ctx, guild)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(
                 Tracker.name == name
@@ -682,6 +655,8 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             thp = character.temp_hp
             new_thp = 0
 
+            # If its D4e, let the HP go below 0, but start healing form 0.
+            # Bottom out at 0 for everyone else
             if heal:
                 if guild.system == 'D4e' and chp < 0:
                     chp = 0
@@ -706,12 +681,13 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             character.current_hp = new_hp
             character.temp_hp = new_thp
             await session.commit()
-        if character.player:
+
+        if character.player: # Show the HP it its a player
             if heal:
                 await ctx.send_followup(f"{name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
             else:
                 await ctx.send_followup(f"{name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
-        else:
+        else: # Oscure the HP if its an NPC
             if heal:
                 await ctx.send_followup(f"{name} healed for {amount}. {await calculate_hp(new_hp, character.max_hp)}")
             else:
