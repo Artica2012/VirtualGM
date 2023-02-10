@@ -710,17 +710,11 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
     logging.info(f"repost_trackers")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-            guild = result.scalars().one()
-            channel = bot.get_channel(guild.tracker_channel)
-            gm_channel = bot.get_channel(guild.gm_tracker_channel)
-            await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
-            await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
+        guild = await get_guild(ctx, None)
+        channel = bot.get_channel(guild.tracker_channel)
+        gm_channel = bot.get_channel(guild.gm_tracker_channel)
+        await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
+        await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
         await engine.dispose()
         return True
     except NoResultFound as e:
@@ -753,7 +747,7 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
                 init_pos = None
             display_string = await block_get_tracker(await get_init_list(ctx, engine), init_pos, ctx, engine,
                                                      bot, gm=gm)
-            # interaction = await ctx.respond(display_string)
+
             interaction = await bot.get_channel(channel.id).send(display_string)
             await interaction.pin()
             if gm:
@@ -847,7 +841,7 @@ async def init_integrity(ctx, engine, guild=None):
                         guild.initiative = pos
                         logging.info(f"Pos: {pos}")
                         logging.info(f"New Init_pos: {guild.initiative}")
-                        break
+                        break # once its fixed, stop the loop because its done
         await session.commit()
 
 
@@ -944,57 +938,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
                         await check_cc(ctx, engine, bot, guild=guild)
                         logging.info(f"BAI8: cc checked")
 
-            try:
-                async with async_session() as session:
-                    char_result = await session.execute(select(Tracker).where(
-                        Tracker.name == current_character
-                    ))
-                    cur_char = char_result.scalars().one()
-                    logging.info(f"BAI9: cur_char: {cur_char.id}")
-            except Exception as e:
-                logging.error(f'advance_initiative: {e}')
-                if ctx != None:
-                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                    await report.report()
-                return False
-
-            try:
-                Condition = await get_condition(ctx, engine, id=guild.id)
-                # con = await get_condition_table(ctx, metadata, engine)
-                async with async_session() as session:
-                    char_result = await session.execute(select(Condition).where(
-                        Condition.character_id == cur_char.id
-                    ))
-                    con_list = char_result.scalars().all()
-                    logging.info(f"BAI9: condition's retrieved")
-
-                for con_row in con_list:
-                    logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
-                    await asyncio.sleep(0)
-                    async with async_session() as session:
-                        result = await session.execute(select(Condition).where(Condition.id == con_row.id))
-                        selected_condition = result.scalars().one()
-                        if selected_condition.auto_increment and not selected_condition.time:  # If auto-increment and NOT time
-                            if selected_condition.number >= 2:  # if number >= 2
-                                selected_condition.number -= 1
-                            else:
-                                await session.delete(selected_condition)
-                                # await session.commit()
-                                logging.info(f"BAI11: Condition Deleted")
-                                if ctx != None:
-                                    await ctx.channel.send(f"{con_row.title} removed from {cur_char.name}")
-                                else:
-                                    tracker_channel = bot.get_channel(guild.tracker_channel)
-                                    tracker_channel.send(f"{con_row.title} removed from {cur_char.name}")
-                            await session.commit()
-                        elif selected_condition.time:  # If time is true
-                            await check_cc(ctx, engine, bot, guild=guild)
-
-            except Exception as e:
-                logging.error(f'block_advance_initiative: {e}')
-                if ctx != None:
-                    report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
-                    await report.report()
+            # Decrement the conditions
+            await init_con(ctx, engine, bot, current_character, None, guild)
 
             if not guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
                 logging.info(f"BAI14: Not Block")
@@ -1069,7 +1014,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
             report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
             await report.report()
 
-
+# This is the code which check, decrements and removes conditions for the init next turn.
 async def init_con(ctx: discord.ApplicationContext, engine, bot, current_character: str, before: bool, guild=None):
     logging.info(f"{current_character}, {before}")
     print("Decrementing Conditions")
@@ -1107,11 +1052,17 @@ async def init_con(ctx: discord.ApplicationContext, engine, bot, current_charact
         Condition = await get_condition(ctx, engine, id=guild.id)
         # con = await get_condition_table(ctx, metadata, engine)
         async with async_session() as session:
-            char_result = await session.execute(select(Condition)
-                                                .where(Condition.character_id == cur_char.id)
-                                                .where(Condition.flex == before)
-                                                .where(Condition.auto_increment == True)
-                                                )
+            if before != None:
+                char_result = await session.execute(select(Condition)
+                                                    .where(Condition.character_id == cur_char.id)
+                                                    .where(Condition.flex == before)
+                                                    .where(Condition.auto_increment == True)
+                                                    )
+            else:
+                char_result = await session.execute(select(Condition)
+                                                    .where(Condition.character_id == cur_char.id)
+                                                    .where(Condition.auto_increment == True)
+                                                    )
             con_list = char_result.scalars().all()
             logging.info(f"BAI9: condition's retrieved")
             print('First Con List')
@@ -1330,7 +1281,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
         logging.error("error in get_init_list")
         return []
 
-
+# Switching function for system specific trackers
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
                             gm: bool = False, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
