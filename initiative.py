@@ -1320,31 +1320,21 @@ async def block_get_tracker(init_list: list, selected: int, ctx: discord.Applica
 # Builds the tracker string. Updated to work with block initiative
 async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine,
                                     bot, gm: bool = False, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    if ctx == None and guild == None:
-        raise LookupError("No guild reference")
+    logging.info(f"generic_block_get_tracker")
+    guild = await get_guild(ctx, guild)
+    logging.info(f"BGT1: Guild: {guild.id}")
 
     # Get the datetime
     datetime_string = ''
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        if ctx == None:
-            result = await session.execute(select(Global).where(
-                Global.id == guild.id))
-        else:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-        logging.info(f"BGT1: Guild: {guild.id}")
-        if guild.block and guild.initiative != None:
-            turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
-            block = True
-        else:
-            block = False
-        logging.info(f"BGT2: round: {guild.round}")
+
+    # Get the turn List for Block Initiative
+    if guild.block and guild.initiative != None:
+        turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
+        block = True
+    else:
+        block = False
+    logging.info(f"BGT2: round: {guild.round}")
 
     # Code for appending the inactive list onto the init_list
     active_length = len(init_list)
@@ -1354,7 +1344,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         init_list.extend(inactive_list)
         # print(f'Total Length: {len(init_list)}')
 
-
+    # Generate the data_time string if timekeeper is active
     try:
         if await check_timekeeper(ctx, engine, guild=guild):
             datetime_string = f" {await output_datetime(ctx, engine, bot, guild=guild)}\n" \
@@ -1373,6 +1363,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
     try:
         Condition = await get_condition(ctx, engine, id=guild.id)
 
+        # if round = 0, were not in initiative, and act accordingly
         if guild.round != 0:
             round_string = f"Round: {guild.round}"
         else:
@@ -1383,16 +1374,19 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
         # Iterate through the init list
         for x, row in enumerate(init_list):
             logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
+            # If there is an inactive list, and this is at the transition, place the line marker
             if len(init_list) > active_length and x == active_length:
                 output_string += '-----------------\n' #Put in the divider
             # print(f'row.id= {row.id}')
+
+            #Get all of the visible condition for the character
             async with async_session() as session:
                 result = await session.execute(select(Condition)
                                                .where(Condition.character_id == row.id)
                                                .where(Condition.visible == True))
                 condition_list = result.scalars().all()
 
-            await asyncio.sleep(0)
+            await asyncio.sleep(0) #ensure the loop doesn't lock the bot in case of an error
             sel_bool = False
             selector = ''
 
@@ -1403,8 +1397,8 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
                 init_string = f"{row.init}"
 
             if block:
-                for character in turn_list:
-                    print(f'character.id = {character.id}')
+                for character in turn_list: #ignore this error, turn list is gotten if block is true, so this will always apply
+                    # print(f'character.id = {character.id}')
                     if row.id == character.id:
                         sel_bool = True
             else:
@@ -1426,7 +1420,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             output_string += string
 
             for con_row in condition_list:
-                print(f'con_row.id = {con_row.id}')
+                # print(f'con_row.id = {con_row.id}')
                 logging.info(f"BGT5: con_row in condition list {con_row.title} {con_row.id}")
                 # print(con_row)
                 await asyncio.sleep(0)
@@ -1468,71 +1462,61 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"update_pinned_tracker")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if ctx == None and guild == None:
-        raise LookupError("No guild reference")
+    guild = await get_guild(ctx, guild) # get the guild
+    logging.info(f"UPT1: Guild: {guild.id}")
 
-    # try:
-    async with async_session() as session:
-        if ctx == None:
+    # Get the tracker messages
+    tracker = guild.tracker
+    tracker_channel = guild.tracker_channel
+    gm_tracker = guild.gm_tracker
+    gm_tracker_channel = guild.gm_tracker_channel
+
+    # Fix the Tracker if needed
+    await init_integrity(ctx, engine, guild=guild)
+
+    try:
+        # Re-acquire the tracker after the fix
+        async with async_session() as session:
             result = await session.execute(select(Global).where(
                 Global.id == guild.id))
-        else:
+            guild = result.scalars().one()
+            logging.info(f"saved_order: {guild.saved_order}")
+            logging.info(f"init_pos: {guild.initiative}")
 
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-        logging.info(f"UPT1: Guild: {guild.id}")
+            # If in initiative, update the active tracker
+            if guild.last_tracker != None:
+                await block_update_init(ctx, guild.last_tracker, engine, bot, guild=guild)
 
-        tracker = guild.tracker
-        tracker_channel = guild.tracker_channel
-        gm_tracker = guild.gm_tracker
-        gm_tracker_channel = guild.gm_tracker_channel
+            # Update the Pinned tracker
+            if tracker is not None:
+                tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild),
+                                                                 guild.initiative,
+                                                                 ctx, engine, bot, guild=guild)
+                channel = bot.get_channel(tracker_channel)
+                message = await channel.fetch_message(tracker)
+                await message.edit(tracker_display_string)
+                logging.info(f"UPT2: tracker updated")
 
-        # Fix the Tracker if needed
-    await init_integrity(ctx, engine, guild=guild)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            Global.id == guild.id))
-        guild = result.scalars().one()
-        logging.info(f"saved_order: {guild.saved_order}")
-        # logging.info(await get_init_list(ctx, engine, guild=guild))
-        logging.info(f"init_pos: {guild.initiative}")
-
-        if guild.last_tracker != None:
-            await block_update_init(ctx, guild.last_tracker, engine, bot, guild=guild)
-
-        if tracker is not None:
-            tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild),
-                                                             guild.initiative,
-                                                             ctx, engine, bot, guild=guild)
-            channel = bot.get_channel(tracker_channel)
-            message = await channel.fetch_message(tracker)
-            await message.edit(tracker_display_string)
-            logging.info(f"UPT2: tracker updated")
-
-        # Update the GM tracker
-        if gm_tracker is not None:
-            gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild),
-                                                                guild.initiative,
-                                                                ctx, engine, bot, gm=True, guild=guild)
-            gm_channel = bot.get_channel(gm_tracker_channel)
-            gm_message = await gm_channel.fetch_message(gm_tracker)
-            await gm_message.edit(gm_tracker_display_string)
-            logging.info(f"UPT3: gm tracker updated")
-    # except NoResultFound as e:
-    #     if ctx != None:
-    #         await ctx.channel.send(
-    #             error_not_initialized,
-    #             delete_after=30)
-    # except Exception as e:
-    #     logging.error(f'update_pinned_tracker: {e}')
-    #     report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
-    #     await report.report()
+            # Update the GM tracker
+            if gm_tracker is not None:
+                gm_tracker_display_string = await block_get_tracker(await get_init_list(ctx, engine, guild=guild),
+                                                                    guild.initiative,
+                                                                    ctx, engine, bot, gm=True, guild=guild)
+                gm_channel = bot.get_channel(gm_tracker_channel)
+                gm_message = await gm_channel.fetch_message(gm_tracker)
+                await gm_message.edit(gm_tracker_display_string)
+                logging.info(f"UPT3: gm tracker updated")
+    except NoResultFound as e:
+        if ctx != None:
+            await ctx.channel.send(
+                error_not_initialized,
+                delete_after=30)
+    except Exception as e:
+        logging.error(f'update_pinned_tracker: {e}')
+        report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
+        await report.report()
 
 
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot, guild=None):
