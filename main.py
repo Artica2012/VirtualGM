@@ -10,8 +10,11 @@ from dotenv import load_dotenv
 import database_operations
 import lookup_parser
 import logging
+import warnings
+from sqlalchemy import exc
 
 # Set up logging
+warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 logging.basicConfig(level=logging.WARNING)
 logging.info("Script Started")
 

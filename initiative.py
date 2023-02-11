@@ -36,6 +36,10 @@ from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from auto_complete import character_select, character_select_gm, cc_select, npc_select
 
+import warnings
+from sqlalchemy import exc
+warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
+
 # define global variables
 
 load_dotenv(verbose=True)
@@ -1753,8 +1757,9 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
 
 
 # Note: Works backwards
+# This is the turn list, a list of all of characters that are part of the turn in block initiative
 async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"get_turn_list")
     turn_list = []
     block_done = False
     if ctx == None and guild == None:
@@ -1808,7 +1813,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None
         print(f'get_turn_list: {e}')
         report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
         await report.report()
-        return False
+        return []
 
 
 # ---------------------------------------------------------------
@@ -1816,21 +1821,13 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None
 # COUNTER/CONDITION MANAGEMENT
 
 async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title: str, counter: bool, number: int,
-                 unit: str, auto_decrement: bool, bot, flex: bool = False, ):
+                 unit: str, auto_decrement: bool, bot, flex: bool = False, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Get the Character's data
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
+        guild = await get_guild(ctx, guild)
 
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
@@ -1849,8 +1846,19 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         await report.report()
         return False
 
+    # Check to make sure there isn't a condition with the same name on the character
+    async with async_session() as session:
+        result = await session.execute(select(Condition)
+                                       .where(Condition.character_id == character.id)
+                                       .where(Condition.title == title))
+        check_con = result.scalars().all()
+        if len(check_con) > 0:
+            return False
+
+
+    # Write the condition to the table
     try:
-        if not guild.timekeeping or unit == 'Round':
+        if not guild.timekeeping or unit == 'Round': #If its not time based, then just write it
             async with session.begin():
                 condition = Condition(
                     character_id=character.id,
@@ -1868,7 +1876,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             await engine.dispose()
             return True
 
-        else:
+        else: #If its time based, then calculate the end time, before writing it
             current_time = await get_time(ctx, engine, bot)
             if unit == 'Minute':
                 end_time = current_time + datetime.timedelta(minutes=number)
@@ -1959,7 +1967,8 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
 
 
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"edit_cc")
+    logging.warning('Edit_CC should be depreciated in favor of edit_cc_interface and increment_cc.')
     try:
         Tracker = await get_tracker(ctx, engine)
         Condition = await get_condition(ctx, engine)
@@ -2005,10 +2014,10 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await report.report()
         return False
 
-
+# Function called by the + and - buttons for the edit_cc interface
 async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot,
                        guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"increment_cc")
     try:
         guild = await get_guild(ctx, guild)
 
@@ -2025,7 +2034,7 @@ async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, 
                                delete_after=30)
         return False
     except Exception as e:
-        logging.info(f'edit_cc: {e}')
+        logging.info(f'increment_cc: {e}')
         if ctx != None:
             report = ErrorReport(ctx, increment_cc.__name__, e, bot)
             await report.report()
@@ -2061,7 +2070,7 @@ async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, 
         await report.report()
         return False
 
-
+# Delete CC
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
