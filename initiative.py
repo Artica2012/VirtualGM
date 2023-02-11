@@ -122,16 +122,22 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
             await session.commit()
 
         # Build the tracker, con and macro tables
-        async with engine.begin() as conn:  # Call the tables directly to save a database call
+        try:
+            async with engine.begin() as conn:  # Call the tables directly to save a database call
+                emp = await get_tracker_table(ctx, metadata, engine)
+                con = await get_condition_table(ctx, metadata, engine)
+                macro = await get_macro_table(ctx, metadata, engine)
+                await conn.run_sync(metadata.create_all)
 
-            emp = await get_tracker_table(ctx, metadata, engine)
-            con = await get_condition_table(ctx, metadata, engine)
-            macro = await get_macro_table(ctx, metadata, engine)
-            await conn.run_sync(metadata.create_all)
+            # Update the pinned trackers
+            await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
+            await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
+        except:
+            await ctx.respond("Please check permissions and try again")
+            await delete_tracker(ctx, engine, bot)
+            await engine.dispose()
+            return False
 
-        # Update the pinned trackers
-        await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
-        await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
         await engine.dispose()
         return True
 
@@ -181,9 +187,18 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
         macro = await get_macro_table(ctx, metadata, engine)
 
         async with engine.begin() as conn:
-            await conn.execute(DropTable(macro, if_exists=True))
-            await conn.execute(DropTable(con, if_exists=True))
-            await conn.execute(DropTable(emp, if_exists=True))
+            try:
+                await conn.execute(DropTable(macro, if_exists=True))
+            except:
+                logging.warning("Unable to delete Macro Table")
+            try:
+                await conn.execute(DropTable(con, if_exists=True))
+            except:
+                logging.warning('Unable to drop Con Table')
+            try:
+                await conn.execute(DropTable(emp, if_exists=True))
+            except:
+                logging.warning("Unable to Drop Tracker Table")
 
         try:
             # delete the row from Global
@@ -1518,155 +1533,95 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, gu
         report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
         await report.report()
 
-
+# Post a new initiative tracker and updates the pinned trackers
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Query the initiative position for the tracker and post it
 
-    if ctx == None and guild == None:
-        raise LookupError("No guild reference")
 
-    # try:
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        if ctx == None:
-            result = await session.execute(select(Global).where(
-                Global.id == guild.id))
-        else:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-        logging.info(f"BPI1: guild: {guild.id}")
-    # Tracker = await get_tracker(ctx, engine, id=guild.id)
-    # Condition = await get_condition(ctx, engine, id=guild.id)
-
-    if guild.block:
-        turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
-        block = True
-        # print(f"block_post_init: \n {turn_list}")
-    else:
-        block = False
-
-    init_list = await get_init_list(ctx, engine, guild=guild)
-    print(init_list)
-    tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
-    print(tracker_string)
-    try:
-        logging.info(f"BPI2")
-        ping_string = ''
-        if block:
-            for character in turn_list:
-                await asyncio.sleep(0)
-                user = bot.get_user(character.user)
-                ping_string += f"{user.mention}, it's your turn.\n"
-        else:
-            user = bot.get_user(init_list[guild.initiative].user)
-            ping_string += f"{user.mention}, it's your turn.\n"
-    except Exception as e:
-        # print(f'post_init: {e}')
-        ping_string = ''
-
-    # Check for systems:
-    if guild.system == 'D4e':
-        logging.info(f"BPI3: d4e")
-        # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
-        view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
-        print('Buttons Generated')
-        view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-        view.add_item(ui_components.NextButton(bot, guild=guild))
-
-        if ctx != None:
-            if ctx.channel.id == guild.tracker_channel:
-
-                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                      f"{ping_string}", view=view)
-            else:
-                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                  f"{ping_string}", view=view, )
-                tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                logging.info(f"BPI4")
-        else:
-            tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                            f"{ping_string}", view=view, )
-            logging.info("BPI4 Guild")
-    else:
-        view = discord.ui.View(timeout=None)
-        view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-        view.add_item(ui_components.NextButton(bot, guild=guild))
-        # Always post the tracker to the player channel
-        if ctx != None:
-            if ctx.channel.id == guild.tracker_channel:
-                tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
-                                                      f"{ping_string}", view=view)
-            else:
-                await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                  f"{ping_string}", view=view)
-                tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                logging.info(f"BPI5")
-        else:
-            tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
-                                                                            f"{ping_string}", view=view)
-            logging.info(f"BPI5 Guild")
-    if guild.tracker is not None:
-        channel = bot.get_channel(guild.tracker_channel)
-        message = await channel.fetch_message(guild.tracker)
-        await message.edit(tracker_string)
-    if guild.gm_tracker is not None:
-        gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
-                                                            ctx, engine, bot, gm=True, guild=guild)
-        gm_channel = bot.get_channel(guild.gm_tracker_channel)
-        gm_message = await gm_channel.fetch_message(guild.gm_tracker)
-        await gm_message.edit(gm_tracker_display_string)
-
-    async with async_session() as session:
-        if ctx == None:
-            result = await session.execute(select(Global).where(
-                Global.id == guild.id))
-        else:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-        print(f"Saved last tracker: {guild.last_tracker}")
-        # old_tracker = guild.last_tracker
-        try:
-            if guild.last_tracker != None:
-                tracker_channel = bot.get_channel(guild.tracker_channel)
-                old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
-                await old_tracker_msg.edit(view=None)
-        except Exception as e:
-            print(e)
-        guild.last_tracker = tracker_msg.id
-        print()
-        await session.commit()
-
-    await engine.dispose()
-    # except NoResultFound as e:
-    #     if ctx != None:
-    #         await ctx.channel.send(error_not_initialized,
-    #                                delete_after=30)
-    # except Exception as e:
-    #     logging.error(f"block_post_init: {e}")
-    #     if ctx != None:
-    #         report = ErrorReport(ctx, block_post_init.__name__, e, bot)
-    #         await report.report()
-
-
-async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
-                            bot: discord.Bot, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-
-    if ctx == None and guild == None:
-        raise LookupError("No guild reference")
-
-    # Query the initiative position for the tracker and post it
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        guild = await get_guild(ctx, guild)
+        logging.info(f"BPI1: guild: {guild.id}")
+
+        if guild.block:
+            turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
+            block = True
+            # print(f"block_post_init: \n {turn_list}")
+        else:
+            block = False
+
+        init_list = await get_init_list(ctx, engine, guild=guild)
+        print(init_list)
+        tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
+        print(tracker_string)
+        try:
+            logging.info(f"BPI2")
+            ping_string = ''
+            if block:
+                for character in turn_list:
+                    await asyncio.sleep(0)
+                    user = bot.get_user(character.user)
+                    ping_string += f"{user.mention}, it's your turn.\n"
+            else:
+                user = bot.get_user(init_list[guild.initiative].user)
+                ping_string += f"{user.mention}, it's your turn.\n"
+        except Exception as e:
+            # print(f'post_init: {e}')
+            ping_string = ''
+
+        # Check for systems:
+        if guild.system == 'D4e':
+            logging.info(f"BPI3: d4e")
+            # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+            view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
+            print('Buttons Generated')
+            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+            view.add_item(ui_components.NextButton(bot, guild=guild))
+
+            if ctx != None:
+                if ctx.channel.id == guild.tracker_channel:
+
+                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                          f"{ping_string}", view=view)
+                else:
+                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                      f"{ping_string}", view=view, )
+                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                    logging.info(f"BPI4")
+            else:
+                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                                f"{ping_string}", view=view, )
+                logging.info("BPI4 Guild")
+        else:
+            view = discord.ui.View(timeout=None)
+            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+            view.add_item(ui_components.NextButton(bot, guild=guild))
+            # Always post the tracker to the player channel
+            if ctx != None:
+                if ctx.channel.id == guild.tracker_channel:
+                    tracker_msg = await ctx.send_followup(f"{tracker_string}\n"
+                                                          f"{ping_string}", view=view)
+                else:
+                    await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                      f"{ping_string}", view=view)
+                    tracker_msg = await ctx.send_followup("Initiative Advanced.")
+                    logging.info(f"BPI5")
+            else:
+                tracker_msg = await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n"
+                                                                                f"{ping_string}", view=view)
+                logging.info(f"BPI5 Guild")
+        if guild.tracker is not None:
+            channel = bot.get_channel(guild.tracker_channel)
+            message = await channel.fetch_message(guild.tracker)
+            await message.edit(content=tracker_string)
+        if guild.gm_tracker is not None:
+            gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
+                                                                ctx, engine, bot, gm=True, guild=guild)
+            gm_channel = bot.get_channel(guild.gm_tracker_channel)
+            gm_message = await gm_channel.fetch_message(guild.gm_tracker)
+            await gm_message.edit(content=gm_tracker_display_string)
+
         async with async_session() as session:
             if ctx == None:
                 result = await session.execute(select(Global).where(
@@ -1678,7 +1633,43 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
                         Global.gm_tracker_channel == ctx.interaction.channel_id
                     )))
             guild = result.scalars().one()
-            logging.info(f"BPI1: guild: {guild.id}")
+            print(f"Saved last tracker: {guild.last_tracker}")
+            # old_tracker = guild.last_tracker
+            try:
+                if guild.last_tracker != None:
+                    tracker_channel = bot.get_channel(guild.tracker_channel)
+                    old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
+                    await old_tracker_msg.edit(view=None)
+            except Exception as e:
+                print(e)
+            guild.last_tracker = tracker_msg.id
+            print()
+            await session.commit()
+
+        await engine.dispose()
+    except NoResultFound as e:
+        if ctx != None:
+            await ctx.channel.send(error_not_initialized,
+                                   delete_after=30)
+    except Exception as e:
+        logging.error(f"block_post_init: {e}")
+        if ctx != None:
+            report = ErrorReport(ctx, block_post_init.__name__, e, bot)
+            await report.report()
+
+# Updates the active initiative tracker (not the pinned tracker)
+async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
+                            bot: discord.Bot, guild=None):
+    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+
+    if ctx == None and guild == None:
+        raise LookupError("No guild reference")
+
+    # Query the initiative position for the tracker and post it
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        guild = await get_guild(ctx, guild)
+        logging.info(f"BPI1: guild: {guild.id}")
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
 
@@ -1730,7 +1721,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             view.add_item((ui_components.NextButton(bot, guild=guild)))
             tracker_channel = bot.get_channel(guild.tracker_channel)
             edit_message = await tracker_channel.fetch_message(edit_id)
-            await edit_message.edit(f"{tracker_string}\n"
+            await edit_message.edit(content=f"{tracker_string}\n"
                                     f"{ping_string}", view=view, )
 
         else:
@@ -1738,18 +1729,18 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             view.add_item((ui_components.NextButton(bot, guild=guild)))
             tracker_channel = bot.get_channel(guild.tracker_channel)
             edit_message = await tracker_channel.fetch_message(edit_id)
-            await edit_message.edit(f"{tracker_string}\n"
+            await edit_message.edit(content=f"{tracker_string}\n"
                                     f"{ping_string}", view=view, )
         if guild.tracker is not None:
             channel = bot.get_channel(guild.tracker_channel)
             message = await channel.fetch_message(guild.tracker)
-            await message.edit(tracker_string)
+            await message.edit(content=tracker_string)
         if guild.gm_tracker is not None:
             gm_tracker_display_string = await block_get_tracker(init_list, guild.initiative,
                                                                 ctx, engine, bot, gm=True, guild=guild)
             gm_channel = bot.get_channel(guild.gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(guild.gm_tracker)
-            await gm_message.edit(gm_tracker_display_string)
+            await gm_message.edit(content=gm_tracker_display_string)
 
         await engine.dispose()
     except NoResultFound as e:
