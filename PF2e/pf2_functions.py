@@ -48,146 +48,146 @@ PF2_saves = ['Fort', 'Reflex', 'Will']
 async def attack(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, roll: str, vs: str,
                  attack_modifier: str, target_modifier: str):
     roller = DiceRoller('')
+    # try: # For some reason, throwing error handling in here causes it to fail, but it works fine without it.
+
+    # Strip a macro:
+    roll_list = roll.split(':')
+    print(roll_list)
+    if len(roll_list) == 1:
+        roll = roll
+    else:
+        roll = roll_list[1]
+
+    if attack_modifier != '':
+        if attack_modifier[0] == '+' or attack_modifier[0] == '-':
+            roll_string = roll + attack_modifier
+        else:
+            roll_string = roll + '+' + attack_modifier
+    else:
+        roll_string = roll
+    print(roll_string)
+    dice_result = await roller.attack_roll(roll_string)
+    total = dice_result[1]
+    dice_string = dice_result[0]
+    print(f'{total}, {dice_string}')
+
+    # Load up the tables
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # Throwing guild in here will allow one database query instead of two for getting the tables
+    guild = await initiative.get_guild(ctx, None)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+
+    # Load the target character
     try:
+        async with async_session() as session:
+            result = await session.execute(select(Tracker.id).where(Tracker.name == target))
+            targ = result.scalars().one()
 
-        # Strip a macro:
-        roll_list = roll.split(':')
-        print(roll_list)
-        if len(roll_list) == 1:
-            roll = roll
-        else:
-            roll = roll_list[1]
-
-        if attack_modifier != '':
-            if attack_modifier[0] == '+' or attack_modifier[0] == '-':
-                roll_string = roll + attack_modifier
-            else:
-                roll_string = roll + '+' + attack_modifier
-        else:
-            roll_string = roll
-        print(roll_string)
-        dice_result = await roller.attack_roll(roll_string)
-        total = dice_result[1]
-        dice_string = dice_result[0]
-        # return
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == target))
-                targ = result.scalars().one()
-
-        except NoResultFound as e:
-            await ctx.channel.send(error_not_initialized,
-                                   delete_after=30)
-            return False
-        except Exception as e:
-            print(f'attack: {e}')
-            report = ErrorReport(ctx, "/attack (emp)", e, bot)
-            await report.report()
-            return False
-
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == targ.id)
-                                               .where(Condition.title == vs))
-                con_vs = result.scalars().one()
-
-        except NoResultFound as e:
-            await ctx.channel.send(error_not_initialized,
-                                   delete_after=30)
-            return False
-        except Exception as e:
-            print(f'get_cc: {e}')
-            report = ErrorReport(ctx, "/attack (con)", e, bot)
-            await report.report()
-            return False
-
-        if vs in ["Fort", "Will", "Reflex"]:
-            goal_value = con_vs.number + 10
-        else:
-            goal_value = con_vs.number
-
-        logging.info(f"Target Modifier: {target_modifier}")
-
-        if target_modifier != '':
-
-            if target_modifier[0] == '-' or target_modifier[0] == '+':
-                target_modifier_string = target_modifier
-            else:
-                target_modifier_string = f"+{target_modifier}"
-
-            try:
-                target_modifier = int(target_modifier)
-                goal = goal_value + int(target_modifier)
-
-            except:
-                if target_modifier[0] == '+':
-                    goal = goal_value + int(target_modifier[1:])
-                elif target_modifier[0] == '-':
-                    goal = goal_value - int(target_modifier[1:])
-                else:
-                    goal = goal_value
-        else:
-            goal = goal_value
-        logging.info(f"Goal: {goal}")
-
-        success_string = await PF2_eval_succss(dice_result, goal)
-
-        # print(f"{dice_string}, {total}\n"
-        #       f"{vs}, {goal_value}\n {success_string}")
-        # Format output string
-        if target_modifier != '':
-            output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n" \
-                            f"{dice_string} = {total}\n" \
-                            f"{success_string}"
-        else:
-            output_string = f"{character} vs {target} {vs}:\n" \
-                            f"{dice_string} = {total}\n" \
-                            f"{success_string}"
-        return output_string
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
     except Exception as e:
-        logging.warning(f'attack pf2: {e}')
-        report = ErrorReport(ctx, "/attack pf2", e, bot)
+        print(f'attack: {e}')
+        report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
 
+    try:
+        # Load the value of the target condition - just need the number here
+        async with async_session() as session:
+            result = await session.execute(select(Condition.number)
+                                           .where(Condition.character_id == targ)
+                                           .where(Condition.title == vs))
+            con_vs = result.scalars().one()
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, dc:int,  modifier: str):
+    except NoResultFound as e:
+        await ctx.channel.send(error_not_initialized,
+                               delete_after=30)
+        return False
+    except Exception as e:
+        print(f'get_cc: {e}')
+        report = ErrorReport(ctx, "/attack (con)", e, bot)
+        await report.report()
+        return False
+
+    if vs in ["Fort", "Will", "Reflex"]:
+        goal_value = con_vs + 10
+    else:
+        goal_value = con_vs
+
+    logging.info(f"Target Modifier: {target_modifier}")
+    target_modifier_string = ''
+    if target_modifier != '':
+
+        if target_modifier[0] == '-' or target_modifier[0] == '+':
+            target_modifier_string = target_modifier
+        else:
+            target_modifier_string = f"+{target_modifier}"
+
+        try:
+            target_modifier = int(target_modifier)
+            goal = goal_value + int(target_modifier)
+
+        except:
+            if target_modifier[0] == '+':
+                goal = goal_value + int(target_modifier[1:])
+            elif target_modifier[0] == '-':
+                goal = goal_value - int(target_modifier[1:])
+            else:
+                goal = goal_value
+    else:
+        goal = goal_value
+    logging.info(f"Goal: {goal}")
+
+    success_string = await PF2_eval_succss(dice_result, goal)
+
+    # Format output string
+    output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n" \
+                    f"{dice_string} = {total}\n" \
+                    f"{success_string}"
+    return output_string
+    # except Exception as e:
+    #     logging.warning(f'attack pf2: {e}')
+    #     report = ErrorReport(ctx, "/attack pf2", e, bot)
+    #     await report.report()
+    #     return False
+
+
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, dc: int,
+               modifier: str):
     if target == None:
         output_string = "Error. No Target Specified."
         return output_string
     roller = DiceRoller('')
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(ctx, engine)
-    Condition = await get_condition(ctx, engine)
+    guild = await initiative.get_guild(ctx, None)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
     orig_dc = dc
     try:
 
         async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == character))
+            result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = result.scalars().one()
 
         async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == target))
+            result = await session.execute(select(Tracker.id).where(Tracker.name == target))
             targ = result.scalars().one()
 
         async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == targ.id)
+            result = await session.execute(select(Condition).where(Condition.character_id == targ)
                                            .where(Condition.title == vs))
             raw_roll = result.scalars().one()
             roll = f"1d20+{raw_roll.number}"
 
         if dc == None:
             async with async_session() as session:
-                result = await session.execute(select(Condition.number).where(Condition.character_id == char.id)
+                result = await session.execute(select(Condition.number).where(Condition.character_id == char)
                                                .where(Condition.title == 'DC'))
                 dc = result.scalars().one()
-
 
         if modifier != '':
             if modifier[0] == '+':
@@ -222,11 +222,6 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
                             f"{dice_string} = {total}\n" \
                             f"{success_string}"
 
-            # output_string = f"{character} vs {target}\n" \
-            #                 f" {vs} Save\n" \
-            #                 f"{dice_string} = {total}\n" \
-            #                 f"{success_string}"
-
     except NoResultFound as e:
         await ctx.channel.send(error_not_initialized,
                                delete_after=30)
@@ -244,8 +239,6 @@ async def PF2_eval_succss(result_tuple: tuple, goal: int):
     total = result_tuple[1]
     nat_twenty = result_tuple[2]
     nat_one = result_tuple[3]
-    result = 0
-    success_string = ''
 
     if total >= goal + 10:
         result = 4
@@ -286,24 +279,15 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
     if ctx == None and guild == None:
         raise LookupError("No guild reference")
 
-    async with async_session() as session:
-        if ctx == None:
-            result = await session.execute(select(Global).where(
-                Global.id == guild.id))
-        else:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-        guild = result.scalars().one()
-        logging.info(f"BGT1: Guild: {guild.id}")
-        if guild.block and guild.initiative != None:
-            turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
-            block = True
-        else:
-            block = False
-        logging.info(f"BGT2: round: {guild.round}")
+    guild = await initiative.get_guild(ctx, guild)
+    logging.info(f"BGT1: Guild: {guild.id}")
+    if guild.block and guild.initiative != None:
+        turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
+        block = True
+    else:
+        turn_list = []
+        block = False
+    logging.info(f"BGT2: round: {guild.round}")
 
     active_length = len(init_list)
     # print(f'Active Length: {active_length}')
@@ -311,7 +295,6 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
     if len(inactive_list) > 0:
         init_list.extend(inactive_list)
         # print(f'Total Length: {len(init_list)}')
-
 
     try:
         if await check_timekeeper(ctx, engine, guild=guild):
@@ -342,21 +325,23 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         for x, row in enumerate(init_list):
             logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
             if len(init_list) > active_length and x == active_length:
-                output_string += '-----------------\n' # Put in the divider
+                output_string += '-----------------\n'  # Put in the divider
             async with async_session() as session:
                 result = await session.execute(select(Condition)
                                                .where(Condition.character_id == row.id)
                                                .where(Condition.visible == True))
                 condition_list = result.scalars().all()
             try:
-                async with async_session() as session:
-                    result = await session.execute(select(Condition)
-                                                   .where(Condition.character_id == row.id)
-                                                   .where(Condition.visible == False)
-                                                   .where(Condition.title == 'AC'))
-                    armor_class = result.scalars().one()
-                    # print(armor_class.number)
-                    ac = armor_class.number
+                ac = ''
+                if row.player:
+                    async with async_session() as session:
+                        result = await session.execute(select(Condition.number)
+                                                       .where(Condition.character_id == row.id)
+                                                       .where(Condition.visible == False)
+                                                       .where(Condition.title == 'AC'))
+                        armor_class = result.scalars().one()
+                        # print(armor_class.number)
+                        ac = armor_class
             except Exception as e:
                 ac = ""
 
@@ -384,7 +369,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                 selector = '>>'
             if row.player or gm:
                 if row.temp_hp != 0:
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp AC:{ac}\n"
+                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp AC:{ac}\n "
                 else:
                     string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} AC: {ac}\n"
             else:
@@ -397,7 +382,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
                 # print(con_row)
                 await asyncio.sleep(0)
                 if gm or not con_row.counter:
-                    if con_row.number != None and con_row.number > 0:
+                    if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
                             current_time = await get_time(ctx, engine, bot, guild=guild)
@@ -431,7 +416,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
         return output_string
     except Exception as e:
         logging.info(f"block_get_tracker: {e}")
-        if ctx !=  None:
+        if ctx != None:
             report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
             await report.report()
 
@@ -439,16 +424,7 @@ async def pf2_get_tracker(init_list: list, selected: int, ctx: discord.Applicati
 async def edit_stats(ctx, engine, bot, name: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-
+        guild = await initiative.get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
@@ -512,67 +488,28 @@ class PF2EditCharacterModal(discord.ui.Modal):
     async def callback(self, interaction: discord.Interaction):
         self.stop()
         await interaction.response.send_message(f'{self.name} Updated')
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == self.ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == self.ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-
-        embed = discord.Embed(
-            title="Character Updated (PF2)",
-            fields=[
-                discord.EmbedField(
-                    name="Name: ", value=self.name, inline=True
-                ),
-                discord.EmbedField(
-                    name="AC: ", value=self.children[0].value, inline=True
-                ),
-                discord.EmbedField(
-                    name="Fort: ", value=self.children[1].value, inline=True
-                ),
-                discord.EmbedField(
-                    name="Reflex: ", value=self.children[2].value, inline=True
-                ),
-                discord.EmbedField(
-                    name="Will: ", value=self.children[3].value, inline=True
-                ),
-                discord.EmbedField(
-                    name="Class/Spell DC: ", value=self.children[4].value, inline=True
-                ),
-            ],
-            color=discord.Color.dark_gold(),
-        )
+        guild = await initiative.get_guild(self.ctx, None)
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
 
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            char_result = await session.execute(select(Tracker.id).where(Tracker.name == self.name))
             character = char_result.scalars().one()
 
         for item in self.children:
             async with async_session() as session:
                 result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == character.id)
+                                               .where(Condition.character_id == character)
                                                .where(Condition.title == item.label))
                 condition = result.scalars().one()
                 condition.number = int(item.value)
                 await session.commit()
-
+        await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
-
-        await self.ctx.channel.send(embeds= await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         print(error)
         self.stop()
-
-
-

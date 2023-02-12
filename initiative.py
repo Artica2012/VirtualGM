@@ -333,22 +333,24 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 character.active = active
 
             await session.commit()
+
         if guild.system == 'PF2':
             response = await PF2e.pf2_functions.edit_stats(ctx, engine, bot, name)
             if response:
-                await update_pinned_tracker(ctx, engine, bot)
+                # await update_pinned_tracker(ctx, engine, bot)
                 return True
             else:
                 return False
         elif guild.system == 'D4e':
             response = await D4e.d4e_functions.edit_stats(ctx, engine, bot, name)
             if response:
-                await update_pinned_tracker(ctx, engine, bot)
+                # await update_pinned_tracker(ctx, engine, bot)
                 return True
             else:
                 return False
         else:
             await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+            await update_pinned_tracker(ctx, engine, bot)
             await engine.dispose()
             return True
 
@@ -2603,7 +2605,7 @@ class InitiativeCog(commands.Cog):
             if not response:
                 await ctx.respond(f"Error Editing Character", ephemeral=True)
 
-            await update_pinned_tracker(ctx, engine, self.bot)
+            # await update_pinned_tracker(ctx, engine, self.bot)
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
 
