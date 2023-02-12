@@ -38,6 +38,7 @@ from auto_complete import character_select, character_select_gm, cc_select, npc_
 
 import warnings
 from sqlalchemy import exc
+
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
 # define global variables
@@ -309,7 +310,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 
 # Add a character to the database
-async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str, active:bool,
+async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, init: str, active: bool,
                          player: discord.User, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
@@ -329,7 +330,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
             if player != None:
                 character.user = player.id
             if active != None:
-                character.active=active
+                character.active = active
 
             await session.commit()
         if guild.system == 'PF2':
@@ -701,12 +702,12 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
             character.temp_hp = new_thp
             await session.commit()
 
-        if character.player: # Show the HP it its a player
+        if character.player:  # Show the HP it its a player
             if heal:
                 await ctx.send_followup(f"{name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
             else:
                 await ctx.send_followup(f"{name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
-        else: # Oscure the HP if its an NPC
+        else:  # Oscure the HP if its an NPC
             if heal:
                 await ctx.send_followup(f"{name} healed for {amount}. {await calculate_hp(new_hp, character.max_hp)}")
             else:
@@ -860,7 +861,7 @@ async def init_integrity(ctx, engine, guild=None):
                         guild.initiative = pos
                         logging.info(f"Pos: {pos}")
                         logging.info(f"New Init_pos: {guild.initiative}")
-                        break # once its fixed, stop the loop because its done
+                        break  # once its fixed, stop the loop because its done
         await session.commit()
 
 
@@ -1032,6 +1033,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
         if ctx != None:
             report = ErrorReport(ctx, block_advance_initiative.__name__, e, bot)
             await report.report()
+
 
 # This is the code which check, decrements and removes conditions for the init next turn.
 async def init_con(ctx: discord.ApplicationContext, engine, bot, current_character: str, before: bool, guild=None):
@@ -1268,6 +1270,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         logging.error("error in get_init_list")
         return []
 
+
 # Returns the tracker list sorted by initiative
 async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
@@ -1299,6 +1302,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
     except Exception as e:
         logging.error("error in get_init_list")
         return []
+
 
 # Switching function for system specific trackers
 async def block_get_tracker(init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot,
@@ -1395,17 +1399,17 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
             logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
             # If there is an inactive list, and this is at the transition, place the line marker
             if len(init_list) > active_length and x == active_length:
-                output_string += '-----------------\n' #Put in the divider
+                output_string += '-----------------\n'  # Put in the divider
             # print(f'row.id= {row.id}')
 
-            #Get all of the visible condition for the character
+            # Get all of the visible condition for the character
             async with async_session() as session:
                 result = await session.execute(select(Condition)
                                                .where(Condition.character_id == row.id)
                                                .where(Condition.visible == True))
                 condition_list = result.scalars().all()
 
-            await asyncio.sleep(0) #ensure the loop doesn't lock the bot in case of an error
+            await asyncio.sleep(0)  # ensure the loop doesn't lock the bot in case of an error
             sel_bool = False
             selector = ''
 
@@ -1416,7 +1420,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
                 init_string = f"{row.init}"
 
             if block:
-                for character in turn_list: #ignore this error, turn list is gotten if block is true, so this will always apply
+                for character in turn_list:  # ignore this error, turn list is gotten if block is true, so this will always apply
                     # print(f'character.id = {character.id}')
                     if row.id == character.id:
                         sel_bool = True
@@ -1483,7 +1487,7 @@ async def generic_block_get_tracker(init_list: list, selected: int, ctx: discord
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"update_pinned_tracker")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    guild = await get_guild(ctx, guild) # get the guild
+    guild = await get_guild(ctx, guild)  # get the guild
     logging.info(f"UPT1: Guild: {guild.id}")
 
     # Get the tracker messages
@@ -1537,11 +1541,11 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, gu
         report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
         await report.report()
 
+
 # Post a new initiative tracker and updates the pinned trackers
 async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.Bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     # Query the initiative position for the tracker and post it
-
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -1661,6 +1665,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
             report = ErrorReport(ctx, block_post_init.__name__, e, bot)
             await report.report()
 
+
 # Updates the active initiative tracker (not the pinned tracker)
 async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
                             bot: discord.Bot, guild=None):
@@ -1726,7 +1731,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             tracker_channel = bot.get_channel(guild.tracker_channel)
             edit_message = await tracker_channel.fetch_message(edit_id)
             await edit_message.edit(content=f"{tracker_string}\n"
-                                    f"{ping_string}", view=view, )
+                                            f"{ping_string}", view=view, )
 
         else:
             view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
@@ -1734,7 +1739,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine,
             tracker_channel = bot.get_channel(guild.tracker_channel)
             edit_message = await tracker_channel.fetch_message(edit_id)
             await edit_message.edit(content=f"{tracker_string}\n"
-                                    f"{ping_string}", view=view, )
+                                            f"{ping_string}", view=view, )
         if guild.tracker is not None:
             channel = bot.get_channel(guild.tracker_channel)
             message = await channel.fetch_message(guild.tracker)
@@ -1855,10 +1860,9 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
         if len(check_con) > 0:
             return False
 
-
     # Write the condition to the table
     try:
-        if not guild.timekeeping or unit == 'Round': #If its not time based, then just write it
+        if not guild.timekeeping or unit == 'Round':  # If its not time based, then just write it
             async with session.begin():
                 condition = Condition(
                     character_id=character.id,
@@ -1876,7 +1880,7 @@ async def set_cc(ctx: discord.ApplicationContext, engine, character: str, title:
             await engine.dispose()
             return True
 
-        else: #If its time based, then calculate the end time, before writing it
+        else:  # If its time based, then calculate the end time, before writing it
             current_time = await get_time(ctx, engine, bot)
             if unit == 'Minute':
                 end_time = current_time + datetime.timedelta(minutes=number)
@@ -2014,6 +2018,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await report.report()
         return False
 
+
 # Function called by the + and - buttons for the edit_cc interface
 async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot,
                        guild=None):
@@ -2070,6 +2075,7 @@ async def increment_cc(ctx: discord.ApplicationContext, engine, character: str, 
         await report.report()
         return False
 
+
 # Delete CC
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
@@ -2123,43 +2129,6 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         return False
 
 
-async def get_cc(ctx: discord.ApplicationContext, engine, bot, character: str):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    Tracker = await get_tracker(ctx, engine)
-    Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    try:
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == character))
-            character = result.scalars().one()
-
-    except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
-                               delete_after=30)
-        return False
-    except Exception as e:
-        print(f'get_cc: {e}')
-        report = ErrorReport(ctx, get_cc.__name__, e, bot)
-        await report.report()
-
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition).where(Condition.character_id == character.id).where(Condition.counter == True))
-            counters = result.scalars().all()
-
-        await engine.dispose()
-        return counters
-    except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
-                               delete_after=30)
-        return False
-    except Exception as e:
-        print(f'get_cc: {e}')
-        report = ErrorReport(ctx, get_cc.__name__, e, bot)
-        await report.report()
-
-
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
 async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
@@ -2202,7 +2171,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"gm_check")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
@@ -2210,9 +2179,7 @@ async def gm_check(ctx, engine):
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
                     Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
+                )            )            )
             guild = result.scalars().one()
             if int(guild.gm) != int(ctx.interaction.user.id):
                 return False
@@ -2626,7 +2593,8 @@ class InitiativeCog(commands.Cog):
     @option('hp', description='Total HP', input_type=int, required=False)
     @option('initiative', description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     @option('active', description='Active State', required=False, input_type=bool)
-    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int = None, initiative: str = None, active:bool=None,
+    async def edit(self, ctx: discord.ApplicationContext, name: str, hp: int = None, initiative: str = None,
+                   active: bool = None,
                    player: discord.User = None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False

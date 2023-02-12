@@ -17,7 +17,7 @@ numpy==1.23.2
 pandas==1.4.3
 pbr==5.10.0
 psycopg2==2.9.3
-py-cord==2.3.0
+py-cord==2.4.0
 pyparsing==3.0.9
 python-dateutil==2.8.2
 python-dotenv==0.20.0
@@ -32,4 +32,5 @@ Tempita==0.5.2
 typing-extensions==4.4.0
 urllib3==1.26.12
 yarl==1.8.1
+
 
