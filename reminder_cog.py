@@ -1,6 +1,5 @@
 # options_cog.py
 import asyncio
-import inspect
 import logging
 import os
 
@@ -13,41 +12,37 @@ from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_
 from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Reminder
+from database_models import Reminder
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport, error_not_initialized
-from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
-from time_keeping_functions import set_datetime
+from error_handling_reporting import ErrorReport
 
 # define global variables
 
 load_dotenv(verbose=True)
-if os.environ['PRODUCTION'] == 'True':
-    TOKEN = os.getenv('TOKEN')
-    USERNAME = os.getenv('Username')
-    PASSWORD = os.getenv('Password')
-    HOSTNAME = os.getenv('Hostname')
-    PORT = os.getenv('PGPort')
+if os.environ["PRODUCTION"] == "True":
+    TOKEN = os.getenv("TOKEN")
+    USERNAME = os.getenv("Username")
+    PASSWORD = os.getenv("Password")
+    HOSTNAME = os.getenv("Hostname")
+    PORT = os.getenv("PGPort")
 else:
-    TOKEN = os.getenv('BETA_TOKEN')
-    USERNAME = os.getenv('BETA_Username')
-    PASSWORD = os.getenv('BETA_Password')
-    HOSTNAME = os.getenv('BETA_Hostname')
-    PORT = os.getenv('BETA_PGPort')
+    TOKEN = os.getenv("BETA_TOKEN")
+    USERNAME = os.getenv("BETA_Username")
+    PASSWORD = os.getenv("BETA_Password")
+    HOSTNAME = os.getenv("BETA_Hostname")
+    PORT = os.getenv("BETA_PGPort")
 
-GUILD = os.getenv('GUILD')
-SERVER_DATA = os.getenv('SERVERDATA')
-DATABASE = os.getenv('DATABASE')
+GUILD = os.getenv("GUILD")
+SERVER_DATA = os.getenv("SERVERDATA")
+DATABASE = os.getenv("DATABASE")
 
 
 class ReminderButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, bot, reminder:Reminder, time:str):
+    def __init__(self, ctx: discord.ApplicationContext, bot, reminder: Reminder, time: str):
         self.ctx = ctx
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
@@ -64,7 +59,7 @@ class ReminderButton(discord.ui.Button):
 
 
 class ReminderCog(commands.Cog):
-    def __init__(self, bot:discord.Bot):
+    def __init__(self, bot: discord.Bot):
         self.bot = bot
         self.lock = asyncio.Lock()
         self.reminder_check.start()
@@ -74,8 +69,7 @@ class ReminderCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Reminder)
-                                           .where(Reminder.timestamp <= datetime.now().timestamp()))
+            result = await session.execute(select(Reminder).where(Reminder.timestamp <= datetime.now().timestamp()))
             reminder = result.scalars().all()
         for item in reminder:
             try:
@@ -84,14 +78,18 @@ class ReminderCog(commands.Cog):
                 # logging.warning(this_guild)
                 this_channel = this_guild.get_channel(item.channel)
                 # logging.warning(this_channel)
-                await this_channel.send(f"``` Reminder ```\n"
-                                                                                 f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
-                                                                                       f"{item.message}")
-                # await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(f"``` Reminder ```\n"
-                #                                                                  f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
-                #                                                                        f"{item.message}")
+                await this_channel.send(
+                    "``` Reminder ```\n"
+                    f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+                    f"{item.message}"
+                )
+                # await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(
+                #     "``` Reminder ```\n"
+                #     f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
+                #     f"{item.message}"
+                # )
 
-            except Exception as e:
+            except Exception:
                 logging.warning("Reminder Unable to Fire")
             async with async_session() as session:
                 await session.delete(item)
@@ -99,16 +97,15 @@ class ReminderCog(commands.Cog):
 
         await engine.dispose()
 
-
     # Don't start the loop unti the bot is ready
     @reminder_check.before_loop
     async def before_reminder_status(self):
         await self.bot.wait_until_ready()
 
-    remind = SlashCommandGroup('remind', "Reminder")
+    remind = SlashCommandGroup("remind", "Reminder")
 
     @remind.command(description="Set a Reminder")
-    @option("time_unit", autocomplete=discord.utils.basic_autocomplete(['Minutes', 'Hours', 'Days', 'Months']))
+    @option("time_unit", autocomplete=discord.utils.basic_autocomplete(["Minutes", "Hours", "Days", "Months"]))
     async def me(self, ctx: discord.ApplicationContext, number: int, time_unit: str, message: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -134,7 +131,7 @@ class ReminderCog(commands.Cog):
                         guild_id=ctx.guild_id,
                         channel=ctx.channel_id,
                         message=message,
-                        timestamp=reminder_time.timestamp()
+                        timestamp=reminder_time.timestamp(),
                     )
                     session.add(new_reminder)
                 await session.commit()

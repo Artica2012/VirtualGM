@@ -15,22 +15,22 @@ from database_operations import get_asyncio_db_engine
 from ui_components import QuerySelectButton
 
 load_dotenv(verbose=True)
-if os.environ['PRODUCTION'] == 'True':
-    TOKEN = os.getenv('TOKEN')
-    USERNAME = os.getenv('Username')
-    PASSWORD = os.getenv('Password')
-    HOSTNAME = os.getenv('Hostname')
-    PORT = os.getenv('PGPort')
+if os.environ["PRODUCTION"] == "True":
+    TOKEN = os.getenv("TOKEN")
+    USERNAME = os.getenv("Username")
+    PASSWORD = os.getenv("Password")
+    HOSTNAME = os.getenv("Hostname")
+    PORT = os.getenv("PGPort")
 else:
-    TOKEN = os.getenv('BETA_TOKEN')
-    USERNAME = os.getenv('BETA_Username')
-    PASSWORD = os.getenv('BETA_Password')
-    HOSTNAME = os.getenv('BETA_Hostname')
-    PORT = os.getenv('BETA_PGPort')
+    TOKEN = os.getenv("BETA_TOKEN")
+    USERNAME = os.getenv("BETA_Username")
+    PASSWORD = os.getenv("BETA_Password")
+    HOSTNAME = os.getenv("BETA_Hostname")
+    PORT = os.getenv("BETA_PGPort")
 
-GUILD = os.getenv('GUILD')
-SERVER_DATA = os.getenv('SERVERDATA')
-DATABASE = os.getenv('DATABASE')
+GUILD = os.getenv("GUILD")
+SERVER_DATA = os.getenv("SERVERDATA")
+DATABASE = os.getenv("DATABASE")
 
 
 #############################################################################
@@ -44,10 +44,8 @@ class QueryCog(commands.Cog):
 
     # Set the group's prefix to q
 
-    @commands.slash_command(name="q", description='D&D Fourth Edition Lookup')
-    @option('category', choices=[
-        'Power', 'Disease', 'Feat', 'Monster', 'Ritual'
-    ])
+    @commands.slash_command(name="q", description="D&D Fourth Edition Lookup")
+    @option("category", choices=["Power", "Disease", "Feat", "Monster", "Ritual"])
     async def q(self, ctx: discord.ApplicationContext, category: str, query: str):
         await ctx.response.defer()
         metadata = db.MetaData()
@@ -65,7 +63,7 @@ class QueryCog(commands.Cog):
         else:
             ctx.send_followup("Error, Invalid")
             return
-        stmt = emp.select().where(emp.c.Title.ilike(f'%{query}%'))
+        stmt = emp.select().where(emp.c.Title.ilike(f"%{query}%"))
 
         async with self.engine.begin() as conn:
             results = []
