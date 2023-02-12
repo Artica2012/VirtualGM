@@ -2,7 +2,6 @@
 # For slash commands specific to oathfinder 2e
 # system specific module
 
-import asyncio
 import os
 
 # imports
@@ -16,11 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
+import initiative
 import ui_components
-from database_models import Global, get_condition, get_macro, get_tracker
+from auto_complete import character_select_gm
+from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
-from auto_complete import character_select_gm
 
 # define global variables
 
@@ -49,20 +49,11 @@ DATABASE = os.getenv('DATABASE')
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        result = await session.execute(select(Global).where(
-            or_(
-                Global.tracker_channel == ctx.interaction.channel_id,
-                Global.gm_tracker_channel == ctx.interaction.channel_id
-            )
-        )
-        )
-        guild = result.scalars().one()
-        if int(guild.gm) != int(ctx.interaction.user.id):
-            return False
-        else:
-            return True
+    guild = await initiative.get_guild(ctx, None)
+    if int(guild.gm) != int(ctx.interaction.user.id):
+        return False
+    else:
+        return True
 
 
 class D4eCog(commands.Cog):
@@ -81,17 +72,18 @@ class D4eCog(commands.Cog):
         con_list = []
         try:
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(ctx, engine)
-            Condition = await get_condition(ctx, engine)
+            guild = await initiative.get_guild(ctx, None)
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
+            Condition = await get_condition(ctx, engine, id=guild.id)
 
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(
+                char_result = await session.execute(select(Tracker.id).where(
                     Tracker.name == character
                 ))
                 char = char_result.scalars().one()
             async with async_session() as session:
                 con_result = await session.execute(select(Condition.title)
-                                                   .where(Condition.character_id == char.id)
+                                                   .where(Condition.character_id == char)
                                                    .where(Condition.visible == True)
                                                    .where(Condition.flex == True))
                 condition = con_result.scalars().all()
@@ -116,25 +108,16 @@ class D4eCog(commands.Cog):
     @option('condition', description="Select Condition", autocomplete=cc_select_visible_flex)
     async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ''):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if guild.system == "D4e":
-                output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
-                await engine.dispose()
-                await ctx.send_followup(output_string)
-            else:
-                await ctx.send_followup("No system set, command inactive.")
-                await engine.dispose()
-                return
+        guild = await initiative.get_guild(ctx, None)
+        if guild.system == "D4e":
+            output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
+            await engine.dispose()
+            await ctx.send_followup(output_string)
+        else:
+            await ctx.send_followup("No system set, command inactive.")
+        await engine.dispose()
+        return
 
     @commands.Cog.listener()
     async def on_ready(self):
