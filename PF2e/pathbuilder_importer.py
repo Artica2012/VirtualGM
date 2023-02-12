@@ -9,17 +9,15 @@ from math import floor
 import aiohttp
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global
 from database_models import get_macro, get_tracker, get_condition
 from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
-from initiative import init_integrity_check, get_init_list
+from initiative import get_guild, init_integrity
 
 load_dotenv(verbose=True)
 if os.environ['PRODUCTION'] == 'True':
@@ -38,6 +36,7 @@ else:
 GUILD = os.getenv('GUILD')
 SERVER_DATA = os.getenv('SERVERDATA')
 DATABASE = os.getenv('DATABASE')
+
 
 # Import a PF2e character from pathbuilder
 async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
@@ -79,7 +78,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
         stats['ac'] = pb['build']['acTotal']['acTotal']
         stats['hp'] = pb['build']['attributes']['ancestryhp'] + pb['build']['attributes']['classhp'] + \
                       pb['build']['attributes']['bonushp'] + stats['con_mod'] + ((stats['level'] - 1) * (
-                    pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel'] + stats['con_mod']))
+                pb['build']['attributes']['classhp'] + pb['build']['attributes']['bonushpPerLevel'] + stats['con_mod']))
 
         # Initiative
         stats['initiative'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
@@ -92,7 +91,8 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
 
         # DC
         dc_list = []
-        dc_list.append(stats[f"{pb['build']['keyability']}_mod"] + pb['build']['proficiencies']['classDC'] + stats['level'])
+        dc_list.append(
+            stats[f"{pb['build']['keyability']}_mod"] + pb['build']['proficiencies']['classDC'] + stats['level'])
         dc_list.append(pb['build']['proficiencies']['castingArcane'] + stats['int_mod'] + stats['level'])
         dc_list.append(pb['build']['proficiencies']['castingDivine'] + stats['wis_mod'] + stats['level'])
         dc_list.append(pb['build']['proficiencies']['castingPrimal'] + stats['wis_mod'] + stats['level'])
@@ -107,108 +107,99 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
         for item in pb['build']['feats']:
             if "Untrained Improvisation" in item:
                 if stats['level'] < 7:
-                    untrained_prof = math.floor(stats['level'] /2)
+                    untrained_prof = math.floor(stats['level'] / 2)
                 else:
                     untrained_prof = stats['level']
         # print(untrained_prof)
 
         if pb['build']['proficiencies']['athletics'] == 0:
-            macro['athletics'] = stats['str_mod']+untrained_prof
+            macro['athletics'] = stats['str_mod'] + untrained_prof
         else:
             macro['athletics'] = stats['str_mod'] + pb['build']['proficiencies']['athletics'] + stats['level']
 
         if pb['build']['proficiencies']['acrobatics'] == 0:
-            macro['acrobatics'] = stats['dex_mod']+untrained_prof
+            macro['acrobatics'] = stats['dex_mod'] + untrained_prof
         else:
             macro['acrobatics'] = stats['dex_mod'] + pb['build']['proficiencies']['acrobatics'] + stats['level']
 
         if pb['build']['proficiencies']['arcana'] == 0:
-            macro['arcana'] = stats['int_mod']+untrained_prof
+            macro['arcana'] = stats['int_mod'] + untrained_prof
         else:
             macro['arcana'] = stats['int_mod'] + pb['build']['proficiencies']['arcana'] + stats['level']
 
         if pb['build']['proficiencies']['crafting'] == 0:
-            macro['crafting'] = stats['int_mod']+untrained_prof
+            macro['crafting'] = stats['int_mod'] + untrained_prof
         else:
             macro['crafting'] = stats['int_mod'] + pb['build']['proficiencies']['crafting'] + stats['level']
 
         if pb['build']['proficiencies']['deception'] == 0:
-            macro['deception'] = stats['cha_mod']+untrained_prof
+            macro['deception'] = stats['cha_mod'] + untrained_prof
         else:
             macro['deception'] = stats['cha_mod'] + pb['build']['proficiencies']['deception'] + stats['level']
 
         if pb['build']['proficiencies']['diplomacy'] == 0:
-            macro['diplomacy'] = stats['cha_mod']+untrained_prof
+            macro['diplomacy'] = stats['cha_mod'] + untrained_prof
         else:
             macro['diplomacy'] = stats['cha_mod'] + pb['build']['proficiencies']['diplomacy'] + stats['level']
 
         if pb['build']['proficiencies']['intimidation'] == 0:
-            macro['intimidation'] = stats['cha_mod']+untrained_prof
+            macro['intimidation'] = stats['cha_mod'] + untrained_prof
         else:
             macro['intimidation'] = stats['cha_mod'] + pb['build']['proficiencies']['intimidation'] + stats['level']
 
         if pb['build']['proficiencies']['medicine'] == 0:
-            macro['medicine'] = stats['wis_mod']+untrained_prof
+            macro['medicine'] = stats['wis_mod'] + untrained_prof
         else:
             macro['medicine'] = stats['wis_mod'] + pb['build']['proficiencies']['medicine'] + stats['level']
 
         if pb['build']['proficiencies']['nature'] == 0:
-            macro['nature'] = stats['wis_mod']+untrained_prof
+            macro['nature'] = stats['wis_mod'] + untrained_prof
         else:
             macro['nature'] = stats['wis_mod'] + pb['build']['proficiencies']['nature'] + stats['level']
 
         if pb['build']['proficiencies']['occultism'] == 0:
-            macro['occultism'] = stats['int_mod']+untrained_prof
+            macro['occultism'] = stats['int_mod'] + untrained_prof
         else:
             macro['occultism'] = stats['int_mod'] + pb['build']['proficiencies']['occultism'] + stats['level']
 
         if pb['build']['proficiencies']['performance'] == 0:
-            macro['performance'] = stats['cha_mod']+untrained_prof
+            macro['performance'] = stats['cha_mod'] + untrained_prof
         else:
             macro['performance'] = stats['cha_mod'] + pb['build']['proficiencies']['performance'] + stats['level']
 
         if pb['build']['proficiencies']['religion'] == 0:
-            macro['religion'] = stats['wis_mod']+untrained_prof
+            macro['religion'] = stats['wis_mod'] + untrained_prof
         else:
             macro['religion'] = stats['wis_mod'] + pb['build']['proficiencies']['religion'] + stats['level']
 
         if pb['build']['proficiencies']['society'] == 0:
-            macro['society'] = stats['int_mod']+untrained_prof
+            macro['society'] = stats['int_mod'] + untrained_prof
         else:
             macro['society'] = stats['int_mod'] + pb['build']['proficiencies']['society'] + stats['level']
 
         if pb['build']['proficiencies']['stealth'] == 0:
-            macro['stealth'] = stats['dex_mod']+untrained_prof
+            macro['stealth'] = stats['dex_mod'] + untrained_prof
         else:
             macro['stealth'] = stats['dex_mod'] + pb['build']['proficiencies']['stealth'] + stats['level']
 
         if pb['build']['proficiencies']['survival'] == 0:
-            macro['survival'] = stats['wis_mod']+untrained_prof
+            macro['survival'] = stats['wis_mod'] + untrained_prof
         else:
             macro['survival'] = stats['wis_mod'] + pb['build']['proficiencies']['survival'] + stats['level']
 
         if pb['build']['proficiencies']['thievery'] == 0:
-            macro['thievery'] = stats['dex_mod']+untrained_prof
+            macro['thievery'] = stats['dex_mod'] + untrained_prof
         else:
             macro['thievery'] = stats['dex_mod'] + pb['build']['proficiencies']['thievery'] + stats['level']
     except Exception as e:
         return False
-
 
     # Write the data
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
+        guild = await get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
         Macro = await get_macro(ctx, engine, id=guild.id)
@@ -230,29 +221,22 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot,
         if guild.system != 'PF2':
             return False
         else:
-            async with session.begin():
-                new_char = Tracker(
-                    name=name,
-                    init_string=stats['init_string'],
-                    init=initiative,
-                    player=True,
-                    user=ctx.user.id,
-                    current_hp=stats['hp'],
-                    max_hp=stats['hp'],
-                    temp_hp=0
-                )
-                session.add(new_char)
-            await session.commit()
+            async with async_session() as session:
+                async with session.begin():
+                    new_char = Tracker(
+                        name=name,
+                        init_string=stats['init_string'],
+                        init=initiative,
+                        player=True,
+                        user=ctx.user.id,
+                        current_hp=stats['hp'],
+                        max_hp=stats['hp'],
+                        temp_hp=0
+                    )
+                    session.add(new_char)
+                await session.commit()
 
-            if guild.initiative != None:
-                if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
-                    # print(f"integrity check was false: init_pos: {guild.initiative}")
-                    for pos, row in enumerate(await get_init_list(ctx, engine)):
-                        await asyncio.sleep(0)
-                        if row.name == guild.saved_order:
-                            guild.initiative = pos
-                            # print(f"integrity checked init_pos: {guild.initiative}")
-                            await session.commit()
+            await init_integrity(ctx, engine, guild)
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))
                 character = result.scalars().one()

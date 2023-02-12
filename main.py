@@ -2,22 +2,22 @@
 
 # Main file to VirtualGM - a discord bot written with the pycord library
 
+import logging
 # imports
 import os
 import sys
+import warnings
+
 import discord
 from dotenv import load_dotenv
-import database_operations
-import lookup_parser
-import logging
-import warnings
 from sqlalchemy import exc
+
+import lookup_parser
 
 # Set up logging
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 logging.basicConfig(level=logging.WARNING)
 logging.info("Script Started")
-
 
 # environmental variables - if Production - use the token and database of the production model, if Production == False,
 # then its running locally and use the local postgres server and the beta token. This allows one .env and code for both
@@ -30,7 +30,6 @@ else:
     TOKEN = os.getenv('BETA_TOKEN')
 GUILD = os.getenv('GUILD')
 DATABASE = os.getenv("DATABASE")
-
 
 # set up the bot/intents
 intents = discord.Intents.default()
@@ -54,14 +53,17 @@ async def on_ready():
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
 
+
 @bot.event
 async def on_disconnect():
     # await bot.connect()
     logging.warning('Disconnected')
 
+
 @bot.event
 async def on_error():
     logging.error(f"on_error: {sys.exc_info()}")
+
 
 # Initialize the database for the 4e lookup
 lookup_parser.parser()
@@ -80,5 +82,5 @@ bot.load_extension("attack_cog")
 bot.load_extension("D4e.d4e_cog")
 bot.load_extension("reminder_cog")
 
-#run the bot
+# run the bot
 bot.run(TOKEN)
