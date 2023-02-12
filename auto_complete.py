@@ -2,29 +2,23 @@
 
 # Consolidating all of the autocompletes into one place.
 
-# imports
-import asyncio
-import os
-import logging
-import sys
 import datetime
-import inspect
+import logging
+# imports
+import os
 
 import discord
-from discord.commands import SlashCommandGroup, option
-from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_, not_
+from sqlalchemy import not_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import PF2e.pf2_functions
-from database_models import Global, get_macro, get_tracker, get_condition
+import initiative
+from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
-from error_handling_reporting import ErrorReport
 
 # define global variables
 
@@ -71,23 +65,11 @@ async def gm_check(ctx, engine):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
     try:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )
-            )
-            )
-            guild = result.scalars().one()
-            if int(guild.gm) != int(ctx.interaction.user.id):
-                await engine.dispose()
-                return False
-            else:
-                await engine.dispose()
-                return True
+        guild = await initiative.get_guild(ctx, None)
+        if int(guild.gm) != int(ctx.interaction.user.id):
+            return False
+        else:
+            return True
     except Exception as e:
         return False
 
@@ -165,20 +147,21 @@ async def npc_select(ctx: discord.AutocompleteContext):
 async def macro_select(ctx: discord.AutocompleteContext):
     character = ctx.options['character']
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    Tracker = await get_tracker(ctx, engine)
-    Macro = await get_macro(ctx, engine)
+    guild = await initiative.get_guild(ctx, None)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Macro = await get_macro(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     try:
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(
+            char_result = await session.execute(select(Tracker.id).where(
                 Tracker.name == character
             ))
             char = char_result.scalars().one()
 
         async with async_session() as session:
             macro_result = await session.execute(
-                select(Macro.name).where(Macro.character_id == char.id).order_by(Macro.name.asc()))
+                select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc()))
             macro_list = macro_result.scalars().all()
         await engine.dispose()
         return macro_list
@@ -193,20 +176,21 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
 
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     character = ctx.options['character']
-    Tracker = await get_tracker(ctx, engine)
-    Macro = await get_macro(ctx, engine)
+    guild = await initiative.get_guild(ctx, None)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Macro = await get_macro(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     try:
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(
+            char_result = await session.execute(select(Tracker.id).where(
                 Tracker.name == character
             ))
             char = char_result.scalars().one()
         async with async_session() as session:
             macro_result = await session.execute(
                 select(Macro.name)
-                    .where(Macro.character_id == char.id)
+                    .where(Macro.character_id == char)
                     .where(not_(Macro.macro.contains(',')))
                     .order_by(Macro.name.asc()))
             macro_list = macro_result.scalars().all()
@@ -226,16 +210,17 @@ async def cc_select(ctx: discord.AutocompleteContext):
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
+        guild = await initiative.get_guild(ctx, None)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
 
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(
+            char_result = await session.execute(select(Tracker.id).where(
                 Tracker.name == character))
             char = char_result.scalars().one()
         async with async_session() as session:
             con_result = await session.execute(select(Condition.title)
-                                               .where(Condition.character_id == char.id)
+                                               .where(Condition.character_id == char)
                                                .where(Condition.visible == True)
                                                .order_by(Condition.title.asc()))
             condition = con_result.scalars().all()
@@ -249,18 +234,8 @@ async def cc_select(ctx: discord.AutocompleteContext):
 
 
 async def save_select(ctx: discord.AutocompleteContext):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
     try:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
-            guild = result.scalars().one()
+        guild = await initiative.get_guild(ctx, None)
         if guild.system == 'PF2':
             return PF2e.pf2_functions.PF2_saves
         else:
