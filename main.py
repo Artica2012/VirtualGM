@@ -16,7 +16,7 @@ import lookup_parser
 
 # Set up logging
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logging.info("Script Started")
 
 # environmental variables - if Production - use the token and database of the production model, if Production == False,

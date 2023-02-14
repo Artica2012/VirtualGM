@@ -143,6 +143,14 @@ async def setup_tracker(ctx: discord.ApplicationContext, engine, bot, gm: discor
             await engine.dispose()
             return False
 
+        guild = await get_guild(ctx,None)
+        if guild.tracker == None or guild.gm_tracker ==None:
+            await delete_tracker(ctx, engine, bot, guild=guild)
+            await ctx.respond("Please check permissions and try again")
+            await engine.dispose()
+            return False
+
+
         await engine.dispose()
         return True
 
@@ -181,15 +189,15 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
 
 # Delete the tracker
-async def delete_tracker(ctx: discord.ApplicationContext, engine, bot):
+async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
     try:
         # Everything in the opposite order of creation
         metadata = db.MetaData()
         # delete each table
-        emp = await get_tracker_table(ctx, metadata, engine)
-        con = await get_condition_table(ctx, metadata, engine)
-        macro = await get_macro_table(ctx, metadata, engine)
+        emp = await get_tracker_table(ctx, metadata, engine, guild=guild)
+        con = await get_condition_table(ctx, metadata, engine, guild=guild)
+        macro = await get_macro_table(ctx, metadata, engine, guild=guild)
 
         async with engine.begin() as conn:
             try:
