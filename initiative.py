@@ -299,10 +299,6 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
                     session.add(tracker)
                 await session.commit()
 
-            # # If we are in initiative, fix the initiative order
-            # if guild.initiative != None:
-            #     await fix_init_order(ctx, engine, guild=guild)
-
         await engine.dispose()
         await update_pinned_tracker(ctx, engine, bot)
         return True
@@ -327,6 +323,10 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
         guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
 
+        #Give an error message if the character is the active character and making them inactive
+        if guild.saved_order == name:
+            await ctx.channel.send("Unable to inactivate a character while they are the active character in initiative.  Please advance turn and try again.")
+
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = result.scalars().one()
@@ -337,7 +337,7 @@ async def edit_character(ctx: discord.ApplicationContext, engine, bot, name: str
                 character.init_string = str(init)
             if player != None:
                 character.user = player.id
-            if active != None:
+            if active is not None and guild.saved_order != name:
                 character.active = active
 
             await session.commit()
