@@ -211,9 +211,7 @@ class AttackCog(commands.Cog):
             return
         # PF2 specific code
         if guild.system == "PF2":
-            output_string = await PF2e.pf2_functions.save(
-                ctx, engine, self.bot, character, target, save, dc, modifier
-            )
+            output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save, dc, modifier)
             await ctx.send_followup(output_string)
         elif guild.system == "D4e":
             await ctx.send_followup(
@@ -270,7 +268,7 @@ class AttackCog(commands.Cog):
                 )
                 macro_roll = result.scalars().one()
             roll_result = await roller.plain_roll(macro_roll)
-        if damage_heal == 'Damage':
+        if damage_heal == "Damage":
             output_string = f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
         else:
             output_string = f"{character} heals {target} for: \n{roll_result[0]} = {roll_result[1]}"

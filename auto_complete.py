@@ -156,14 +156,13 @@ async def macro_select(ctx: discord.AutocompleteContext):
 
     try:
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(
-                Tracker.name == character
-            ))
+            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = char_result.scalars().one()
 
         async with async_session() as session:
             macro_result = await session.execute(
-                select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc()))
+                select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc())
+            )
             macro_list = macro_result.scalars().all()
         await engine.dispose()
         return macro_list
@@ -177,7 +176,7 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
     logging.info(f"{datetime.datetime.now()} - attack_cog a_macro_select")
 
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    character = ctx.options['character']
+    character = ctx.options["character"]
     guild = await initiative.get_guild(ctx, None)
     Tracker = await get_tracker(ctx, engine, id=guild.id)
     Macro = await get_macro(ctx, engine, id=guild.id)
@@ -185,16 +184,15 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
 
     try:
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(
-                Tracker.name == character
-            ))
+            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = char_result.scalars().one()
         async with async_session() as session:
             macro_result = await session.execute(
                 select(Macro.name)
-                    .where(Macro.character_id == char)
-                    .where(not_(Macro.macro.contains(',')))
-                    .order_by(Macro.name.asc()))
+                .where(Macro.character_id == char)
+                .where(not_(Macro.macro.contains(",")))
+                .order_by(Macro.name.asc())
+            )
             macro_list = macro_result.scalars().all()
         await engine.dispose()
         return macro_list
@@ -217,14 +215,15 @@ async def cc_select(ctx: discord.AutocompleteContext):
         Condition = await get_condition(ctx, engine, id=guild.id)
 
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(
-                Tracker.name == character))
+            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = char_result.scalars().one()
         async with async_session() as session:
-            con_result = await session.execute(select(Condition.title)
-                                               .where(Condition.character_id == char)
-                                               .where(Condition.visible == True)
-                                               .order_by(Condition.title.asc()))
+            con_result = await session.execute(
+                select(Condition.title)
+                .where(Condition.character_id == char)
+                .where(Condition.visible == True)
+                .order_by(Condition.title.asc())
+            )
             condition = con_result.scalars().all()
         await engine.dispose()
         return condition
@@ -238,7 +237,7 @@ async def cc_select(ctx: discord.AutocompleteContext):
 async def save_select(ctx: discord.AutocompleteContext):
     try:
         guild = await initiative.get_guild(ctx, None)
-        if guild.system == 'PF2':
+        if guild.system == "PF2":
             return PF2e.pf2_functions.PF2_saves
         else:
             return []

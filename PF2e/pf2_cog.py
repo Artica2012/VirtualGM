@@ -72,9 +72,8 @@ class PF2Cog(commands.Cog):
                     await ctx.send_followup("Import Failed")
             else:
                 await ctx.send_followup(
-                        "System not assigned as Pathfinder 2e. Please ensure that the correct system "
-                        "was set at table setup"
-                    )
+                    "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table setup"
+                )
         except Exception as e:
             await ctx.send_followup("Error")
             logging.info(f"pb_import: {e}")

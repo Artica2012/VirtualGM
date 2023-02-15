@@ -104,7 +104,7 @@ class PF2NpcSelectButton(discord.ui.Button):
             stat_mod = -2
 
         try:
-            dice = DiceRoller('')
+            dice = DiceRoller("")
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             guild = await initiative.get_guild(self.ctx, None)
             # print(guild.initiative)
@@ -150,85 +150,83 @@ class PF2NpcSelectButton(discord.ui.Button):
                 character = char_result.scalars().one()
 
             async with session.begin():
-                session.add(Condition(
-                    character_id=character.id,
-                    title="AC",
-                    number=self.data.ac + stat_mod,
-                    counter=True,
-                    visible=False
+                session.add(
+                    Condition(
+                        character_id=character.id,
+                        title="AC",
+                        number=self.data.ac + stat_mod,
+                        counter=True,
+                        visible=False,
                     )
                 )
-                session.add(Condition(
-                    character_id=character.id,
-                    title="Fort",
-                    number=self.data.fort + stat_mod,
-                    counter=True,
-                    visible=False,
-                  )
-                )
-                session.add(Condition(
-                    character_id=character.id,
-                    title="Reflex",
-                    number=self.data.reflex + stat_mod,
-                    counter=True,
-                    visible=False,
+                session.add(
+                    Condition(
+                        character_id=character.id,
+                        title="Fort",
+                        number=self.data.fort + stat_mod,
+                        counter=True,
+                        visible=False,
                     )
                 )
-                session.add(Condition(
-                    character_id=character.id,
-                    title="Will",
-                    number=self.data.will + stat_mod,
-                    counter=True,
-                    visible=False,
+                session.add(
+                    Condition(
+                        character_id=character.id,
+                        title="Reflex",
+                        number=self.data.reflex + stat_mod,
+                        counter=True,
+                        visible=False,
                     )
                 )
-                session.add(Condition(
-                    character_id=character.id,
-                    title="DC",
-                    number=self.data.dc + stat_mod,
-                    counter=True,
-                    visible=False)
+                session.add(
+                    Condition(
+                        character_id=character.id,
+                        title="Will",
+                        number=self.data.will + stat_mod,
+                        counter=True,
+                        visible=False,
+                    )
+                )
+                session.add(
+                    Condition(
+                        character_id=character.id,
+                        title="DC",
+                        number=self.data.dc + stat_mod,
+                        counter=True,
+                        visible=False,
+                    )
                 )
                 await session.commit()
 
             # Parse Macros
-            attack_list = self.data.macros.split('::')
+            attack_list = self.data.macros.split("::")
             Macro = await get_macro(self.ctx, self.engine, id=guild.id)
             async with session.begin():
                 for attack in attack_list[:-1]:
                     await asyncio.sleep(0)
                     # split the attack
                     print(attack)
-                    split_string = attack.split(';')
+                    split_string = attack.split(";")
                     print(split_string)
                     base_name = split_string[0].strip()
                     attack_string = split_string[1].strip()
                     damage_string = split_string[2].strip()
-                    if self.elite == 'weak':
+                    if self.elite == "weak":
                         attack_macro = Macro(
-                            character_id=character.id,
-                            name=f"{base_name} - Attack",
-                            macro=f"{attack_string}{stat_mod}"
+                            character_id=character.id, name=f"{base_name} - Attack", macro=f"{attack_string}{stat_mod}"
                         )
                     else:
                         attack_macro = Macro(
-                            character_id=character.id,
-                            name=f"{base_name} - Attack",
-                            macro=f"{attack_string}+{stat_mod}"
+                            character_id=character.id, name=f"{base_name} - Attack", macro=f"{attack_string}+{stat_mod}"
                         )
                     session.add(attack_macro)
-                    print('Attack Added')
-                    if self.elite == 'weak':
+                    print("Attack Added")
+                    if self.elite == "weak":
                         damage_macro = Macro(
-                            character_id=character.id,
-                            name=f"{base_name} - Damage",
-                            macro=f"{damage_string}{stat_mod}"
+                            character_id=character.id, name=f"{base_name} - Damage", macro=f"{damage_string}{stat_mod}"
                         )
                     else:
                         damage_macro = Macro(
-                            character_id=character.id,
-                            name=f"{base_name} - Damage",
-                            macro=f"{damage_string}+{stat_mod}"
+                            character_id=character.id, name=f"{base_name} - Damage", macro=f"{damage_string}+{stat_mod}"
                         )
 
                     session.add(damage_macro)

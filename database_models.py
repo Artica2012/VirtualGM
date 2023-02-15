@@ -129,11 +129,14 @@ async def get_tracker_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild == None:
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
             guild = result.scalars().one()
 
     table = TrackerTable(ctx, metadata, guild.id).tracker_table()
@@ -218,11 +221,14 @@ async def get_condition_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild == None:
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
             guild = result.scalars().one()
 
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
@@ -309,11 +315,14 @@ async def get_macro_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild == None:
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
             guild = result.scalars().one()
 
     table = MacroTable(ctx, metadata, guild.id).macro_table()

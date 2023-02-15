@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+
 # imports
 from datetime import datetime
 
@@ -83,7 +84,7 @@ async def attack(
     dice_result = await roller.attack_roll(roll_string)
     total = dice_result[1]
     dice_string = dice_result[0]
-    print(f'{total}, {dice_string}')
+    print(f"{total}, {dice_string}")
 
     # Load up the tables
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -110,9 +111,9 @@ async def attack(
     try:
         # Load the value of the target condition - just need the number here
         async with async_session() as session:
-            result = await session.execute(select(Condition.number)
-                                           .where(Condition.character_id == targ)
-                                           .where(Condition.title == vs))
+            result = await session.execute(
+                select(Condition.number).where(Condition.character_id == targ).where(Condition.title == vs)
+            )
             con_vs = result.scalars().one()
 
     except NoResultFound:
@@ -130,10 +131,9 @@ async def attack(
         goal_value = con_vs
 
     logging.info(f"Target Modifier: {target_modifier}")
-    target_modifier_string = ''
-    if target_modifier != '':
-
-        if target_modifier[0] == '-' or target_modifier[0] == '+':
+    target_modifier_string = ""
+    if target_modifier != "":
+        if target_modifier[0] == "-" or target_modifier[0] == "+":
             target_modifier_string = target_modifier
         else:
             target_modifier_string = f"+{target_modifier}"
@@ -156,9 +156,7 @@ async def attack(
     success_string = await PF2_eval_succss(dice_result, goal)
 
     # Format output string
-    output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n" \
-                    f"{dice_string} = {total}\n" \
-                    f"{success_string}"
+    output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n{dice_string} = {total}\n{success_string}"
     return output_string
     # except Exception as e:
     #     logging.warning(f'attack pf2: {e}')
@@ -167,8 +165,8 @@ async def attack(
     #     return False
 
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, dc: int,
-               modifier: str
+async def save(
+    ctx: discord.ApplicationContext, engine, bot, character: str, target: str, vs: str, dc: int, modifier: str
 ):
     if target is None:
         output_string = "Error. No Target Specified."
@@ -233,8 +231,7 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, tar
             )
 
     except NoResultFound as e:
-        await ctx.channel.send(error_not_initialized,
-                               delete_after=30)
+        await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
         print(f"attack: {e}")
@@ -332,20 +329,22 @@ async def pf2_get_tracker(
         for x, row in enumerate(init_list):
             logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
             if len(init_list) > active_length and x == active_length:
-                output_string += '-----------------\n'  # Put in the divider
+                output_string += "-----------------\n"  # Put in the divider
             async with async_session() as session:
                 result = await session.execute(
                     select(Condition).where(Condition.character_id == row.id).where(Condition.visible is True)
                 )
                 condition_list = result.scalars().all()
             try:
-                ac = ''
+                ac = ""
                 if row.player:
                     async with async_session() as session:
-                        result = await session.execute(select(Condition.number)
-                                                       .where(Condition.character_id == row.id)
-                                                       .where(Condition.visible == False)
-                                                       .where(Condition.title == 'AC'))
+                        result = await session.execute(
+                            select(Condition.number)
+                            .where(Condition.character_id == row.id)
+                            .where(Condition.visible == False)
+                            .where(Condition.title == "AC")
+                        )
                         armor_class = result.scalars().one()
                         # print(armor_class.number)
                         ac = armor_class
@@ -376,7 +375,10 @@ async def pf2_get_tracker(
                 selector = ">>"
             if row.player or gm:
                 if row.temp_hp != 0:
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp AC:{ac}\n "
+                    string = (
+                        f"{selector}  {init_string} {str(row.name).title()}:"
+                        f" {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp AC:{ac}\n "
+                    )
                 else:
                     string = (
                         f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} AC: {ac}\n"
@@ -484,7 +486,7 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
     async def callback(self, interaction: discord.Interaction):
         self.stop()
-        await interaction.response.send_message(f'{self.name} Updated')
+        await interaction.response.send_message(f"{self.name} Updated")
         guild = await initiative.get_guild(self.ctx, None)
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -497,9 +499,9 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
         for item in self.children:
             async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == character)
-                                               .where(Condition.title == item.label))
+                result = await session.execute(
+                    select(Condition).where(Condition.character_id == character).where(Condition.title == item.label)
+                )
                 condition = result.scalars().one()
                 condition.number = int(item.value)
                 await session.commit()

@@ -3,6 +3,7 @@
 # Main file to VirtualGM - a discord bot written with the pycord library
 
 import logging
+
 # imports
 import os
 import sys
@@ -60,7 +61,6 @@ async def on_ready():
 async def on_disconnect():
     # await bot.connect()
     logging.warning("Disconnected")
-
 
 
 @bot.event

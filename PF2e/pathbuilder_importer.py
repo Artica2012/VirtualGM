@@ -37,7 +37,6 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 
-
 # Import a PF2e character from pathbuilder
 async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name: str, pb_char_code: str):
     stats = {}
@@ -88,13 +87,13 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         )
 
         # Initiative
-        stats['initiative'] = stats['wis_mod'] + pb['build']['proficiencies']['perception'] + stats['level']
-        stats['init_string'] = f"1d20+{stats['initiative']}"
+        stats["initiative"] = stats["wis_mod"] + pb["build"]["proficiencies"]["perception"] + stats["level"]
+        stats["init_string"] = f"1d20+{stats['initiative']}"
 
         # Saves
-        stats['fort'] = stats['con_mod'] + pb['build']['proficiencies']['fortitude'] + stats['level']
-        stats['will'] = stats['wis_mod'] + pb['build']['proficiencies']['will'] + stats['level']
-        stats['reflex'] = stats['dex_mod'] + pb['build']['proficiencies']['reflex'] + stats['level']
+        stats["fort"] = stats["con_mod"] + pb["build"]["proficiencies"]["fortitude"] + stats["level"]
+        stats["will"] = stats["wis_mod"] + pb["build"]["proficiencies"]["will"] + stats["level"]
+        stats["reflex"] = stats["dex_mod"] + pb["build"]["proficiencies"]["reflex"] + stats["level"]
 
         # DC
         dc_list = []
@@ -114,8 +113,8 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         untrained_prof = 0
         for item in pb["build"]["feats"]:
             if "Untrained Improvisation" in item:
-                if stats['level'] < 7:
-                    untrained_prof = math.floor(stats['level'] / 2)
+                if stats["level"] < 7:
+                    untrained_prof = math.floor(stats["level"] / 2)
                 else:
                     untrained_prof = stats["level"]
         # print(untrained_prof)
@@ -233,13 +232,13 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                 async with session.begin():
                     new_char = Tracker(
                         name=name,
-                        init_string=stats['init_string'],
+                        init_string=stats["init_string"],
                         init=initiative,
                         player=True,
                         user=ctx.user.id,
-                        current_hp=stats['hp'],
-                        max_hp=stats['hp'],
-                        temp_hp=0
+                        current_hp=stats["hp"],
+                        max_hp=stats["hp"],
+                        temp_hp=0,
                     )
                     session.add(new_char)
                 await session.commit()
