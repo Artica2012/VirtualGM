@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import initiative
-from database_models import get_macro, get_condition, get_tracker, NPC
+from database_models import (
+    get_macro,
+    get_condition,
+    get_tracker,
+    NPC,
+)
 from dice_roller import DiceRoller
 
 # imports
@@ -19,29 +24,28 @@ from dice_roller import DiceRoller
 # define global variables
 
 load_dotenv(verbose=True)
-if os.environ['PRODUCTION'] == 'True':
-    TOKEN = os.getenv('TOKEN')
-    USERNAME = os.getenv('Username')
-    PASSWORD = os.getenv('Password')
-    HOSTNAME = os.getenv('Hostname')
-    PORT = os.getenv('PGPort')
+if os.environ["PRODUCTION"] == "True":
+    TOKEN = os.getenv("TOKEN")
+    USERNAME = os.getenv("Username")
+    PASSWORD = os.getenv("Password")
+    HOSTNAME = os.getenv("Hostname")
+    PORT = os.getenv("PGPort")
 else:
-    TOKEN = os.getenv('BETA_TOKEN')
-    USERNAME = os.getenv('BETA_Username')
-    PASSWORD = os.getenv('BETA_Password')
-    HOSTNAME = os.getenv('BETA_Hostname')
-    PORT = os.getenv('BETA_PGPort')
+    TOKEN = os.getenv("BETA_TOKEN")
+    USERNAME = os.getenv("BETA_Username")
+    PASSWORD = os.getenv("BETA_Password")
+    HOSTNAME = os.getenv("BETA_Hostname")
+    PORT = os.getenv("BETA_PGPort")
 
-GUILD = os.getenv('GUILD')
-SERVER_DATA = os.getenv('SERVERDATA')
-DATABASE = os.getenv('DATABASE')
+GUILD = os.getenv("GUILD")
+SERVER_DATA = os.getenv("SERVERDATA")
+DATABASE = os.getenv("DATABASE")
 
 
 async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        result = await session.execute(select(NPC)
-                                       .where(func.lower(NPC.name).contains(lookup.lower())))
+        result = await session.execute(select(NPC).where(func.lower(NPC.name).contains(lookup.lower())))
         lookup_list = result.scalars().all()
     view = View()
     if len(lookup_list) == 0:
@@ -78,7 +82,7 @@ class PF2NpcSelectButton(discord.ui.Button):
         # elite/weak adjustments
         hp_mod = 0
         stat_mod = 0
-        if self.elite == 'elite':
+        if self.elite == "elite":
             if self.data.level <= 1:
                 hp_mod = 10
             elif self.data.level <= 4:
@@ -88,7 +92,7 @@ class PF2NpcSelectButton(discord.ui.Button):
             else:
                 hp_mod = 30
             stat_mod = 2
-        if self.elite == 'weak':
+        if self.elite == "weak":
             if self.data.level <= 1:
                 hp_mod = -10
             elif self.data.level <= 4:
@@ -106,14 +110,14 @@ class PF2NpcSelectButton(discord.ui.Button):
             # print(guild.initiative)
             # print(int(self.data.init)+stat_mod)
             initiative_num = 0
-            if guild.initiative != None:
+            if guild.initiative is not None:
                 try:
                     # print(f"Init: {init}")
                     initiative_num = int(self.data.init) + stat_mod
                     print(initiative_num)
-                except:
+                except Exception:
                     try:
-                        if self.elite == 'weak':
+                        if self.elite == "weak":
                             roll = await dice.plain_roll(f"{self.data.init}{stat_mod}")
                         else:
                             roll = await dice.plain_roll(f"{self.data.init}+{stat_mod}")
@@ -121,7 +125,7 @@ class PF2NpcSelectButton(discord.ui.Button):
                         print(initiative_num)
                         if type(initiative_num) != int:
                             initiative_num = 0
-                    except:
+                    except Exception:
                         initiative_num = 0
 
             async with async_session() as session:
@@ -135,7 +139,7 @@ class PF2NpcSelectButton(discord.ui.Button):
                         user=self.ctx.user.id,
                         current_hp=self.data.hp + hp_mod,
                         max_hp=self.data.hp + hp_mod,
-                        temp_hp=0
+                        temp_hp=0,
                     )
                     session.add(tracker)
                 await session.commit()
@@ -148,38 +152,43 @@ class PF2NpcSelectButton(discord.ui.Button):
             async with session.begin():
                 session.add(Condition(
                     character_id=character.id,
-                    title='AC',
+                    title="AC",
                     number=self.data.ac + stat_mod,
                     counter=True,
-                    visible=False))
+                    visible=False
+                    )
+                )
                 session.add(Condition(
                     character_id=character.id,
-                    title='Fort',
+                    title="Fort",
                     number=self.data.fort + stat_mod,
                     counter=True,
-                    visible=False
-                ))
+                    visible=False,
+                  )
+                )
                 session.add(Condition(
                     character_id=character.id,
-                    title='Reflex',
+                    title="Reflex",
                     number=self.data.reflex + stat_mod,
                     counter=True,
-                    visible=False
-                ))
+                    visible=False,
+                    )
+                )
                 session.add(Condition(
                     character_id=character.id,
-                    title='Will',
+                    title="Will",
                     number=self.data.will + stat_mod,
                     counter=True,
-                    visible=False
-                ))
+                    visible=False,
+                    )
+                )
                 session.add(Condition(
                     character_id=character.id,
-                    title='DC',
+                    title="DC",
                     number=self.data.dc + stat_mod,
                     counter=True,
-                    visible=False
-                ))
+                    visible=False)
+                )
                 await session.commit()
 
             # Parse Macros

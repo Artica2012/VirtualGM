@@ -5,19 +5,19 @@
 
 # import the disease database
 def import_disease(filename):
-    with open(f'data/{filename}', 'r', encoding='utf-8') as file:  # open the file
+    with open(f"data/{filename}", "r", encoding="utf-8") as file:  # open the file
         data_cache = []
         for line in file.readlines():
             # Strip the extra headers off of each line and split it up
             # NOT PERFECT
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(prefix)
             # print(linedata[1])
-            data = linedata[1].split(',', 5)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 5)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(data)
 
@@ -30,13 +30,13 @@ def import_disease(filename):
 
             # Export the data from the line into a dictionary
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
-                'Level': data[2].strip("'"),
-                'Source': data[3],
-                'Data': data[5],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1],
+                "Level": data[2].strip("'"),
+                "Source": data[3],
+                "Data": data[5],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
 
             # print(data[5])
@@ -46,27 +46,27 @@ def import_disease(filename):
 
 
 def import_feat(filename):
-    with open(f'data/{filename}', 'r', encoding='utf8') as file:
+    with open(f"data/{filename}", "r", encoding="utf8") as file:
         data_cache = []
         for line in file.readlines():
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(prefix)
             # print(linedata[1])
-            data = linedata[1].split(',', 7)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 7)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(data[7])
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1].strip("'"),
-                'Tier': data[5].strip("'"),
-                'Source': data[4],
-                'Data': data[7],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1].strip("'"),
+                "Tier": data[5].strip("'"),
+                "Source": data[4],
+                "Data": data[7],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
             # print(data_dict)
             data_cache.append(data_dict)
@@ -76,63 +76,63 @@ def import_feat(filename):
 
 # TODO - Fix the item URL. Need to manually check URLs to figure out who it builds it.
 def import_item(filename):
-    with open(f'data/{filename}', 'r', encoding='utf8') as file:
+    with open(f"data/{filename}", "r", encoding="utf8") as file:
         data_cache = []
         for line in file.readlines():
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(prefix)
             # print(linedata[1])
-            data = linedata[1].split(',', 9)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 9)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(data)
             if data[4].strip("'") == "Armor":
                 prefix = "Armor"
-            elif data[4].strip("'") == 'Implement':
+            elif data[4].strip("'") == "Implement":
                 prefix = "Implement"
-            elif data[4].strip("'") == 'Weapon':
-                prefix = 'Weapon'
+            elif data[4].strip("'") == "Weapon":
+                prefix = "Weapon"
             else:
-                prefix = 'Item'
+                prefix = "Item"
 
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1].strip("'"),
-                'Category': data[5],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1].strip("'"),
+                "Category": data[5],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
             data_cache.append(data_dict)
     return data_cache
 
 
 def import_power(filename):
-    with open(f'data/{filename}', 'r', encoding='utf8') as file:
+    with open(f"data/{filename}", "r", encoding="utf8") as file:
         data_cache = []
         for line in file.readlines():
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(prefix)
             # print(linedata[1])
-            data = linedata[1].split(',', 9)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 9)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(data)
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1].strip("'"),
-                'Level': data[2].strip("'"),
-                'Action': data[3].strip("'"),
-                'Class': data[7],
-                'Source': data[6],
-                'Data': data[9],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1].strip("'"),
+                "Level": data[2].strip("'"),
+                "Action": data[3].strip("'"),
+                "Class": data[7],
+                "Source": data[6],
+                "Data": data[9],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
             # print(data[9])
             data_cache.append(data_dict)
@@ -142,19 +142,19 @@ def import_power(filename):
 
 # import the monster database
 def import_monster(filename):
-    with open(f'data/{filename}', 'r', encoding='utf-8') as file:  # open the file
+    with open(f"data/{filename}", "r", encoding="utf-8") as file:  # open the file
         data_cache = []
         for line in file.readlines():
             # Strip the extra headers off of each line and split it up
             # NOT PERFECT
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(f'prefix: {prefix}')
             # print(f'linedata[1]: {linedata[1]}')
-            data = linedata[1].split(',', 8)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 8)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(f"data: {data}")
 
@@ -167,11 +167,11 @@ def import_monster(filename):
 
             # Export the data from the line into a dictionary
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
-                'Data': data[5],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1],
+                "Data": data[5],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
 
             # print(data[5])
@@ -182,19 +182,19 @@ def import_monster(filename):
 
 # import the monster database
 def import_Ritual(filename):
-    with open(f'data/{filename}', 'r', encoding='utf-8') as file:  # open the file
+    with open(f"data/{filename}", "r", encoding="utf-8") as file:  # open the file
         data_cache = []
         for line in file.readlines():
             # Strip the extra headers off of each line and split it up
             # NOT PERFECT
             # print(line)
-            line = line.removeprefix('INSERT INTO ')
-            linedata = line.split('VALUES ')
+            line = line.removeprefix("INSERT INTO ")
+            linedata = line.split("VALUES ")
             prefix = linedata[0].split()[0].strip("`")
             # print(f'prefix: {prefix}')
             # print(f'linedata[1]: {linedata[1]}')
-            data = linedata[1].split(',', 8)
-            ID = data[0].removeprefix('(').strip("'")
+            data = linedata[1].split(",", 8)
+            ID = data[0].removeprefix("(").strip("'")
             # print(editedtext)
             # print(f"data: {data}")
 
@@ -207,10 +207,10 @@ def import_Ritual(filename):
 
             # Export the data from the line into a dictionary
             data_dict = {
-                'Type': prefix,
-                'ID': data[0].removeprefix('(').strip("'"),
-                'Title': data[1],
-                'URL': f"http://iws.mx/dnd/?view={prefix.lower()}{ID}"
+                "Type": prefix,
+                "ID": data[0].removeprefix("(").strip("'"),
+                "Title": data[1],
+                "URL": f"http://iws.mx/dnd/?view={prefix.lower()}{ID}",
             }
 
             # print(data[5])

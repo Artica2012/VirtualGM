@@ -21,26 +21,27 @@ from sqlalchemy.orm import sessionmaker
 
 
 load_dotenv(verbose=True)
-if os.environ['PRODUCTION'] == 'True':
-    TOKEN = os.getenv('TOKEN')
-    USERNAME = os.getenv('Username')
-    PASSWORD = os.getenv('Password')
-    HOSTNAME = os.getenv('Hostname')
-    PORT = os.getenv('PGPort')
+if os.environ["PRODUCTION"] == "True":
+    TOKEN = os.getenv("TOKEN")
+    USERNAME = os.getenv("Username")
+    PASSWORD = os.getenv("Password")
+    HOSTNAME = os.getenv("Hostname")
+    PORT = os.getenv("PGPort")
 else:
-    TOKEN = os.getenv('BETA_TOKEN')
-    USERNAME = os.getenv('BETA_Username')
-    PASSWORD = os.getenv('BETA_Password')
-    HOSTNAME = os.getenv('BETA_Hostname')
-    PORT = os.getenv('BETA_PGPort')
+    TOKEN = os.getenv("BETA_TOKEN")
+    USERNAME = os.getenv("BETA_Username")
+    PASSWORD = os.getenv("BETA_Password")
+    HOSTNAME = os.getenv("BETA_Hostname")
+    PORT = os.getenv("BETA_PGPort")
 
-GUILD = os.getenv('GUILD')
-SERVER_DATA = os.getenv('SERVERDATA')
+GUILD = os.getenv("GUILD")
+SERVER_DATA = os.getenv("SERVERDATA")
 
 Base = declarative_base()
 
 
 # Database Models
+
 
 # Global Class
 class Global(Base):
@@ -57,7 +58,7 @@ class Global(Base):
     # Initiative Tracker
     initiative = Column(Integer())
     round = Column(Integer(), default=0)
-    saved_order = Column(String(), default='')
+    saved_order = Column(String(), default="")
     tracker = Column(BigInteger(), nullable=True)
     tracker_channel = Column(BigInteger(), nullable=True, unique=True)
     gm_tracker = Column(BigInteger(), nullable=True)
@@ -79,19 +80,21 @@ class Global(Base):
 #########################################
 # Tracker Table
 
+
 # Tracker Get Function
 async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
-    if ctx == None and id == None:
+    if ctx is None and id is None:
         raise Exception
-    if id == None:
+    if id is None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
                 )
-            )
             )
             guild = result.scalars().one()
             tablename = f"Tracker_{guild.id}"
@@ -104,7 +107,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
     class Tracker(DynamicBase):
         __tablename__ = tablename
-        __table_args__ = {'extend_existing': True}
+        __table_args__ = {"extend_existing": True}
 
         id = Column(Integer(), primary_key=True, autoincrement=True)
         name = Column(String(), nullable=False, unique=True)
@@ -117,7 +120,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
         init_string = Column(String(), nullable=True)
         active = Column(Boolean(), default=True)
 
-    logging.info(f"get_tracker: returning tracker")
+    logging.info("get_tracker: returning tracker")
     return Tracker
 
 
@@ -147,18 +150,20 @@ class TrackerTable:
 
     def tracker_table(self):
         tablename = f"Tracker_{self.id}"
-        emp = db.Table(tablename, self.metadata,
-                       db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                       db.Column('name', db.String(255), nullable=False, unique=True),
-                       db.Column('init', db.INTEGER(), default=0),
-                       db.Column('player', db.BOOLEAN, default=False),
-                       db.Column('user', db.BigInteger(), nullable=False),
-                       db.Column('current_hp', db.INTEGER(), default=0),
-                       db.Column('max_hp', db.INTEGER(), default=1),
-                       db.Column('temp_hp', db.INTEGER(), default=0),
-                       db.Column('init_string', db.String(255), nullable=True),
-                       db.Column('active', db.BOOLEAN, default=True)
-                       )
+        emp = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("name", db.String(255), nullable=False, unique=True),
+            db.Column("init", db.INTEGER(), default=0),
+            db.Column("player", db.BOOLEAN, default=False),
+            db.Column("user", db.BigInteger(), nullable=False),
+            db.Column("current_hp", db.INTEGER(), default=0),
+            db.Column("max_hp", db.INTEGER(), default=1),
+            db.Column("temp_hp", db.INTEGER(), default=0),
+            db.Column("init_string", db.String(255), nullable=True),
+            db.Column("active", db.BOOLEAN, default=True),
+        )
         return emp
 
 
@@ -166,18 +171,22 @@ class TrackerTable:
 #########################################
 # Condition Table
 
+
 # Condition Get Function
 async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
-    if ctx == None and id == None:
+    if ctx is None and id is None:
         raise Exception
-    if id == None:
+    if id is None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
             guild = result.scalars().one()
             tablename = f"Condition_{guild.id}"
             logging.info(f"get_condition: Guild: {guild.id}")
@@ -189,7 +198,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
 
     class Condition(DynamicBase):
         __tablename__ = tablename
-        __table_args__ = {'extend_existing': True}
+        __table_args__ = {"extend_existing": True}
 
         id = Column(Integer(), primary_key=True, autoincrement=True)
         character_id = Column(Integer(), nullable=False)
@@ -201,7 +210,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         visible = Column(Boolean(), default=True)
         flex = Column(Boolean(), default=False)
 
-    logging.info(f"get_condition: returning condition")
+    logging.info("get_condition: returning condition")
     return Condition
 
 
@@ -225,19 +234,23 @@ class ConditionTable:
         self.metadata = metadata
         self.id = id
 
-    def condition_table(self, ):
+    def condition_table(
+        self,
+    ):
         tablename = f"Condition_{self.id}"
-        con = db.Table(tablename, self.metadata,
-                       db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                       db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.id}.id')),
-                       db.Column('counter', db.BOOLEAN(), default=False),
-                       db.Column('title', db.String(255), nullable=False),
-                       db.Column('number', db.INTEGER(), nullable=True, default=None),
-                       db.Column('auto_increment', db.BOOLEAN, nullable=False, default=False),
-                       db.Column('time', db.BOOLEAN, default=False),
-                       db.Column('visible', db.BOOLEAN, default=True),
-                       db.Column('flex', db.BOOLEAN, default=False)
-                       )
+        con = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("character_id", db.INTEGER(), ForeignKey(f"Tracker_{self.id}.id")),
+            db.Column("counter", db.BOOLEAN(), default=False),
+            db.Column("title", db.String(255), nullable=False),
+            db.Column("number", db.INTEGER(), nullable=True, default=None),
+            db.Column("auto_increment", db.BOOLEAN, nullable=False, default=False),
+            db.Column("time", db.BOOLEAN, default=False),
+            db.Column("visible", db.BOOLEAN, default=True),
+            db.Column("flex", db.BOOLEAN, default=False),
+        )
         return con
 
 
@@ -245,9 +258,10 @@ class ConditionTable:
 #########################################
 # Macro Table
 
+
 class Macro(Base):
     __abstract__ = True
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer(), primary_key=True, autoincrement=True)
     character_id = Column(Integer(), nullable=False)
@@ -256,16 +270,19 @@ class Macro(Base):
 
 
 async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
-    if ctx == None and id == None:
+    if ctx is None and id is None:
         raise Exception
-    if id == None:
+    if id is None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(
-                or_(
-                    Global.tracker_channel == ctx.interaction.channel_id,
-                    Global.gm_tracker_channel == ctx.interaction.channel_id
-                )))
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
             guild = result.scalars().one()
             logging.info(f"get_macro: Guild: {guild.id}")
             tablename = f"Macro_{guild.id}"
@@ -277,14 +294,14 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
 
     class Macro(DynamicBase):
         __tablename__ = tablename
-        __table_args__ = {'extend_existing': True}
+        __table_args__ = {"extend_existing": True}
 
         id = Column(Integer(), primary_key=True, autoincrement=True)
         character_id = Column(Integer(), nullable=False)
         name = Column(String(), nullable=False, unique=False)
         macro = Column(String(), nullable=False, unique=False)
 
-    logging.info(f"get_macro: returning macro")
+    logging.info("get_macro: returning macro")
     return Macro
 
 
@@ -312,79 +329,93 @@ class MacroTable:
 
     def macro_table(self):
         tablename = f"Macro_{self.id}"
-        macro = db.Table(tablename, self.metadata,
-                         db.Column('id', db.INTEGER(), autoincrement=True, primary_key=True),
-                         db.Column('character_id', db.INTEGER(), ForeignKey(f'Tracker_{self.id}.id')),
-                         db.Column('name', db.String(255), nullable=False, unique=False),
-                         db.Column('macro', db.String(255), nullable=False, unique=False)
-                         )
+        macro = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("character_id", db.INTEGER(), ForeignKey(f"Tracker_{self.id}.id")),
+            db.Column("name", db.String(255), nullable=False, unique=False),
+            db.Column("macro", db.String(255), nullable=False, unique=False),
+        )
         return macro
 
 
 def disease_table(metadata):
-    tablename = f"disease"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    tablename = "disease"
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
 def feat_table(metadata):
-    tablename = f"feat"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    tablename = "feat"
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
 def power_table(metadata):
-    tablename = f"power"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    tablename = "power"
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
 def monster_table(metadata):
-    tablename = f"monster"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    tablename = "monster"
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
 def item_table(metadata):
     tablename = "item"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('Category', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("Category", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
 def ritual_table(metadata):
     tablename = "ritual"
-    emp = db.Table(tablename, metadata,
-                   db.Column('Type', db.Text()),
-                   db.Column('ID', db.INTEGER(), primary_key=True, autoincrement=False),
-                   db.Column('Title', db.String(255)),
-                   db.Column('URL', db.String(255), default=''),
-                   )
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("Type", db.Text()),
+        db.Column("ID", db.INTEGER(), primary_key=True, autoincrement=False),
+        db.Column("Title", db.String(255)),
+        db.Column("URL", db.String(255), default=""),
+    )
     return emp
 
 
@@ -400,20 +431,22 @@ class Reminder(Base):
 
 
 def reminder_table(metadata):
-    tablename = f"reminder_table"
-    emp = db.Table(tablename, metadata,
-                   db.Column('id', db.INTEGER(), primary_key=True, autoincrement=True),
-                   db.Column('user', db.String(255)),
-                   db.Column('guild_id', db.BigInteger()),
-                   db.Column('channel', db.BigInteger(), nullable=False, unique=False),
-                   db.Column('message', db.String(), nullable=False),
-                   db.Column('timestamp', db.INTEGER(), nullable=False)
-                   )
+    tablename = "reminder_table"
+    emp = db.Table(
+        tablename,
+        metadata,
+        db.Column("id", db.INTEGER(), primary_key=True, autoincrement=True),
+        db.Column("user", db.String(255)),
+        db.Column("guild_id", db.BigInteger()),
+        db.Column("channel", db.BigInteger(), nullable=False, unique=False),
+        db.Column("message", db.String(), nullable=False),
+        db.Column("timestamp", db.INTEGER(), nullable=False),
+    )
     return emp
 
 
 class NPC(Base):
-    __tablename__ = 'npc_data'
+    __tablename__ = "npc_data"
     # Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
     name = Column(String(), unique=True)
