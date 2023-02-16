@@ -17,8 +17,6 @@ import lookup_parser
 
 # Set up logging
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-logging.basicConfig(level=logging.INFO)
-logging.info("Script Started")
 
 
 # environmental variables - if Production - use the token and database of the production model, if Production is False,
@@ -28,8 +26,14 @@ print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
     TOKEN = os.getenv("TOKEN")
+    logging.basicConfig(level=logging.WARNING)
+    logging.info("Script Started")
+
 else:
     TOKEN = os.getenv("BETA_TOKEN")
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Script Started")
+
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
 
