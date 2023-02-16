@@ -89,7 +89,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
-                select(Global).where(
+                select(Global.id).where(
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id,
@@ -97,8 +97,8 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            tablename = f"Tracker_{guild.id}"
-            logging.info(f"get_tracker: Guild: {guild.id}")
+            tablename = f"Tracker_{guild}"
+            logging.info(f"get_tracker: Guild: {guild}")
 
     else:
         tablename = f"Tracker_{id}"
@@ -183,7 +183,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
-                select(Global).where(
+                select(Global.id).where(
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id,
@@ -191,8 +191,8 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            tablename = f"Condition_{guild.id}"
-            logging.info(f"get_condition: Guild: {guild.id}")
+            tablename = f"Condition_{guild}"
+            logging.info(f"get_condition: Guild: {guild}")
 
     else:
         tablename = f"Condition_{id}"
@@ -282,7 +282,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
-                select(Global).where(
+                select(Global.id).where(
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id,
@@ -290,8 +290,8 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            logging.info(f"get_macro: Guild: {guild.id}")
-            tablename = f"Macro_{guild.id}"
+            logging.info(f"get_macro: Guild: {guild}")
+            tablename = f"Macro_{guild}"
 
     else:
         tablename = f"Macro_{id}"

@@ -128,7 +128,7 @@ class D4eCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(Global.last_tracker != None))
+            result = await session.execute(select(Global).where(Global.last_tracker != None)) # noqa
             guild_list = result.scalars().all()
 
             for guild in guild_list:
