@@ -332,7 +332,7 @@ async def pf2_get_tracker(
                 output_string += "-----------------\n"  # Put in the divider
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible is True)
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)
                 )
                 condition_list = result.scalars().all()
             try:

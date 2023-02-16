@@ -91,7 +91,7 @@ class AttackCog(commands.Cog):
                         result = await session.execute(
                             select(Condition.title)
                             .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible is False)
+                            .where(Condition.visible == False)
                         )
                         invisible_conditions = result.scalars().all()
                     return invisible_conditions

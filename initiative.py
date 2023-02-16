@@ -465,7 +465,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         # Copy conditions
         async with async_session() as session:
             con_result = await session.execute(
-                select(Condition).where(Condition.character_id == character.id).where(Condition.visible is False)
+                select(Condition).where(Condition.character_id == character.id).where(Condition.visible == False)
             )
             conditions = con_result.scalars().all()
 
@@ -1293,7 +1293,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
         async with async_session() as session:
             result = await session.execute(
-                select(Tracker).where(Tracker.active is True).order_by(Tracker.init.desc()).order_by(Tracker.id.desc())
+                select(Tracker).where(Tracker.active == True).order_by(Tracker.init.desc()).order_by(Tracker.id.desc())
             )
             init_list = result.scalars().all()
             logging.info("GIL: Init list gotten")
@@ -1325,7 +1325,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
 
         async with async_session() as session:
             result = await session.execute(
-                select(Tracker).where(Tracker.active is False).order_by(Tracker.init.desc()).order_by(Tracker.id.desc())
+                select(Tracker).where(Tracker.active == False).order_by(Tracker.init.desc()).order_by(Tracker.id.desc())
             )
             init_list = result.scalars().all()
             logging.info("GIL: Init list gotten")
@@ -1441,7 +1441,7 @@ async def generic_block_get_tracker(
             # Get all of the visible condition for the character
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible is True)
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)
                 )
                 condition_list = result.scalars().all()
 
@@ -1767,7 +1767,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine, bo
                 char = result.scalars().one()
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == char.id).where(Condition.flex is True)
+                    select(Condition).where(Condition.character_id == char.id).where(Condition.flex == True)
                 )
                 conditions = result.scalars().all()
             for con in conditions:
@@ -2161,7 +2161,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
             result = await session.execute(
                 select(Condition)
                 .where(Condition.character_id == character.id)
-                .where(Condition.visible is True)
+                .where(Condition.visible == True)
                 .where(Condition.title == condition)
             )
             con_list = result.scalars().all()
@@ -2202,7 +2202,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
         Condition = await get_condition(ctx, engine, id=guild.id)
 
     async with async_session() as session:
-        result = await session.execute(select(Condition).where(Condition.time is True))
+        result = await session.execute(select(Condition).where(Condition.time == True))
         con_list = result.scalars().all()
 
     for row in con_list:
@@ -2827,7 +2827,7 @@ class InitiativeCog(commands.Cog):
                     # Delete condition with round timers
                     async with async_session() as session:
                         result = await session.execute(
-                            select(Condition).where(Condition.auto_increment is True).where(Condition.time is False)
+                            select(Condition).where(Condition.auto_increment == True).where(Condition.time == False)
                         )
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
@@ -2840,7 +2840,7 @@ class InitiativeCog(commands.Cog):
                     # Delete any dead NPCs
                     async with async_session() as session:
                         result = await session.execute(
-                            select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player is False)
+                            select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == False)
                         )
                         delete_list = result.scalars().all()
                     for npc in delete_list:
