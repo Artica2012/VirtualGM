@@ -17,7 +17,7 @@ import lookup_parser
 
 # Set up logging
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logging.info("Script Started")
 
 

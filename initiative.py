@@ -1083,7 +1083,7 @@ async def init_con(ctx: discord.ApplicationContext, engine, bot, current_charact
         Condition = await get_condition(ctx, engine, id=guild.id)
         # con = await get_condition_table(ctx, metadata, engine)
         async with async_session() as session:
-            if before is None:
+            if before is not None:
                 char_result = await session.execute(
                     select(Condition)
                     .where(Condition.character_id == cur_char.id)
@@ -1931,7 +1931,6 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
         async with async_session() as session:
             result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = result.scalars().one()
-            print(char.name)
     except NoResultFound:
         if ctx is not None:
             await ctx.channel.send(error_not_initialized, delete_after=30)
@@ -2981,6 +2980,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup("Successful Delete", ephemeral=True)
                 await ctx.send(f"{condition} on {character} deleted.")
         elif mode == "edit":
+            print('editing')
             output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
             if output[0] is not None:
                 await ctx.send_followup(output[0], view=output[1], ephemeral=True)
