@@ -9,16 +9,13 @@ from datetime import datetime
 import discord
 from discord import Interaction
 from dotenv import load_dotenv
-from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import initiative
-from database_models import Global, get_condition, get_tracker
 from database_models import (
-    Global,
     get_condition,
     get_tracker,
 )
@@ -230,7 +227,7 @@ async def save(
                 f"{target} makes a {vs} save!\n{character} forced the save.\n{dice_string} = {total}\n{success_string}"
             )
 
-    except NoResultFound as e:
+    except NoResultFound:
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
@@ -289,7 +286,7 @@ async def pf2_get_tracker(
 
     guild = await initiative.get_guild(ctx, guild)
     logging.info(f"BGT1: Guild: {guild.id}")
-    if guild.block and guild.initiative != None:
+    if guild.block and guild.initiative is not None:
         turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
         block = True
     else:
@@ -332,7 +329,7 @@ async def pf2_get_tracker(
                 output_string += "-----------------\n"  # Put in the divider
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)  # noqa
                 )
                 condition_list = result.scalars().all()
             try:
@@ -342,13 +339,13 @@ async def pf2_get_tracker(
                         result = await session.execute(
                             select(Condition.number)
                             .where(Condition.character_id == row.id)
-                            .where(Condition.visible == False)
+                            .where(Condition.visible == False)  # noqa
                             .where(Condition.title == "AC")
                         )
                         armor_class = result.scalars().one()
                         # print(armor_class.number)
                         ac = armor_class
-            except Exception as e:
+            except Exception:
                 ac = ""
 
             await asyncio.sleep(0)

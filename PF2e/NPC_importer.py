@@ -238,5 +238,5 @@ class PF2NpcSelectButton(discord.ui.Button):
             output_string = f"{self.data.name} added as {self.name}"
 
             await self.ctx.channel.send(output_string)
-        except Exception as e:
+        except Exception:
             await self.ctx.channel.send("Action Failed, please try again", delete_after=60)

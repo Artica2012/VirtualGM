@@ -1,5 +1,5 @@
 # pf2_cog.py
-# For slash commands specific to oathfinder 2e
+# For slash commands specific to pathfinder 2e
 # system specific module
 import logging
 import os
@@ -9,21 +9,12 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
 
 import initiative
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
-from database_models import (
-    Global,
-)
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
-from PF2e.pathbuilder_importer import pathbuilder_import
-from PF2e.NPC_importer import npc_lookup
 from initiative import update_pinned_tracker
 
 # define global variables

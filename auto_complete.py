@@ -134,7 +134,7 @@ async def npc_select(ctx: discord.AutocompleteContext):
 
         async with async_session() as session:
             char_result = await session.execute(
-                select(Tracker.name).where(Tracker.player == False).order_by(Tracker.name.asc())
+                select(Tracker.name).where(Tracker.player == False).order_by(Tracker.name.asc())  # noqa
             )
             character = char_result.scalars().all()
         await engine.dispose()
@@ -221,7 +221,7 @@ async def cc_select(ctx: discord.AutocompleteContext):
             con_result = await session.execute(
                 select(Condition.title)
                 .where(Condition.character_id == char)
-                .where(Condition.visible == True)
+                .where(Condition.visible == True)  # noqa
                 .order_by(Condition.title.asc())
             )
             condition = con_result.scalars().all()

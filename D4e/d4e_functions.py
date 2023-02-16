@@ -281,7 +281,7 @@ async def d4e_get_tracker(
             # print(f'row.id= {row.id}')
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)  # noqa
                 )
                 condition_list = result.scalars().all()
 
@@ -576,7 +576,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
         print(char)
     async with async_session() as session:
         result = await session.execute(
-            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == True)
+            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == True)  # noqa
         )
         conditions = result.scalars().all()
     for con in conditions:
@@ -604,8 +604,8 @@ async def D4eTrackerButtonsIndependent(bot, guild):
         result = await session.execute(
             select(condition)
             .where(condition.character_id == char.id)
-            .where(condition.counter == False)
-            .where(condition.flex == True)
+            .where(condition.counter == False)  # noqa
+            .where(condition.flex == True)  # noqa
         )
         conditions = result.scalars().all()
     for con in conditions:
@@ -701,7 +701,7 @@ async def saveIndependent(engine, bot, guild, character: str, condition: str, mo
             result = await session.execute(
                 select(Condition)
                 .where(Condition.character_id == character.id)
-                .where(Condition.visible == True)
+                .where(Condition.visible == True)  # noqa
                 .where(Condition.title == condition)
             )
             con_list = result.scalars().all()

@@ -127,7 +127,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 # Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if guild == None:
+    if guild is None:
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -219,7 +219,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
 
 async def get_condition_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if guild == None:
+    if guild is None:
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -313,7 +313,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
 
 async def get_macro_table(ctx, metadata, engine, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if guild == None:
+    if guild is None:
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(

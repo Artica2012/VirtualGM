@@ -91,7 +91,7 @@ class AttackCog(commands.Cog):
                         result = await session.execute(
                             select(Condition.title)
                             .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible == False)
+                            .where(Condition.visible == False)  # noqa
                         )
                         invisible_conditions = result.scalars().all()
                     return invisible_conditions
@@ -203,7 +203,7 @@ class AttackCog(commands.Cog):
     ):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
-
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await initiative.get_guild(ctx, None)
         if not guild.system:

@@ -9,7 +9,6 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -17,10 +16,10 @@ from sqlalchemy.orm import sessionmaker
 import D4e.d4e_functions
 import initiative
 import ui_components
+from auto_complete import character_select_gm
 from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
-from auto_complete import character_select_gm
 
 # define global variables
 
@@ -83,8 +82,8 @@ class D4eCog(commands.Cog):
                 con_result = await session.execute(
                     select(Condition.title)
                     .where(Condition.character_id == char)
-                    .where(Condition.visible == True)
-                    .where(Condition.flex == True)
+                    .where(Condition.visible == True)  # noqa
+                    .where(Condition.flex == True)  # noqa
                 )
                 condition = con_result.scalars().all()
             await engine.dispose()
@@ -128,7 +127,7 @@ class D4eCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(Global.last_tracker != None)) # noqa
+            result = await session.execute(select(Global).where(Global.last_tracker != None))  # noqa
             guild_list = result.scalars().all()
 
             for guild in guild_list:
