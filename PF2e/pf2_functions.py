@@ -333,18 +333,16 @@ async def pf2_get_tracker(
                 )
                 condition_list = result.scalars().all()
             try:
-                ac = ""
-                if row.player:
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Condition.number)
-                            .where(Condition.character_id == row.id)
-                            .where(Condition.visible == False)  # noqa
-                            .where(Condition.title == "AC")
-                        )
-                        armor_class = result.scalars().one()
-                        # print(armor_class.number)
-                        ac = armor_class
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Condition.number)
+                        .where(Condition.character_id == row.id)
+                        .where(Condition.visible == False)  # noqa
+                        .where(Condition.title == "AC")
+                    )
+                    armor_class = result.scalars().one()
+                    # print(armor_class.number)
+                    ac = armor_class
             except Exception:
                 ac = ""
 
