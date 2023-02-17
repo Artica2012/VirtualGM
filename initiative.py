@@ -2980,7 +2980,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup("Successful Delete", ephemeral=True)
                 await ctx.send(f"{condition} on {character} deleted.")
         elif mode == "edit":
-            print('editing')
+            print("editing")
             output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
             if output[0] is not None:
                 await ctx.send_followup(output[0], view=output[1], ephemeral=True)
