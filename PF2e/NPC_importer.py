@@ -103,6 +103,11 @@ class PF2NpcSelectButton(discord.ui.Button):
                 hp_mod = -30
             stat_mod = -2
 
+        if self.elite == "weak":
+            init_string = f"{self.data.init}{stat_mod}"
+        else:
+            init_string = f"{self.data.init}+{stat_mod}"
+
         try:
             dice = DiceRoller("")
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -117,10 +122,7 @@ class PF2NpcSelectButton(discord.ui.Button):
                     print(initiative_num)
                 except Exception:
                     try:
-                        if self.elite == "weak":
-                            roll = await dice.plain_roll(f"{self.data.init}{stat_mod}")
-                        else:
-                            roll = await dice.plain_roll(f"{self.data.init}+{stat_mod}")
+                        roll = await dice.plain_roll(init_string)
                         initiative_num = roll[1]
                         print(initiative_num)
                         if type(initiative_num) != int:
@@ -133,7 +135,7 @@ class PF2NpcSelectButton(discord.ui.Button):
                 async with session.begin():
                     tracker = Tracker(
                         name=self.name,
-                        init_string=f"{self.data.init}+{stat_mod}",
+                        init_string=init_string,
                         init=initiative_num,
                         player=False,
                         user=self.ctx.user.id,
