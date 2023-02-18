@@ -214,21 +214,29 @@ class PF2NpcSelectButton(discord.ui.Button):
                     damage_string = split_string[2].strip()
                     if self.elite == "weak":
                         attack_macro = Macro(
-                            character_id=character.id, name=f"{x+1}. {base_name} - Attack", macro=f"{attack_string}{stat_mod}"
+                            character_id=character.id,
+                            name=f"{x+1}. {base_name} - Attack",
+                            macro=f"{attack_string}{stat_mod}",
                         )
                     else:
                         attack_macro = Macro(
-                            character_id=character.id, name=f"{x+1}. {base_name} - Attack", macro=f"{attack_string}+{stat_mod}"
+                            character_id=character.id,
+                            name=f"{x+1}. {base_name} - Attack",
+                            macro=f"{attack_string}+{stat_mod}",
                         )
                     session.add(attack_macro)
                     print("Attack Added")
                     if self.elite == "weak":
                         damage_macro = Macro(
-                            character_id=character.id, name=f"{x+1}. {base_name} - Damage", macro=f"{damage_string}{stat_mod}"
+                            character_id=character.id,
+                            name=f"{x+1}. {base_name} - Damage",
+                            macro=f"{damage_string}{stat_mod}",
                         )
                     else:
                         damage_macro = Macro(
-                            character_id=character.id, name=f"{x+1}. {base_name} - Damage", macro=f"{damage_string}+{stat_mod}"
+                            character_id=character.id,
+                            name=f"{x+1}. {base_name} - Damage",
+                            macro=f"{damage_string}+{stat_mod}",
                         )
 
                     session.add(damage_macro)
