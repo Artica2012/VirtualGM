@@ -72,18 +72,18 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         # AC
         stats["ac"] = pb["build"]["acTotal"]["acTotal"]
         stats["hp"] = (
-            pb["build"]["attributes"]["ancestryhp"]
-            + pb["build"]["attributes"]["classhp"]
-            + pb["build"]["attributes"]["bonushp"]
-            + stats["con_mod"]
-            + (
-                (stats["level"] - 1)
-                * (
-                    pb["build"]["attributes"]["classhp"]
-                    + pb["build"]["attributes"]["bonushpPerLevel"]
-                    + stats["con_mod"]
+                pb["build"]["attributes"]["ancestryhp"]
+                + pb["build"]["attributes"]["classhp"]
+                + pb["build"]["attributes"]["bonushp"]
+                + stats["con_mod"]
+                + (
+                        (stats["level"] - 1)
+                        * (
+                                pb["build"]["attributes"]["classhp"]
+                                + pb["build"]["attributes"]["bonushpPerLevel"]
+                                + stats["con_mod"]
+                        )
                 )
-            )
         )
 
         # Initiative
@@ -204,8 +204,8 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
     # Write the data
 
     try:
+        # Start off by checking to see if the character already exists, and if so, delete it before importing
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
         guild = await get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
@@ -228,25 +228,55 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         if guild.system != "PF2":
             return False
         else:
+            # Check to see if the character already exists
             async with async_session() as session:
-                async with session.begin():
-                    new_char = Tracker(
-                        name=name,
-                        init_string=stats["init_string"],
-                        init=initiative,
-                        player=True,
-                        user=ctx.user.id,
-                        current_hp=stats["hp"],
-                        max_hp=stats["hp"],
-                        temp_hp=0,
-                    )
-                    session.add(new_char)
-                await session.commit()
+                char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+                character = char_result.scalars().all()
+            if len(character) > 0: # If character already exists, update the relevant parts and make overwrite = True
+                overwrite = True
+                async with async_session() as session:
+                    char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+                    char = char_result.scalars().one()
+
+                    char.init = initiative
+                    char.init_string = stats["init_string"]
+                    char.current_hp = stats["hp"]
+                    char.max_hp = stats["hp"]
+
+                    await session.commit()
+            else:
+                overwrite = False # If not overwriting, just write the character
+                async with async_session() as session:
+                    async with session.begin():
+                        new_char = Tracker(
+                            name=name,
+                            init_string=stats["init_string"],
+                            init=initiative,
+                            player=True,
+                            user=ctx.user.id,
+                            current_hp=stats["hp"],
+                            max_hp=stats["hp"],
+                            temp_hp=0,
+                        )
+                        session.add(new_char)
+                    await session.commit()
 
             await init_integrity(ctx, engine, guild)
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))
                 character = result.scalars().one()
+            if overwrite: # If we are overwriting, just delete the stat conditions
+                async with async_session() as session:
+                    result = await session.execute(select(Condition)
+                                                   .where(Condition.character_id == character.id)
+                                                   .where(Condition.visible == False) # noqa
+                                                   )
+                    invisible_conditions = result.scalars().all()
+                for con in invisible_conditions:
+                    await asyncio.sleep(0)
+                    async with async_session() as session:
+                        await session.delete(con)
+                        await session.commit()
 
             async with session.begin():
                 new_con = Condition(
@@ -275,6 +305,18 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                 session.add(new_con)
             await session.commit()
 
+            # If overwriting, delete all macros
+            if overwrite: # If we are overwriting, just delete the stat conditions
+                async with async_session() as session:
+                    result = await session.execute(select(Macro)
+                                                   .where(Macro.character_id == character.id))
+                    macros_to_delete = result.scalars().all()
+                for del_macro in macros_to_delete:
+                    await asyncio.sleep(0)
+                    async with async_session() as session:
+                        await session.delete(del_macro)
+                        await session.commit()
+
             macro_keys = macro.keys()
             async with session.begin():
                 for key in macro_keys:
@@ -286,6 +328,10 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                     session.add(new_macro)
             await session.commit()
         await engine.dispose()
+        if overwrite:
+            await ctx.send_followup(f"Successfully updated {name}.")
+        else:
+            await ctx.send_followup(f"Successfully imported {name}.")
         return True
     except Exception as e:
         print(f"create_macro: {e}")

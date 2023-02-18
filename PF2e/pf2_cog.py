@@ -57,7 +57,7 @@ class PF2Cog(commands.Cog):
                 response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
                 if response:
                     await update_pinned_tracker(ctx, engine, self.bot)
-                    await ctx.send_followup("Success")
+                    # await ctx.send_followup("Success")
 
                 else:
                     await ctx.send_followup("Import Failed")
@@ -66,9 +66,9 @@ class PF2Cog(commands.Cog):
                     "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table setup"
                 )
         except Exception as e:
-            await ctx.send_followup("Error")
+            await ctx.send_followup("Error importing character")
             logging.info(f"pb_import: {e}")
-            report = ErrorReport(ctx, "pb_import", e, self.bot)
+            report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
             await report.report()
 
     @pf2.command(description="Pathbuilder Import")
