@@ -1,7 +1,7 @@
 # d4e_cog.py
 # For slash commands specific to oathfinder 2e
 # system specific module
-
+import logging
 import os
 
 # imports
@@ -81,9 +81,9 @@ class D4eCog(commands.Cog):
             async with async_session() as session:
                 con_result = await session.execute(
                     select(Condition.title)
-                    .where(Condition.character_id == char)
-                    .where(Condition.visible == True)  # noqa
-                    .where(Condition.flex == True)  # noqa
+                        .where(Condition.character_id == char)
+                        .where(Condition.visible == True)  # noqa
+                        .where(Condition.flex == True)  # noqa
                 )
                 condition = con_result.scalars().all()
             await engine.dispose()
@@ -132,24 +132,33 @@ class D4eCog(commands.Cog):
 
             for guild in guild_list:
                 if guild.system == "D4e":
-                    view.clear_items()
-                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                    last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                    try:
+                        view.clear_items()
+                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                        last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
 
-                    view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
-                    view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
-                    view.add_item(ui_components.NextButton(self.bot, guild=guild))
-                    await last_tracker.edit(view=view)
-                    print("D4e View Updated")
+                        view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(self.bot, guild)
+                        view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                        view.add_item(ui_components.NextButton(self.bot, guild=guild))
+                        await last_tracker.edit(view=view)
+                        logging.info("D4e View Updated")
+                    except Exception as e:
+                        logging.error(f"d4e on ready attach buttons: {e} {guild.id}")
+                        # TODO add in more robust error reporting for this to see if it becomes an issue
+
                 else:
-                    view.clear_items()
-                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                    last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
-                    view = discord.ui.View(timeout=None)
-                    view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
-                    view.add_item(ui_components.NextButton(self.bot, guild=guild))
-                    await last_tracker.edit(view=view)
-                    print("View Updated")
+                    try:
+                        view.clear_items()
+                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                        last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                        view = discord.ui.View(timeout=None)
+                        view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
+                        view.add_item(ui_components.NextButton(self.bot, guild=guild))
+                        await last_tracker.edit(view=view)
+                        logging.info("View Updated")
+                    except Exception as e:
+                        logging.error(f"pf2 on ready attach buttons: {e} {guild.id}")
+                        # TODO add in more robust error reporting for this to see if it becomes an issue
 
 
 def setup(bot):
