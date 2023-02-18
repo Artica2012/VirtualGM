@@ -9,7 +9,7 @@ from datetime import datetime
 import discord
 from discord import Interaction
 from dotenv import load_dotenv
-from sqlalchemy import select
+from sqlalchemy import select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -329,7 +329,7 @@ async def pf2_get_tracker(
                 output_string += "-----------------\n"  # Put in the divider
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)  # noqa
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == true())
                 )
                 condition_list = result.scalars().all()
             try:
@@ -337,7 +337,7 @@ async def pf2_get_tracker(
                     result = await session.execute(
                         select(Condition.number)
                         .where(Condition.character_id == row.id)
-                        .where(Condition.visible == False)  # noqa
+                        .where(Condition.visible == false())
                         .where(Condition.title == "AC")
                     )
                     armor_class = result.scalars().one()

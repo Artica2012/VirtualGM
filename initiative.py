@@ -10,15 +10,15 @@ import inspect
 import sys
 
 import discord
+import d20
 import sqlalchemy as db
 from discord import option, Interaction
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
@@ -31,7 +31,6 @@ from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
 from database_models import get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from auto_complete import character_select, character_select_gm, cc_select, npc_select
@@ -144,15 +143,15 @@ async def setup_tracker(
         # Build the tracker, con and macro tables
         try:
             async with engine.begin() as conn:  # Call the tables directly to save a database call
-                emp = await get_tracker_table(ctx, metadata, engine)
-                con = await get_condition_table(ctx, metadata, engine)
-                macro = await get_macro_table(ctx, metadata, engine)
+                await get_tracker_table(ctx, metadata, engine)
+                await get_condition_table(ctx, metadata, engine)
+                await get_macro_table(ctx, metadata, engine)
                 await conn.run_sync(metadata.create_all)
 
             # Update the pinned trackers
             await set_pinned_tracker(ctx, engine, bot, channel)  # set the tracker in the player channel
             await set_pinned_tracker(ctx, engine, bot, gm_channel, gm=True)  # set up the gm_track in the GM channel
-        except:
+        except Exception:
             await ctx.respond("Please check permissions and try again")
             await delete_tracker(ctx, engine, bot)
             await engine.dispose()
@@ -218,15 +217,15 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
         async with engine.begin() as conn:
             try:
                 await conn.execute(DropTable(macro, if_exists=True))
-            except:
+            except Exception:
                 logging.warning("Unable to delete Macro Table")
             try:
                 await conn.execute(DropTable(con, if_exists=True))
-            except:
+            except Exception:
                 logging.warning("Unable to drop Con Table")
             try:
                 await conn.execute(DropTable(emp, if_exists=True))
-            except:
+            except Exception:
                 logging.warning("Unable to Drop Tracker Table")
 
         try:
@@ -264,7 +263,6 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
 # Add a character to the database
 async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, player_bool: bool, init: str):
     logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    dice = DiceRoller("")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
@@ -272,22 +270,13 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
         initiative = 0
         if guild.initiative is not None:
             try:
-                # print(f"Init: {init}")
-                initiative = int(init)
+                roll = d20.roll(init)
+                initiative = roll.total
+            except ValueError:
+                await ctx.channel.send(f"Invalid Initiative String `{init}`, Please check and try again.")
+                return False
             except Exception:
-                try:
-                    roll = await dice.plain_roll(init)
-                    initiative = roll[1]
-                    if type(initiative) != int:
-                        initiative = 0
-                except Exception:
-                    initiative = 0
-
-        try:
-            await dice.plain_roll(init)
-        except ValueError:
-            await ctx.channel.send("Invalid Initiative String, Please check and try again.")
-            return False
+                initiative = 0
 
         if guild.system == "PF2":
             pf2Modal = PF2AddCharacterModal(
@@ -419,35 +408,32 @@ async def edit_character(
 
 
 async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str, new_name: str):
-    logging.info(f"copy_character")
-    dice = DiceRoller("")
+    logging.info("copy_character")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
 
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
         Macro = await get_macro(ctx, engine, id=guild.id)
 
         # Load up the old character
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+            char_result = await session.execute(select(tracker).where(tracker.name == name))
             character = char_result.scalars().one()
 
         # If initiative is active, roll initiative
         initiative = 0
         if guild.initiative is not None:
             try:
-                roll = await dice.plain_roll(character.init_string)
-                initiative = roll[1]
-                if type(initiative) != int:
-                    initiative = 0
+                roll = d20.roll(character.init_string)
+                initiative = roll.total
             except Exception:
                 initiative = 0
 
         # Copy the character over into a new character with a new name
         async with session.begin():
-            new_char = Tracker(
+            new_char = tracker(
                 name=new_name,
                 init_string=character.init_string,
                 init=initiative,
@@ -462,15 +448,13 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
         # Load the new character from the database, to get its ID
         async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == new_name))
+            char_result = await session.execute(select(tracker).where(tracker.name == new_name))
             new_character = char_result.scalars().one()
 
         # Copy conditions
         async with async_session() as session:
             con_result = await session.execute(
-                select(Condition)
-                .where(Condition.character_id == character.id)
-                .where(Condition.visible == False)  # noqa
+                select(Condition).where(Condition.character_id == character.id).where(Condition.visible == false())
             )
             conditions = con_result.scalars().all()
 
@@ -508,7 +492,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"add_character: {e}")
+        print("add_character: {e}")
         report = ErrorReport(ctx, copy_character.__name__, e, bot)
         await report.report()
         return False
@@ -516,7 +500,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
 # Delete a character
 async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
-    logging.info(f"delete_Character")
+    logging.info("delete_Character")
     try:
         # load tables
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -829,13 +813,11 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
             character = char_result.scalars().one()
             character.init = init
             await session.commit()
-        return True
     except Exception as e:
         logging.error(f"set_init: {e}")
         if ctx is not None:
             report = ErrorReport(ctx, set_init.__name__, e, bot)
             await report.report()
-        return False
 
 
 # Check to make sure that the character is in the right place in initiative
@@ -917,7 +899,6 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
 
             # print(f"guild.initiative: {guild.initiative}")
             if guild.initiative is None:
-                dice = DiceRoller("")
                 init_pos = -1
                 guild.round = 1
                 first_pass = True
@@ -926,8 +907,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
                     if char.init == 0:
                         await asyncio.sleep(0)
                         try:
-                            roll = await dice.plain_roll(char.init_string)
-                            await set_init(ctx, bot, char.name, roll[1], engine, guild=guild)
+                            roll = d20.roll(char.init_string)
+                            await set_init(ctx, bot, char.name, roll.total, engine, guild=guild)
                         except ValueError:
                             await set_init(ctx, bot, char.name, 0, engine, guild=guild)
             else:
@@ -1088,13 +1069,13 @@ async def init_con(ctx: discord.ApplicationContext, engine, bot, current_charact
                     select(Condition)
                     .where(Condition.character_id == cur_char.id)
                     .where(Condition.flex == before)
-                    .where(Condition.auto_increment == True)  # noqa
+                    .where(Condition.auto_increment == true())
                 )
             else:
                 char_result = await session.execute(
                     select(Condition)
                     .where(Condition.character_id == cur_char.id)
-                    .where(Condition.auto_increment == True)  # noqa
+                    .where(Condition.auto_increment == true())
                 )
             con_list = char_result.scalars().all()
             logging.info("BAI9: condition's retrieved")
@@ -1152,7 +1133,6 @@ async def pf2_advance_initiative(ctx: discord.ApplicationContext, engine, bot, g
 
             # print(f"guild.initiative: {guild.initiative}")
             if guild.initiative is None:
-                dice = DiceRoller("")
                 init_pos = -1
                 guild.round = 1
                 first_pass = True
@@ -1161,8 +1141,8 @@ async def pf2_advance_initiative(ctx: discord.ApplicationContext, engine, bot, g
                     if char.init == 0:
                         await asyncio.sleep(0)
                         try:
-                            roll = await dice.plain_roll(char.init_string)
-                            await set_init(ctx, bot, char.name, roll[1], engine, guild=guild)
+                            roll = d20.roll(char.init_string)
+                            await set_init(ctx, bot, char.name, roll.total, engine, guild=guild)
                         except ValueError:
                             await set_init(ctx, bot, char.name, 0, engine, guild=guild)
             else:
@@ -1243,7 +1223,7 @@ async def pf2_advance_initiative(ctx: discord.ApplicationContext, engine, bot, g
 
 # Returns the tracker list sorted by initiative
 async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
-    logging.info(f"get_init_list")
+    logging.info("get_init_list")
 
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
@@ -1261,7 +1241,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         async with async_session() as session:
             result = await session.execute(
                 select(Tracker)
-                .where(Tracker.active == True)  # noqa
+                .where(Tracker.active == true())
                 .order_by(Tracker.init.desc())
                 .order_by(Tracker.id.desc())
             )
@@ -1278,7 +1258,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 # Returns the tracker list sorted by initiative
 async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None):
-    logging.info(f"get_inactive_list")
+    logging.info("get_inactive_list")
 
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
@@ -1296,7 +1276,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
         async with async_session() as session:
             result = await session.execute(
                 select(Tracker)
-                .where(Tracker.active == False)  # noqa
+                .where(Tracker.active == false())
                 .order_by(Tracker.init.desc())
                 .order_by(Tracker.id.desc())
             )
@@ -1315,7 +1295,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
 async def block_get_tracker(
     init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
 ):
-    logging.info(f"block_get_tracker")
+    logging.info("block_get_tracker")
 
     guild = await get_guild(ctx, guild)
     logging.info(f"BGT: Guild: {guild.id}")
@@ -1336,7 +1316,7 @@ async def block_get_tracker(
 async def generic_block_get_tracker(
     init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
 ):
-    logging.info(f"generic_block_get_tracker")
+    logging.info("generic_block_get_tracker")
     guild = await get_guild(ctx, guild)
     logging.info(f"BGT1: Guild: {guild.id}")
 
@@ -1394,7 +1374,7 @@ async def generic_block_get_tracker(
             # Get all of the visible condition for the character
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)  # noqa
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == true())
                 )
                 condition_list = result.scalars().all()
 
@@ -1484,7 +1464,7 @@ async def generic_block_get_tracker(
 
 # Gets the locations of the pinned trackers, then updates them with the newest tracker
 async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"update_pinned_tracker")
+    logging.info("update_pinned_tracker")
     guild = await get_guild(ctx, guild, refresh=True)  # get the guild
     logging.info(f"UPT1: Guild: {guild.id}")
 
@@ -1515,7 +1495,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, gu
             channel = bot.get_channel(tracker_channel)
             message = await channel.fetch_message(tracker)
             await message.edit(tracker_display_string)
-            logging.info(f"UPT2: tracker updated")
+            logging.info("UPT2: tracker updated")
 
         # Update the GM tracker
         if gm_tracker is not None:
@@ -1531,7 +1511,7 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, gu
             gm_channel = bot.get_channel(gm_tracker_channel)
             gm_message = await gm_channel.fetch_message(gm_tracker)
             await gm_message.edit(gm_tracker_display_string)
-            logging.info(f"UPT3: gm tracker updated")
+            logging.info("UPT3: gm tracker updated")
     except NoResultFound:
         if ctx is not None:
             await ctx.channel.send(error_not_initialized, delete_after=30)
@@ -1564,7 +1544,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
         # print(tracker_string)
         try:
-            logging.info(f"BPI2")
+            logging.info("BPI2")
             ping_string = ""
             if block:
                 for character in turn_list:
@@ -1580,7 +1560,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
 
         # Check for systems:
         if guild.system == "D4e":
-            logging.info(f"BPI3: d4e")
+            logging.info("BPI3: d4e")
             # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
             view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
             # print("Buttons Generated")
@@ -1596,7 +1576,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                         view=view,
                     )
                     tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                    logging.info(f"BPI4")
+                    logging.info("BPI4")
             else:
                 tracker_msg = await bot.get_channel(guild.tracker_channel).send(
                     f"{tracker_string}\n{ping_string}",
@@ -1614,12 +1594,12 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                 else:
                     await bot.get_channel(guild.tracker_channel).send(f"{tracker_string}\n{ping_string}", view=view)
                     tracker_msg = await ctx.send_followup("Initiative Advanced.")
-                    logging.info(f"BPI5")
+                    logging.info("BPI5")
             else:
                 tracker_msg = await bot.get_channel(guild.tracker_channel).send(
                     f"{tracker_string}\n{ping_string}", view=view
                 )
-                logging.info(f"BPI5 Guild")
+                logging.info("BPI5 Guild")
         if guild.tracker is not None:
             channel = bot.get_channel(guild.tracker_channel)
             message = await channel.fetch_message(guild.tracker)
@@ -1719,7 +1699,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine, bo
                 char = result.scalars().one()
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == char.id).where(Condition.flex == True)  # noqa
+                    select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
                 )
                 conditions = result.scalars().all()
             for con in conditions:
@@ -1767,7 +1747,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine, bo
 # Note: Works backwards
 # This is the turn list, a list of all of characters that are part of the turn in block initiative
 async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"get_turn_list")
+    logging.info("get_turn_list")
     turn_list = []
     block_done = False
     if ctx is None and guild is None:
@@ -1831,7 +1811,7 @@ async def set_cc(
     flex: bool = False,
     guild=None,
 ):
-    logging.info(f"set_cc")
+    logging.info("set_cc")
     # Get the Character's data
 
     try:
@@ -1969,7 +1949,7 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
 
 
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
-    logging.info(f"edit_cc")
+    logging.info("edit_cc")
     try:
         guild = await get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
@@ -2021,7 +2001,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 async def increment_cc(
     ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
 ):
-    logging.info(f"increment_cc")
+    logging.info("increment_cc")
     try:
         guild = await get_guild(ctx, guild)
 
@@ -2075,7 +2055,7 @@ async def increment_cc(
 
 # Delete CC
 async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
-    logging.info(f"delete_Cc")
+    logging.info("delete_Cc")
     try:
         guild = await get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
@@ -2100,7 +2080,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
             result = await session.execute(
                 select(Condition)
                 .where(Condition.character_id == char_id)
-                .where(Condition.visible == True)  # noqa
+                .where(Condition.visible == true())
                 .where(Condition.title == condition)
             )
             con_list = result.scalars().all()
@@ -2130,7 +2110,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 # Check to see if any time duration conditions have expired.
 # Intended to be called when time is advanced
 async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"check_cc")
+    logging.info("check_cc")
     current_time = await get_time(ctx, engine, bot, guild=guild)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild)
@@ -2138,7 +2118,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
     Condition = await get_condition(ctx, engine, id=guild.id)
 
     async with async_session() as session:
-        result = await session.execute(select(Condition).where(Condition.time == True))  # noqa
+        result = await session.execute(select(Condition).where(Condition.time == true()))
         con_list = result.scalars().all()
 
     for row in con_list:
@@ -2167,7 +2147,7 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine):
-    logging.info(f"gm_check")
+    logging.info("gm_check")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
@@ -2191,7 +2171,7 @@ async def gm_check(ctx, engine):
 # checks to see if the player is the owner of the character
 # possibly depreciated due to auto-complete
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
-    logging.info(f"player_check")
+    logging.info("player_check")
     try:
         Tracker = await get_tracker(ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -2763,9 +2743,7 @@ class InitiativeCog(commands.Cog):
                     # Delete condition with round timers
                     async with async_session() as session:
                         result = await session.execute(
-                            select(Condition)
-                            .where(Condition.auto_increment == True)  # noqa
-                            .where(Condition.time == False)  # noqa
+                            select(Condition).where(Condition.auto_increment == true()).where(Condition.time == false())
                         )
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
@@ -2778,7 +2756,7 @@ class InitiativeCog(commands.Cog):
                     # Delete any dead NPCs
                     async with async_session() as session:
                         result = await session.execute(
-                            select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == False)  # noqa
+                            select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
                         )
                         delete_list = result.scalars().all()
                     for npc in delete_list:
@@ -2855,7 +2833,7 @@ class InitiativeCog(commands.Cog):
         description="Character to select",
         autocomplete=character_select_gm,
     )
-    async def init(self, ctx: discord.ApplicationContext, character: str, init: str):
+    async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -2878,22 +2856,12 @@ class InitiativeCog(commands.Cog):
                     ephemeral=True,
                 )
             else:
-                dice = DiceRoller("")
                 try:
-                    # print(f"Init: {init}")
-                    initiative = int(init)
-                    success = await set_init(ctx, self.bot, character, initiative, engine)
-                    if success:
-                        await ctx.respond(f"Initiative set to {initiative} for {character}")
-                    else:
-                        await ctx.respond("Failed to set initiative.", ephemeral=True)
-                except Exception:
-                    roll = await dice.plain_roll(init)
-                    success = await set_init(ctx, self.bot, character, roll[1], engine)
-                    if success:
-                        await ctx.respond(f"Initiative set to {roll[0]} = {roll[1]} for {character}")
-                    else:
-                        await ctx.respond("Failed to set initiative.", ephemeral=True)
+                    roll = d20.roll(initiative)
+                    await set_init(ctx, self.bot, character, roll.total, engine)
+                    await ctx.respond(f"Initiative set to {roll.total} for {character}")
+                except Exception as e:
+                    await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
             await update_pinned_tracker(ctx, engine, self.bot)
         await engine.dispose()
 

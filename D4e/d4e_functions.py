@@ -11,8 +11,7 @@ from datetime import datetime
 import discord
 from discord import Interaction
 from dotenv import load_dotenv
-from sqlalchemy import or_
-from sqlalchemy import select
+from sqlalchemy import or_, select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -281,7 +280,7 @@ async def d4e_get_tracker(
             # print(f'row.id= {row.id}')
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == True)  # noqa
+                    select(Condition).where(Condition.character_id == row.id).where(Condition.visible == true())
                 )
                 condition_list = result.scalars().all()
 
@@ -576,7 +575,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
         print(char)
     async with async_session() as session:
         result = await session.execute(
-            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == True)  # noqa
+            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
         )
         conditions = result.scalars().all()
     for con in conditions:
@@ -604,8 +603,8 @@ async def D4eTrackerButtonsIndependent(bot, guild):
         result = await session.execute(
             select(condition)
             .where(condition.character_id == char.id)
-            .where(condition.counter == False)  # noqa
-            .where(condition.flex == True)  # noqa
+            .where(condition.counter == false())
+            .where(condition.flex == true())
         )
         conditions = result.scalars().all()
     for con in conditions:
@@ -701,7 +700,7 @@ async def saveIndependent(engine, bot, guild, character: str, condition: str, mo
             result = await session.execute(
                 select(Condition)
                 .where(Condition.character_id == character.id)
-                .where(Condition.visible == True)  # noqa
+                .where(Condition.visible == true())
                 .where(Condition.title == condition)
             )
             con_list = result.scalars().all()

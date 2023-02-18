@@ -9,8 +9,7 @@ import datetime
 
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import not_
-from sqlalchemy import select
+from sqlalchemy import false, not_, select, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -134,7 +133,7 @@ async def npc_select(ctx: discord.AutocompleteContext):
 
         async with async_session() as session:
             char_result = await session.execute(
-                select(Tracker.name).where(Tracker.player == False).order_by(Tracker.name.asc())  # noqa
+                select(Tracker.name).where(Tracker.player == false()).order_by(Tracker.name.asc())
             )
             character = char_result.scalars().all()
         await engine.dispose()
@@ -221,7 +220,7 @@ async def cc_select(ctx: discord.AutocompleteContext):
             con_result = await session.execute(
                 select(Condition.title)
                 .where(Condition.character_id == char)
-                .where(Condition.visible == True)  # noqa
+                .where(Condition.visible == true())
                 .order_by(Condition.title.asc())
             )
             condition = con_result.scalars().all()
@@ -251,8 +250,8 @@ async def cc_select_no_time(ctx: discord.AutocompleteContext):
             con_result = await session.execute(
                 select(Condition.title)
                 .where(Condition.character_id == char)
-                .where(Condition.time == False)  # noqa
-                .where(Condition.visible == True)  # noqa
+                .where(Condition.time == false())
+                .where(Condition.visible == true())
                 .order_by(Condition.title.asc())
             )
             condition = con_result.scalars().all()

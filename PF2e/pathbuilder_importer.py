@@ -9,7 +9,7 @@ from math import floor
 import aiohttp
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import select
+from sqlalchemy import select, false
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -270,7 +270,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                     result = await session.execute(
                         select(Condition)
                         .where(Condition.character_id == character.id)
-                        .where(Condition.visible == False)  # noqa
+                        .where(Condition.visible == false())
                     )
                     invisible_conditions = result.scalars().all()
                 for con in invisible_conditions:

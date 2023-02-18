@@ -9,15 +9,14 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_
-from sqlalchemy import select
+from sqlalchemy import or_, select, false
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
 import auto_complete
-import dice_roller
+import d20
 import initiative
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
@@ -91,7 +90,7 @@ class AttackCog(commands.Cog):
                         result = await session.execute(
                             select(Condition.title)
                             .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible == False)  # noqa
+                            .where(Condition.visible == false())
                         )
                         invisible_conditions = result.scalars().all()
                     return invisible_conditions
@@ -222,15 +221,17 @@ class AttackCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("roll", description="Roll or Macro Roll", autocomplete=a_macro_select)
-    @option("damage_heal", description="Damage or Heal", choices=["Damage", "Heal"], required=False)
+    @option("healing", description="Apply as Healing?", default=False, type=bool)
     async def damage(
-        self, ctx: discord.ApplicationContext, character: str, target: str, roll: str, damage_heal: str = "Damage"
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        user_roll_str: str,
+        healing: bool = False,
     ):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog damage")
-        heal = False
-        if damage_heal == "Heal":
-            heal = True
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -254,9 +255,8 @@ class AttackCog(commands.Cog):
         Macro = await get_macro(ctx, engine, id=guild.id)
 
         # Rolls
-        roller = dice_roller.DiceRoller("")
         try:
-            roll_result = await roller.plain_roll(roll)
+            roll_result: d20.RollResult = d20.roll(user_roll_str)
         except Exception:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -264,16 +264,14 @@ class AttackCog(commands.Cog):
 
             async with async_session() as session:
                 result = await session.execute(
-                    select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == roll)
+                    select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == user_roll_str)
                 )
-                macro_roll = result.scalars().one()
-            roll_result = await roller.plain_roll(macro_roll)
-        if damage_heal == "Damage":
-            output_string = f"{character} damages {target} for: \n{roll_result[0]} = {roll_result[1]}"
-        else:
-            output_string = f"{character} heals {target} for: \n{roll_result[0]} = {roll_result[1]}"
+                # macro_roll = result.scalars().one()
+            roll_result = d20.roll(user_roll_str)
+        # Apply the results
+        output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await ctx.send_followup(output_string)
-        await initiative.change_hp(ctx, engine, self.bot, target, roll_result[1], heal, guild=guild)
+        await initiative.change_hp(ctx, engine, self.bot, target, roll_result.total, healing, guild=guild)
         await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)
         await engine.dispose()
 

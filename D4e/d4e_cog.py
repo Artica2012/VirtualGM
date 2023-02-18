@@ -9,7 +9,7 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -81,9 +81,9 @@ class D4eCog(commands.Cog):
             async with async_session() as session:
                 con_result = await session.execute(
                     select(Condition.title)
-                        .where(Condition.character_id == char)
-                        .where(Condition.visible == True)  # noqa
-                        .where(Condition.flex == True)  # noqa
+                    .where(Condition.character_id == char)
+                    .where(Condition.visible == true())
+                    .where(Condition.flex == true())
                 )
                 condition = con_result.scalars().all()
             await engine.dispose()
@@ -127,7 +127,7 @@ class D4eCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(Global.last_tracker != None))  # noqa
+            result = await session.execute(select(Global).where(Global.last_tracker.isnot(None)))
             guild_list = result.scalars().all()
 
             for guild in guild_list:
