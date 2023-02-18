@@ -72,18 +72,18 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         # AC
         stats["ac"] = pb["build"]["acTotal"]["acTotal"]
         stats["hp"] = (
-                pb["build"]["attributes"]["ancestryhp"]
-                + pb["build"]["attributes"]["classhp"]
-                + pb["build"]["attributes"]["bonushp"]
-                + stats["con_mod"]
-                + (
-                        (stats["level"] - 1)
-                        * (
-                                pb["build"]["attributes"]["classhp"]
-                                + pb["build"]["attributes"]["bonushpPerLevel"]
-                                + stats["con_mod"]
-                        )
+            pb["build"]["attributes"]["ancestryhp"]
+            + pb["build"]["attributes"]["classhp"]
+            + pb["build"]["attributes"]["bonushp"]
+            + stats["con_mod"]
+            + (
+                (stats["level"] - 1)
+                * (
+                    pb["build"]["attributes"]["classhp"]
+                    + pb["build"]["attributes"]["bonushpPerLevel"]
+                    + stats["con_mod"]
                 )
+            )
         )
 
         # Initiative
@@ -232,7 +232,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == name))
                 character = char_result.scalars().all()
-            if len(character) > 0: # If character already exists, update the relevant parts and make overwrite = True
+            if len(character) > 0:  # If character already exists, update the relevant parts and make overwrite = True
                 overwrite = True
                 async with async_session() as session:
                     char_result = await session.execute(select(Tracker).where(Tracker.name == name))
@@ -245,7 +245,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
 
                     await session.commit()
             else:
-                overwrite = False # If not overwriting, just write the character
+                overwrite = False  # If not overwriting, just write the character
                 async with async_session() as session:
                     async with session.begin():
                         new_char = Tracker(
@@ -265,12 +265,13 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))
                 character = result.scalars().one()
-            if overwrite: # If we are overwriting, just delete the stat conditions
+            if overwrite:  # If we are overwriting, just delete the stat conditions
                 async with async_session() as session:
-                    result = await session.execute(select(Condition)
-                                                   .where(Condition.character_id == character.id)
-                                                   .where(Condition.visible == False) # noqa
-                                                   )
+                    result = await session.execute(
+                        select(Condition)
+                        .where(Condition.character_id == character.id)
+                        .where(Condition.visible == False)  # noqa
+                    )
                     invisible_conditions = result.scalars().all()
                 for con in invisible_conditions:
                     await asyncio.sleep(0)
@@ -306,10 +307,9 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             await session.commit()
 
             # If overwriting, delete all macros
-            if overwrite: # If we are overwriting, just delete the stat conditions
+            if overwrite:  # If we are overwriting, just delete the stat conditions
                 async with async_session() as session:
-                    result = await session.execute(select(Macro)
-                                                   .where(Macro.character_id == character.id))
+                    result = await session.execute(select(Macro).where(Macro.character_id == character.id))
                     macros_to_delete = result.scalars().all()
                 for del_macro in macros_to_delete:
                     await asyncio.sleep(0)

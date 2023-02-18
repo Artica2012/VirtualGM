@@ -100,13 +100,13 @@ async def get_guild(ctx, guild, refresh=False):
 
 # Set up the tracker if it does not exist
 async def setup_tracker(
-        ctx: discord.ApplicationContext,
-        engine,
-        bot,
-        gm: discord.User,
-        channel: discord.TextChannel,
-        gm_channel: discord.TextChannel,
-        system: str,
+    ctx: discord.ApplicationContext,
+    engine,
+    bot,
+    gm: discord.User,
+    channel: discord.TextChannel,
+    gm_channel: discord.TextChannel,
+    system: str,
 ):
     logging.info("Setup Tracker")
 
@@ -349,15 +349,15 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
 
 # Add a character to the database
 async def edit_character(
-        ctx: discord.ApplicationContext,
-        engine,
-        bot,
-        name: str,
-        hp: int,
-        init: str,
-        active: bool,
-        player: discord.User,
-        guild=None,
+    ctx: discord.ApplicationContext,
+    engine,
+    bot,
+    name: str,
+    hp: int,
+    init: str,
+    active: bool,
+    player: discord.User,
+    guild=None,
 ):
     logging.info("edit_character")
     try:
@@ -469,8 +469,8 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         async with async_session() as session:
             con_result = await session.execute(
                 select(Condition)
-                    .where(Condition.character_id == character.id)
-                    .where(Condition.visible == False)  # noqa
+                .where(Condition.character_id == character.id)
+                .where(Condition.visible == False)  # noqa
             )
             conditions = con_result.scalars().all()
 
@@ -840,7 +840,7 @@ async def set_init(ctx: discord.ApplicationContext, bot, name: str, init: int, e
 
 # Check to make sure that the character is in the right place in initiative
 async def init_integrity_check(
-        ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine, guild=None
+    ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine, guild=None
 ):
     logging.info("init_integrity_check")
     init_list = await get_init_list(ctx, engine, guild=guild)
@@ -953,8 +953,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
                 # print("Yes guild.block")
                 logging.info(f"BAI5: guild.block: {guild.block}")
                 if (
-                        not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild)
-                        and not first_pass
+                    not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild)
+                    and not first_pass
                 ):
                     logging.info("BAI6: init_itegrity failied")
                     # print(f"integrity check was false: init_pos: {init_pos}")
@@ -984,8 +984,8 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
                 # print("Not guild.block")
                 # if its not, set the init position to the position of the current character before advancing it
                 if (
-                        not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild)
-                        and not first_pass
+                    not await init_integrity_check(ctx, init_pos, current_character, engine, guild=guild)
+                    and not first_pass
                 ):
                     logging.info("BAI15: Integrity check failed")
                     # print(f"integrity check was false: init_pos: {init_pos}")
@@ -1086,15 +1086,15 @@ async def init_con(ctx: discord.ApplicationContext, engine, bot, current_charact
             if before is not None:
                 char_result = await session.execute(
                     select(Condition)
-                        .where(Condition.character_id == cur_char.id)
-                        .where(Condition.flex == before)
-                        .where(Condition.auto_increment == True)  # noqa
+                    .where(Condition.character_id == cur_char.id)
+                    .where(Condition.flex == before)
+                    .where(Condition.auto_increment == True)  # noqa
                 )
             else:
                 char_result = await session.execute(
                     select(Condition)
-                        .where(Condition.character_id == cur_char.id)
-                        .where(Condition.auto_increment == True)  # noqa
+                    .where(Condition.character_id == cur_char.id)
+                    .where(Condition.auto_increment == True)  # noqa
                 )
             con_list = char_result.scalars().all()
             logging.info("BAI9: condition's retrieved")
@@ -1261,9 +1261,9 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         async with async_session() as session:
             result = await session.execute(
                 select(Tracker)
-                    .where(Tracker.active == True)  # noqa
-                    .order_by(Tracker.init.desc())
-                    .order_by(Tracker.id.desc())
+                .where(Tracker.active == True)  # noqa
+                .order_by(Tracker.init.desc())
+                .order_by(Tracker.id.desc())
             )
             init_list = result.scalars().all()
             logging.info("GIL: Init list gotten")
@@ -1296,9 +1296,9 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
         async with async_session() as session:
             result = await session.execute(
                 select(Tracker)
-                    .where(Tracker.active == False)  # noqa
-                    .order_by(Tracker.init.desc())
-                    .order_by(Tracker.id.desc())
+                .where(Tracker.active == False)  # noqa
+                .order_by(Tracker.init.desc())
+                .order_by(Tracker.id.desc())
             )
             init_list = result.scalars().all()
             logging.info("GIL: Init list gotten")
@@ -1313,7 +1313,7 @@ async def get_inactive_list(ctx: discord.ApplicationContext, engine, guild=None)
 
 # Switching function for system specific trackers
 async def block_get_tracker(
-        init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
+    init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
 ):
     logging.info(f"block_get_tracker")
 
@@ -1334,7 +1334,7 @@ async def block_get_tracker(
 
 # Builds the tracker string. Updated to work with block initiative
 async def generic_block_get_tracker(
-        init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
+    init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
 ):
     logging.info(f"generic_block_get_tracker")
     guild = await get_guild(ctx, guild)
@@ -1410,7 +1410,7 @@ async def generic_block_get_tracker(
 
             if block:
                 for (
-                        character
+                    character
                 ) in turn_list:  # ignore this error, turn list is gotten if block is true, so this will always apply
                     # print(f'character.id = {character.id}')
                     if row.id == character.id:
@@ -1819,17 +1819,17 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None
 
 
 async def set_cc(
-        ctx: discord.ApplicationContext,
-        engine,
-        character: str,
-        title: str,
-        counter: bool,
-        number: int,
-        unit: str,
-        auto_decrement: bool,
-        bot,
-        flex: bool = False,
-        guild=None,
+    ctx: discord.ApplicationContext,
+    engine,
+    character: str,
+    title: str,
+    counter: bool,
+    number: int,
+    unit: str,
+    auto_decrement: bool,
+    bot,
+    flex: bool = False,
+    guild=None,
 ):
     logging.info(f"set_cc")
     # Get the Character's data
@@ -2019,7 +2019,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 
 # Function called by the + and - buttons for the edit_cc interface
 async def increment_cc(
-        ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
+    ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
 ):
     logging.info(f"increment_cc")
     try:
@@ -2099,9 +2099,9 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         async with async_session() as session:
             result = await session.execute(
                 select(Condition)
-                    .where(Condition.character_id == char_id)
-                    .where(Condition.visible == True)  # noqa
-                    .where(Condition.title == condition)
+                .where(Condition.character_id == char_id)
+                .where(Condition.visible == True)  # noqa
+                .where(Condition.title == condition)
             )
             con_list = result.scalars().all()
         if len(con_list) == 0:
@@ -2595,13 +2595,13 @@ class InitiativeCog(commands.Cog):
     @option("initiative", description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     @option("active", description="Active State", required=False, input_type=bool)
     async def edit(
-            self,
-            ctx: discord.ApplicationContext,
-            name: str,
-            hp: int = None,
-            initiative: str = None,
-            active: bool = None,
-            player: discord.User = None,
+        self,
+        ctx: discord.ApplicationContext,
+        name: str,
+        hp: int = None,
+        initiative: str = None,
+        active: bool = None,
+        player: discord.User = None,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
@@ -2764,8 +2764,8 @@ class InitiativeCog(commands.Cog):
                     async with async_session() as session:
                         result = await session.execute(
                             select(Condition)
-                                .where(Condition.auto_increment == True)  # noqa
-                                .where(Condition.time == False)  # noqa
+                            .where(Condition.auto_increment == True)  # noqa
+                            .where(Condition.time == False)  # noqa
                         )
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
@@ -2929,15 +2929,15 @@ class InitiativeCog(commands.Cog):
     @option("unit", autocomplete=time_check_ac)
     @option("flex", autocomplete=discord.utils.basic_autocomplete(["True", "False"]))
     async def new(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            title: str,
-            type: str,
-            number: int = None,
-            unit: str = "Round",
-            auto: str = "Static",
-            flex: str = "False",
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        title: str,
+        type: str,
+        number: int = None,
+        unit: str = "Round",
+        auto: str = "Static",
+        flex: str = "False",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
@@ -2972,7 +2972,7 @@ class InitiativeCog(commands.Cog):
     @option("condition", description="Condition", autocomplete=cc_select)
     @option("value", description="Value (optional)", required=False)
     async def modify(
-            self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: int = None
+        self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: int = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
