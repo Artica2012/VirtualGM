@@ -413,13 +413,13 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
 
-        tracker = await get_tracker(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
         Macro = await get_macro(ctx, engine, id=guild.id)
 
         # Load up the old character
         async with async_session() as session:
-            char_result = await session.execute(select(tracker).where(tracker.name == name))
+            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = char_result.scalars().one()
 
         # If initiative is active, roll initiative
@@ -433,7 +433,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
         # Copy the character over into a new character with a new name
         async with session.begin():
-            new_char = tracker(
+            new_char = Tracker(
                 name=new_name,
                 init_string=character.init_string,
                 init=initiative,
@@ -448,7 +448,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
 
         # Load the new character from the database, to get its ID
         async with async_session() as session:
-            char_result = await session.execute(select(tracker).where(tracker.name == new_name))
+            char_result = await session.execute(select(Tracker).where(Tracker.name == new_name))
             new_character = char_result.scalars().one()
 
         # Copy conditions
