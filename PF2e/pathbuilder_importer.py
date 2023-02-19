@@ -215,7 +215,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         if guild.initiative is not None:
             roll = d20.roll(stats["init_string"])
             initiative = roll.total
-            print(f"initiative {initiative}")
+            print(f"{initiative= }")
         if guild.system != "PF2":
             return False
         else:
