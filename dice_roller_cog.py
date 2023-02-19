@@ -54,11 +54,8 @@ class DiceRollerCog(commands.Cog):
             guild = await initiative.get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
-                # print(roll_result)
-
-
                 roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result
-                # print(f"roll_str: {roll_str}")
+                # print(f"{roll_result =} {roll_str =}")
 
                 if secret == "Secret":
                     if guild.gm_tracker_channel is not None:
