@@ -2,6 +2,7 @@
 
 # Code to facilitate the importing of data directly from pathbuilder
 import asyncio
+import logging
 import math
 import os
 from math import floor
@@ -57,7 +58,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
     try:
         # Interpeting the JSON
         stats["level"] = pb["build"]["level"]
-        print(stats["level"])
+        # print(stats["level"])
         # print(stats['level'])
 
         # Modifiers
@@ -215,7 +216,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         if guild.initiative is not None:
             roll = d20.roll(stats["init_string"])
             initiative = roll.total
-            print(f"initiative {initiative}")
+            # print(f"initiative {initiative}")
         if guild.system != "PF2":
             return False
         else:
@@ -325,7 +326,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             await ctx.send_followup(f"Successfully imported {name}.")
         return True
     except Exception as e:
-        print(f"create_macro: {e}")
+        logging.warning(f"create_macro: {e}")
         report = ErrorReport(ctx, "pathbuilder importer", e, bot)
         await report.report()
         return False

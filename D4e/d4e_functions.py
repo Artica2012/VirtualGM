@@ -90,7 +90,7 @@ async def attack(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"attack: {e}")
+        logging.warning(f"attack: {e}")
         report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
@@ -105,7 +105,7 @@ async def attack(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"get_cc: {e}")
+        logging.warning(f"get_cc: {e}")
         report = ErrorReport(ctx, "/attack (con)", e, bot)
         await report.report()
         return False
@@ -113,10 +113,7 @@ async def attack(
     logging.info(f"Target Modifier: {target_modifier}")
 
     try:
-        print(con_vs.number)
-        print(ParseModifiers(target_modifier))
         target_string = f"{con_vs.number}{ParseModifiers(target_modifier)}"
-        print(target_string)
         goal = d20.roll(target_string)
     except Exception as e:
         report = ErrorReport(ctx, "/attack (con)", e, bot)
@@ -146,7 +143,7 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, con
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return "Error"
     except Exception as e:
-        print(f"attack: {e}")
+        logging.warning(f"attack: {e}")
         report = ErrorReport(ctx, "/d4e save", e, bot)
         await report.report()
         return "Error"
@@ -211,7 +208,7 @@ async def d4e_get_tracker(
         if ctx is not None:
             await ctx.channel.send(error_not_initialized, delete_after=30)
     except Exception as e:
-        print(f"get_tracker: {e}")
+        logging.warning(f"get_tracker: {e}")
         report = ErrorReport(ctx, "get_tracker", e, bot)
         await report.report()
 
@@ -498,7 +495,7 @@ class D4eEditCharacterModal(discord.ui.Modal):
         await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        print(error)
+        logging.warning(error)
         self.stop()
 
 
@@ -514,7 +511,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
         char = result.scalars().one()
-        print(char)
+        # print(char)
     async with async_session() as session:
         result = await session.execute(
             select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
@@ -583,7 +580,7 @@ class D4eConditionButtonIndependent(discord.ui.Button):
                 )
                 # print(output_string)
                 await interaction.edit_original_response(content=output_string)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 await initiative.block_update_init(None, interaction.message.id, self.engine, self.bot, guild=self.guild)
             except Exception:
                 output_string = 'Unable to process save, perhaps the condition was removed.'

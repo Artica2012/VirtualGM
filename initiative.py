@@ -168,7 +168,7 @@ async def setup_tracker(
         return True
 
     except Exception as e:
-        print(f"setup_tracker: {e}")
+        logging.warning(f"setup_tracker: {e}")
         report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
         await report.report()
         await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
@@ -197,7 +197,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
         return True
     except Exception as e:
-        print(f"set_gm: {e}")
+        logging.warning(f"set_gm: {e}")
         report = ErrorReport(ctx, set_gm.__name__, e, bot)
         await report.report()
         return False
@@ -245,12 +245,12 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
                 await session.delete(guild)
                 await session.commit()
         except Exception as e:
-            print(f"guild: delete tracker: {e}")
+            logging.warning(f"guild: delete tracker: {e}")
             report = ErrorReport(ctx, "guild: delete_tracker", e, bot)
             await report.report()
         return True
     except Exception as e:
-        print(f"delete tracker: {e}")
+        logging.warning(f"delete tracker: {e}")
         report = ErrorReport(ctx, "delete_tracker", e, bot)
         await report.report()
 
@@ -330,7 +330,7 @@ async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str,
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"add_character: {e}")
+        logging.warning(f"add_character: {e}")
         report = ErrorReport(ctx, add_character.__name__, e, bot)
         await report.report()
         return False
@@ -401,7 +401,7 @@ async def edit_character(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"add_character: {e}")
+        logging.warning(f"add_character: {e}")
         report = ErrorReport(ctx, add_character.__name__, e, bot)
         await report.report()
         return False
@@ -492,7 +492,7 @@ async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print("add_character: {e}")
+        logging.warning("add_character: {e}")
         report = ErrorReport(ctx, copy_character.__name__, e, bot)
         await report.report()
         return False
@@ -541,7 +541,7 @@ async def delete_character(ctx: discord.ApplicationContext, character: str, engi
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"delete_character: {e}")
+        logging.warning(f"delete_character: {e}")
         report = ErrorReport(ctx, delete_character.__name__, e, bot)
         await report.report()
         return False
@@ -658,7 +658,7 @@ async def add_thp(ctx: discord.ApplicationContext, engine, bot, name: str, amoun
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"add_thp: {e}")
+        logging.warning(f"add_thp: {e}")
         report = ErrorReport(ctx, add_thp.__name__, e, bot)
         await report.report()
         return False
@@ -721,7 +721,7 @@ async def change_hp(ctx: discord.ApplicationContext, engine, bot, name: str, amo
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"change_hp: {e}")
+        logging.warning(f"change_hp: {e}")
         report = ErrorReport(ctx, change_hp.__name__, e, bot)
         await report.report()
         return False
@@ -747,7 +747,7 @@ async def repost_trackers(ctx: discord.ApplicationContext, engine, bot):
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"repost_trackers: {e}")
+        logging.warning(f"repost_trackers: {e}")
         report = ErrorReport(ctx, repost_trackers.__name__, e, bot)
         await report.report()
         return False
@@ -789,7 +789,7 @@ async def set_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, chann
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"set_pinned_tracker: {e}")
+        logging.warning(f"set_pinned_tracker: {e}")
         report = ErrorReport(ctx, set_pinned_tracker.__name__, e, bot)
         await report.report()
         return False
@@ -825,9 +825,9 @@ async def init_integrity_check(
     ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine, guild=None
 ):
     logging.info("init_integrity_check")
-    print(guild.id)
+    # print(guild.id)
     init_list = await get_init_list(ctx, engine, guild=guild)
-    print(init_list)
+    # print(init_list)
     try:
         if init_list[init_pos].name == current_character:
             return True
@@ -859,7 +859,7 @@ async def init_integrity(ctx, engine, guild=None):
                 )
             )
         guild = result.scalars().one()
-        print(guild.id)
+        # print(guild.id)
 
         if guild.initiative is not None:
             if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine, guild=guild):
@@ -1043,7 +1043,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
 # This is the code which check, decrements and removes conditions for the init next turn.
 async def init_con(ctx: discord.ApplicationContext, engine, bot, current_character: str, before: bool, guild=None):
     logging.info(f"{current_character}, {before}")
-    print("Decrementing Conditions")
+    logging.info("Decrementing Conditions")
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild)
@@ -1627,7 +1627,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                     )
                 )
             guild = result.scalars().one()
-            print(f"Saved last tracker: {guild.last_tracker}")
+            # print(f"Saved last tracker: {guild.last_tracker}")
             # old_tracker = guild.last_tracker
             try:
                 if guild.last_tracker is not None:
@@ -1635,9 +1635,8 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
                     old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
                     await old_tracker_msg.edit(view=None)
             except Exception as e:
-                print(e)
+                logging.warning(e)
             guild.last_tracker = tracker_msg.id
-            print()
             await session.commit()
 
         await engine.dispose()
@@ -1667,7 +1666,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine, bo
         Condition = await get_condition(ctx, engine, id=guild.id)
 
         if guild.block:
-            print(guild.id)
+            # print(guild.id)
             turn_list = await get_turn_list(ctx, engine, bot, guild=guild)
             block = True
             # print(f"block_post_init: \n {turn_list}")
@@ -1789,7 +1788,7 @@ async def get_turn_list(ctx: discord.ApplicationContext, engine, bot, guild=None
         logging.info(f"GTL2 {turn_list}")
         return turn_list
     except Exception as e:
-        print(f"get_turn_list: {e}")
+        logging.warning(f"get_turn_list: {e}")
         report = ErrorReport(ctx, get_turn_list.__name__, e, bot)
         await report.report()
         return []
@@ -1831,7 +1830,7 @@ async def set_cc(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"set_cc: {e}")
+        logging.warning(f"set_cc: {e}")
         report = ErrorReport(ctx, set_cc.__name__, e, bot)
         await report.report()
         return False
@@ -1895,7 +1894,7 @@ async def set_cc(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"set_cc: {e}")
+        logging.warning(f"set_cc: {e}")
         report = ErrorReport(ctx, set_cc.__name__, e, bot)
         await report.report()
         return False
@@ -1966,7 +1965,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"edit_cc: {e}")
+        logging.warning(f"edit_cc: {e}")
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
         await report.report()
         return False
@@ -1993,7 +1992,7 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"edit_cc: {e}")
+        logging.warning(f"edit_cc: {e}")
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
         await report.report()
         return False
@@ -2049,7 +2048,7 @@ async def increment_cc(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"edit_cc: {e}")
+        logging.warning(f"edit_cc: {e}")
         report = ErrorReport(ctx, edit_cc.__name__, e, bot)
         await report.report()
         return False
@@ -2072,7 +2071,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"delete_cc: {e}")
+        logging.warning(f"delete_cc: {e}")
         report = ErrorReport(ctx, delete_cc.__name__, e, bot)
         await report.report()
         return False
@@ -2103,7 +2102,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"delete_cc: {e}")
+        logging.warning(f"delete_cc: {e}")
         report = ErrorReport(ctx, delete_cc.__name__, e, bot)
         await report.report()
         return False
@@ -2184,7 +2183,7 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
         return character
 
     except Exception as e:
-        print(f"player_check: {e}")
+        logging.warning(f"player_check: {e}")
         report = ErrorReport(ctx, player_check.__name__, e, bot)
         await report.report()
 
@@ -2341,11 +2340,11 @@ class PF2AddCharacterModal(discord.ui.Modal):
         await update_pinned_tracker(self.ctx, self.engine, self.bot)
 
         # await update_pinned_tracker(self.ctx, self.engine, self.bot)
-        print("Tracker Updated")
+        # print("Tracker Updated")
         await interaction.response.send_message(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        print(error)
+        logging.warning(error)
 
 
 # D&D 4e Specific
@@ -2480,11 +2479,11 @@ class D4eAddCharacterModal(discord.ui.Modal):
                             await session.commit()
 
         await update_pinned_tracker(self.ctx, self.engine, self.bot)
-        print("Tracker Updated")
+        # print("Tracker Updated")
         await interaction.response.send_message(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        print(error)
+        logging.warning(error)
 
 
 #############################################################################
@@ -2750,7 +2749,7 @@ class InitiativeCog(commands.Cog):
                         con_del_list = result.scalars().all()
                     for con in con_del_list:
                         await asyncio.sleep(0)
-                        print(con.title)
+                        # print(con.title)
                         async with async_session() as session:
                             await session.delete(con)
                             await session.commit()
@@ -2774,8 +2773,8 @@ class InitiativeCog(commands.Cog):
                     await update_pinned_tracker(ctx, engine, self.bot)
                     await ctx.send_followup("Initiative Ended.")
                 elif mode == "delete character":
-                    print(f"Character {character}")
-                    print(f"Saved: {guild.saved_order}")
+                    # print(f"Character {character}")
+                    # print(f"Saved: {guild.saved_order}")
                     if character == guild.saved_order:
                         await ctx.respond(
                             (
@@ -2822,7 +2821,7 @@ class InitiativeCog(commands.Cog):
             await ctx.message.delete()
         except Exception as e:
             await ctx.respond("Error", ephemeral=True)
-            print(f"/i next: {e}")
+            logging.warning(f"/i next: {e}")
             report = ErrorReport(ctx, "slash command /i next", e, self.bot)
             await report.report()
 

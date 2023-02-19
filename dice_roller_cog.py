@@ -1,5 +1,5 @@
 # dice_roller_cog.py
-
+import logging
 import os
 
 # imports
@@ -71,7 +71,7 @@ class DiceRollerCog(commands.Cog):
 
                 await engine.dispose()
             except Exception as e:
-                print(f"dice_roller_cog, post: {e}")
+                logging.warning(f"dice_roller_cog, post: {e}")
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)
                 await ctx.send_response(f"Failed Rolling: {e}", ephemeral=True)
                 await report.report()

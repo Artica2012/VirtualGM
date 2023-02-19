@@ -63,7 +63,7 @@ async def attack(
 ):
     # Strip a macro:
     roll_list = roll.split(":")
-    print(roll_list)
+    # print(roll_list)
     if len(roll_list) == 1:
         roll = roll
     else:
@@ -71,7 +71,7 @@ async def attack(
 
     roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
     dice_result = d20.roll(roll_string)
-    print(f"{dice_result}")
+    # print(f"{dice_result}")
 
 
     # Load up the tables
@@ -91,7 +91,7 @@ async def attack(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"attack: {e}")
+        logging.warning(f"attack: {e}")
         report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
@@ -108,7 +108,7 @@ async def attack(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"get_cc: {e}")
+        logging.warning(f"get_cc: {e}")
         report = ErrorReport(ctx, "/attack (con)", e, bot)
         await report.report()
         return False
@@ -120,9 +120,9 @@ async def attack(
         goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
         logging.info(f"Goal: {goal_string}")
         goal_result = d20.roll(goal_string)
-        print(f"{dice_result}")
+        # print(f"{dice_result}")
     except Exception as e:
-        print(f"attack: {e}")
+        logging.warning(f"attack: {e}")
         report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
@@ -173,7 +173,7 @@ async def save(
             goal_string: str = f"{dc}{ParseModifiers(modifier)}"
             goal_result = d20.roll(goal_string)
         except Exception as e:
-            print(f"attack: {e}")
+            logging.warning(f"attack: {e}")
             await ErrorReport(ctx, "/attack (emp)", e, bot).report()
             return False
 
@@ -190,7 +190,7 @@ async def save(
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
     except Exception as e:
-        print(f"attack: {e}")
+        logging.warning(f"attack: {e}")
         report = ErrorReport(ctx, "/attack (emp)", e, bot)
         await report.report()
         return False
@@ -231,7 +231,7 @@ def PF2_eval_succss(dice_result: d20.RollResult, goal: d20.RollResult):
 async def pf2_get_tracker(
     init_list: list, selected: int, ctx: discord.ApplicationContext, engine, bot, gm: bool = False, guild=None
 ):
-    print("PF2 Get Tracker")
+    # print("PF2 Get Tracker")
     # Get the datetime
     datetime_string = ""
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -462,5 +462,5 @@ class PF2EditCharacterModal(discord.ui.Modal):
         await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        print(error)
+        logging.warning(error)
         self.stop()

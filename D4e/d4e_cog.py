@@ -90,7 +90,7 @@ class D4eCog(commands.Cog):
             return condition
 
         except Exception as e:
-            print(f"cc_select: {e}")
+            logging.warning(f"cc_select: {e}")
             report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
             await report.report()
             return []
@@ -120,7 +120,7 @@ class D4eCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("4e Cog Loaded")
+        logging.info("4e Cog Loaded")
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
