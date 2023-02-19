@@ -45,7 +45,7 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 D4e_attributes = ["AC", "Fort", "Reflex", "Will"]
-D4e_base_roll = d20.roll(10)
+D4e_base_roll = d20.roll(f"{10}")
 
 
 # Attack function specific for PF2
@@ -68,16 +68,22 @@ async def attack(
         roll = roll_list[1]
 
     # Roll the dice
-    roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+    # print(roll)
+    try:
+        roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+    except:
+        roll_string = roll
     dice_result = d20.roll(roll_string)
+    # print(dice_result)
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(ctx, engine)
-    Condition = await get_condition(ctx, engine)
+    guild = await initiative.get_guild(ctx, None)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
 
     try:
         async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == target))
+            result = await session.execute(select(Tracker.id).where(Tracker.name == target))
             targ = result.scalars().one()
 
     except NoResultFound:
@@ -92,7 +98,7 @@ async def attack(
     try:
         async with async_session() as session:
             result = await session.execute(
-                select(Condition).where(Condition.character_id == targ.id).where(Condition.title == vs)
+                select(Condition).where(Condition.character_id == targ).where(Condition.title == vs)
             )
             con_vs = result.scalars().one()
     except NoResultFound:
@@ -107,7 +113,10 @@ async def attack(
     logging.info(f"Target Modifier: {target_modifier}")
 
     try:
+        print(con_vs.number)
+        print(ParseModifiers(target_modifier))
         target_string = f"{con_vs.number}{ParseModifiers(target_modifier)}"
+        print(target_string)
         goal = d20.roll(target_string)
     except Exception as e:
         report = ErrorReport(ctx, "/attack (con)", e, bot)

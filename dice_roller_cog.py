@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import d20
+
+import initiative
 from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
@@ -47,21 +49,16 @@ class DiceRollerCog(commands.Cog):
     @option("dc", description="Number to which dice result will be compared", required=False)
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
+            # print('Rolling')
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                guild = result.scalar()
+            guild = await initiative.get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
-                roll_str = opposed_roll(roll_result, d20.roll(dc)) if dc else roll_result
+                # print(roll_result)
+
+
+                roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result
+                # print(f"roll_str: {roll_str}")
 
                 if secret == "Secret":
                     if guild.gm_tracker_channel is not None:
@@ -73,7 +70,7 @@ class DiceRollerCog(commands.Cog):
                         await ctx.respond("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
                         await ctx.channel.send(f"_{roll}_\n{roll_str}")
                 else:
-                    await ctx.channel.send(f"_{roll}_\n{roll_str}")
+                    await ctx.respond(f"_{roll}_\n{roll_str}")
 
                 await engine.dispose()
             except Exception as e:

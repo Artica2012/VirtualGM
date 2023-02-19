@@ -68,15 +68,11 @@ async def attack(
         roll = roll
     else:
         roll = roll_list[1]
-    try:
-        roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
-        dice_result = d20.roll(roll_string)
-        print(f"{dice_result}")
-    except Exception as e:
-        print(f"attack: {e}")
-        report = ErrorReport(ctx, "/attack (emp)", e, bot)
-        await report.report()
-        return False
+
+    roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+    dice_result = d20.roll(roll_string)
+    print(f"{dice_result}")
+
 
     # Load up the tables
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
