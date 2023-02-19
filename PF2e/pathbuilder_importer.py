@@ -13,8 +13,8 @@ from sqlalchemy import select, false
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import d20
 from database_models import get_macro, get_tracker, get_condition
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from initiative import get_guild, init_integrity
 
@@ -213,13 +213,12 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
 
         initiative = 0
         if guild.initiative is not None:
-            dice = DiceRoller("")
             try:
                 # print(f"Init: {init}")
                 initiative = int(stats["init_string"])
             except Exception:
                 try:
-                    roll = await dice.plain_roll(stats["init_string"])
+                    roll = await d20.roll(stats["init_string"])
                     initiative = roll[1]
                     if type(initiative) != int:
                         initiative = 0

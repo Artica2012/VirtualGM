@@ -15,6 +15,7 @@ import d20
 from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from utils.parsing import opposed_roll
 
 # define global variables
 load_dotenv(verbose=True)
@@ -46,7 +47,6 @@ class DiceRollerCog(commands.Cog):
     @option("dc", description="Number to which dice result will be compared", required=False)
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
-            roller = d20.Roller()
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
@@ -60,45 +60,29 @@ class DiceRollerCog(commands.Cog):
                 )
                 guild = result.scalar()
             try:
-                roll_dc: str = f"{roll} >= {dc}"
-                if secret == "Secret":
-                    if not dc:
-                        if guild.gm_tracker_channel is not None:
-                            await ctx.respond("Secret Dice Rolled")
-                            await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.roll(roll)}"
-                            )
-                        else:
-                            await ctx.respond("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
-                            await ctx.channel.send(f"_{roll}_\n{await roller.roll(roll)}")
-                    else:
-                        if guild.gm_tracker_channel is not None:
-                            await ctx.respond("Secret Dice Rolled")
-                            await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                                f"```Secret Roll from {ctx.user.name}```\n{roll}\n{await roller.roll(roll_dc)}"
-                            )
-                        else:
-                            await ctx.respond("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
-                            await ctx.channel.send(f"_{roll}_\n{await roller.roll(roll_dc)}")
+                roll_result = d20.roll(roll)
+                roll_str = opposed_roll(roll_result, d20.roll(dc)) if dc else roll_result
 
-                else:
-                    if not dc:
-                        await ctx.respond(f"_{roll}_\n{await roller.roll_dice(roll)}")
+                if secret == "Secret":
+                    if guild.gm_tracker_channel is not None:
+                        await ctx.respond("Secret Dice Rolled")
+                        await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                            f"```Secret Roll from {ctx.user.name}```\n{roll}\n{roll_str}"
+                        )
                     else:
-                        await ctx.respond(f"_{roll}_\n{await roller.opposed_roll(roll_dc)}")
+                        await ctx.respond("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
+                        await ctx.channel.send(f"_{roll}_\n{roll_str}")
+                else:
+                    await ctx.channel.send(f"_{roll}_\n{roll_str}")
 
                 await engine.dispose()
             except Exception as e:
                 print(f"dice_roller_cog, post: {e}")
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)
-                await ctx.send_response(
-                    f"Invalid syntax: {roll}. \nPlease phrase in ```XdY Label``` format", ephemeral=True
-                )
+                await ctx.send_response(f"Failed Rolling: {e}", ephemeral=True)
                 await report.report()
         except Exception:  # If the parser doesn't work, assume the format was wrong
-            await ctx.send_response(
-                f"Invalid syntax: {roll}. \nPlease phrase in ```XdY Label``` format", ephemeral=True
-            )
+            await ctx.send_response(f"Something went wrong with the roll: {roll}.", ephemeral=True)
 
 
 def setup(bot):

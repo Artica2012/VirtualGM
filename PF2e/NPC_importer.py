@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import d20
 import initiative
 from database_models import (
     get_macro,
@@ -17,7 +18,6 @@ from database_models import (
     get_tracker,
     NPC,
 )
-from dice_roller import DiceRoller
 
 # imports
 
@@ -109,7 +109,6 @@ class PF2NpcSelectButton(discord.ui.Button):
             init_string = f"{self.data.init}+{stat_mod}"
 
         try:
-            dice = DiceRoller("")
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             guild = await initiative.get_guild(self.ctx, None)
             # print(guild.initiative)
@@ -122,11 +121,9 @@ class PF2NpcSelectButton(discord.ui.Button):
                     print(initiative_num)
                 except Exception:
                     try:
-                        roll = await dice.plain_roll(init_string)
-                        initiative_num = roll[1]
+                        roll = d20.roll(init_string)
+                        initiative_num = roll.total
                         print(initiative_num)
-                        if type(initiative_num) != int:
-                            initiative_num = 0
                     except Exception:
                         initiative_num = 0
 

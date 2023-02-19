@@ -14,15 +14,16 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import d20
 import initiative
 from database_models import (
     get_condition,
     get_tracker,
 )
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
+from utils.parsing import ParseModifiers
 
 # define global variables
 
@@ -46,6 +47,7 @@ DATABASE = os.getenv("DATABASE")
 
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
+PF2_base_dc = 10
 
 
 async def attack(
@@ -59,9 +61,6 @@ async def attack(
     attack_modifier: str,
     target_modifier: str,
 ):
-    roller = DiceRoller("")
-    # try: # For some reason, throwing error handling in here causes it to fail, but it works fine without it.
-
     # Strip a macro:
     roll_list = roll.split(":")
     print(roll_list)
@@ -69,19 +68,15 @@ async def attack(
         roll = roll
     else:
         roll = roll_list[1]
-
-    if attack_modifier != "":
-        if attack_modifier[0] == "+" or attack_modifier[0] == "-":
-            roll_string = roll + attack_modifier
-        else:
-            roll_string = roll + "+" + attack_modifier
-    else:
-        roll_string = roll
-    print(roll_string)
-    dice_result = await roller.attack_roll(roll_string)
-    total = dice_result[1]
-    dice_string = dice_result[0]
-    print(f"{total}, {dice_string}")
+    try:
+        roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+        dice_result = d20.roll(roll_string)
+        print(f"{dice_result}")
+    except Exception as e:
+        print(f"attack: {e}")
+        report = ErrorReport(ctx, "/attack (emp)", e, bot)
+        await report.report()
+        return False
 
     # Load up the tables
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -122,44 +117,24 @@ async def attack(
         await report.report()
         return False
 
-    if vs in ["Fort", "Will", "Reflex"]:
-        goal_value = con_vs + 10
-    else:
-        goal_value = con_vs
+    goal_value = con_vs + (PF2_base_dc if vs in ["Fort", "Will", "Reflex"] else 0)
 
-    logging.info(f"Target Modifier: {target_modifier}")
-    target_modifier_string = ""
-    if target_modifier != "":
-        if target_modifier[0] == "-" or target_modifier[0] == "+":
-            target_modifier_string = target_modifier
-        else:
-            target_modifier_string = f"+{target_modifier}"
-
-        try:
-            target_modifier = int(target_modifier)
-            goal = goal_value + int(target_modifier)
-
-        except Exception:
-            if target_modifier[0] == "+":
-                goal = goal_value + int(target_modifier[1:])
-            elif target_modifier[0] == "-":
-                goal = goal_value - int(target_modifier[1:])
-            else:
-                goal = goal_value
-    else:
-        goal = goal_value
-    logging.info(f"Goal: {goal}")
-
-    success_string = await PF2_eval_succss(dice_result, goal)
+    try:
+        logging.info(f"Target Modifier: {target_modifier}")
+        goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+        logging.info(f"Goal: {goal_string}")
+        goal_result = d20.roll(goal_string)
+        print(f"{dice_result}")
+    except Exception as e:
+        print(f"attack: {e}")
+        report = ErrorReport(ctx, "/attack (emp)", e, bot)
+        await report.report()
+        return False
 
     # Format output string
-    output_string = f"{character} vs {target} {vs} {target_modifier_string}:\n{dice_string} = {total}\n{success_string}"
+    success_string = PF2_eval_succss(dice_result, goal_result)
+    output_string = f"{character} vs {target} {vs} {goal_string}:\n{dice_result}\n{success_string}"
     return output_string
-    # except Exception as e:
-    #     logging.warning(f'attack pf2: {e}')
-    #     report = ErrorReport(ctx, "/attack pf2", e, bot)
-    #     await report.report()
-    #     return False
 
 
 async def save(
@@ -168,7 +143,6 @@ async def save(
     if target is None:
         output_string = "Error. No Target Specified."
         return output_string
-    roller = DiceRoller("")
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await initiative.get_guild(ctx, None)
@@ -198,33 +172,22 @@ async def save(
                 )
                 dc = result.scalars().one()
 
-        if modifier != "":
-            if modifier[0] == "+":
-                goal = dc + int(modifier[1:])
-            elif modifier[0] == "-":
-                goal = dc - int(modifier[1:])
-            elif type(modifier[0]) == int:
-                goal = dc + int(modifier)
-            else:
-                goal = dc
-        else:
-            goal = dc
-        dice_result = await roller.attack_roll(roll)
-        total = dice_result[1]
-        dice_string = dice_result[0]
+        try:
+            dice_result = d20.roll(roll)
+            goal_string: str = f"{dc}{ParseModifiers(modifier)}"
+            goal_result = d20.roll(goal_string)
+        except Exception as e:
+            print(f"attack: {e}")
+            await ErrorReport(ctx, "/attack (emp)", e, bot).report()
+            return False
 
-        success_string = await PF2_eval_succss(dice_result, goal)
+        success_string = PF2_eval_succss(dice_result, goal_result)
         # Format output string
         if character == target:
-            if orig_dc is None:
-                output_string = f"{character} makes a {vs} save!\n{dice_string} = {total}\n"
-
-            else:
-                output_string = f"{character} makes a {vs} save!\n{dice_string} = {total}\n{success_string}"
-
+            output_string = f"{character} makes a {vs} save!\n{dice_result}\n{success_string if orig_dc else ''}"
         else:
             output_string = (
-                f"{target} makes a {vs} save!\n{character} forced the save.\n{dice_string} = {total}\n{success_string}"
+                f"{target} makes a {vs} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
             )
 
     except NoResultFound:
@@ -239,35 +202,31 @@ async def save(
     return output_string
 
 
-async def PF2_eval_succss(result_tuple: tuple, goal: int):
-    total = result_tuple[1]
-    nat_twenty = result_tuple[2]
-    nat_one = result_tuple[3]
-
-    if total >= goal + 10:
-        result = 4
-    elif total >= goal:
-        result = 3
-    elif goal >= total >= goal - 9:
-        result = 2
+def PF2_eval_succss(dice_result: d20.RollResult, goal: d20.RollResult):
+    success_string = ""
+    if dice_result.total >= goal.total + PF2_base_dc:
+        result_tier = 4
+    elif dice_result.total >= goal.total:
+        result_tier = 3
+    elif goal.total >= dice_result.total >= goal.total - 9:
+        result_tier = 2
     else:
-        result = 1
+        result_tier = 1
 
-    if nat_twenty:
-        result += 1
-    elif nat_one:
-        result -= 1
+    match dice_result.crit:
+        case d20.CritType.CRIT:
+            result_tier += 1
+        case d20.CritType.FAIL:
+            result_tier -= 1
 
-    if result >= 4:
+    if result_tier >= 4:
         success_string = "Critical Success"
-    elif result == 3:
+    elif result_tier == 3:
         success_string = "Success"
-    elif result == 2:
+    elif result_tier == 2:
         success_string = "Failure"
-    elif result <= 1:
-        success_string = "Critical Failure"
     else:
-        success_string = "Error"
+        success_string = "Critical Failure"
 
     return success_string
 

@@ -15,10 +15,10 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+import d20
 
 from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport
 from auto_complete import character_select, macro_select, character_select_gm
 
@@ -57,10 +57,8 @@ class MacroButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        roller = DiceRoller(self.macro.macro)
-
-        dice_string = await roller.roll_dice()
-        output_string = f"{self.character.name}:\n{self.macro.name.split(':')[0]} {self.macro.macro}\n{dice_string}"
+        dice_result = d20.roll(self.macro.macro)
+        output_string = f"{self.character.name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
 
         await interaction.response.send_message(output_string)
 
@@ -245,14 +243,9 @@ class MacroCog(commands.Cog):
         else:
             macro_string = macro_data.macro
 
-        roller = DiceRoller(macro_string)
-        if dc == 0:
-            dice_string = await roller.roll_dice()
-            output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n{dice_string}"
-        else:
-            dice_string = await roller.opposed_roll(dc)
-            output_string = f"{character}:\n{macro_name.split(':')[0]} {macro_string}\n{dice_string}"
-        # print(output_string)
+        dice_result = d20.roll(macro_string)
+        output_string = f"{character}:\n{macro_name.split(':')[0]}\n{dice_result}"
+
         return output_string
 
     # ---------------------------------------------------

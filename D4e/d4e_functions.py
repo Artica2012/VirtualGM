@@ -16,12 +16,13 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import d20
 import initiative
 from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
-from dice_roller import DiceRoller
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
+from utils.parsing import ParseModifiers
 
 # define global variables
 
@@ -44,6 +45,7 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 D4e_attributes = ["AC", "Fort", "Reflex", "Will"]
+D4e_base_roll = d20.roll(10)
 
 
 # Attack function specific for PF2
@@ -58,9 +60,6 @@ async def attack(
     attack_modifier: str,
     target_modifier: str,
 ):
-    roller = DiceRoller("")
-    # try:
-
     # Strip a macro:
     roll_list = roll.split(":")
     if len(roll_list) == 1:
@@ -69,20 +68,9 @@ async def attack(
         roll = roll_list[1]
 
     # Roll the dice
-    if attack_modifier != "":
-        if attack_modifier[0] == "+" or attack_modifier[0] == "-":
-            roll_string = roll + attack_modifier
-        else:
-            roll_string = roll + "+" + attack_modifier
-    else:
-        roll_string = roll
-    # print(roll_string)
-    dice_result = await roller.attack_roll(roll_string)
-    total = dice_result[1]
-    dice_string = dice_result[0]
-    # return
+    roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+    dice_result = d20.roll(roll_string)
 
-    #
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx, engine)
     Condition = await get_condition(ctx, engine)
@@ -107,7 +95,6 @@ async def attack(
                 select(Condition).where(Condition.character_id == targ.id).where(Condition.title == vs)
             )
             con_vs = result.scalars().one()
-
     except NoResultFound:
         await ctx.channel.send(error_not_initialized, delete_after=30)
         return False
@@ -119,67 +106,29 @@ async def attack(
 
     logging.info(f"Target Modifier: {target_modifier}")
 
-    if target_modifier != "":
-        if target_modifier[0] == "-" or target_modifier[0] == "+":
-            target_modifier_string = target_modifier
-        else:
-            target_modifier_string = f"+{target_modifier}"
+    try:
+        target_string = f"{con_vs.number}{ParseModifiers(target_modifier)}"
+        goal = d20.roll(target_string)
+    except Exception as e:
+        report = ErrorReport(ctx, "/attack (con)", e, bot)
+        await report.report()
+        return False
 
-        try:
-            target_modifier = int(target_modifier)
-            goal = con_vs.number + int(target_modifier)
-        except Exception:
-            if target_modifier[0] == "+":
-                goal = con_vs.number + int(target_modifier[1:])
-            elif target_modifier[0] == "-":
-                goal = con_vs.number - int(target_modifier[1:])
-            else:
-                goal = con_vs.number
-    else:
-        goal = con_vs.number
-
-    success_string = await D4e_eval_succss(dice_result, goal)
-
-    # print(f"{dice_string}, {total}\n"
-    #       f"{vs}, {goal_value}\n {success_string}")
-    # Format output string
-    if target_modifier != "":
-        output_string = (
-            f"{character} vs {target} {vs} {target_modifier_string}:\n{dice_string} = {total}\n{success_string}"
-        )
-    else:
-        output_string = f"{character} vs {target} {vs}:\n{dice_string} = {total}\n{success_string}"
+    # Result processing
+    success_string = D4e_eval_success(dice_result, goal)
+    output_string = f"{character} vs {target} {vs} {target_string}:\n{dice_result}\n{success_string}"
     return output_string
 
 
 async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier: str):
-    roller = DiceRoller("")
     try:
-        if modifier == "":
-            roll = "1d20"
-        else:
-            if modifier[0] == "+":
-                roll = "1d20+" + str(modifier[1:])
-            elif modifier[0] == "-":
-                roll = "1d20-" + str(modifier[1:])
-            else:
-                try:
-                    int(modifier[0])
-                    roll = "1d20+" + modifier
-                except Exception:
-                    roll = "1d20"
-
-        # print(roll)
-        dice_result = await roller.attack_roll(roll)
-        # print(dice_result)
-        total = dice_result[1]
-        dice_string = dice_result[0]
-
-        success_string = await D4e_eval_succss(dice_result, 10)
+        roll_string = f"1d20{ParseModifiers(modifier)}"
+        dice_result = d20.roll(roll_string)
+        success_string = D4e_eval_success(dice_result, D4e_base_roll)
         # Format output string
-        output_string = f"Save: {character}\n{dice_string} = {total}\n{success_string}"
-
-        if total >= 10:
+        output_string = f"Save: {character}\n{dice_result}\n{success_string}"
+        # CC modify
+        if dice_result.total >= D4e_base_roll.total:
             await initiative.delete_cc(ctx, engine, character, condition, bot)
 
         return output_string
@@ -194,21 +143,15 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, con
         return "Error"
 
 
-async def D4e_eval_succss(result_tuple: tuple, goal: int):
-    total = result_tuple[1]
-    nat_twenty = result_tuple[2]
-    nat_one = result_tuple[3]
+def D4e_eval_success(dice_result: d20.RollResult, goal: d20.RollResult):
     success_string = ""
-
-    if total >= goal:
-        success_string = "Success"
-    else:
-        success_string = "Failure"
-
-    if nat_twenty:
-        success_string = "Success"
-    if nat_one:
-        success_string = "Failure"
+    match dice_result.crit:
+        case d20.CritType.CRIT:
+            success_string = "Success"
+        case d20.CritType.FAIL:
+            success_string = "Failure"
+        case _:
+            success_string = "Success" if dice_result.total >= goal.total else "Failure"
 
     return success_string
 
@@ -655,33 +598,15 @@ class D4eConditionButtonIndependent(discord.ui.Button):
 
 async def saveIndependent(engine, bot, guild, character: str, condition: str, modifier: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    roller = DiceRoller("")
-    # try:
-    if modifier == "":
-        roll = "1d20"
-    else:
-        if modifier[0] == "+":
-            roll = "1d20+" + str(modifier[1:])
-        elif modifier[0] == "-":
-            roll = "1d20-" + str(modifier[1:])
-        else:
-            try:
-                int(modifier[0])
-                roll = "1d20+" + modifier
-            except Exception:
-                roll = "1d20"
 
-    # print(roll)
-    dice_result = await roller.attack_roll(roll)
-    # print(dice_result)
-    total = dice_result[1]
-    dice_string = dice_result[0]
+    roll_string = f"1d20{ParseModifiers(modifier)}"
+    dice_result = d20.roll(roll_string)
 
-    success_string = await D4e_eval_succss(dice_result, 10)
+    success_string = D4e_eval_success(dice_result, D4e_base_roll)
     # Format output string
-    output_string = f"Save: {character}\n{dice_string} = {total}\n{success_string}"
+    output_string = f"Save: {character}\n{dice_result}\n{success_string}"
 
-    if total >= 10:
+    if dice_result.total >= D4e_base_roll.total:
         try:
             Tracker = await get_tracker(None, engine, id=guild.id)
             Condition = await get_condition(None, engine, id=guild.id)
@@ -695,7 +620,6 @@ async def saveIndependent(engine, bot, guild, character: str, condition: str, mo
         except Exception as e:
             logging.info(f"delete_cc: {e}")
 
-        # try:
         async with async_session() as session:
             result = await session.execute(
                 select(Condition)
@@ -716,14 +640,5 @@ async def saveIndependent(engine, bot, guild, character: str, condition: str, mo
 
         await initiative.update_pinned_tracker(None, engine, bot, guild=guild)
         await engine.dispose()
-        # except NoResultFound:
-        #     pass
-        # except Exception:
-        #     pass
 
     return output_string
-
-    # except NoResultFound:
-    #     pass
-    # except Exception:
-    #     pass
