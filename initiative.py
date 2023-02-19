@@ -825,6 +825,7 @@ async def init_integrity_check(
     ctx: discord.ApplicationContext, init_pos: int, current_character: str, engine, guild=None
 ):
     logging.info("init_integrity_check")
+    print(guild.id)
     init_list = await get_init_list(ctx, engine, guild=guild)
     print(init_list)
     try:
@@ -858,9 +859,10 @@ async def init_integrity(ctx, engine, guild=None):
                 )
             )
         guild = result.scalars().one()
+        print(guild.id)
 
         if guild.initiative is not None:
-            if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine):
+            if not await init_integrity_check(ctx, guild.initiative, guild.saved_order, engine, guild=guild):
                 logging.info("Integrity Check Failed")
                 logging.info(f"Integrity Info: Saved_Order {guild.saved_order}, Init Pos={guild.initiative}")
                 for pos, row in enumerate(await get_init_list(ctx, engine, guild=guild)):

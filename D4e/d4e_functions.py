@@ -349,26 +349,16 @@ class D4eConditionButton(discord.ui.Button):
                     output_string = await saveIndependent(
                         self.engine, self.bot, self.guild, self.character.name, self.condition.title, modifier=""
                     )
-                await interaction.edit_original_message(content=output_string)
-                # await interaction.response.send_message(
-                #     await save(
-                #       self.ctx,
-                #       self.engine,
-                #       self.bot,
-                #       self.character.name,
-                #       self.condition.title,
-                #       modifier=""
-                #     )
-                # )
+                await interaction.edit_original_response(content=output_string)
                 await initiative.block_update_init(
                     self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild
                 )
             except Exception:
                 output_string = "Unable to process save, perhaps the condition was removed."
-                await interaction.edit_original_message(content=output_string)
+                await interaction.edit_original_response(content=output_string)
         else:
             output_string = "Roll your own save!"
-            await interaction.edit_original_message(content=output_string)
+            await interaction.edit_original_response(content=output_string)
 
         # await self.ctx.channel.send(output_string)
 
@@ -518,9 +508,9 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_li
     Tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
-    print("Here")
-    print(init_list)
-    print(guild.initiative)
+    # print("Here")
+    # print(init_list)
+    # print(guild.initiative)
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
         char = result.scalars().one()
@@ -587,17 +577,17 @@ class D4eConditionButtonIndependent(discord.ui.Button):
             gm = True
 
         if interaction.user.id == self.character.user or gm:
-            # try:
-            output_string = await saveIndependent(
-                self.engine, self.bot, self.guild, self.character.name, self.condition.title, modifier=""
-            )
-            # print(output_string)
-            await interaction.edit_original_message(content=output_string)
-            print(interaction.message.id)
-            await initiative.block_update_init(None, interaction.message.id, self.engine, self.bot, guild=self.guild)
-            # except Exception:
-            #     output_string = 'Unable to process save, perhaps the condition was removed.'
-            #     await interaction.edit_original_message(content=output_string)
+            try:
+                output_string = await saveIndependent(
+                    self.engine, self.bot, self.guild, self.character.name, self.condition.title, modifier=""
+                )
+                # print(output_string)
+                await interaction.edit_original_response(content=output_string)
+                print(interaction.message.id)
+                await initiative.block_update_init(None, interaction.message.id, self.engine, self.bot, guild=self.guild)
+            except Exception:
+                output_string = 'Unable to process save, perhaps the condition was removed.'
+                await interaction.edit_original_message(content=output_string)
         else:
             output_string = "Roll your own save!"
             await interaction.edit_original_message(content=output_string)
