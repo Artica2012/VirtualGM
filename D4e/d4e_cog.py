@@ -132,7 +132,7 @@ class D4eCog(commands.Cog):
 
             for guild in guild_list:
                 if guild.system == "D4e":
-                    try:
+                    try:# Error handling to avoid locking on a bad message
                         view.clear_items()
                         tracker_channel = self.bot.get_channel(guild.tracker_channel)
                         last_tracker = await tracker_channel.fetch_message(guild.last_tracker)

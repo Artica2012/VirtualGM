@@ -227,7 +227,7 @@ class AttackCog(commands.Cog):
         ctx: discord.ApplicationContext,
         character: str,
         target: str,
-        user_roll_str: str,
+        roll: str,
         healing: bool = False,
     ):
         # bughunt code
