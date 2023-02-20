@@ -220,14 +220,14 @@ class AttackCog(commands.Cog):
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
-    @option("roll", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     async def damage(
         self,
         ctx: discord.ApplicationContext,
         character: str,
         target: str,
-        roll: str,
+        user_roll_str: str,
         healing: bool = False,
     ):
         # bughunt code

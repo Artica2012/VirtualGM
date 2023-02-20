@@ -350,18 +350,27 @@ async def pf2_get_tracker(
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                            processed_hours_left = divmod(processed_minutes_left, 60)[0]
+                            processed_minutes_left = divmod(processed_minutes_left, 60)[1]
                             processed_seconds_left = divmod(time_left.seconds, 60)[1]
                             if processed_seconds_left < 10:
                                 processed_seconds_left = f"0{processed_seconds_left}"
+                            if processed_minutes_left < 10:
+                                processed_minutes_left = f"0{processed_minutes_left}"
                             if days_left != 0:
                                 con_string = (
                                     f"       {con_row.title}: {days_left} Days,"
                                     f" {processed_minutes_left}:{processed_seconds_left}\n "
                                 )
                             else:
-                                con_string = (
-                                    f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
-                                )
+                                if processed_hours_left != 0:
+                                    con_string = (
+                                        f"       {con_row.title}: {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                    )
+                                else:
+                                    con_string = (
+                                        f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                    )
                         else:
                             con_string = f"       {con_row.title}: {con_row.number}\n"
                     else:
