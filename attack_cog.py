@@ -266,8 +266,8 @@ class AttackCog(commands.Cog):
                 result = await session.execute(
                     select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == user_roll_str)
                 )
-                # macro_roll = result.scalars().one()
-            roll_result = d20.roll(user_roll_str)
+                macro_roll = result.scalars().one()
+            roll_result = d20.roll(macro_roll)
         # Apply the results
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await ctx.send_followup(output_string)
