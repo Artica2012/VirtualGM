@@ -122,7 +122,7 @@ async def attack(
 
     # Result processing
     success_string = D4e_eval_success(dice_result, goal)
-    output_string = f"{character} vs {target} {vs} {target_string}:\n{dice_result}\n{success_string}"
+    output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
     return output_string
 
 

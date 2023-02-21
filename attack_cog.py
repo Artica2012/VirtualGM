@@ -23,6 +23,7 @@ from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
 
 # define global variables
+from utils.parsing import ParseModifiers
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -221,6 +222,7 @@ class AttackCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("modifier", description="Roll Modifer", default='', type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     async def damage(
         self,
@@ -228,10 +230,11 @@ class AttackCog(commands.Cog):
         character: str,
         target: str,
         user_roll_str: str,
+        modifier:str = '',
         healing: bool = False,
     ):
         # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog damage")
+        logging.info(f"attack_cog damage")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -256,7 +259,7 @@ class AttackCog(commands.Cog):
 
         # Rolls
         try:
-            roll_result: d20.RollResult = d20.roll(user_roll_str)
+            roll_result: d20.RollResult = d20.roll(f"{user_roll_str}{ParseModifiers(modifier)}")
         except Exception:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == character))
@@ -267,7 +270,7 @@ class AttackCog(commands.Cog):
                     select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == user_roll_str)
                 )
                 macro_roll = result.scalars().one()
-            roll_result = d20.roll(macro_roll)
+            roll_result = d20.roll(f"{macro_roll}{ParseModifiers(modifier)}")
         # Apply the results
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await ctx.send_followup(output_string)
