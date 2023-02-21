@@ -44,13 +44,13 @@ warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
+    # TOKEN = os.getenv("TOKEN")
     USERNAME = os.getenv("Username")
     PASSWORD = os.getenv("Password")
     HOSTNAME = os.getenv("Hostname")
     PORT = os.getenv("PGPort")
 else:
-    TOKEN = os.getenv("BETA_TOKEN")
+    # TOKEN = os.getenv("BETA_TOKEN")
     USERNAME = os.getenv("BETA_Username")
     PASSWORD = os.getenv("BETA_Password")
     HOSTNAME = os.getenv("BETA_Hostname")
