@@ -25,15 +25,16 @@ warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
+    # TOKEN = os.getenv("TOKEN")
     logging.basicConfig(level=logging.WARNING)
     logging.info("Script Started")
 
 else:
-    TOKEN = os.getenv("BETA_TOKEN")
+    # TOKEN = os.getenv("BETA_TOKEN")
     logging.basicConfig(level=logging.INFO)
     logging.info("Script Started")
 
+TOKEN = os.environ['BOT_TOKEN']
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
 
