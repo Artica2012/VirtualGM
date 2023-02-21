@@ -122,11 +122,13 @@ async def attack(
 
     # Result processing
     success_string = D4e_eval_success(dice_result, goal)
-    output_string = f"{character} vs {target} {vs} {target_string}:\n{dice_result}\n{success_string}"
+    output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
     return output_string
 
 
-async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier: str):
+async def save(ctx: discord.ApplicationContext, engine, bot, character: str, condition: str, modifier: str, guild=None):
+    guild = await initiative.get_guild(ctx, guild)
+
     try:
         roll_string = f"1d20{ParseModifiers(modifier)}"
         dice_result = d20.roll(roll_string)
@@ -135,17 +137,19 @@ async def save(ctx: discord.ApplicationContext, engine, bot, character: str, con
         output_string = f"Save: {character}\n{dice_result}\n{success_string}"
         # CC modify
         if dice_result.total >= D4e_base_roll.total:
-            await initiative.delete_cc(ctx, engine, character, condition, bot)
+            await initiative.delete_cc(ctx, engine, character, condition, bot, guild=guild)
 
         return output_string
 
     except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
+        if ctx is not None:
+            await ctx.channel.send(error_not_initialized, delete_after=30)
         return "Error"
     except Exception as e:
-        logging.warning(f"attack: {e}")
-        report = ErrorReport(ctx, "/d4e save", e, bot)
-        await report.report()
+        logging.warning(f"save: {e}")
+        if ctx is not None:
+            report = ErrorReport(ctx, "/d4e save", e, bot)
+            await report.report()
         return "Error"
 
 
@@ -324,12 +328,8 @@ async def d4e_get_tracker(
         logging.info(f"d4e_get_tracker: {e}")
 
 
-async def d4e_condition_buttons():
-    pass
-
-
 class D4eConditionButton(discord.ui.Button):
-    def __init__(self, condition, ctx: discord.ApplicationContext, engine, bot, character, guild=None):
+    def __init__(self, condition, ctx: discord.ApplicationContext, bot, character, guild=None):
         self.ctx = ctx
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
@@ -345,16 +345,14 @@ class D4eConditionButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message("Saving...")
+        self.guild = await initiative.get_guild(self.ctx, self.guild)
         if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
             try:
-                if self.ctx is not None:
-                    output_string = await save(
-                        self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier=""
-                    )
-                else:
-                    output_string = await saveIndependent(
-                        self.engine, self.bot, self.guild, self.character.name, self.condition.title, modifier=""
-                    )
+
+                output_string = await save(
+                    self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier="",
+                    guild=self.guild
+                )
                 await interaction.edit_original_response(content=output_string)
                 await initiative.block_update_init(
                     self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild
@@ -508,142 +506,26 @@ class D4eEditCharacterModal(discord.ui.Modal):
         self.stop()
 
 
-async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild, init_list):
+async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    guild = await initiative.get_guild(ctx, guild, refresh=True)
     Tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
-    # print("Here")
-    # print(init_list)
-    # print(guild.initiative)
+
+    init_list = await initiative.get_init_list(ctx, engine, guild=guild)
+
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
         char = result.scalars().one()
-        # print(char)
+
     async with async_session() as session:
         result = await session.execute(
             select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
         )
         conditions = result.scalars().all()
     for con in conditions:
-        new_button = D4eConditionButton(con, ctx, engine, bot, char, guild=guild)
+        new_button = D4eConditionButton(con, ctx, bot, char, guild=guild)
         view.add_item(new_button)
     return view
-
-
-async def D4eTrackerButtonsIndependent(bot, guild):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    tracker = await get_tracker(None, engine, id=guild.id)
-    condition = await get_condition(None, engine, id=guild.id)
-
-    async with async_session() as session:
-        result = await session.execute(select(tracker).order_by(tracker.init.desc()).order_by(tracker.id.desc()))
-        init_list = result.scalars().all()
-    await engine.dispose()
-
-    view = discord.ui.View(timeout=None)
-    async with async_session() as session:
-        result = await session.execute(select(tracker).where(tracker.name == init_list[guild.initiative].name))
-        char = result.scalars().one()
-    async with async_session() as session:
-        result = await session.execute(
-            select(condition)
-            .where(condition.character_id == char.id)
-            .where(condition.counter == false())
-            .where(condition.flex == true())
-        )
-        conditions = result.scalars().all()
-    for con in conditions:
-        new_button = D4eConditionButtonIndependent(con, bot, char, guild)
-        view.add_item(new_button)
-    return view
-
-
-class D4eConditionButtonIndependent(discord.ui.Button):
-    def __init__(self, condition, bot, character, guild):
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        self.bot = bot
-        self.guild = guild
-        self.character = character
-        self.condition = condition
-        super().__init__(
-            label=condition.title,
-            style=discord.ButtonStyle.primary,
-            custom_id=str(f"{condition.character_id}_{condition.title}"),
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Saving...")
-
-        if int(self.guild.gm) != int(interaction.user.id):
-            gm = False
-        else:
-            gm = True
-
-        if interaction.user.id == self.character.user or gm:
-            try:
-                output_string = await saveIndependent(
-                    self.engine, self.bot, self.guild, self.character.name, self.condition.title, modifier=""
-                )
-                # print(output_string)
-                await interaction.edit_original_response(content=output_string)
-                # print(interaction.message.id)
-                await initiative.block_update_init(None, interaction.message.id, self.engine, self.bot, guild=self.guild)
-            except Exception:
-                output_string = 'Unable to process save, perhaps the condition was removed.'
-                await interaction.edit_original_message(content=output_string)
-        else:
-            output_string = "Roll your own save!"
-            await interaction.edit_original_message(content=output_string)
-
-        # await self.ctx.channel.send(output_string)
-
-
-async def saveIndependent(engine, bot, guild, character: str, condition: str, modifier: str):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    roll_string = f"1d20{ParseModifiers(modifier)}"
-    dice_result = d20.roll(roll_string)
-
-    success_string = D4e_eval_success(dice_result, D4e_base_roll)
-    # Format output string
-    output_string = f"Save: {character}\n{dice_result}\n{success_string}"
-
-    if dice_result.total >= D4e_base_roll.total:
-        try:
-            Tracker = await get_tracker(None, engine, id=guild.id)
-            Condition = await get_condition(None, engine, id=guild.id)
-
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == character))
-                character = result.scalars().one()
-
-        except NoResultFound:
-            logging.info("Error")
-        except Exception as e:
-            logging.info(f"delete_cc: {e}")
-
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition)
-                .where(Condition.character_id == character.id)
-                .where(Condition.visible == true())
-                .where(Condition.title == condition)
-            )
-            con_list = result.scalars().all()
-        if len(con_list) == 0:
-            await engine.dispose()
-            return False
-
-        for con in con_list:
-            await asyncio.sleep(0)
-            async with async_session() as session:
-                await session.delete(con)
-                await session.commit()
-
-        await initiative.update_pinned_tracker(None, engine, bot, guild=guild)
-        await engine.dispose()
-
-    return output_string
