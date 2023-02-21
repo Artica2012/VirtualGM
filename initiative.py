@@ -1574,7 +1574,7 @@ async def block_post_init(ctx: discord.ApplicationContext, engine, bot: discord.
         if guild.system == "D4e":
             logging.info("BPI3: d4e")
             # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
-            view = await D4e.d4e_functions.D4eTrackerButtonsIndependent(bot, guild)
+            view = await D4e.d4e_functions.D4eTrackerButtons(ctx,bot,guild=guild)
             # print("Buttons Generated")
             view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
             view.add_item(ui_components.NextButton(bot, guild=guild))
@@ -1711,7 +1711,7 @@ async def block_update_init(ctx: discord.ApplicationContext, edit_id, engine, bo
                 )
                 conditions = result.scalars().all()
             for con in conditions:
-                new_button = D4e.d4e_functions.D4eConditionButton(con, ctx, engine, bot, char, guild=guild)
+                new_button = D4e.d4e_functions.D4eConditionButton(con, ctx, bot, char, guild=guild)
                 view.add_item(new_button)
             view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
             view.add_item((ui_components.NextButton(bot, guild=guild)))
@@ -2074,10 +2074,10 @@ async def increment_cc(
 
 
 # Delete CC
-async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot):
+async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, condition, bot, guild=None):
     logging.info("delete_Cc")
     try:
-        guild = await get_guild(ctx, None)
+        guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -2114,7 +2114,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
                 await session.delete(con)
                 await session.commit()
 
-        await update_pinned_tracker(ctx, engine, bot)
+        await update_pinned_tracker(ctx, engine, bot, guild=guild)
         await engine.dispose()
         return True
     except NoResultFound:
