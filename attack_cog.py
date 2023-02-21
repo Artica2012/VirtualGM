@@ -257,19 +257,24 @@ class AttackCog(commands.Cog):
         # Rolls
         try:
             roll_result: d20.RollResult = d20.roll(user_roll_str)
+            output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         except Exception:
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == character))
-                char = result.scalars().one()
+            try:
+                async with async_session() as session:
+                    result = await session.execute(select(Tracker).where(Tracker.name == character))
+                    char = result.scalars().one()
 
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == user_roll_str)
-                )
-                macro_roll = result.scalars().one()
-            roll_result = d20.roll(macro_roll)
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == user_roll_str)
+                    )
+                    macro_roll = result.scalars().one()
+                roll_result = d20.roll(macro_roll)
+                output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+            except: # Error handling in case that a non-macro string in input
+                roll_result = d20.roll(0)
+                output_string = "Error: Invalid Roll, Please try again."
         # Apply the results
-        output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await ctx.send_followup(output_string)
         await initiative.change_hp(ctx, engine, self.bot, target, roll_result.total, healing, guild=guild)
         await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)
