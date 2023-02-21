@@ -1,0 +1,15 @@
+# fly.toml file generated for virtual-gm on 2022-11-09T02:08:44-08:00
+
+app = "virtual-gm"
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+services = []
+
+[env]
+
+[experimental]
+  allowed_public_ports = []
+  cmd = []
+  entrypoint = []
+  exec = []
