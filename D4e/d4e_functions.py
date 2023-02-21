@@ -354,7 +354,7 @@ class D4eConditionButton(discord.ui.Button):
                     guild=self.guild
                 )
                 await interaction.edit_original_response(content=output_string)
-                await initiative.block_update_init(
+                await initiative.update_pinned_tracker(
                     self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild
                 )
             except Exception:

@@ -64,9 +64,8 @@ class InitRefreshButton(discord.ui.Button):
         try:
             await interaction.response.send_message("Refreshed", ephemeral=True)
             print(interaction.message.id)
-            await initiative.block_update_init(
+            await initiative.update_pinned_tracker(
                 self.ctx,
-                interaction.message.id,
                 self.engine,
                 self.bot,
                 guild=self.guild,
