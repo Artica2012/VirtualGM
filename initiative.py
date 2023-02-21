@@ -1699,23 +1699,23 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot: di
             ping_string = ""
         view = discord.ui.View(timeout=None)
         # Check for systems:
-        if guild.system == "D4e":
-            logging.info("BPI3: d4e")
+        if guild.last_tracker is not None:
+            if guild.system == "D4e":
+                logging.info("BPI3: d4e")
 
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
-                char = result.scalars().one()
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
-                )
-                conditions = result.scalars().all()
-            for con in conditions:
-                new_button = D4e.d4e_functions.D4eConditionButton(con, ctx, bot, char, guild=guild)
-                view.add_item(new_button)
-            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-            view.add_item((ui_components.NextButton(bot, guild=guild)))
-            if guild.last_tracker is not None:
+                async with async_session() as session:
+                    result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+                    char = result.scalars().one()
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
+                    )
+                    conditions = result.scalars().all()
+                for con in conditions:
+                    new_button = D4e.d4e_functions.D4eConditionButton(con, ctx, bot, char, guild=guild)
+                    view.add_item(new_button)
+                view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+                view.add_item((ui_components.NextButton(bot, guild=guild)))
                 tracker_channel = bot.get_channel(guild.tracker_channel)
                 edit_message = await tracker_channel.fetch_message(guild.last_tracker)
                 await edit_message.edit(
@@ -1723,16 +1723,16 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot: di
                     view=view,
                 )
 
-        else:
-            view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
-            view.add_item((ui_components.NextButton(bot, guild=guild)))
-            if guild.last_tracker is not None:
-                tracker_channel = bot.get_channel(guild.tracker_channel)
-                edit_message = await tracker_channel.fetch_message(guild.last_tracker)
-                await edit_message.edit(
-                    content=f"{tracker_string}\n{ping_string}",
-                    view=view,
-                )
+            else:
+                view.add_item(ui_components.InitRefreshButton(ctx, bot, guild=guild))
+                view.add_item((ui_components.NextButton(bot, guild=guild)))
+                if guild.last_tracker is not None:
+                    tracker_channel = bot.get_channel(guild.tracker_channel)
+                    edit_message = await tracker_channel.fetch_message(guild.last_tracker)
+                    await edit_message.edit(
+                        content=f"{tracker_string}\n{ping_string}",
+                        view=view,
+                    )
         if guild.tracker is not None:
             try:
                 channel = bot.get_channel(guild.tracker_channel)
