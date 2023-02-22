@@ -60,15 +60,19 @@ PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
 
 
+# A class to hold the data model and functions involved in the enhanced pf2 features
 class PF2_Character():
     def __init__(self, char_name, ctx: discord.ApplicationContext, bot: discord.Bot, guild=None):
         self.char_name = char_name
         self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
+    # Import the character data from pathbuilder. Create a new character if one does not exist, or update the existing
+    # row if one does exist.
     async def pb_import(self, ctx, pb_char_code, guild=None):
         paramaters = {"id": pb_char_code}
         overwrite = False
 
+        # Connect to pathbuilder
         async with aiohttp.ClientSession() as session:
             pb_url = "https://pathbuilder2e.com/json.php"
             async with session.get(pb_url, params=paramaters, verify_ssl=False) as resp:
@@ -267,6 +271,36 @@ class PF2_Character():
 
     async def calculate(self):
         pass
+
+    async def character(self, ctx, guild=None):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+                return result.scalars().one()
+        except NoResultFound:
+            return None
+
+    async def conditions(self, ctx, guild=None):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        if guild is not None:
+            Condition = await get_condition(ctx, self.engine, id=guild.id)
+        else:
+            Condition = await get_condition(ctx, self.engine)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == self.char_name))
+                char_id = result.scalars().one()
+
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id == char_id))
+                return result.scalars().all()
+        except NoResultFound:
+            return []
+
 
     async def get_pf2_e_tracker(self, ctx: discord.ApplicationContext, guild=None):
         if ctx is None and guild is None:
