@@ -123,14 +123,14 @@ class PF2_Character():
                 )
                 character.char_class = pb["build"]["class"]
                 character.level = pb["build"]["level"]
-                character.ac_total = pb["build"]["acTotal"]['acTotal']
+                character.ac_base = pb["build"]["acTotal"]['acTotal']
                 character.class_dc = pb["build"]["proficiencies"]["classDC"]
 
                 character.str = pb["build"]["abilities"]["str"]
                 character.dex = pb["build"]["abilities"]["dex"]
                 character.con = pb["build"]["abilities"]["con"]
-                character.inl = pb["build"]["abilities"]["inl"]
-                character.wis = pb["build"]["abilities"]["inl"]
+                character.itl = pb["build"]["abilities"]["int"]
+                character.wis = pb["build"]["abilities"]["wis"]
                 character.cha = pb["build"]["abilities"]["cha"]
 
                 character.fort_prof = pb["build"]["proficiencies"]["fortitude"]
@@ -163,7 +163,6 @@ class PF2_Character():
                 character.nature_prof = pb["build"]["proficiencies"]["nature"]
                 character.occultism_prof = pb["build"]["proficiencies"]["occultism"]
                 character.perception_prof = pb["build"]["proficiencies"]["perception"]
-
                 character.performance_prof = pb["build"]["proficiencies"]["performance"]
                 character.religion_prof = pb["build"]["proficiencies"]["religion"]
                 character.society_prof = pb["build"]["proficiencies"]["society"]
@@ -221,8 +220,8 @@ class PF2_Character():
                         str=pb["build"]["abilities"]["str"],
                         dex=pb["build"]["abilities"]["dex"],
                         con=pb["build"]["abilities"]["con"],
-                        inl=pb["build"]["abilities"]["inl"],
-                        wis=pb["build"]["abilities"]["inl"],
+                        itl=pb["build"]["abilities"]["int"],
+                        wis=pb["build"]["abilities"]["wis"],
                         cha=pb["build"]["abilities"]["cha"],
 
                         fort_prof=pb["build"]["proficiencies"]["fortitude"],
@@ -269,8 +268,119 @@ class PF2_Character():
                     session.add(new_char)
                 await session.commit()
 
-    async def calculate(self):
-        pass
+    async def calculate(self, ctx, guild=None):
+        # Database boilerplate
+        guild = await initiative.get_guild(ctx, guild)
+        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        Condition = await get_condition(ctx, self.engine, id=guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        # Variables
+        bonuses = {
+            "circumstances_pos": {},
+            "status_pos": {},
+            "item_pos": {},
+            "circumstances_neg": {},
+            "status_neg": {},
+            "item_neg": {}
+        }
+
+        # Iterate through conditions
+        for condition in await self.conditions(ctx, guild):
+            # Get the data from the conditions
+            # Write the bonuses into the two dictionaries
+            pass
+
+        async with async_session() as session:
+            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+            character = query.scalars().one()
+
+            # Go through each of the items.
+
+            # Stat Mods - Do this first, because they are used in later calculations
+            character.str_mod = await self.ability_mod_calc(character.str, "str", bonuses)
+            character.dex_mod = await self.ability_mod_calc(character.str, "dex", bonuses)
+            character.con_mod = await self.ability_mod_calc(character.str, "con", bonuses)
+            character.itl_mod = await self.ability_mod_calc(character.str, "itl", bonuses)
+            character.wis_mod = await self.ability_mod_calc(character.str, "wis", bonuses)
+            character.cha_mod = await self.ability_mod_calc(character.str, "cha", bonuses)
+
+            # Saves
+            character.fort_mod = await self.save_mod_calc(character.con_mod, "fort", character.fort_prof,
+                                                          character.level, bonuses)
+            character.reflex_mod = await self.save_mod_calc(character.dex_mod, "reflex", character.reflex_prof,
+                                                            character.level, bonuses)
+            character.will_mod = await self.save_mod_calc(character.wis_mod, "wis", character.will_prof,
+                                                          character.level, bonuses)
+
+            # Skills
+            character.athletics_prof = await self.skill_mod_calc(character.str_mod, "athletics",
+                                                                 character.athletics_prof, character.level, bonuses)
+            character.acrobatics_mod = await self.skill_mod_calc(character.dex_mod, "acrobatics",
+                                                                 character.acrobatics_prof, character.level, bonuses)
+            character.arcana_mod = await self.skill_mod_calc(character.itl_mod, "arcana",
+                                                                 character.arcana_prof, character.level, bonuses)
+            character.crafting_mod = await self.skill_mod_calc(character.itl_mod, "crafting",
+                                                                 character.acrobatics_prof, character.level, bonuses)
+
+            # Casting, Armor and Attacks
+
+    async def ability_mod_calc(self, base: int, item: str, bonuses):
+        mod = (base - 10) / 2
+        if item in bonuses["circumstances_pos"][item]:
+            mod += bonuses["circumstances_pos"][item]
+        if item in bonuses["circumstances_neg"][item]:
+            mod -= bonuses["circumstances_neg"][item]
+
+        if item in bonuses["status_pos"][item]:
+            mod += bonuses["status_pos"][item]
+        if item in bonuses["status_neg"][item]:
+            mod -= bonuses["status_neg"][item]
+
+        if item in bonuses["item_pos"][item]:
+            mod += bonuses["item_pos"][item]
+        if item in bonuses["item_neg"][item]:
+            mod -= bonuses["item_neg"][item]
+
+        return mod
+
+    async def save_mod_calc(self, stat_mod, save: str, save_prof, level, bonuses):
+        mod = stat_mod + save_prof + level
+        if save in bonuses["circumstances_pos"][save]:
+            mod += bonuses["circumstances_pos"][save]
+        if save in bonuses["circumstances_neg"][save]:
+            mod -= bonuses["circumstances_neg"][save]
+
+        if save in bonuses["status_pos"][save]:
+            mod += bonuses["status_pos"][save]
+        if save in bonuses["status_neg"][save]:
+            mod -= bonuses["status_neg"][save]
+
+        if save in bonuses["item_pos"][save]:
+            mod += bonuses["item_pos"][save]
+        if save in bonuses["item_neg"][save]:
+            mod -= bonuses["item_neg"][save]
+
+        return mod
+
+    async def skill_mod_calc(self, stat_mod, skill: str, skill_prof, level, bonuses):
+        mod = stat_mod + skill_prof + level
+        if skill in bonuses["circumstances_pos"][skill]:
+            mod += bonuses["circumstances_pos"][skill]
+        if skill in bonuses["circumstances_neg"][skill]:
+            mod -= bonuses["circumstances_neg"][skill]
+
+        if skill in bonuses["status_pos"][skill]:
+            mod += bonuses["status_pos"][skill]
+        if skill in bonuses["status_neg"][skill]:
+            mod -= bonuses["status_neg"][skill]
+
+        if skill in bonuses["item_pos"][skill]:
+            mod += bonuses["item_pos"][skill]
+        if skill in bonuses["item_neg"][skill]:
+            mod -= bonuses["item_neg"][skill]
+
+        return mod
 
     async def character(self, ctx, guild=None):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -300,7 +410,6 @@ class PF2_Character():
                 return result.scalars().all()
         except NoResultFound:
             return []
-
 
     async def get_pf2_e_tracker(self, ctx: discord.ApplicationContext, guild=None):
         if ctx is None and guild is None:
@@ -334,14 +443,14 @@ class PF2_Character():
             # General
             char_class = Column(String(), nullable=False)
             level = Column(Integer(), nullable=False)
-            ac_total = Column(Integer(), nullable=False)
+            ac_base = Column(Integer(), nullable=False)
             class_dc = Column(Integer(), nullable=False)
 
             # Stats
             str = Column(Integer(), nullable=False)
             dex = Column(Integer(), nullable=False)
             con = Column(Integer(), nullable=False)
-            inl = Column(Integer(), nullable=False)
+            itl = Column(Integer(), nullable=False)
             wis = Column(Integer(), nullable=False)
             cha = Column(Integer(), nullable=False)
 
@@ -394,7 +503,7 @@ class PF2_Character():
             str_mod = Column(Integer())
             dex_mod = Column(Integer())
             con_mod = Column(Integer())
-            inl_mod = Column(Integer())
+            itl_mod = Column(Integer())
             wis_mod = Column(Integer())
             cha_mod = Column(Integer())
 
@@ -419,6 +528,9 @@ class PF2_Character():
             stealth_mod = Column(Integer())
             survival_mod = Column(Integer())
             thievery_mod = Column(Integer())
+
+            ac_total = Column(Integer())
+            resistance = Column(String())
 
         logging.info("get_tracker: returning tracker")
         return Tracker

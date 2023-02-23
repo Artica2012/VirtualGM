@@ -1,0 +1,30 @@
+Stats:
+Strength = str
+Dexterity = dex
+Constitution  = con
+Intelligence = itl
+Wisdom = wis
+Charisma = cha
+
+Saves:
+Fortitude = fort
+Reflex = reflex
+Will = will
+
+Skills:
+skill name, all lower case
+
+Other:
+Armor Class = ac
+
+Circumstance Bonus = c
+Status Bonus = s
+Item Bonus = i
+
+Condition Data Syntax:
+    modifier (+/-)# (type);
+
+Example:
+ +1 Intelligence Status Bonus:  "int +1 c;"
+ +1 to Crafting Item: "crafting +1 i;"
+ Flat Footed: "ac -2 c;"
