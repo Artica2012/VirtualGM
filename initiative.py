@@ -1682,6 +1682,11 @@ async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot: di
             turn_list = []
 
         init_list = await get_init_list(ctx, engine, guild=guild)
+
+        # Fix the Tracker if needed, then refresh the guild
+        await init_integrity(ctx, engine, guild=guild)
+        guild = await get_guild(ctx, guild=guild, refresh=True)
+
         tracker_string = await block_get_tracker(init_list, guild.initiative, ctx, engine, bot, guild=guild)
         try:
             logging.info("BPI2")
