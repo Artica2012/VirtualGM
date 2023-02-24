@@ -24,6 +24,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
+from PF2e.pf2_enhanced_character import PF2_Character
 import auto_complete
 import time_keeping_functions
 import ui_components
@@ -120,6 +121,8 @@ async def setup_tracker(
         g_system = "PF2"
     elif system == "D&D 4e":
         g_system = "D4e"
+    elif system == "Enhanced PF2":
+        g_system = "EPF"
     else:
         g_system = None
 
@@ -143,7 +146,10 @@ async def setup_tracker(
         # Build the tracker, con and macro tables
         try:
             async with engine.begin() as conn:  # Call the tables directly to save a database call
-                await get_tracker_table(ctx, metadata, engine)
+                if g_system == "EPF":
+                    await PF2_Character("").character(ctx)
+                else:
+                    await get_tracker_table(ctx, metadata, engine)
                 await get_condition_table(ctx, metadata, engine)
                 await get_macro_table(ctx, metadata, engine)
                 await conn.run_sync(metadata.create_all)

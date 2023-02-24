@@ -65,7 +65,7 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Generic", "Pathfinder 2e", "D&D 4e"], required=False)
+    @option("system", choices=["Generic", "Pathfinder 2e", "D&D 4e", "Enhanced PF2"], required=False)
     async def start(
         self,
         ctx: discord.ApplicationContext,
