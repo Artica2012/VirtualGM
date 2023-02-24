@@ -99,7 +99,7 @@ class PF2_Character():
 
         feats = ""
         for item in pb['build']['feats']:
-            feats += item
+            feats += f"{item}, "
 
         if overwrite:
             async with async_session() as session:
@@ -125,6 +125,7 @@ class PF2_Character():
                 character.level = pb["build"]["level"]
                 character.ac_base = pb["build"]["acTotal"]['acTotal']
                 character.class_dc = pb["build"]["proficiencies"]["classDC"]
+                character.key_ability = pb["build"]["keyability"]
 
                 character.str = pb["build"]["abilities"]["str"]
                 character.dex = pb["build"]["abilities"]["dex"]
@@ -319,11 +320,65 @@ class PF2_Character():
             character.acrobatics_mod = await self.skill_mod_calc(character.dex_mod, "acrobatics",
                                                                  character.acrobatics_prof, character.level, bonuses)
             character.arcana_mod = await self.skill_mod_calc(character.itl_mod, "arcana",
-                                                                 character.arcana_prof, character.level, bonuses)
+                                                             character.arcana_prof, character.level, bonuses)
             character.crafting_mod = await self.skill_mod_calc(character.itl_mod, "crafting",
-                                                                 character.acrobatics_prof, character.level, bonuses)
+                                                               character.acrobatics_prof, character.level, bonuses)
+            character.deception_mod = await self.skill_mod_calc(character.cha_mod, "deception",
+                                                                character.deception_prof, character.level, bonuses)
+            character.diplomacy_mod = await self.skill_mod_calc(character.cha_mod, "diplomacy",
+                                                                character.diplomacy_prof, character.level, bonuses)
+            character.intimidation_mod = await self.skill_mod_calc(character.cha_mod, "intimidation",
+                                                                   character.intimidation_prof, character.level,
+                                                                   bonuses)
+            character.medicine_mod = await self.skill_mod_calc(character.wis_mod, "medicine",
+                                                               character.medicine_prof, character.level, bonuses)
+            character.nature_mod = await self.skill_mod_calc(character.wis_mod, "nature",
+                                                             character.nature_prof, character.level, bonuses)
+            character.occultism_mod = await self.skill_mod_calc(character.itl_mod, "occultism",
+                                                                character.occultism_prof, character.level, bonuses)
+            character.performance_mod = await self.skill_mod_calc(character.cha_mod, "performance",
+                                                                  character.performance_prof, character.level, bonuses)
+            character.religion_mod = await self.skill_mod_calc(character.wis_mod, "religion",
+                                                               character.religion_prof, character.level, bonuses)
+            character.society_mod = await self.skill_mod_calc(character.int_mod, "society",
+                                                              character.society_prof, character.level, bonuses)
+            character.stealth_mod = await self.skill_mod_calc(character.dex_mod, "stealth",
+                                                                  character.stealth_prof, character.level, bonuses)
+            character.survival_mod = await self.skill_mod_calc(character.wis_mod, "survival",
+                                                                  character.survival_prof, character.level, bonuses)
+            character.thievery_mod = await self.skill_mod_calc(character.dex_mod, "thievery",
+                                                                  character.thievery_prof, character.level, bonuses)
+
 
             # Casting, Armor and Attacks
+            key_ability = None
+            match character.key_ability:
+                case "str":
+                    key_ability= character.str_mod
+                case "dex":
+                    key_ability = character.dex_mod
+                case "con":
+                    key_ability = character.con_mod
+                case "int":
+                    key_ability = character.itl_mod
+                case "wis":
+                    key_ability = character.wis_mod
+                case "cha":
+                    key_ability = character.cha_mod
+
+            character.arcane_mod = await self.skill_mod_calc(key_ability, "arcane", character.arcane_prof,
+                                                             character.level, bonuses)
+            character.divine_mod = await self.skill_mod_calc(key_ability, "divine", character.divine_prof,
+                                                             character.level, bonuses)
+            character.occult_mod = await self.skill_mod_calc(key_ability, "occult", character.arcane_prof,
+                                                             character.level, bonuses)
+            character.primal_mod = await self.skill_mod_calc(key_ability, "primal", character.arcane_prof,
+                                                             character.level, bonuses)
+
+            character.ac_total = await self.bonus_calc(character.ac_base, "ac", bonuses)
+
+
+
 
     async def ability_mod_calc(self, base: int, item: str, bonuses):
         mod = (base - 10) / 2
@@ -364,7 +419,30 @@ class PF2_Character():
         return mod
 
     async def skill_mod_calc(self, stat_mod, skill: str, skill_prof, level, bonuses):
-        mod = stat_mod + skill_prof + level
+        # TODO Throw in code for Untrained improvisation
+        if skill_prof == 0:
+            mod = stat_mod
+        else:
+            mod = stat_mod + skill_prof + level
+        if skill in bonuses["circumstances_pos"][skill]:
+            mod += bonuses["circumstances_pos"][skill]
+        if skill in bonuses["circumstances_neg"][skill]:
+            mod -= bonuses["circumstances_neg"][skill]
+
+        if skill in bonuses["status_pos"][skill]:
+            mod += bonuses["status_pos"][skill]
+        if skill in bonuses["status_neg"][skill]:
+            mod -= bonuses["status_neg"][skill]
+
+        if skill in bonuses["item_pos"][skill]:
+            mod += bonuses["item_pos"][skill]
+        if skill in bonuses["item_neg"][skill]:
+            mod -= bonuses["item_neg"][skill]
+
+        return mod
+
+    async def bonus_calc(self, base, skill, bonuses):
+        mod = base
         if skill in bonuses["circumstances_pos"][skill]:
             mod += bonuses["circumstances_pos"][skill]
         if skill in bonuses["circumstances_neg"][skill]:
@@ -462,6 +540,7 @@ class PF2_Character():
             # Proficiencies
             perception_prof = Column(Integer(), nullable=False)
             class_prof = Column(Integer(), nullable=False)
+            key_ability = Column(String(), nullable=False)
 
             unarmored_prof = Column(Integer(), nullable=False)
             light_armor_prof = Column(Integer(), nullable=False)
@@ -528,6 +607,16 @@ class PF2_Character():
             stealth_mod = Column(Integer())
             survival_mod = Column(Integer())
             thievery_mod = Column(Integer())
+
+            arcane_mod = Column(Integer())
+            divine_mod = Column(Integer())
+            occult_mod = Column(Integer())
+            primal_mod = Column(Integer())
+
+            # unarmed_mod = Column(Integer())
+            # simple_mod = Column(Integer())
+            # martial_mod = Column(Integer())
+            # advanced_mod = Column(Integer())
 
             ac_total = Column(Integer())
             resistance = Column(String())
