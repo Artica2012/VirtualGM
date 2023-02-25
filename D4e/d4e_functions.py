@@ -122,7 +122,7 @@ async def attack(
 
     # Result processing
     success_string = D4e_eval_success(dice_result, goal)
-    output_string = f"{character} vs {target} {vs} {target_string}:\n{dice_result}\n{success_string}"
+    output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
     return output_string
 
 
@@ -354,8 +354,8 @@ class D4eConditionButton(discord.ui.Button):
                     guild=self.guild
                 )
                 await interaction.edit_original_response(content=output_string)
-                await initiative.block_update_init(
-                    self.ctx, interaction.message.id, self.engine, self.bot, guild=self.guild
+                await initiative.update_pinned_tracker(
+                    self.ctx, self.engine, self.bot, guild=self.guild
                 )
             except Exception:
                 output_string = "Unable to process save, perhaps the condition was removed."
