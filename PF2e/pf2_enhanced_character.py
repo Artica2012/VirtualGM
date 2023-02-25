@@ -509,13 +509,13 @@ class PF2_Character():
             # The original tracker table
             id = Column(Integer(), primary_key=True, autoincrement=True)
             name = Column(String(), nullable=False, unique=True)
-            # init = Column(Integer(), default=0)
+            init = Column(Integer(), default=0)
             player = Column(Boolean(), nullable=False)
             user = Column(BigInteger(), nullable=False)
             current_hp = Column(Integer(), default=0)
             max_hp = Column(Integer(), default=1)
             temp_hp = Column(Integer(), default=0)
-            # init_string = Column(String(), nullable=True)
+            init_string = Column(String(), nullable=True)
             active = Column(Boolean(), default=True)
 
             # General

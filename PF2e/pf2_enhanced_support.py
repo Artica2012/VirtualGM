@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+
 class PF2_Character_Model:
     def __init__(self, ctx, metadata, id):
         self.guild = ctx.interaction.guild_id
@@ -21,18 +22,20 @@ class PF2_Character_Model:
         self.id = id
 
     def pf2_character_model_table(self):
-        tablename= f"Tracker_{self.id}"
+        tablename = f"Tracker_{self.id}"
 
         emp = db.Table(
             tablename,
             self.metadata,
             db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
             db.Column("name", db.String(255), nullable=False, unique=True),
+            db.Column("init", db.INTEGER(), default=0),
             db.Column("player", db.BOOLEAN, default=False),
             db.Column("user", db.BigInteger(), nullable=False),
             db.Column("current_hp", db.INTEGER(), default=0),
             db.Column("max_hp", db.INTEGER(), default=1),
             db.Column("temp_hp", db.INTEGER(), default=0),
+            db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
 
             db.Column('char_class', db.String(255), nullable=False),
@@ -76,79 +79,55 @@ class PF2_Character_Model:
             db.Column("crafting_prof", db.INTEGER(), nullable=False),
             db.Column("deception_prof", db.INTEGER(), nullable=False),
             db.Column("diplomacy_prof", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
-            db.Column("class_dc", db.INTEGER(), nullable=False),
+            db.Column("intimidation_prof", db.INTEGER(), nullable=False),
+            db.Column("medicine_prof", db.INTEGER(), nullable=False),
+            db.Column("nature_prof", db.INTEGER(), nullable=False),
+            db.Column("occultism_prof", db.INTEGER(), nullable=False),
+            db.Column("performance_prof", db.INTEGER(), nullable=False),
+            db.Column("religion_prof", db.INTEGER(), nullable=False),
+            db.Column("society_prof", db.INTEGER(), nullable=False),
+            db.Column("stealth_prof", db.INTEGER(), nullable=False),
+            db.Column("survival_prof", db.INTEGER(), nullable=False),
+            db.Column("thievery_prof", db.INTEGER(), nullable=False),
 
+            db.Column('lores', db.String()),
+            db.Column('feats', db.String()),
+
+            db.Column("str_mod", db.INTEGER()),
+            db.Column("dex_mod", db.INTEGER()),
+            db.Column("con_mod", db.INTEGER()),
+            db.Column("itl_mod", db.INTEGER()),
+            db.Column("wis_mod", db.INTEGER()),
+            db.Column("cha_mod", db.INTEGER()),
+
+            db.Column("fort_mod", db.INTEGER()),
+            db.Column("will_mod", db.INTEGER()),
+            db.Column("reflex_mod", db.INTEGER()),
+
+            db.Column("acrobatics_mod", db.INTEGER()),
+            db.Column("arcana_mod", db.INTEGER()),
+            db.Column("athletics_mod", db.INTEGER()),
+            db.Column("crafting_mod", db.INTEGER()),
+            db.Column("deception_mod", db.INTEGER()),
+            db.Column("intimidation_mod", db.INTEGER()),
+            db.Column("medicine_mod", db.INTEGER()),
+            db.Column("nature_mod", db.INTEGER()),
+            db.Column("occultism_mod", db.INTEGER()),
+            db.Column("performance_mod", db.INTEGER()),
+            db.Column("religion_mod", db.INTEGER()),
+            db.Column("society_mod", db.INTEGER()),
+            db.Column("stealth_mod", db.INTEGER()),
+            db.Column("survival_mod", db.INTEGER()),
+            db.Column("thievery_mod", db.INTEGER()),
+
+            db.Column("arcane_mod", db.INTEGER()),
+            db.Column("divine_mod", db.INTEGER()),
+            db.Column("occult_mod", db.INTEGER()),
+            db.Column("primal_mod", db.INTEGER()),
+
+            db.Column("ac_total", db.INTEGER()),
+            db.Column("resistance", db.String()),
         )
 
-        acrobatics_prof = Column(Integer(), nullable=False)
-        arcana_prof = Column(Integer(), nullable=False)
-        athletics_prof = Column(Integer(), nullable=False)
-        crafting_prof = Column(Integer(), nullable=False)
-        deception_prof = Column(Integer(), nullable=False)
-        diplomacy_prof = Column(Integer(), nullable=False)
-        intimidation_prof = Column(Integer(), nullable=False)
-        medicine_prof = Column(Integer(), nullable=False)
-        nature_prof = Column(Integer(), nullable=False)
-        occultism_prof = Column(Integer(), nullable=False)
-        performance_prof = Column(Integer(), nullable=False)
-        religion_prof = Column(Integer(), nullable=False)
-        society_prof = Column(Integer(), nullable=False)
-        stealth_prof = Column(Integer(), nullable=False)
-        survival_prof = Column(Integer(), nullable=False)
-        thievery_prof = Column(Integer(), nullable=False)
-
-        # Plan to save parsable lists here
-        lores = Column(String())
-        feats = Column(String())
-
-        # Calculated stats
-        str_mod = Column(Integer())
-        dex_mod = Column(Integer())
-        con_mod = Column(Integer())
-        itl_mod = Column(Integer())
-        wis_mod = Column(Integer())
-        cha_mod = Column(Integer())
-
-        # Saves
-        fort_mod = Column(Integer())
-        will_mod = Column(Integer())
-        reflex_mod = Column(Integer())
-
-        acrobatics_mod = Column(Integer())
-        arcana_mod = Column(Integer())
-        athletics_mod = Column(Integer())
-        crafting_mod = Column(Integer())
-        deception_mod = Column(Integer())
-        diplomacy_mod = Column(Integer())
-        intimidation_mod = Column(Integer())
-        medicine_mod = Column(Integer())
-        nature_mod = Column(Integer())
-        occultism_mod = Column(Integer())
-        performance_mod = Column(Integer())
-        religion_mod = Column(Integer())
-        society_mod = Column(Integer())
-        stealth_mod = Column(Integer())
-        survival_mod = Column(Integer())
-        thievery_mod = Column(Integer())
-
-        arcane_mod = Column(Integer())
-        divine_mod = Column(Integer())
-        occult_mod = Column(Integer())
-        primal_mod = Column(Integer())
-
-        # unarmed_mod = Column(Integer())
-        # simple_mod = Column(Integer())
-        # martial_mod = Column(Integer())
-        # advanced_mod = Column(Integer())
-
-        ac_total = Column(Integer())
-        resistance = Column(String())
-
-
-    logging.info("get_tracker: returning tracker")
-    return Tracker
+        logging.info("pf2_character_model_table")
+        return emp

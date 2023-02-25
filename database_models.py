@@ -16,7 +16,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # define global variables
-
+# import initiative
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -124,20 +124,12 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
 # Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    if guild is None:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id,
-                    )
-                )
-            )
-            guild = result.scalars().one()
+    guild = await initiative.get_guild(ctx, guild)
 
-    table = TrackerTable(ctx, metadata, guild.id).tracker_table()
+    if guild.system == "EPF":
+        table = PF2e.pf2_enhanced_support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
+    else:
+        table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table
 
 
