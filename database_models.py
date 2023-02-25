@@ -14,9 +14,12 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+# from initiative import get_guild
 
 # define global variables
 # import initiative
+# import initiative
+from PF2e import pf2_enhanced_support
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -124,10 +127,28 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
 # Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine, guild=None):
-    guild = await initiative.get_guild(ctx, guild)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    if ctx is None and guild is None:
+        raise LookupError("No guild reference")
+
+    async with async_session() as session:
+        if ctx is None:
+            logging.info("Refreshing Guild")
+            result = await session.execute(select(Global).where(Global.id == guild.id))
+        else:
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
+        guild = result.scalars().one()
 
     if guild.system == "EPF":
-        table = PF2e.pf2_enhanced_support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
+        table = pf2_enhanced_support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
+
     else:
         table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table

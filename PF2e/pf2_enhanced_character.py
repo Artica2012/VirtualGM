@@ -25,7 +25,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 import d20
-import initiative
+from utils.utils import get_guild
 from database_models import (
     get_condition,
     get_tracker,
@@ -60,6 +60,7 @@ PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
 
 
+
 # A class to hold the data model and functions involved in the enhanced pf2 features
 class PF2_Character():
     def __init__(self, char_name, ctx: discord.ApplicationContext, bot: discord.Bot, guild=None):
@@ -81,7 +82,7 @@ class PF2_Character():
         if pb["success"] is False:
             return False
 
-        guild = await initiative.get_guild(ctx, guild)
+        guild = await get_guild(ctx, guild)
         PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -271,7 +272,7 @@ class PF2_Character():
 
     async def calculate(self, ctx, guild=None):
         # Database boilerplate
-        guild = await initiative.get_guild(ctx, guild)
+        guild = await get_guild(ctx, guild)
         PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
         Condition = await get_condition(ctx, self.engine, id=guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -494,7 +495,7 @@ class PF2_Character():
             raise Exception
         if guild is None:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            guild = await initiative.get_guild(ctx, guild)
+            guild = await get_guild(ctx, guild)
         tablename = f"Tracker_{guild}"
         logging.info(f"get_pf2_e_tracker: Guild: {guild}")
 
