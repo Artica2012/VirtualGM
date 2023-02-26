@@ -131,3 +131,4 @@ class PF2_Character_Model:
 
         logging.info("pf2_character_model_table")
         return emp
+

@@ -28,7 +28,7 @@ import d20
 from utils.utils import get_guild
 from database_models import (
     get_condition,
-    get_tracker,
+    get_pf2_e_tracker,
 )
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -83,7 +83,7 @@ class PF2_Character():
             return False
 
         guild = await get_guild(ctx, guild)
-        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Check to see if character already exists, if it does, update instead of creating
@@ -273,7 +273,7 @@ class PF2_Character():
     async def calculate(self, ctx, guild=None):
         # Database boilerplate
         guild = await get_guild(ctx, guild)
-        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
         Condition = await get_condition(ctx, self.engine, id=guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -463,7 +463,7 @@ class PF2_Character():
 
     async def character(self, ctx, guild=None):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
+        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
         try:
             async with async_session() as session:
                 result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
@@ -473,10 +473,11 @@ class PF2_Character():
 
     async def conditions(self, ctx, guild=None):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        PF2_tracker = await self.get_pf2_e_tracker(ctx, guild=guild)
         if guild is not None:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
             Condition = await get_condition(ctx, self.engine, id=guild.id)
         else:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
             Condition = await get_condition(ctx, self.engine)
         try:
             async with async_session() as session:
@@ -489,138 +490,3 @@ class PF2_Character():
                 return result.scalars().all()
         except NoResultFound:
             return []
-
-    async def get_pf2_e_tracker(self, ctx: discord.ApplicationContext, guild=None):
-        if ctx is None and guild is None:
-            raise Exception
-        if guild is None:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            guild = await get_guild(ctx, guild)
-        tablename = f"Tracker_{guild}"
-        logging.info(f"get_pf2_e_tracker: Guild: {guild}")
-
-        tablename = f"Tracker_{guild.id}"
-
-        DynamicBase = declarative_base(class_registry=dict())
-
-        class Tracker(DynamicBase):
-            __tablename__ = tablename
-            __table_args__ = {"extend_existing": True}
-
-            # The original tracker table
-            id = Column(Integer(), primary_key=True, autoincrement=True)
-            name = Column(String(), nullable=False, unique=True)
-            init = Column(Integer(), default=0)
-            player = Column(Boolean(), nullable=False)
-            user = Column(BigInteger(), nullable=False)
-            current_hp = Column(Integer(), default=0)
-            max_hp = Column(Integer(), default=1)
-            temp_hp = Column(Integer(), default=0)
-            init_string = Column(String(), nullable=True)
-            active = Column(Boolean(), default=True)
-
-            # General
-            char_class = Column(String(), nullable=False)
-            level = Column(Integer(), nullable=False)
-            ac_base = Column(Integer(), nullable=False)
-            class_dc = Column(Integer(), nullable=False)
-
-            # Stats
-            str = Column(Integer(), nullable=False)
-            dex = Column(Integer(), nullable=False)
-            con = Column(Integer(), nullable=False)
-            itl = Column(Integer(), nullable=False)
-            wis = Column(Integer(), nullable=False)
-            cha = Column(Integer(), nullable=False)
-
-            # Saves
-            fort_prof = Column(Integer(), nullable=False)
-            will_prof = Column(Integer(), nullable=False)
-            reflex_prof = Column(Integer(), nullable=False)
-
-            # Proficiencies
-            perception_prof = Column(Integer(), nullable=False)
-            class_prof = Column(Integer(), nullable=False)
-            key_ability = Column(String(), nullable=False)
-
-            unarmored_prof = Column(Integer(), nullable=False)
-            light_armor_prof = Column(Integer(), nullable=False)
-            medium_armor_prof = Column(Integer(), nullable=False)
-            heavy_armor_prof = Column(Integer(), nullable=False)
-
-            unarmed_prof = Column(Integer(), nullable=False)
-            simple_prof = Column(Integer(), nullable=False)
-            martial_prof = Column(Integer(), nullable=False)
-            advanced_prof = Column(Integer(), nullable=False)
-
-            arcane_prof = Column(Integer(), nullable=False)
-            divine_prof = Column(Integer(), nullable=False)
-            occult_prof = Column(Integer(), nullable=False)
-            primal_prof = Column(Integer(), nullable=False)
-
-            acrobatics_prof = Column(Integer(), nullable=False)
-            arcana_prof = Column(Integer(), nullable=False)
-            athletics_prof = Column(Integer(), nullable=False)
-            crafting_prof = Column(Integer(), nullable=False)
-            deception_prof = Column(Integer(), nullable=False)
-            diplomacy_prof = Column(Integer(), nullable=False)
-            intimidation_prof = Column(Integer(), nullable=False)
-            medicine_prof = Column(Integer(), nullable=False)
-            nature_prof = Column(Integer(), nullable=False)
-            occultism_prof = Column(Integer(), nullable=False)
-            performance_prof = Column(Integer(), nullable=False)
-            religion_prof = Column(Integer(), nullable=False)
-            society_prof = Column(Integer(), nullable=False)
-            stealth_prof = Column(Integer(), nullable=False)
-            survival_prof = Column(Integer(), nullable=False)
-            thievery_prof = Column(Integer(), nullable=False)
-
-            # Plan to save parsable lists here
-            lores = Column(String())
-            feats = Column(String())
-
-            # Calculated stats
-            str_mod = Column(Integer())
-            dex_mod = Column(Integer())
-            con_mod = Column(Integer())
-            itl_mod = Column(Integer())
-            wis_mod = Column(Integer())
-            cha_mod = Column(Integer())
-
-            # Saves
-            fort_mod = Column(Integer())
-            will_mod = Column(Integer())
-            reflex_mod = Column(Integer())
-
-            acrobatics_mod = Column(Integer())
-            arcana_mod = Column(Integer())
-            athletics_mod = Column(Integer())
-            crafting_mod = Column(Integer())
-            deception_mod = Column(Integer())
-            diplomacy_mod = Column(Integer())
-            intimidation_mod = Column(Integer())
-            medicine_mod = Column(Integer())
-            nature_mod = Column(Integer())
-            occultism_mod = Column(Integer())
-            performance_mod = Column(Integer())
-            religion_mod = Column(Integer())
-            society_mod = Column(Integer())
-            stealth_mod = Column(Integer())
-            survival_mod = Column(Integer())
-            thievery_mod = Column(Integer())
-
-            arcane_mod = Column(Integer())
-            divine_mod = Column(Integer())
-            occult_mod = Column(Integer())
-            primal_mod = Column(Integer())
-
-            # unarmed_mod = Column(Integer())
-            # simple_mod = Column(Integer())
-            # martial_mod = Column(Integer())
-            # advanced_mod = Column(Integer())
-
-            ac_total = Column(Integer())
-            resistance = Column(String())
-
-        logging.info("get_tracker: returning tracker")
-        return Tracker
