@@ -89,7 +89,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(
-            select(Global.id).where(
+            select(Global).where(
                 or_(
                     Global.tracker_channel == ctx.interaction.channel_id,
                     Global.gm_tracker_channel == ctx.interaction.channel_id,
@@ -99,10 +99,10 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
         guild = result.scalars().one()
 
     if guild.system == "EPF":
-        return get_pf2_e_tracker(ctx, engine, guild.id)
+        return await get_pf2_e_tracker(ctx, engine, guild.id)
     else:
-        tablename = f"Tracker_{guild}"
-        logging.info(f"get_tracker: Guild: {guild}")
+        tablename = f"Tracker_{guild.id}"
+        logging.info(f"get_tracker: Guild: {guild.id}")
 
         DynamicBase = declarative_base(class_registry=dict())
 
@@ -180,7 +180,7 @@ class TrackerTable:
         )
         return emp
 
-async def get_pf2_e_tracker(self, ctx: discord.ApplicationContext, engine, id=None):
+async def get_pf2_e_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:

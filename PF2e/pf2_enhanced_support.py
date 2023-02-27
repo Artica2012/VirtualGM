@@ -109,6 +109,7 @@ class PF2_Character_Model:
             db.Column("athletics_mod", db.INTEGER()),
             db.Column("crafting_mod", db.INTEGER()),
             db.Column("deception_mod", db.INTEGER()),
+            db.Column("diplomacy_mod", db.INTEGER()),
             db.Column("intimidation_mod", db.INTEGER()),
             db.Column("medicine_mod", db.INTEGER()),
             db.Column("nature_mod", db.INTEGER()),
