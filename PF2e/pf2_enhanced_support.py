@@ -128,7 +128,10 @@ class PF2_Character_Model:
 
             db.Column("ac_total", db.INTEGER()),
             db.Column("resistance", db.String()),
-            db.Column("perception_mod", db.INTEGER())
+            db.Column("perception_mod", db.INTEGER()),
+            db.Column("macros", db.String()),
+            db.Column("attacks", db.JSON()),
+            db.Column("spells", db.JSON())
         )
 
         logging.info("pf2_character_model_table")

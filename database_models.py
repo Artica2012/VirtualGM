@@ -6,11 +6,12 @@ import logging
 import discord
 import sqlalchemy as db
 from dotenv import load_dotenv
-from sqlalchemy import Column
+from sqlalchemy import Column, JSON
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -322,6 +323,9 @@ async def get_pf2_e_tracker(ctx: discord.ApplicationContext, engine, id=None):
         ac_total = Column(Integer())
         resistance = Column(String())
         perception_mod = Column(Integer())
+        macros = Column(String())
+        attacks = Column(JSON())
+        spells = Column(JSON())
 
     logging.info("get_tracker: returning tracker")
     return Tracker

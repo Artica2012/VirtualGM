@@ -58,8 +58,13 @@ DATABASE = os.getenv("DATABASE")
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
+PF2_skills = ["Acrobatics", "Arcana", "Athletics", "Crafting", "Deception", "Diplomacy", "Intimidation", "Medicine",
+              "Nature", "Occultism", "Performance", "Religion", "Society", "Stealth", "Survival", "Thievery"]
 
 
+# Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
+# initialization of the class.
+# If the stats haven't been computed, then the getter will run the calculate function before initialization
 async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
@@ -87,6 +92,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
 class PF2_Character():
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         self.char_name = char_name
+        self.ctx = ctx
         self.guild = guild
         self.engine = engine
         self.character_model = character
@@ -102,7 +108,7 @@ class PF2_Character():
         self.will_mod = character.will_mod
 
         self.acrobatics_mod = character.acrobatics_mod
-        self.arcana_mod = character.acracna_mod
+        self.arcana_mod = character.arcana_mod
         self.athletics_mod = character.athletics_mod
         self.crafting_mod = character.crafting_mod
         self.deception_mod = character.deception_mod
@@ -110,7 +116,7 @@ class PF2_Character():
         self.intimidation_mod = character.intimidation_mod
         self.medicine_mod = character.medicine_mod
         self.nature_mod = character.nature_mod
-        self.occultism_mod = character.occultims_mod
+        self.occultism_mod = character.occultism_mod
         self.performance_mod = character.performance_mod
         self.religion_mod = character.religion_mod
         self.society_mod = character.society_mod
@@ -126,25 +132,106 @@ class PF2_Character():
         self.ac_total = character.ac_total
         self.resistance = character.resistance
 
-    async def character(self, ctx):
+    async def character(self):
         logging.info("Loading Character")
         if self.guild is not None:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=self.guild.id)
+            PF2_tracker = await get_pf2_e_tracker(self.ctx, self.engine, id=self.guild.id)
         else:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
+            PF2_tracker = await get_pf2_e_tracker(self.ctx, self.engine)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             async with async_session() as session:
                 result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
                 character = result.scalars().one()
                 if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
-                    await self.calculate(ctx)
+                    await calculate(self.ctx, self.engine, self.char_name)
                     result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
                     character = result.scalars().one()
                 return character
 
         except NoResultFound:
             return None
+
+    async def update(self):
+        logging.info(f"Updating character: {self.char_name}")
+        await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        self.character_model = await self.character()
+        self.str_mod = self.character_model.str_mod
+        self.dex_mod = self.character_model.dex_mod
+        self.con_mod = self.character_model.con_mod
+        self.itl_mod = self.character_model.itl_mod
+        self.wis_mod = self.character_model.wis_mod
+        self.cha_mod = self.character_model.cha_mod
+
+        self.fort_mod = self.character_model.fort_mod
+        self.reflex_mod = self.character_model.reflex_mod
+        self.will_mod = self.character_model.will_mod
+
+        self.acrobatics_mod = self.character_model.acrobatics_mod
+        self.arcana_mod = self.character_model.arcana_mod
+        self.athletics_mod = self.character_model.athletics_mod
+        self.crafting_mod = self.character_model.crafting_mod
+        self.deception_mod = self.character_model.deception_mod
+        self.diplomacy_mod = self.character_model.diplomacy_mod
+        self.intimidation_mod = self.character_model.intimidation_mod
+        self.medicine_mod = self.character_model.medicine_mod
+        self.nature_mod = self.character_model.nature_mod
+        self.occultism_mod = self.character_model.occultism_mod
+        self.performance_mod = self.character_model.performance_mod
+        self.religion_mod = self.character_model.religion_mod
+        self.society_mod = self.character_model.society_mod
+        self.stealth_mod = self.character_model.stealth_mod
+        self.survival_mod = self.character_model.survival_mod
+        self.thievery_mod = self.character_model.thievery_mod
+
+        self.arcane_mod = self.character_model.arcane_mod
+        self.divine_mod = self.character_model.divine_mod
+        self.occult_mod = self.character_model.occult_mod
+        self.primal_mod = self.character_model.primal_mod
+
+        self.ac_total = self.character_model.ac_total
+        self.resistance = self.character_model.resistance
+
+    async def get_roll(self, item):
+        logging.info(f"Returning roll: {item}")
+        if item == "Fortitude":
+            return f"1d20+{self.fort_mod}"
+        elif item == "Reflex":
+            return f"1d20+{self.reflex_mod}"
+        elif item == "Will":
+            return f"1d20+{self.will_mod}"
+        elif item == "Acrobatics":
+            return f"1d20+{self.acrobatics_mod}"
+        elif item == "Arcana":
+            return f"1d20+{self.arcana_mod}"
+        elif item == "Athletics":
+            return f"1d20+{self.athletics_mod}"
+        elif item == "Crafting":
+            return f"1d20+{self.crafting_mod}"
+        elif item == "Deception":
+            return f"1d20+{self.deception_mod}"
+        elif item == "Diplomacy":
+            return f"1d20+{self.diplomacy_mod}"
+        elif item == "Intimidation":
+            return f"1d20+{self.intimidation_mod}"
+        elif item == "Medicine":
+            return f"1d20+{self.medicine_mod}"
+        elif item == "Nature":
+            return f"1d20+{self.nature_mod}"
+        elif item == "Occultism":
+            return f"1d20+{self.occult_mod}"
+        elif item == "Performance":
+            return f"1d20+{self.performance_mod}"
+        elif item == "Religion":
+            return f"1d20+{self.religion_mod}"
+        elif item == "Society":
+            return f"1d20+{self.society_mod}"
+        elif item == "Stealth":
+            return f"1d20+{self.stealth_mod}"
+        elif item == "Survival":
+            return f"1d20+{self.survival_mod}"
+        elif item == "Thievery":
+            return f"1d20+{self.thievery_mod}"
 
     async def conditions(self, ctx):
         logging.info("Returning PF2 Character Conditions")
@@ -200,7 +287,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
     feats = ""
     for item in pb['build']['feats']:
-        feats += f"{item}, "
+        feats += f"{item[0]}, "
 
     if overwrite:
         async with async_session() as session:
@@ -275,6 +362,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
             character.lores = lores
             character.feats = feats
+            character.attacks = pb["build"]["weapons"]
+            character.spells = pb["build"]["spellCasters"]
 
             await session.commit()
         return True
@@ -321,7 +410,6 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     ac_base=pb["build"]["acTotal"]['acTotal'],
                     class_prof=pb["build"]["proficiencies"]["classDC"],
                     class_dc=0,
-
 
                     str=pb["build"]["abilities"]["str"],
                     dex=pb["build"]["abilities"]["dex"],
@@ -370,7 +458,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
                     lores=lores,
                     feats=feats,
-                    key_ability=pb["build"]["keyability"]
+                    key_ability=pb["build"]["keyability"],
+                    attacks=pb["build"]["weapons"],
+                    spells=pb["build"]["spellCasters"],
                 )
                 session.add(new_char)
             await session.commit()
@@ -444,7 +534,7 @@ async def calculate(ctx, engine, char_name, guild=None):
 
         # Skills
         character.athletics_mod = await skill_mod_calc(character.str_mod, "athletics",
-                                                        character.athletics_prof, character.level, bonuses)
+                                                       character.athletics_prof, character.level, bonuses)
         character.acrobatics_mod = await skill_mod_calc(character.dex_mod, "acrobatics",
                                                         character.acrobatics_prof, character.level,
                                                         bonuses)
@@ -466,8 +556,8 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.occultism_mod = await skill_mod_calc(character.itl_mod, "occultism",
                                                        character.occultism_prof, character.level, bonuses)
         character.perception_mod = await skill_mod_calc(character.wis_mod, "perception",
-                                                         character.perception_prof, character.level,
-                                                         bonuses)
+                                                        character.perception_prof, character.level,
+                                                        bonuses)
         character.performance_mod = await skill_mod_calc(character.cha_mod, "performance",
                                                          character.performance_prof, character.level,
                                                          bonuses)
@@ -510,7 +600,35 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
         character.class_dc = await skill_mod_calc(key_ability, "class_dc", character.class_prof, character.level,
                                                   bonuses)
+
+        macros = []
+        for item in character.attacks:
+            macros.append(item["display"])
+        for item in character.spells:
+            macros.append(f"Spell Attack: {item['name']}")
+        macros.extend(PF2_skills)
+        macro_string = ""
+        for item in macros:
+            macro_string += f"{item}, "
+        character.macros = macro_string
+
+
+
+        # attacks = []
+        # for item in character.attacks:
+        #     output = ""
+        #     match weapon["str"]:
+        #         case "":
+        #             damage_die = 1
+        #         case "striking":
+        #             damage_die = 2
+        #         case "greaterStriking":
+        #             damage_die = 3
+        #         case "majorStriking":
+        #             damage_die = 4
+
         await session.commit()
+
         # except Exception as e:
         #     logging.warning(f"pf2 - enchanced character importer: {e}")
 

@@ -22,6 +22,7 @@ from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
 from utils.parsing import ParseModifiers
+from PF2e.pf2_enhanced_character import get_PF2_Character
 
 # define global variables
 
@@ -159,6 +160,14 @@ class AttackCog(commands.Cog):
                 output_string = await PF2e.pf2_functions.attack(
                     ctx, engine, self.bot, character, target, macro_roll, vs, attack_modifier, target_modifier
                 )
+        elif guild.system == "EPF":
+            logging.info("EPF")
+            attacker = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+            opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
+
+            # Testing Code
+            output_string = f"{attacker.char_name}, {opponent.char_name}, {await attacker.get_roll('Fortitude')}"
+
 
         elif guild.system == "D4e":
             # D4e specific code
