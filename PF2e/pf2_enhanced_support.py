@@ -127,6 +127,7 @@ class PF2_Character_Model:
 
             db.Column("ac_total", db.INTEGER()),
             db.Column("resistance", db.String()),
+            db.Column("perception_mod", db.INTEGER())
         )
 
         logging.info("pf2_character_model_table")

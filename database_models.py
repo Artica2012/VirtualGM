@@ -321,6 +321,7 @@ async def get_pf2_e_tracker(self, ctx: discord.ApplicationContext, engine, id=No
 
         ac_total = Column(Integer())
         resistance = Column(String())
+        perception_mod = Column(Integer())
 
     logging.info("get_tracker: returning tracker")
     return Tracker

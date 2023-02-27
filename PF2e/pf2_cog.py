@@ -16,6 +16,7 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from initiative import update_pinned_tracker
+from PF2e.pf2_enhanced_character import get_PF2_Character, pb_import, calculate
 
 # define global variables
 
@@ -56,6 +57,16 @@ class PF2Cog(commands.Cog):
             if guild.system == "PF2":
                 response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
                 if response:
+                    await update_pinned_tracker(ctx, engine, self.bot)
+                    # await ctx.send_followup("Success")
+
+                else:
+                    await ctx.send_followup("Import Failed")
+            elif guild.system == "EPF":
+                logging.ifo("Beginning PF2-Enhanced import")
+                response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild )
+                if response:
+                    await calculate(ctx, engine, name, guild=guild)
                     await update_pinned_tracker(ctx, engine, self.bot)
                     # await ctx.send_followup("Success")
 

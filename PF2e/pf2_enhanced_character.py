@@ -60,35 +60,135 @@ PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
 
 
+async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
+    logging.info("Generating PF2_Character Class")
+    if engine is None:
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    if guild is not None:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+    else:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+            character = result.scalars().one()
+            if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
+                await calculate(ctx, engine, char_name, guild=guild)
+                result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+                character = result.scalars().one()
+            return PF2_Character(char_name, ctx, engine, character, guild=guild)
+
+    except NoResultFound:
+        return None
+
 
 # A class to hold the data model and functions involved in the enhanced pf2 features
 class PF2_Character():
-    def __init__(self, char_name, ctx: discord.ApplicationContext, bot: discord.Bot, guild=None):
+    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         self.char_name = char_name
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.guild = guild
+        self.engine = engine
+        self.character_model = character
+        self.str_mod = character.str_mod
+        self.dex_mod = character.dex_mod
+        self.con_mod = character.con_mod
+        self.itl_mod = character.itl_mod
+        self.wis_mod = character.wis_mod
+        self.cha_mod = character.cha_mod
 
-    # Import the character data from pathbuilder. Create a new character if one does not exist, or update the existing
-    # row if one does exist.
-    async def pb_import(self, ctx, pb_char_code, guild=None):
-        paramaters = {"id": pb_char_code}
-        overwrite = False
+        self.fort_mod = character.fort_mod
+        self.reflex_mod = character.reflex_mod
+        self.will_mod = character.will_mod
 
-        # Connect to pathbuilder
-        async with aiohttp.ClientSession() as session:
-            pb_url = "https://pathbuilder2e.com/json.php"
-            async with session.get(pb_url, params=paramaters, verify_ssl=False) as resp:
-                pb = await resp.json(content_type="text/html")
+        self.acrobatics_mod = character.acrobatics_mod
+        self.arcana_mod = character.acracna_mod
+        self.athletics_mod = character.athletics_mod
+        self.crafting_mod = character.crafting_mod
+        self.deception_mod = character.deception_mod
+        self.diplomacy_mod = character.diplomacy_mod
+        self.intimidation_mod = character.intimidation_mod
+        self.medicine_mod = character.medicine_mod
+        self.nature_mod = character.nature_mod
+        self.occultism_mod = character.occultims_mod
+        self.performance_mod = character.performance_mod
+        self.religion_mod = character.religion_mod
+        self.society_mod = character.society_mod
+        self.stealth_mod = character.stealth_mod
+        self.survival_mod = character.survival_mod
+        self.thievery_mod = character.thievery_mod
 
-        if pb["success"] is False:
-            return False
+        self.arcane_mod = character.arcane_mod
+        self.divine_mod = character.divine_mod
+        self.occult_mod = character.occult_mod
+        self.primal_mod = character.primal_mod
 
-        guild = await get_guild(ctx, guild)
-        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
+        self.ac_total = character.ac_total
+        self.resistance = character.resistance
+
+    async def character(self, ctx):
+        logging.info("Loading Character")
+        if self.guild is not None:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=self.guild.id)
+        else:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+                character = result.scalars().one()
+                if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
+                    await self.calculate(ctx)
+                    result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+                    character = result.scalars().one()
+                return character
+
+        except NoResultFound:
+            return None
+
+    async def conditions(self, ctx):
+        logging.info("Returning PF2 Character Conditions")
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        if self.guild is not None:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(ctx, self.engine, id=self.guild.id)
+        else:
+            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
+            Condition = await get_condition(ctx, self.engine)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == self.char_name))
+                char_id = result.scalars().one()
+
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id == char_id))
+                return result.scalars().all()
+        except NoResultFound:
+            return []
+
+
+async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
+    paramaters = {"id": pb_char_code}
+    overwrite = False
+
+    # Connect to pathbuilder
+    async with aiohttp.ClientSession() as session:
+        pb_url = "https://pathbuilder2e.com/json.php"
+        async with session.get(pb_url, params=paramaters, verify_ssl=False) as resp:
+            pb = await resp.json(content_type="text/html")
+
+    if pb["success"] is False:
+        return False
+
+    try:
+        guild = await get_guild(ctx, guild)
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         # Check to see if character already exists, if it does, update instead of creating
         async with async_session() as session:
-            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
             character = query.scalars().all()
         if len(character) > 0:
             overwrite = True
@@ -104,7 +204,7 @@ class PF2_Character():
 
         if overwrite:
             async with async_session() as session:
-                query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+                query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
                 character = query.scalars().one()
 
                 # Write the data from the JSON
@@ -181,7 +281,7 @@ class PF2_Character():
             async with async_session() as session:
                 async with session.begin():
                     new_char = PF2_tracker(
-                        name=self.char_name,
+                        name=char_name,
                         player=True,
                         user=ctx.user.id,
                         current_hp=(
@@ -269,93 +369,119 @@ class PF2_Character():
                     )
                     session.add(new_char)
                 await session.commit()
+                return True
+    except Exception:
+        return False
 
-    async def calculate(self, ctx, guild=None):
-        # Database boilerplate
-        guild = await get_guild(ctx, guild)
-        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
-        Condition = await get_condition(ctx, self.engine, id=guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-        # Variables
-        bonuses = {
-            "circumstances_pos": {},
-            "status_pos": {},
-            "item_pos": {},
-            "circumstances_neg": {},
-            "status_neg": {},
-            "item_neg": {}
-        }
+async def calculate(ctx, engine, char_name, guild=None):
+    logging.info('Updating Character Model')
+    guild = await get_guild(ctx, guild=guild)
+    # Database boilerplate
+    if guild is not None:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+    else:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        # Iterate through conditions
-        for condition in await self.conditions(ctx, guild):
-            # Get the data from the conditions
-            # Write the bonuses into the two dictionaries
-            pass
+    # Variables
+    bonuses = {
+        "circumstances_pos": {},
+        "status_pos": {},
+        "item_pos": {},
+        "circumstances_neg": {},
+        "status_neg": {},
+        "item_neg": {}
+    }
+
+    # Iterate through conditions
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
+            char_id = result.scalars().one()
 
         async with async_session() as session:
-            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == char_id))
+            conditions = result.scalars().all()
+    except NoResultFound:
+        conditions = []
+
+    for condition in await conditions:
+        # Get the data from the conditions
+        # Write the bonuses into the two dictionaries
+        pass
+
+    async with async_session() as session:
+        try:
+            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
             character = query.scalars().one()
 
             # Go through each of the items.
 
             # Stat Mods - Do this first, because they are used in later calculations
-            character.str_mod = await self.ability_mod_calc(character.str, "str", bonuses)
-            character.dex_mod = await self.ability_mod_calc(character.str, "dex", bonuses)
-            character.con_mod = await self.ability_mod_calc(character.str, "con", bonuses)
-            character.itl_mod = await self.ability_mod_calc(character.str, "itl", bonuses)
-            character.wis_mod = await self.ability_mod_calc(character.str, "wis", bonuses)
-            character.cha_mod = await self.ability_mod_calc(character.str, "cha", bonuses)
+            character.str_mod = await ability_mod_calc(character.str, "str", bonuses)
+            character.dex_mod = await ability_mod_calc(character.str, "dex", bonuses)
+            character.con_mod = await ability_mod_calc(character.str, "con", bonuses)
+            character.itl_mod = await ability_mod_calc(character.str, "itl", bonuses)
+            character.wis_mod = await ability_mod_calc(character.str, "wis", bonuses)
+            character.cha_mod = await ability_mod_calc(character.str, "cha", bonuses)
 
             # Saves
-            character.fort_mod = await self.save_mod_calc(character.con_mod, "fort", character.fort_prof,
-                                                          character.level, bonuses)
-            character.reflex_mod = await self.save_mod_calc(character.dex_mod, "reflex", character.reflex_prof,
-                                                            character.level, bonuses)
-            character.will_mod = await self.save_mod_calc(character.wis_mod, "wis", character.will_prof,
-                                                          character.level, bonuses)
+            character.fort_mod = await save_mod_calc(character.con_mod, "fort", character.fort_prof,
+                                                     character.level, bonuses)
+            character.reflex_mod = await save_mod_calc(character.dex_mod, "reflex", character.reflex_prof,
+                                                       character.level, bonuses)
+            character.will_mod = await save_mod_calc(character.wis_mod, "wis", character.will_prof,
+                                                     character.level, bonuses)
 
             # Skills
-            character.athletics_prof = await self.skill_mod_calc(character.str_mod, "athletics",
-                                                                 character.athletics_prof, character.level, bonuses)
-            character.acrobatics_mod = await self.skill_mod_calc(character.dex_mod, "acrobatics",
-                                                                 character.acrobatics_prof, character.level, bonuses)
-            character.arcana_mod = await self.skill_mod_calc(character.itl_mod, "arcana",
-                                                             character.arcana_prof, character.level, bonuses)
-            character.crafting_mod = await self.skill_mod_calc(character.itl_mod, "crafting",
-                                                               character.acrobatics_prof, character.level, bonuses)
-            character.deception_mod = await self.skill_mod_calc(character.cha_mod, "deception",
-                                                                character.deception_prof, character.level, bonuses)
-            character.diplomacy_mod = await self.skill_mod_calc(character.cha_mod, "diplomacy",
-                                                                character.diplomacy_prof, character.level, bonuses)
-            character.intimidation_mod = await self.skill_mod_calc(character.cha_mod, "intimidation",
-                                                                   character.intimidation_prof, character.level,
-                                                                   bonuses)
-            character.medicine_mod = await self.skill_mod_calc(character.wis_mod, "medicine",
-                                                               character.medicine_prof, character.level, bonuses)
-            character.nature_mod = await self.skill_mod_calc(character.wis_mod, "nature",
-                                                             character.nature_prof, character.level, bonuses)
-            character.occultism_mod = await self.skill_mod_calc(character.itl_mod, "occultism",
-                                                                character.occultism_prof, character.level, bonuses)
-            character.performance_mod = await self.skill_mod_calc(character.cha_mod, "performance",
-                                                                  character.performance_prof, character.level, bonuses)
-            character.religion_mod = await self.skill_mod_calc(character.wis_mod, "religion",
-                                                               character.religion_prof, character.level, bonuses)
-            character.society_mod = await self.skill_mod_calc(character.int_mod, "society",
-                                                              character.society_prof, character.level, bonuses)
-            character.stealth_mod = await self.skill_mod_calc(character.dex_mod, "stealth",
-                                                                  character.stealth_prof, character.level, bonuses)
-            character.survival_mod = await self.skill_mod_calc(character.wis_mod, "survival",
-                                                                  character.survival_prof, character.level, bonuses)
-            character.thievery_mod = await self.skill_mod_calc(character.dex_mod, "thievery",
-                                                                  character.thievery_prof, character.level, bonuses)
-
+            character.athletics_prof = await skill_mod_calc(character.str_mod, "athletics",
+                                                            character.athletics_prof, character.level, bonuses)
+            character.acrobatics_mod = await skill_mod_calc(character.dex_mod, "acrobatics",
+                                                            character.acrobatics_prof, character.level,
+                                                            bonuses)
+            character.arcana_mod = await skill_mod_calc(character.itl_mod, "arcana",
+                                                        character.arcana_prof, character.level, bonuses)
+            character.crafting_mod = await skill_mod_calc(character.itl_mod, "crafting",
+                                                          character.acrobatics_prof, character.level, bonuses)
+            character.deception_mod = await skill_mod_calc(character.cha_mod, "deception",
+                                                           character.deception_prof, character.level, bonuses)
+            character.diplomacy_mod = await skill_mod_calc(character.cha_mod, "diplomacy",
+                                                           character.diplomacy_prof, character.level, bonuses)
+            character.intimidation_mod = await skill_mod_calc(character.cha_mod, "intimidation",
+                                                              character.intimidation_prof, character.level,
+                                                              bonuses)
+            character.medicine_mod = await skill_mod_calc(character.wis_mod, "medicine",
+                                                          character.medicine_prof, character.level, bonuses)
+            character.nature_mod = await skill_mod_calc(character.wis_mod, "nature",
+                                                        character.nature_prof, character.level, bonuses)
+            character.occultism_mod = await skill_mod_calc(character.itl_mod, "occultism",
+                                                           character.occultism_prof, character.level, bonuses)
+            character.perception_mod = await skill_mod_calc(character.wis_mod, "perception",
+                                                             character.perception_prof, character.level,
+                                                             bonuses)
+            character.performance_mod = await skill_mod_calc(character.cha_mod, "performance",
+                                                             character.performance_prof, character.level,
+                                                             bonuses)
+            character.religion_mod = await skill_mod_calc(character.wis_mod, "religion",
+                                                          character.religion_prof, character.level, bonuses)
+            character.society_mod = await skill_mod_calc(character.int_mod, "society",
+                                                         character.society_prof, character.level, bonuses)
+            character.stealth_mod = await skill_mod_calc(character.dex_mod, "stealth",
+                                                         character.stealth_prof, character.level, bonuses)
+            character.survival_mod = await skill_mod_calc(character.wis_mod, "survival",
+                                                          character.survival_prof, character.level, bonuses)
+            character.thievery_mod = await skill_mod_calc(character.dex_mod, "thievery",
+                                                          character.thievery_prof, character.level, bonuses)
 
             # Casting, Armor and Attacks
             key_ability = None
             match character.key_ability:
                 case "str":
-                    key_ability= character.str_mod
+                    key_ability = character.str_mod
                 case "dex":
                     key_ability = character.dex_mod
                 case "con":
@@ -367,126 +493,99 @@ class PF2_Character():
                 case "cha":
                     key_ability = character.cha_mod
 
-            character.arcane_mod = await self.skill_mod_calc(key_ability, "arcane", character.arcane_prof,
-                                                             character.level, bonuses)
-            character.divine_mod = await self.skill_mod_calc(key_ability, "divine", character.divine_prof,
-                                                             character.level, bonuses)
-            character.occult_mod = await self.skill_mod_calc(key_ability, "occult", character.arcane_prof,
-                                                             character.level, bonuses)
-            character.primal_mod = await self.skill_mod_calc(key_ability, "primal", character.arcane_prof,
-                                                             character.level, bonuses)
+            character.arcane_mod = await skill_mod_calc(key_ability, "arcane", character.arcane_prof,
+                                                        character.level, bonuses)
+            character.divine_mod = await skill_mod_calc(key_ability, "divine", character.divine_prof,
+                                                        character.level, bonuses)
+            character.occult_mod = await skill_mod_calc(key_ability, "occult", character.arcane_prof,
+                                                        character.level, bonuses)
+            character.primal_mod = await skill_mod_calc(key_ability, "primal", character.arcane_prof,
+                                                        character.level, bonuses)
 
-            character.ac_total = await self.bonus_calc(character.ac_base, "ac", bonuses)
+            character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
+        except Exception as e:
+            logging.warning(f"pf2 - enchanced character importer: {e}")
 
 
+async def ability_mod_calc(self, base: int, item: str, bonuses):
+    mod = (base - 10) / 2
+    if item in bonuses["circumstances_pos"][item]:
+        mod += bonuses["circumstances_pos"][item]
+    if item in bonuses["circumstances_neg"][item]:
+        mod -= bonuses["circumstances_neg"][item]
+
+    if item in bonuses["status_pos"][item]:
+        mod += bonuses["status_pos"][item]
+    if item in bonuses["status_neg"][item]:
+        mod -= bonuses["status_neg"][item]
+
+    if item in bonuses["item_pos"][item]:
+        mod += bonuses["item_pos"][item]
+    if item in bonuses["item_neg"][item]:
+        mod -= bonuses["item_neg"][item]
+
+    return mod
 
 
-    async def ability_mod_calc(self, base: int, item: str, bonuses):
-        mod = (base - 10) / 2
-        if item in bonuses["circumstances_pos"][item]:
-            mod += bonuses["circumstances_pos"][item]
-        if item in bonuses["circumstances_neg"][item]:
-            mod -= bonuses["circumstances_neg"][item]
+async def save_mod_calc(self, stat_mod, save: str, save_prof, level, bonuses):
+    mod = stat_mod + save_prof + level
+    if save in bonuses["circumstances_pos"][save]:
+        mod += bonuses["circumstances_pos"][save]
+    if save in bonuses["circumstances_neg"][save]:
+        mod -= bonuses["circumstances_neg"][save]
 
-        if item in bonuses["status_pos"][item]:
-            mod += bonuses["status_pos"][item]
-        if item in bonuses["status_neg"][item]:
-            mod -= bonuses["status_neg"][item]
+    if save in bonuses["status_pos"][save]:
+        mod += bonuses["status_pos"][save]
+    if save in bonuses["status_neg"][save]:
+        mod -= bonuses["status_neg"][save]
 
-        if item in bonuses["item_pos"][item]:
-            mod += bonuses["item_pos"][item]
-        if item in bonuses["item_neg"][item]:
-            mod -= bonuses["item_neg"][item]
+    if save in bonuses["item_pos"][save]:
+        mod += bonuses["item_pos"][save]
+    if save in bonuses["item_neg"][save]:
+        mod -= bonuses["item_neg"][save]
 
-        return mod
+    return mod
 
-    async def save_mod_calc(self, stat_mod, save: str, save_prof, level, bonuses):
-        mod = stat_mod + save_prof + level
-        if save in bonuses["circumstances_pos"][save]:
-            mod += bonuses["circumstances_pos"][save]
-        if save in bonuses["circumstances_neg"][save]:
-            mod -= bonuses["circumstances_neg"][save]
 
-        if save in bonuses["status_pos"][save]:
-            mod += bonuses["status_pos"][save]
-        if save in bonuses["status_neg"][save]:
-            mod -= bonuses["status_neg"][save]
+async def skill_mod_calc(self, stat_mod, skill: str, skill_prof, level, bonuses):
+    # TODO Throw in code for Untrained improvisation
+    if skill_prof == 0:
+        mod = stat_mod
+    else:
+        mod = stat_mod + skill_prof + level
+    if skill in bonuses["circumstances_pos"][skill]:
+        mod += bonuses["circumstances_pos"][skill]
+    if skill in bonuses["circumstances_neg"][skill]:
+        mod -= bonuses["circumstances_neg"][skill]
 
-        if save in bonuses["item_pos"][save]:
-            mod += bonuses["item_pos"][save]
-        if save in bonuses["item_neg"][save]:
-            mod -= bonuses["item_neg"][save]
+    if skill in bonuses["status_pos"][skill]:
+        mod += bonuses["status_pos"][skill]
+    if skill in bonuses["status_neg"][skill]:
+        mod -= bonuses["status_neg"][skill]
 
-        return mod
+    if skill in bonuses["item_pos"][skill]:
+        mod += bonuses["item_pos"][skill]
+    if skill in bonuses["item_neg"][skill]:
+        mod -= bonuses["item_neg"][skill]
 
-    async def skill_mod_calc(self, stat_mod, skill: str, skill_prof, level, bonuses):
-        # TODO Throw in code for Untrained improvisation
-        if skill_prof == 0:
-            mod = stat_mod
-        else:
-            mod = stat_mod + skill_prof + level
-        if skill in bonuses["circumstances_pos"][skill]:
-            mod += bonuses["circumstances_pos"][skill]
-        if skill in bonuses["circumstances_neg"][skill]:
-            mod -= bonuses["circumstances_neg"][skill]
+    return mod
 
-        if skill in bonuses["status_pos"][skill]:
-            mod += bonuses["status_pos"][skill]
-        if skill in bonuses["status_neg"][skill]:
-            mod -= bonuses["status_neg"][skill]
 
-        if skill in bonuses["item_pos"][skill]:
-            mod += bonuses["item_pos"][skill]
-        if skill in bonuses["item_neg"][skill]:
-            mod -= bonuses["item_neg"][skill]
+async def bonus_calc(self, base, skill, bonuses):
+    mod = base
+    if skill in bonuses["circumstances_pos"][skill]:
+        mod += bonuses["circumstances_pos"][skill]
+    if skill in bonuses["circumstances_neg"][skill]:
+        mod -= bonuses["circumstances_neg"][skill]
 
-        return mod
+    if skill in bonuses["status_pos"][skill]:
+        mod += bonuses["status_pos"][skill]
+    if skill in bonuses["status_neg"][skill]:
+        mod -= bonuses["status_neg"][skill]
 
-    async def bonus_calc(self, base, skill, bonuses):
-        mod = base
-        if skill in bonuses["circumstances_pos"][skill]:
-            mod += bonuses["circumstances_pos"][skill]
-        if skill in bonuses["circumstances_neg"][skill]:
-            mod -= bonuses["circumstances_neg"][skill]
+    if skill in bonuses["item_pos"][skill]:
+        mod += bonuses["item_pos"][skill]
+    if skill in bonuses["item_neg"][skill]:
+        mod -= bonuses["item_neg"][skill]
 
-        if skill in bonuses["status_pos"][skill]:
-            mod += bonuses["status_pos"][skill]
-        if skill in bonuses["status_neg"][skill]:
-            mod -= bonuses["status_neg"][skill]
-
-        if skill in bonuses["item_pos"][skill]:
-            mod += bonuses["item_pos"][skill]
-        if skill in bonuses["item_neg"][skill]:
-            mod -= bonuses["item_neg"][skill]
-
-        return mod
-
-    async def character(self, ctx, guild=None):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
-                return result.scalars().one()
-        except NoResultFound:
-            return None
-
-    async def conditions(self, ctx, guild=None):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        if guild is not None:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=guild.id)
-            Condition = await get_condition(ctx, self.engine, id=guild.id)
-        else:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
-            Condition = await get_condition(ctx, self.engine)
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == self.char_name))
-                char_id = result.scalars().one()
-
-            async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == char_id))
-                return result.scalars().all()
-        except NoResultFound:
-            return []
+    return mod
