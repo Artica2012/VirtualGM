@@ -96,6 +96,11 @@ class PF2_Character():
         self.ctx = ctx
         self.guild = guild
         self.engine = engine
+        self.current_hp = character.current_hp
+        self.max_hp = character.max_hp
+        self.temp_hp = character.max_hp
+        self.init_string = character.init_string
+        self.init = character.init
         self.character_model = character
         self.str_mod = character.str_mod
         self.dex_mod = character.dex_mod
@@ -704,6 +709,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
         character.class_dc = await skill_mod_calc(key_ability, "class_dc", character.class_prof, character.level,
                                                   bonuses)
+        character.init_string = f"1d20+{character.perception_mod}"
 
         macros = []
         for item in character.attacks:
@@ -716,18 +722,6 @@ async def calculate(ctx, engine, char_name, guild=None):
             macro_string += f"{item},"
         character.macros = macro_string
 
-        # attacks = []
-        # for item in character.attacks:
-        #     output = ""
-        #     match weapon["str"]:
-        #         case "":
-        #             damage_die = 1
-        #         case "striking":
-        #             damage_die = 2
-        #         case "greaterStriking":
-        #             damage_die = 3
-        #         case "majorStriking":
-        #             damage_die = 4
 
         await session.commit()
 

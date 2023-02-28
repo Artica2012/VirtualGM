@@ -24,6 +24,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
+from PF2e.pf2_enhanced_character import get_PF2_Character
 from PF2e.pf2_enhanced_character import PF2_Character
 import auto_complete
 import time_keeping_functions
@@ -559,70 +560,130 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
 
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = result.scalars().one()
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition).where(Condition.character_id == character.id).order_by(Condition.title.asc())
-            )
-            condition_list = result.scalars().all()
+        if guild.system == "EPF":
+            character = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
+            user = bot.get_user(character.character_model.user).name
+            if character.character_model.player:
+                status = "PC:"
+            else:
+                status = "NPC:"
 
-        user = bot.get_user(character.user).name
-        if character.player:
-            status = "PC:"
-        else:
-            status = "NPC:"
-        con_dict = {}
+            condition_list = await character.conditions(ctx)
 
-        for item in condition_list:
-            con_dict[item.title] = item.number
-
-        embed = discord.Embed(
-            title=f"{name}",
-            fields=[
-                discord.EmbedField(name="Name: ", value=character.name, inline=False),
-                discord.EmbedField(name=status, value=user, inline=False),
-                discord.EmbedField(
-                    name="HP: ",
-                    value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)",
-                    inline=False,
-                ),
-                discord.EmbedField(name="Initiative: ", value=character.init_string, inline=False),
-            ],
-            color=discord.Color.dark_gold(),
-        )
-        condition_embed = discord.Embed(
-            title="Conditions",
-            fields=[],
-            color=discord.Color.dark_teal(),
-        )
-        counter_embed = discord.Embed(
-            title="Counters",
-            fields=[],
-            color=discord.Color.dark_magenta(),
-        )
-
-        for item in condition_list:
-            await asyncio.sleep(0)
-            if not item.visible:
-                embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
-            elif item.visible and not item.time:
-                if not item.counter:
-                    condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                elif item.counter:
-                    if item.number != 0:
-                        counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                    else:
-                        counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
-            elif item.visible and item.time and not item.counter:
-                condition_embed.fields.append(
+            embed = discord.Embed(
+                title=f"{name}",
+                fields=[
+                    discord.EmbedField(name="Name: ", value=character.character_model.name, inline=False),
+                    discord.EmbedField(name=status, value=user, inline=False),
                     discord.EmbedField(
-                        name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
+                        name="HP: ",
+                        value=f"{character.current_hp}/{character.max_hp}: ({character.temp_hp} Temp)",
+                        inline=False,
+                    ),
+                    discord.EmbedField(name="Initiative: ", value=character.init_string, inline=False),
+                ],
+                color=discord.Color.dark_gold(),
+            )
+            # if condition_list != None:
+            condition_embed = discord.Embed(
+                title="Conditions",
+                fields=[],
+                color=discord.Color.dark_teal(),
+            )
+            counter_embed = discord.Embed(
+                title="Counters",
+                fields=[],
+                color=discord.Color.dark_magenta(),
+            )
+            for item in condition_list:
+                await asyncio.sleep(0)
+                if not item.visible:
+                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
+                elif item.visible and not item.time:
+                    if not item.counter:
+                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                    elif item.counter:
+                        if item.number != 0:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                        else:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
+                elif item.visible and item.time and not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
+                        )
                     )
-                )
+            print("returning 3")
+            return [embed, counter_embed, condition_embed]
+            # else:
+            #     print("returning 1")
+            #     return [embed]
 
-        return [embed, counter_embed, condition_embed]
+        else:
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == name))
+                character = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition).where(Condition.character_id == character.id).order_by(Condition.title.asc())
+                )
+                condition_list = result.scalars().all()
+
+            user = bot.get_user(character.user).name
+            if character.player:
+                status = "PC:"
+            else:
+                status = "NPC:"
+            con_dict = {}
+
+            for item in condition_list:
+                con_dict[item.title] = item.number
+
+            embed = discord.Embed(
+                title=f"{name}",
+                fields=[
+                    discord.EmbedField(name="Name: ", value=character.name, inline=False),
+                    discord.EmbedField(name=status, value=user, inline=False),
+                    discord.EmbedField(
+                        name="HP: ",
+                        value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)",
+                        inline=False,
+                    ),
+                    discord.EmbedField(name="Initiative: ", value=character.init_string, inline=False),
+                ],
+                color=discord.Color.dark_gold(),
+            )
+            condition_embed = discord.Embed(
+                title="Conditions",
+                fields=[],
+                color=discord.Color.dark_teal(),
+            )
+            counter_embed = discord.Embed(
+                title="Counters",
+                fields=[],
+                color=discord.Color.dark_magenta(),
+            )
+
+            for item in condition_list:
+                await asyncio.sleep(0)
+                if not item.visible:
+                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
+                elif item.visible and not item.time:
+                    if not item.counter:
+                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                    elif item.counter:
+                        if item.number != 0:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                        else:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
+                elif item.visible and item.time and not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
+                        )
+                    )
+
+            return [embed, counter_embed, condition_embed]
     except Exception as e:
         logging.info(f"get character sheet: {e}")
         report = ErrorReport(ctx, get_char_sheet.__name__, e, bot)
