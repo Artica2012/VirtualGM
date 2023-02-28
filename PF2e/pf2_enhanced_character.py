@@ -95,6 +95,7 @@ class PF2_Character():
         self.char_name = char_name
         self.ctx = ctx
         self.guild = guild
+        self.id = character.id
         self.engine = engine
         self.current_hp = character.current_hp
         self.max_hp = character.max_hp
@@ -346,19 +347,13 @@ class PF2_Character():
         logging.info("Returning PF2 Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine, id=self.guild.id)
             Condition = await get_condition(ctx, self.engine, id=self.guild.id)
         else:
-            PF2_tracker = await get_pf2_e_tracker(ctx, self.engine)
             Condition = await get_condition(ctx, self.engine)
         try:
             async with async_session() as session:
-                result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == self.char_name))
-                char_id = result.scalars().one()
-
-            async with async_session() as session:
                 result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == char_id))
+                                               .where(Condition.character_id == self.id))
                 return result.scalars().all()
         except NoResultFound:
             return []

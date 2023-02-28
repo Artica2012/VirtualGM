@@ -352,6 +352,8 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
+            if guild.system == "EPF":
+                return await get_EPF_condition(ctx, engine, id=guild.id)
             tablename = f"Condition_{guild}"
             logging.info(f"get_condition: Guild: {guild}")
 
@@ -373,6 +375,47 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         time = Column(Boolean(), default=False)
         visible = Column(Boolean(), default=True)
         flex = Column(Boolean(), default=False)
+
+    logging.info("get_condition: returning condition")
+    return Condition
+
+async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx is None and id is None:
+        raise Exception
+    if id is None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global.id).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
+            guild = result.scalars().one()
+            tablename = f"Condition_{guild}"
+            logging.info(f"get_EPF_condition: Guild: {guild}")
+
+    else:
+        tablename = f"Condition_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Condition(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {"extend_existing": True}
+
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        character_id = Column(Integer(), nullable=False)
+        counter = Column(Boolean(), default=False)
+        title = Column(String(), nullable=False)
+        number = Column(Integer(), nullable=True, default=False)
+        auto_increment = Column(Boolean(), nullable=False, default=False)
+        time = Column(Boolean(), default=False)
+        visible = Column(Boolean(), default=True)
+        flex = Column(Boolean(), default=False)
+        action = Column(String(), default="")
 
     logging.info("get_condition: returning condition")
     return Condition

@@ -137,3 +137,28 @@ class PF2_Character_Model:
         logging.info("pf2_character_model_table")
         return emp
 
+
+class EPF_ConditionTable:
+    def __init__(self, ctx, metadata, id):
+        self.metadata = metadata
+        self.id = id
+
+    def condition_table(
+        self,
+    ):
+        tablename = f"Condition_{self.id}"
+        con = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("character_id", db.INTEGER(), ForeignKey(f"Tracker_{self.id}.id")),
+            db.Column("counter", db.BOOLEAN(), default=False),
+            db.Column("title", db.String(255), nullable=False),
+            db.Column("number", db.INTEGER(), nullable=True, default=None),
+            db.Column("auto_increment", db.BOOLEAN, nullable=False, default=False),
+            db.Column("time", db.BOOLEAN, default=False),
+            db.Column("visible", db.BOOLEAN, default=True),
+            db.Column("flex", db.BOOLEAN, default=False),
+            db.Column("action", db.String(), default="")
+        )
+        return con
