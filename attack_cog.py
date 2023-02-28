@@ -95,7 +95,11 @@ class AttackCog(commands.Cog):
                             .where(Condition.visible == false())
                         )
                         invisible_conditions = result.scalars().all()
-                    return invisible_conditions
+                    if ctx.value != "":
+                        val = ctx.value.lower()
+                        return [option for option in invisible_conditions if val in option.lower()]
+                    else:
+                        return invisible_conditions
                 except Exception:
                     return []
         except Exception as e:
