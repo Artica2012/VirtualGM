@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import PF2e.pf2_functions
+from PF2e.pf2_enhanced_character import get_PF2_Character
 import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
@@ -181,6 +182,11 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
     Macro = await get_macro(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
+    if guild.system == 'EPF':
+        EPF_Char = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+        return await EPF_Char.macro_list()
+
+
     try:
         async with async_session() as session:
             char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
@@ -188,9 +194,9 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
         async with async_session() as session:
             macro_result = await session.execute(
                 select(Macro.name)
-                .where(Macro.character_id == char)
-                .where(not_(Macro.macro.contains(",")))
-                .order_by(Macro.name.asc())
+                    .where(Macro.character_id == char)
+                    .where(not_(Macro.macro.contains(",")))
+                    .order_by(Macro.name.asc())
             )
             macro_list = macro_result.scalars().all()
         await engine.dispose()
@@ -219,9 +225,9 @@ async def cc_select(ctx: discord.AutocompleteContext):
         async with async_session() as session:
             con_result = await session.execute(
                 select(Condition.title)
-                .where(Condition.character_id == char)
-                .where(Condition.visible == true())
-                .order_by(Condition.title.asc())
+                    .where(Condition.character_id == char)
+                    .where(Condition.visible == true())
+                    .order_by(Condition.title.asc())
             )
             condition = con_result.scalars().all()
         await engine.dispose()
@@ -249,10 +255,10 @@ async def cc_select_no_time(ctx: discord.AutocompleteContext):
         async with async_session() as session:
             con_result = await session.execute(
                 select(Condition.title)
-                .where(Condition.character_id == char)
-                .where(Condition.time == false())
-                .where(Condition.visible == true())
-                .order_by(Condition.title.asc())
+                    .where(Condition.character_id == char)
+                    .where(Condition.time == false())
+                    .where(Condition.visible == true())
+                    .order_by(Condition.title.asc())
             )
             condition = con_result.scalars().all()
         await engine.dispose()

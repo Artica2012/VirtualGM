@@ -233,6 +233,14 @@ class PF2_Character():
         elif item == "Thievery":
             return f"1d20+{self.thievery_mod}"
 
+    async def macro_list(self):
+        list =  self.character_model.macros.split(",")
+        logging.info(list)
+        if len(list) >0:
+            return list[:-1]
+        else:
+            return []
+
     async def conditions(self, ctx):
         logging.info("Returning PF2 Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
