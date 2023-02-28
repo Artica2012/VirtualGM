@@ -277,7 +277,7 @@ async def cc_select_no_time(ctx: discord.AutocompleteContext):
 async def save_select(ctx: discord.AutocompleteContext):
     try:
         guild = await initiative.get_guild(ctx, None)
-        if guild.system == "PF2":
+        if guild.system == "PF2" or guild.system == "EPF":
             return PF2e.pf2_functions.PF2_saves
         else:
             return []

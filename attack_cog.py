@@ -170,21 +170,10 @@ class AttackCog(commands.Cog):
                 )
         elif guild.system == "EPF":
             logging.info("EPF")
-            # attacker = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
-            # opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
-            # try:
-            # logging.info(f"{roll}, {await opponent.get_dc(vs)}")
             output_string = await PF2e.pf2_enhanced_functions.attack(
                 ctx, engine, self.bot, character, target, roll, vs, attack_modifier,
                 target_modifier
             )
-            # except d20.RollSyntaxError:
-            #     logging.info(f"{await attacker.get_roll(roll)}, {await opponent.get_dc(vs)}")
-            #     output_string = await PF2e.pf2_enhanced_functions.attack(
-            #         ctx, engine, self.bot, character, target, await attacker.get_roll(roll), await opponent.get_dc(vs),
-            #         attack_modifier, target_modifier
-            #     )
-
         elif guild.system == "D4e":
             # D4e specific code
             try:
@@ -238,6 +227,10 @@ class AttackCog(commands.Cog):
         # PF2 specific code
         if guild.system == "PF2":
             output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save, dc, modifier)
+            await ctx.send_followup(output_string)
+        elif guild.system == "EPF":
+            output_string = await PF2e.pf2_enhanced_functions.save(ctx, engine, self.bot, character, target, save, dc,
+                                                                   modifier)
             await ctx.send_followup(output_string)
         elif guild.system == "D4e":
             await ctx.send_followup(

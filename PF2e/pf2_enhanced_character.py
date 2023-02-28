@@ -197,7 +197,7 @@ class PF2_Character():
 
     async def get_roll(self, item):
         logging.info(f"Returning roll: {item}")
-        if item == "Fortitude":
+        if item == "Fortitude" or "Fort":
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex":
             return f"1d20+{self.reflex_mod}"
@@ -293,7 +293,7 @@ class PF2_Character():
         elif item == "Will":
             return 10 + self.will_mod
         elif item == "DC":
-            return self.character_model.class_dc
+            return 10 + self.character_model.class_dc
         elif item.lower() == "acrobatics":
             return 10 + self.acrobatics_mod
         elif item.lower() == "arcana":
