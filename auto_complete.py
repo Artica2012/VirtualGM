@@ -184,8 +184,12 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
 
     if guild.system == 'EPF':
         EPF_Char = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
-        return await EPF_Char.macro_list()
-
+        macro_list = await EPF_Char.macro_list()
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in macro_list if val in option.lower()]
+        else:
+            return macro_list
 
     try:
         async with async_session() as session:

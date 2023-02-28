@@ -59,7 +59,8 @@ PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
 PF2_skills = ["Acrobatics", "Arcana", "Athletics", "Crafting", "Deception", "Diplomacy", "Intimidation", "Medicine",
-              "Nature", "Occultism", "Performance", "Religion", "Society", "Stealth", "Survival", "Thievery"]
+              "Nature", "Occultism", "Perception", "Performance", "Religion", "Society", "Stealth", "Survival",
+              "Thievery"]
 
 
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
@@ -117,6 +118,7 @@ class PF2_Character():
         self.medicine_mod = character.medicine_mod
         self.nature_mod = character.nature_mod
         self.occultism_mod = character.occultism_mod
+        self.perception_mod = character.perception_mod
         self.performance_mod = character.performance_mod
         self.religion_mod = character.religion_mod
         self.society_mod = character.society_mod
@@ -177,6 +179,7 @@ class PF2_Character():
         self.medicine_mod = self.character_model.medicine_mod
         self.nature_mod = self.character_model.nature_mod
         self.occultism_mod = self.character_model.occultism_mod
+        self.perception_mod = self.character_model.perception_mod
         self.performance_mod = self.character_model.performance_mod
         self.religion_mod = self.character_model.religion_mod
         self.society_mod = self.character_model.society_mod
@@ -220,6 +223,8 @@ class PF2_Character():
             return f"1d20+{self.nature_mod}"
         elif item == "Occultism":
             return f"1d20+{self.occult_mod}"
+        elif item == "Perception":
+            return f"1d20+{self.perception_mod}"
         elif item == "Performance":
             return f"1d20+{self.performance_mod}"
         elif item == "Religion":
@@ -232,11 +237,102 @@ class PF2_Character():
             return f"1d20+{self.survival_mod}"
         elif item == "Thievery":
             return f"1d20+{self.thievery_mod}"
+        else:
+            for weapon in self.character_model.attacks:
+                # print(item)
+                # print(weapon["display"])
+                if item == weapon["display"]:
+                    proficiency = 0
+                    match weapon["prof"]:
+                        case "unarmed":
+                            proficiency = self.character_model.unarmed_prof
+                        case "simple":
+                            proficiency = self.character_model.simple_prof
+                        case "martial":
+                            proficiency = self.character_model.martial_prof
+                        case "advanced":
+                            proficiency = self.character_model.advanced_prof
+                    if proficiency > 0:
+                        attack_mod = self.str_mod + self.character_model.level + proficiency + weapon["pot"]
+                    else:
+                        attack_mod = self.str_mod
+                    # print(attack_mod)
+                    return f"1d20+{attack_mod}"
+            for attack in self.character_model.spells:
+                # print(item)
+                # print(attack["name"])
+                if attack["name"] in item:
+                    stat_mod = 0
+                    match attack["ability"]:
+                        case "con":
+                            stat_mod = self.con_mod
+                        case "int":
+                            stat_mod = self.itl_mod
+                        case "wis":
+                            stat_mod = self.wis_mod
+                        case "cha":
+                            stat_mod = self.cha_mod
+
+                    if attack["proficiency"] > 0:
+                        attack_mod = stat_mod + self.character_model.level + attack["proficiency"]
+                    else:
+                        attack_mod = stat_mod
+                    # print(attack_mod)
+                    return f"1d20+{attack_mod}"
+            return 0
+
+
+
+    async def get_dc(self, item):
+        if item == "AC":
+            return self.ac_total
+        elif item == "Fort":
+            return 10 + self.fort_mod
+        elif item == "Reflex":
+            return 10 + self.reflex_mod
+        elif item == "Will":
+            return 10 + self.will_mod
+        elif item == "DC":
+            return self.character_model.class_dc
+        elif item.lower() == "acrobatics":
+            return 10 + self.acrobatics_mod
+        elif item.lower() == "arcana":
+            return 10 + self.arcana_mod
+        elif item.lower() == "athletics":
+            return 10 + self.athletics_mod
+        elif item.lower() == "crafting":
+            return 10 + self.crafting_mod
+        elif item.lower() == "deception":
+            return 10 + self.deception_mod
+        elif item.lower() == "intimidation":
+            return 10 + self.intimidation_mod
+        elif item.lower() == "medicine":
+            return 10 + self.medicine_mod
+        elif item.lower() == "nature":
+            return 10 + self.nature_mod
+        elif item.lower() == "occultism":
+            return 10 + self.occultism_mod
+        elif item.lower() == "perception":
+            return 10 + self.perception_mod
+        elif item.lower() == "performance":
+            return 10 + self.performance_mod
+        elif item.lower() == "religion":
+            return 10 + self.religion_mod
+        elif item.lower() == "society":
+            return 10 + self.society_mod
+        elif item.lower() == "stealth":
+            return 10 + self.stealth_mod
+        elif item.lower() == "survival":
+            return 10 + self.survival_mod
+        elif item.lower() == "thievery":
+            return 10 + self.thievery_mod
+        else:
+            return 0
 
     async def macro_list(self):
-        list =  self.character_model.macros.split(",")
+        list = self.character_model.macros.split(",")
         logging.info(list)
-        if len(list) >0:
+        if len(list) > 0:
             return list[:-1]
         else:
             return []
@@ -617,10 +713,8 @@ async def calculate(ctx, engine, char_name, guild=None):
         macros.extend(PF2_skills)
         macro_string = ""
         for item in macros:
-            macro_string += f"{item}, "
+            macro_string += f"{item},"
         character.macros = macro_string
-
-
 
         # attacks = []
         # for item in character.attacks:

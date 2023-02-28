@@ -23,6 +23,7 @@ from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
 from utils.parsing import ParseModifiers
 from PF2e.pf2_enhanced_character import get_PF2_Character
+import PF2e.pf2_enhanced_functions
 
 # define global variables
 
@@ -79,6 +80,13 @@ class AttackCog(commands.Cog):
                 return PF2e.pf2_functions.PF2_attributes
             elif guild.system == "D4e":
                 return D4e.d4e_functions.D4e_attributes
+            elif guild.system == "EPF":
+                if ctx.value != "":
+                    option_list = PF2e.pf2_enhanced_character.PF2_attributes + PF2e.pf2_enhanced_character.PF2_skills
+                    val = ctx.value.lower()
+                    return [option for option in option_list if val in option.lower()]
+                else:
+                    return PF2e.pf2_enhanced_character.PF2_attributes
             else:
                 try:
                     # This should currently be inaccessible,
@@ -92,8 +100,8 @@ class AttackCog(commands.Cog):
                     async with async_session() as session:
                         result = await session.execute(
                             select(Condition.title)
-                            .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible == false())
+                                .where(Condition.character_id == tar_char.id)
+                                .where(Condition.visible == false())
                         )
                         invisible_conditions = result.scalars().all()
                     return invisible_conditions
@@ -117,14 +125,14 @@ class AttackCog(commands.Cog):
     @option("attack_modifier", description="Modifier to the macro (defaults to +)", required=False)
     @option("target_modifier", description="Modifier to the target's dc (defaults to +)", required=False)
     async def attack(
-        self,
-        ctx: discord.ApplicationContext,
-        character: str,
-        target: str,
-        roll: str,
-        vs: str,
-        attack_modifier: str = "",
-        target_modifier: str = "",
+            self,
+            ctx: discord.ApplicationContext,
+            character: str,
+            target: str,
+            roll: str,
+            vs: str,
+            attack_modifier: str = "",
+            target_modifier: str = "",
     ):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog attack")
@@ -162,12 +170,20 @@ class AttackCog(commands.Cog):
                 )
         elif guild.system == "EPF":
             logging.info("EPF")
-            attacker = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
-            opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
-
-            # Testing Code
-            output_string = f"{attacker.char_name}, {opponent.char_name}, {await attacker.get_roll('Fortitude')}"
-
+            # attacker = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+            # opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
+            # try:
+            # logging.info(f"{roll}, {await opponent.get_dc(vs)}")
+            output_string = await PF2e.pf2_enhanced_functions.attack(
+                ctx, engine, self.bot, character, target, roll, vs, attack_modifier,
+                target_modifier
+            )
+            # except d20.RollSyntaxError:
+            #     logging.info(f"{await attacker.get_roll(roll)}, {await opponent.get_dc(vs)}")
+            #     output_string = await PF2e.pf2_enhanced_functions.attack(
+            #         ctx, engine, self.bot, character, target, await attacker.get_roll(roll), await opponent.get_dc(vs),
+            #         attack_modifier, target_modifier
+            #     )
 
         elif guild.system == "D4e":
             # D4e specific code
@@ -203,13 +219,13 @@ class AttackCog(commands.Cog):
     @option("save", description="Save", autocomplete=auto_complete.save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)
     async def save(
-        self,
-        ctx: discord.ApplicationContext,
-        character: str,
-        target: str,
-        save: str,
-        dc: int = None,
-        modifier: str = "",
+            self,
+            ctx: discord.ApplicationContext,
+            character: str,
+            target: str,
+            save: str,
+            dc: int = None,
+            modifier: str = "",
     ):
         # bughunt code
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
@@ -235,13 +251,13 @@ class AttackCog(commands.Cog):
     @option("modifier", description="Roll Modifer", default='', type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     async def damage(
-        self,
-        ctx: discord.ApplicationContext,
-        character: str,
-        target: str,
-        user_roll_str: str,
-        modifier:str = '',
-        healing: bool = False,
+            self,
+            ctx: discord.ApplicationContext,
+            character: str,
+            target: str,
+            user_roll_str: str,
+            modifier: str = '',
+            healing: bool = False,
     ):
         # bughunt code
         logging.info(f"attack_cog damage")
@@ -284,7 +300,7 @@ class AttackCog(commands.Cog):
                     macro_roll = result.scalars().one()
                 roll_result = d20.roll(f"{macro_roll}{ParseModifiers(modifier)}")
                 output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
-            except: # Error handling in case that a non-macro string in input
+            except:  # Error handling in case that a non-macro string in input
                 roll_result = d20.roll(0)
                 output_string = "Error: Invalid Roll, Please try again."
         # Apply the results
