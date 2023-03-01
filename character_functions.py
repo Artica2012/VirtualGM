@@ -61,7 +61,7 @@ async def get_character(char_name, ctx, guild=None, engine=None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
 
-    if guild == "EPF":
+    if guild.system == "EPF":
         return await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
     else:
         tracker = await get_tracker(ctx, engine, id=guild.id)

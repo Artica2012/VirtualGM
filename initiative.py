@@ -953,7 +953,7 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, guild, refresh=True)
         logging.info(f"BAI1: guild: {guild.id}")
-        if guild.system == "PF2"  and not guild.block:
+        if guild.system == "PF2" or "EPF" and not guild.block:
             return await pf2_advance_initiative(ctx, engine, bot, guild)
         # TODO add in the EPF code here
 
@@ -1367,7 +1367,7 @@ async def block_get_tracker(
     logging.info(f"BGT: Guild: {guild.id}")
     init_list = await get_init_list(ctx, engine, guild=guild)
 
-    if guild.system == "PF2":
+    if guild.system == "PF2" or "EPF":
         logging.info("PF2")
         output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm, guild=guild)
     elif guild.system == "D4e":

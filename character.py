@@ -163,20 +163,20 @@ class Character():
 
     async def add_thp(self, amount: int):
         logging.info(f"add_thp {amount}")
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        # try:
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
-                character = char_result.scalars().one()
-                character.temp_hp = character.temp_hp + amount
-                await session.commit()
-            await self.update()
-            return True
-        except Exception as e:
-            logging.warning(f"add_thp: {e}")
-            return False
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+            character = char_result.scalars().one()
+            character.temp_hp = character.temp_hp + amount
+            await session.commit()
+        await self.update()
+        return True
+        # except Exception as e:
+        #     logging.warning(f"add_thp: {e}")
+        #     return False
 
     # Set the initiative
     async def set_init(self, init: int):
@@ -203,10 +203,7 @@ class Character():
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
         self.character_model = await self.character()
-        self.char_name = self.character_model.char_name
-        self.ctx = self.character_model.ctx
-        self.guild = self.character_model.guild
-        self.engine = self.character_model.engine
+        self.char_name = self.character_model.name
         self.id = self.character_model.id
         self.name = self.character_model.name
         self.player = self.character_model.player

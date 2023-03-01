@@ -155,10 +155,7 @@ class PF2_Character(Character):
         logging.info(f"Updating character: {self.char_name}")
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
-        self.char_name = self.character_model.char_name
-        self.ctx = self.character_model.ctx
-        self.guild = self.character_model.guild
-        self.engine = self.character_model.engine
+        self.char_name = self.character_model.name
         self.id = self.character_model.id
         self.name = self.character_model.name
         self.player = self.character_model.player
