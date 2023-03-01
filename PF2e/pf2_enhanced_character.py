@@ -31,6 +31,7 @@ from database_models import (
     get_pf2_e_tracker,
 )
 from database_operations import get_asyncio_db_engine
+from character import Character
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
@@ -90,19 +91,9 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
 
 
 # A class to hold the data model and functions involved in the enhanced pf2 features
-class PF2_Character():
+class PF2_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
-        self.char_name = char_name
-        self.ctx = ctx
-        self.guild = guild
-        self.id = character.id
-        self.engine = engine
-        self.current_hp = character.current_hp
-        self.max_hp = character.max_hp
-        self.temp_hp = character.max_hp
-        self.init_string = character.init_string
-        self.init = character.init
-        self.character_model = character
+        super().__init__(char_name, ctx, engine, character, guild)
         self.str_mod = character.str_mod
         self.dex_mod = character.dex_mod
         self.con_mod = character.con_mod
@@ -164,6 +155,20 @@ class PF2_Character():
         logging.info(f"Updating character: {self.char_name}")
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
+        self.char_name = self.character_model.char_name
+        self.ctx = self.character_model.ctx
+        self.guild = self.character_model.guild
+        self.engine = self.character_model.engine
+        self.id = self.character_model.id
+        self.name = self.character_model.name
+        self.player = self.character_model.player
+        self.user = self.character_model.user
+        self.current_hp = self.character_model.current_hp
+        self.max_hp = self.character_model.max_hp
+        self.temp_hp = self.character_model.max_hp
+        self.init_string = self.character_model.init_string
+        self.init = self.character_model.init
+
         self.str_mod = self.character_model.str_mod
         self.dex_mod = self.character_model.dex_mod
         self.con_mod = self.character_model.con_mod
@@ -286,8 +291,6 @@ class PF2_Character():
                     # print(attack_mod)
                     return f"1d20+{attack_mod}"
             return 0
-
-
 
     async def get_dc(self, item):
         if item == "AC":
@@ -716,7 +719,6 @@ async def calculate(ctx, engine, char_name, guild=None):
         for item in macros:
             macro_string += f"{item},"
         character.macros = macro_string
-
 
         await session.commit()
 

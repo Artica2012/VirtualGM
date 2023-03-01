@@ -25,7 +25,6 @@ from sqlalchemy.sql.ddl import DropTable
 import D4e.d4e_functions
 import PF2e.pf2_functions
 from PF2e.pf2_enhanced_character import get_PF2_Character
-from PF2e.pf2_enhanced_character import PF2_Character
 import auto_complete
 import time_keeping_functions
 import ui_components
@@ -954,8 +953,9 @@ async def block_advance_initiative(ctx: discord.ApplicationContext, engine, bot,
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, guild, refresh=True)
         logging.info(f"BAI1: guild: {guild.id}")
-        if guild.system == "PF2" and not guild.block:
+        if guild.system == "PF2"  and not guild.block:
             return await pf2_advance_initiative(ctx, engine, bot, guild)
+        # TODO add in the EPF code here
 
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         async with async_session() as session:
@@ -1536,65 +1536,6 @@ async def generic_block_get_tracker(
         logging.info(f"block_get_tracker 2: {e}")
         report = ErrorReport(ctx, block_get_tracker.__name__, e, bot)
         await report.report()
-
-
-# # Gets the locations of the pinned trackers, then updates them with the newest tracker
-# async def update_pinned_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
-#     logging.info("update_pinned_tracker")
-#     guild = await get_guild(ctx, guild, refresh=True)  # get the guild
-#     logging.info(f"UPT1: Guild: {guild.id}")
-#
-#     # Get the tracker messages
-#     tracker = guild.tracker
-#     tracker_channel = guild.tracker_channel
-#     gm_tracker = guild.gm_tracker
-#     gm_tracker_channel = guild.gm_tracker_channel
-#
-#     # Fix the Tracker if needed
-#     await init_integrity(ctx, engine, guild=guild)
-#
-#     try:
-#         # Re-acquire the tracker after the fix
-#         guild = await get_guild(ctx, guild, refresh=True)
-#         logging.info(f"saved_order: {guild.saved_order}")
-#         logging.info(f"init_pos: {guild.initiative}")
-#
-#         # If in initiative, update the active tracker
-#         if guild.last_tracker is not None:
-#             await update_pinned_tracker(ctx, guild.last_tracker, engine, bot, guild=guild)
-#         else:
-#             # Update the Pinned tracker
-#             if tracker is not None:
-#                 tracker_display_string = await block_get_tracker(
-#                     await get_init_list(ctx, engine, guild=guild), guild.initiative, ctx, engine, bot, guild=guild
-#                 )
-#                 channel = bot.get_channel(tracker_channel)
-#                 message = await channel.fetch_message(tracker)
-#                 await message.edit(tracker_display_string)
-#                 logging.info("UPT2: tracker updated")
-#
-#             # Update the GM tracker
-#             if gm_tracker is not None:
-#                 gm_tracker_display_string = await block_get_tracker(
-#                     await get_init_list(ctx, engine, guild=guild),
-#                     guild.initiative,
-#                     ctx,
-#                     engine,
-#                     bot,
-#                     gm=True,
-#                     guild=guild,
-#                 )
-#                 gm_channel = bot.get_channel(gm_tracker_channel)
-#                 gm_message = await gm_channel.fetch_message(gm_tracker)
-#                 await gm_message.edit(gm_tracker_display_string)
-#                 logging.info("UPT3: gm tracker updated")
-#     except NoResultFound:
-#         if ctx is not None:
-#             await ctx.channel.send(error_not_initialized, delete_after=30)
-#     except Exception as e:
-#         logging.error(f"update_pinned_tracker: {e}")
-#         report = ErrorReport(ctx, update_pinned_tracker.__name__, e, bot)
-#         await report.report()
 
 
 # Post a new initiative tracker and updates the pinned trackers
@@ -2926,34 +2867,27 @@ class InitiativeCog(commands.Cog):
     )
     async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id,
-                    )
-                )
+        guild = await get_guild(ctx, None)
+        if character == guild.saved_order:
+            await ctx.respond(
+                (
+                    f"Please wait until {character} is not the active character in initiative before "
+                    "resetting its initiative."
+                ),
+                ephemeral=True,
             )
-            guild = result.scalars().one()
-
-            if character == guild.saved_order:
-                await ctx.respond(
-                    (
-                        f"Please wait until {character} is not the active character in initiative before "
-                        "resetting its initiative."
-                    ),
-                    ephemeral=True,
-                )
-            else:
-                try:
-                    roll = d20.roll(initiative)
+        else:
+            try:
+                roll = d20.roll(initiative)
+                if guild.system == "EPF":
+                    model = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+                    await model.set_init(roll.total)
+                else:
                     await set_init(ctx, self.bot, character, roll.total, engine)
-                    await ctx.respond(f"Initiative set to {roll.total} for {character}")
-                except Exception as e:
-                    await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
-            await update_pinned_tracker(ctx, engine, self.bot)
+                await ctx.respond(f"Initiative set to {roll.total} for {character}")
+            except Exception as e:
+                await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
+        await update_pinned_tracker(ctx, engine, self.bot)
         await engine.dispose()
 
     @i.command(
@@ -2966,14 +2900,30 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         await ctx.response.defer()
-        if mode == "Heal":
-            response = await change_hp(ctx, engine, self.bot, name, amount, True)
-        elif mode == "Damage":
-            response = await change_hp(ctx, engine, self.bot, name, amount, False)
-        elif mode == "Temporary HP":
-            response = await add_thp(ctx, engine, self.bot, name, amount)
-            if response:
-                await ctx.respond(f"{amount} Temporary HP added to {name}.")
+        guild = await get_guild(ctx, None)
+        # EPF Code, will hopefully transition to everything after the new character model is enacted
+        if guild.system == "EPF":
+            model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
+            if mode == "Temporary HP":
+                response = await model.add_thp(amount)
+                if response:
+                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
+            else:
+                if mode == "Heal":
+                    heal = True
+                else:
+                    heal = False
+                response = await model.change_hp(amount, heal)
+
+        else:
+            if mode == "Heal":
+                response = await change_hp(ctx, engine, self.bot, name, amount, True)
+            elif mode == "Damage":
+                response = await change_hp(ctx, engine, self.bot, name, amount, False)
+            elif mode == "Temporary HP":
+                response = await add_thp(ctx, engine, self.bot, name, amount)
+                if response:
+                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
         if not response:
             await ctx.respond("Failed", ephemeral=True)
         await update_pinned_tracker(ctx, engine, self.bot)

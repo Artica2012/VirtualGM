@@ -168,3 +168,61 @@ async def save(
         return False
 
     return output_string
+
+# This is the code which check, decrements and removes conditions for the init next turn.
+async def EPF_init_con(ctx: discord.ApplicationContext, engine, bot, current_character: str, before: bool, guild=None):
+    logging.info(f"{current_character}, {before}")
+    logging.info("Decrementing Conditions")
+
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    guild = await get_guild(ctx, guild)
+    character = await get_PF2_Character(current_character,ctx, guild=guild, engine=engine)
+
+    try:
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        # con = await get_condition_table(ctx, metadata, engine)
+        async with async_session() as session:
+            if before is not None:
+                char_result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == character.id)
+                    .where(Condition.flex == before)
+                    .where(Condition.auto_increment == true())
+                )
+            else:
+                char_result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == character.id)
+                    .where(Condition.auto_increment == true())
+                )
+            con_list = char_result.scalars().all()
+            logging.info("BAI9: condition's retrieved")
+            # print("First Con List")
+
+        for con_row in con_list:
+            logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
+            await asyncio.sleep(0)
+            async with async_session() as session:
+                result = await session.execute(select(Condition).where(Condition.id == con_row.id))
+                selected_condition = result.scalars().one()
+                if not selected_condition.time:  # If auto-increment and NOT time
+                    if selected_condition.number >= 2:  # if number >= 2
+                        selected_condition.number -= 1
+                    else:
+                        await session.delete(selected_condition)
+                        # await session.commit()
+                        logging.info("BAI11: Condition Deleted")
+                        if ctx is not None:
+                            await ctx.channel.send(f"{con_row.title} removed from {character.name}")
+                        else:
+                            tracker_channel = bot.get_channel(guild.tracker_channel)
+                            await tracker_channel.send(f"{con_row.title} removed from {character.name}")
+                    await session.commit()
+                elif selected_condition.time:  # If time is true
+                    await character.conditions(ctx)
+
+    except Exception as e:
+        logging.error(f"block_advance_initiative: {e}")
+        if ctx is not None:
+            report = ErrorReport(ctx, EPF_init_con.__name__, e, bot)
+            await report.report()
