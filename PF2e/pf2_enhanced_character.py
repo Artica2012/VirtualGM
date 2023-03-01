@@ -4,7 +4,7 @@ import logging
 import os
 
 # imports
-from datetime import datetime
+import datetime
 from math import floor
 
 import aiohttp
@@ -339,7 +339,10 @@ class PF2_Character(Character):
         list = self.character_model.macros.split(",")
         logging.info(list)
         if len(list) > 0:
-            return list[:-1]
+            if list[-1] == "":
+                return list[:-1]
+            else:
+                return list
         else:
             return []
 
@@ -357,6 +360,82 @@ class PF2_Character(Character):
                 return result.scalars().all()
         except NoResultFound:
             return []
+
+    async def set_cc(self,
+            title: str,
+            counter: bool,
+            number: int,
+            unit: str,
+            auto_decrement: bool,
+            flex: bool = False,
+            data:str = ""
+    ):
+        logging.info("set_cc")
+        # Get the Character's data
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        # Check to make sure there isn't a condition with the same name on the character
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == self.id).where(Condition.title == title)
+            )
+            check_con = result.scalars().all()
+            if len(check_con) > 0:
+                return False
+
+        # Write the condition to the table
+        try:
+            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=number,
+                        counter=counter,
+                        auto_increment=auto_decrement,
+                        time=False,
+                        flex=flex,
+                    )
+                    session.add(condition)
+                await session.commit()
+                # await update_pinned_tracker(ctx, engine, bot)
+                return True
+
+            else:  # If its time based, then calculate the end time, before writing it
+                current_time = await get_time(self.ctx, self.engine)
+                if unit == "Minute":
+                    end_time = current_time + datetime.timedelta(minutes=number)
+                elif unit == "Hour":
+                    end_time = current_time + datetime.timedelta(hours=number)
+                else:
+                    end_time = current_time + datetime.timedelta(days=number)
+
+                timestamp = end_time.timestamp()
+
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=timestamp,
+                        counter=counter,
+                        auto_increment=True,
+                        time=True,
+                    )
+                    session.add(condition)
+                await session.commit()
+                # await update_pinned_tracker(ctx, engine, bot)
+                return True
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"set_cc: {e}")
+            return False
+
 
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):

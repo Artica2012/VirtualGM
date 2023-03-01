@@ -1492,7 +1492,7 @@ async def generic_block_get_tracker(
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(ctx, engine, bot, guild=guild)
+                            current_time = await get_time(ctx, engine, guild=guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -1896,7 +1896,7 @@ async def set_cc(
             return True
 
         else:  # If its time based, then calculate the end time, before writing it
-            current_time = await get_time(ctx, engine, bot)
+            current_time = await get_time(ctx, engine)
             if unit == "Minute":
                 end_time = current_time + datetime.timedelta(minutes=number)
             elif unit == "Hour":
@@ -2143,7 +2143,7 @@ async def delete_cc(ctx: discord.ApplicationContext, engine, character: str, con
 # Intended to be called when time is advanced
 async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
     logging.info("check_cc")
-    current_time = await get_time(ctx, engine, bot, guild=guild)
+    current_time = await get_time(ctx, engine, guild=guild)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild)
     Tracker = await get_tracker(ctx, engine, id=guild.id)
@@ -2947,9 +2947,11 @@ class InitiativeCog(commands.Cog):
         unit: str = "Round",
         auto: str = "Static",
         flex: str = "False",
+        data:str = ""
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         if flex == "False":
             flex_bool = False
         else:
@@ -2964,9 +2966,14 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        response = await set_cc(
-            ctx, engine, character, title, counter_bool, number, unit, auto_bool, self.bot, flex=flex_bool
-        )
+        if guild.system == "EPF":
+            model = await get_character(character, ctx, guild=guild, engine=engine)
+            response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
+            await update_pinned_tracker(ctx, engine, self.bot, guild=guild )
+        else:
+            response = await set_cc(
+                ctx, engine, character, title, counter_bool, number, unit, auto_bool, self.bot, flex=flex_bool
+            )
         if response:
             await ctx.send_followup(f"Condition {title} added on {character}")
         else:
