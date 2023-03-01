@@ -26,7 +26,7 @@ from sqlalchemy.orm import sessionmaker
 import d20
 
 from PF2e.pf2_functions import PF2_eval_succss
-from PF2e.pf2_enhanced_character import get_PF2_Character
+from PF2e.pf2_enhanced_character import get_EPF_Character
 from utils.utils import get_guild
 from database_models import (
     get_condition,
@@ -84,12 +84,12 @@ async def attack(
         print(roll_string)
         dice_result = d20.roll(roll_string)
         # else:
-        #     char_model = await get_PF2_Character(character, ctx, engine=engine)
+        #     char_model = await get_EPF_Character(character, ctx, engine=engine)
         #     roll_string = await char_model.get_roll(roll)
         #     print(roll_string)
         #     dice_result = d20.roll(roll_string)
     except:
-        char_model = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+        char_model = await get_EPF_Character(character, ctx, guild=guild, engine=engine)
         roll_string = f"{await char_model.get_roll(roll)}{ParseModifiers(attack_modifier)}"
         print(roll_string)
         dice_result = d20.roll(roll_string)
@@ -98,7 +98,7 @@ async def attack(
     # Load up the tables
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     # Throwing guild in here will allow one database query instead of two for getting the tables
-    opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
+    opponent = await get_EPF_Character(target, ctx, guild=guild, engine=engine)
     goal_value = await opponent.get_dc(vs)
 
     try:
@@ -128,8 +128,8 @@ async def save(
     print(f" {vs}, {dc}, {modifier}")
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, None)
-    attacker = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
-    opponent = await get_PF2_Character(target, ctx, guild=guild, engine=engine)
+    attacker = await get_EPF_Character(character, ctx, guild=guild, engine=engine)
+    opponent = await get_EPF_Character(target, ctx, guild=guild, engine=engine)
 
     orig_dc = dc
 
@@ -176,7 +176,7 @@ async def EPF_init_con(ctx: discord.ApplicationContext, engine, bot, current_cha
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild)
-    character = await get_PF2_Character(current_character,ctx, guild=guild, engine=engine)
+    character = await get_EPF_Character(current_character, ctx, guild=guild, engine=engine)
 
     try:
         Condition = await get_condition(ctx, engine, id=guild.id)

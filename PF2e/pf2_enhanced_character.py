@@ -67,7 +67,7 @@ PF2_skills = ["Acrobatics", "Arcana", "Athletics", "Crafting", "Deception", "Dip
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
 # initialization of the class.
 # If the stats haven't been computed, then the getter will run the calculate function before initialization
-async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
+async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)

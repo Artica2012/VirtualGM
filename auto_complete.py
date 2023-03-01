@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import PF2e.pf2_functions
-from PF2e.pf2_enhanced_character import get_PF2_Character
+from character_functions import get_character
 import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
@@ -183,7 +183,7 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     if guild.system == 'EPF':
-        EPF_Char = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+        EPF_Char = await get_character(character, ctx, guild=guild, engine=engine)
         macro_list = await EPF_Char.macro_list()
         if ctx.value != "":
             val = ctx.value.lower()

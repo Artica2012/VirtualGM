@@ -24,7 +24,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
-from PF2e.pf2_enhanced_character import get_PF2_Character
+from character_functions import get_character
 import auto_complete
 import time_keeping_functions
 import ui_components
@@ -560,7 +560,7 @@ async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.B
         Condition = await get_condition(ctx, engine, id=guild.id)
 
         if guild.system == "EPF":
-            character = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
+            character = await get_character(name, ctx, guild=guild, engine=engine)
             user = bot.get_user(character.character_model.user).name
             if character.character_model.player:
                 status = "PC:"
@@ -2880,7 +2880,7 @@ class InitiativeCog(commands.Cog):
             try:
                 roll = d20.roll(initiative)
                 if guild.system == "EPF":
-                    model = await get_PF2_Character(character, ctx, guild=guild, engine=engine)
+                    model = await get_character(character, ctx, guild=guild, engine=engine)
                     await model.set_init(roll.total)
                 else:
                     await set_init(ctx, self.bot, character, roll.total, engine)
@@ -2903,7 +2903,7 @@ class InitiativeCog(commands.Cog):
         guild = await get_guild(ctx, None)
         # EPF Code, will hopefully transition to everything after the new character model is enacted
         if guild.system == "EPF":
-            model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
+            model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
                 response = await model.add_thp(amount)
                 if response:

@@ -16,7 +16,7 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from initiative import update_pinned_tracker
-from PF2e.pf2_enhanced_character import get_PF2_Character, pb_import, calculate
+from PF2e.pf2_enhanced_character import get_EPF_Character, pb_import, calculate
 
 # define global variables
 

@@ -22,7 +22,7 @@ from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
 from utils.parsing import ParseModifiers
-from PF2e.pf2_enhanced_character import get_PF2_Character
+from PF2e.pf2_enhanced_character import get_EPF_Character
 import PF2e.pf2_enhanced_functions
 
 # define global variables
