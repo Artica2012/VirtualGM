@@ -884,11 +884,11 @@ async def parse_bonuses(ctx, engine, char_name:str, guild=None):
     try:
         async with async_session() as session:
             result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
-            char_id = result.scalars().one()
+            char = result.scalars().one()
 
         async with async_session() as session:
             result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == char_id))
+                                           .where(Condition.character_id == char))
             conditions = result.scalars().all()
     except NoResultFound:
         conditions = []
@@ -910,7 +910,10 @@ async def parse_bonuses(ctx, engine, char_name:str, guild=None):
         data_list = data.split(",")
         for item in data_list:
             key = item[0]
-            value = item[1][1:]
+            if item[1][1:] == "X":
+                value = condition.number
+            else:
+                value = item[1][1:]
             if item[2] == "s" and item[1][1] == "+": # Status Positive
                 if key in bonuses["status_pos"]:
                     if value > bonuses["status_pos"][key]:
