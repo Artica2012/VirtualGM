@@ -22,6 +22,8 @@ primal
 
 Other:
 Armor Class = ac
+attack = attack
+damage = dmg
 
 Circumstance Bonus = c
 Status Bonus = s

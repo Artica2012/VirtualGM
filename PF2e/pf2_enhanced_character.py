@@ -35,6 +35,7 @@ from character import Character
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
+from PF2e.pf2_enhanced_support import EPF_Conditions
 
 # define global variables
 
@@ -362,14 +363,14 @@ class PF2_Character(Character):
             return []
 
     async def set_cc(self,
-            title: str,
-            counter: bool,
-            number: int,
-            unit: str,
-            auto_decrement: bool,
-            flex: bool = False,
-            data:str = ""
-    ):
+                     title: str,
+                     counter: bool,
+                     number: int,
+                     unit: str,
+                     auto_decrement: bool,
+                     flex: bool = False,
+                     data: str = ""
+                     ):
         logging.info("set_cc")
         # Get the Character's data
 
@@ -386,6 +387,14 @@ class PF2_Character(Character):
             if len(check_con) > 0:
                 return False
 
+        # Process Data
+        print(data)
+        if data == "":
+            print(title)
+            if title in EPF_Conditions:
+                data = EPF_Conditions[title]
+                print(data)
+
         # Write the condition to the table
         try:
             if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
@@ -398,6 +407,7 @@ class PF2_Character(Character):
                         auto_increment=auto_decrement,
                         time=False,
                         flex=flex,
+                        action=data
                     )
                     session.add(condition)
                 await session.commit()
@@ -423,10 +433,12 @@ class PF2_Character(Character):
                         counter=counter,
                         auto_increment=True,
                         time=True,
+                        action=data
                     )
                     session.add(condition)
                 await session.commit()
                 # await update_pinned_tracker(ctx, engine, bot)
+                await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
                 return True
 
         except NoResultFound:
@@ -435,7 +447,6 @@ class PF2_Character(Character):
         except Exception as e:
             logging.warning(f"set_cc: {e}")
             return False
-
 
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
@@ -658,39 +669,11 @@ async def calculate(ctx, engine, char_name, guild=None):
     # Database boilerplate
     if guild is not None:
         PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
     else:
         PF2_tracker = await get_pf2_e_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    # Variables
-    bonuses = {
-        "circumstances_pos": {},
-        "status_pos": {},
-        "item_pos": {},
-        "circumstances_neg": {},
-        "status_neg": {},
-        "item_neg": {}
-    }
-
-    # Iterate through conditions
-    try:
-        async with async_session() as session:
-            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
-            char_id = result.scalars().one()
-
-        async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == char_id))
-            conditions = result.scalars().all()
-    except NoResultFound:
-        conditions = []
-
-    for condition in conditions:
-        # Get the data from the conditions
-        # Write the bonuses into the two dictionaries
-        pass
+    bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
 
     async with async_session() as session:
         # try:
@@ -784,6 +767,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.class_dc = await skill_mod_calc(key_ability, "class_dc", character.class_prof, character.level,
                                                   bonuses)
         character.init_string = f"1d20+{character.perception_mod}"
+        character.bonuses = bonuses
 
         macros = []
         for item in character.attacks:
@@ -795,6 +779,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         for item in macros:
             macro_string += f"{item},"
         character.macros = macro_string
+
 
         await session.commit()
 
@@ -884,3 +869,82 @@ async def bonus_calc(base, skill, bonuses):
         mod -= bonuses["item_neg"][skill]
 
     return mod
+
+async def parse_bonuses(ctx, engine, char_name:str, guild=None):
+    guild = await get_guild(ctx, guild=guild)
+    # Database boilerplate
+    if guild is not None:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+    else:
+        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
+            char_id = result.scalars().one()
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == char_id))
+            conditions = result.scalars().all()
+    except NoResultFound:
+        conditions = []
+
+    bonuses = {
+        "circumstances_pos": {},
+        "status_pos": {},
+        "item_pos": {},
+        "circumstances_neg": {},
+        "status_neg": {},
+        "item_neg": {}
+    }
+
+    for condition in conditions:
+        await asyncio.sleep(0)
+        # Get the data from the conditions
+        # Write the bonuses into the two dictionaries
+        data: str = condition.action
+        data_list = data.split(",")
+        for item in data_list:
+            key = item[0]
+            value = item[1][1:]
+            if item[2] == "s" and item[1][1] == "+": # Status Positive
+                if key in bonuses["status_pos"]:
+                    if value > bonuses["status_pos"][key]:
+                        bonuses["status_pos"][key] = value
+                else:
+                    bonuses["status_pos"][key] = value
+            elif item[2] == "s" and item[1][1] == "-": # Status Negative
+                if key in bonuses["status_neg"]:
+                    if value > bonuses["status_neg"][key]:
+                        bonuses["status_neg"][key] = value
+                else:
+                    bonuses["status_neg"][key] = value
+            elif item[2] == "c" and item[1][1] == "+":  # Circumastances Positive
+                if key in bonuses["circumstances_pos"]:
+                    if value > bonuses["circumstances_pos"][key]:
+                        bonuses["circumstances_pos"][key] = value
+                else:
+                    bonuses["circumstances_pos"][key] = value
+            elif item[2] == "c" and item[1][1] == "-":  # Circumastances Positive
+                if key in bonuses["circumstances_neg"]:
+                    if value > bonuses["circumstances_neg"][key]:
+                        bonuses["circumstances_neg"][key] = value
+                else:
+                    bonuses["circumstances_neg"][key] = value
+            elif item[2] == "i" and item[1][1] == "+":  # Item Positive
+                if key in bonuses["item_pos"]:
+                    if value > bonuses["item_pos"][key]:
+                        bonuses["item_pos"][key] = value
+                else:
+                    bonuses["item_pos"][key] = value
+            elif item[2] == "i" and item[1][1] == "-":  # Item Negative
+                if key in bonuses["item_neg"]:
+                    if value > bonuses["item_neg"][key]:
+                        bonuses["item_neg"][key] = value
+                else:
+                    bonuses["item_neg"][key] = value
+    return bonuses

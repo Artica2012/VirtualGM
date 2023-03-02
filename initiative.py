@@ -34,7 +34,7 @@ from database_models import get_tracker_table, get_condition_table, get_macro_ta
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from auto_complete import character_select, character_select_gm, cc_select, npc_select
+from auto_complete import character_select, character_select_gm, cc_select, npc_select, condition_select_EPF
 
 import warnings
 from sqlalchemy import exc
@@ -2933,6 +2933,7 @@ class InitiativeCog(commands.Cog):
         # guild_ids=[GUILD]
     )
     @option("character", description="Character to select", autocomplete=character_select)
+    @option("title", autocomplete=condition_select_EPF)
     @option("type", choices=["Condition", "Counter"])
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
     @option("unit", autocomplete=time_check_ac)

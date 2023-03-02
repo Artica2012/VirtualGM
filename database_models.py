@@ -112,7 +112,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
             print(f"From ID:{guild.id}")
 
     if guild.system == "EPF":
-        return await get_pf2_e_tracker(ctx, engine, id)
+        return await get_pf2_e_tracker(ctx, engine, id=id)
     else:
         tablename = f"Tracker_{id}"
         logging.info(f"get_tracker: Guild: {id}")
@@ -327,17 +327,13 @@ async def get_pf2_e_tracker(ctx: discord.ApplicationContext, engine, id=None):
         occult_mod = Column(Integer())
         primal_mod = Column(Integer())
 
-        # unarmed_mod = Column(Integer())
-        # simple_mod = Column(Integer())
-        # martial_mod = Column(Integer())
-        # advanced_mod = Column(Integer())
-
         ac_total = Column(Integer())
         resistance = Column(String())
         perception_mod = Column(Integer())
         macros = Column(String())
         attacks = Column(JSON())
         spells = Column(JSON())
+        bonuses = Column(JSON())
 
     logging.info("get_tracker: returning tracker")
     return Tracker
@@ -352,11 +348,12 @@ async def get_pf2_e_tracker(ctx: discord.ApplicationContext, engine, id=None):
 async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
+
     if id is None:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
-                select(Global.id).where(
+                select(Global).where(
                     or_(
                         Global.tracker_channel == ctx.interaction.channel_id,
                         Global.gm_tracker_channel == ctx.interaction.channel_id,
@@ -364,32 +361,40 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            if guild.system == "EPF":
-                return await get_EPF_condition(ctx, engine, id=guild.id)
-            tablename = f"Condition_{guild}"
-            logging.info(f"get_condition: Guild: {guild}")
+            print(f"From CTX:{guild.id}")
+        id = guild.id
+    else:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global).where(Global.id == id)
+            )
+            guild = result.scalars().one()
+            print(f"From ID:{guild.id}")
 
+    if guild.system == "EPF":
+        return await get_EPF_condition(ctx, engine, id=id)
     else:
         tablename = f"Condition_{id}"
 
-    DynamicBase = declarative_base(class_registry=dict())
+        DynamicBase = declarative_base(class_registry=dict())
 
-    class Condition(DynamicBase):
-        __tablename__ = tablename
-        __table_args__ = {"extend_existing": True}
+        class Condition(DynamicBase):
+            __tablename__ = tablename
+            __table_args__ = {"extend_existing": True}
 
-        id = Column(Integer(), primary_key=True, autoincrement=True)
-        character_id = Column(Integer(), nullable=False)
-        counter = Column(Boolean(), default=False)
-        title = Column(String(), nullable=False)
-        number = Column(Integer(), nullable=True, default=False)
-        auto_increment = Column(Boolean(), nullable=False, default=False)
-        time = Column(Boolean(), default=False)
-        visible = Column(Boolean(), default=True)
-        flex = Column(Boolean(), default=False)
+            id = Column(Integer(), primary_key=True, autoincrement=True)
+            character_id = Column(Integer(), nullable=False)
+            counter = Column(Boolean(), default=False)
+            title = Column(String(), nullable=False)
+            number = Column(Integer(), nullable=True, default=False)
+            auto_increment = Column(Boolean(), nullable=False, default=False)
+            time = Column(Boolean(), default=False)
+            visible = Column(Boolean(), default=True)
+            flex = Column(Boolean(), default=False)
 
-    logging.info("get_condition: returning condition")
-    return Condition
+        logging.info("get_condition: returning condition")
+        return Condition
 
 async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
@@ -446,6 +451,8 @@ async def get_condition_table(ctx, metadata, engine, guild=None):
                 )
             )
             guild = result.scalars().one()
+    if guild.system == "EPF":
+        return pf2_enhanced_support.EPF_ConditionTable(ctx, metadata, guild.id).condition_table()
 
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
     return table

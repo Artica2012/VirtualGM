@@ -131,7 +131,8 @@ class PF2_Character_Model:
             db.Column("perception_mod", db.INTEGER()),
             db.Column("macros", db.String()),
             db.Column("attacks", db.JSON()),
-            db.Column("spells", db.JSON())
+            db.Column("spells", db.JSON()),
+            db.Column("bonuses", db.JSON())
         )
 
         logging.info("pf2_character_model_table")
@@ -144,7 +145,7 @@ class EPF_ConditionTable:
         self.id = id
 
     def condition_table(
-        self,
+            self,
     ):
         tablename = f"Condition_{self.id}"
         con = db.Table(
@@ -162,3 +163,29 @@ class EPF_ConditionTable:
             db.Column("action", db.String(), default="")
         )
         return con
+
+# Conditions
+EPF_Conditions = {
+    "Blinded": "perception -4 s",
+    "Clumsy": "dex -X s",
+    "Confused": "ac -2 c",
+    "Deafened": "perception -2 s",
+    "Drained": "con -X s",
+    "Enfeebled": "str -X s",
+    "Fascinated": "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
+                  "diplomacy -2 s, intimidation -2 s, medicine -2 s, nature -2 s, occultism -2 s, perception -2 s, "
+                  "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s",
+    "Fatigued": "ac -1 s, fort -1 s, reflex -1 s, will -1 s",
+    "Flat-Footed": "ac -2 c",
+    "Frightened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
+    "Paralyzed": "ac -2 c",
+    "Prone": "ac -2 c, attacl -2 c",
+    "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
+    "Stupefied": "itl -X s, wis -X s, cha -X s",
+    "Unconscious": "ac -4 s, perception -4 s, reflex -4 s",
+    "Shield Raised +1": "ac +1",
+    "Shield Raised +2": "ac +2",
+    "Shield Raised +3": "ac +3",
+    "Inspire Courage": "attack +1 s, dmg +1 s",
+    "Inspire Defense": "ac +1 s, fort +1 s, reflex +1 s, will +1 s",
+}

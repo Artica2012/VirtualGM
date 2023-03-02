@@ -19,6 +19,8 @@ from character_functions import get_character
 import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
+from utils.utils import get_guild
+from PF2e.pf2_enhanced_support import EPF_Conditions
 
 # define global variables
 
@@ -144,6 +146,18 @@ async def npc_select(ctx: discord.AutocompleteContext):
     except Exception as e:
         logging.warning(f"npc_select: {e}")
         return []
+
+async def condition_select_EPF(ctx: discord.AutocompleteContext):
+    guild = await get_guild(ctx, None)
+    if guild.system == "EPF":
+        key_list = list(EPF_Conditions.keys())
+        # print(key_list)
+        key_list.sort()
+        val = ctx.value.lower()
+        return [option for option in key_list if val in option.lower()]
+    else:
+        return []
+
 
 
 async def macro_select(ctx: discord.AutocompleteContext):
