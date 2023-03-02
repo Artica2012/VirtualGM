@@ -21,6 +21,8 @@ from database_models import Global, get_macro, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from auto_complete import character_select, macro_select, character_select_gm
+from utils.utils import get_guild
+from character_functions import get_character
 
 # define global variables
 
@@ -205,46 +207,54 @@ class MacroCog(commands.Cog):
             return False
 
     async def roll_macro(
-        self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int, modifier: str
+        self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int, modifier: str, guild=None
     ):
-        logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]}")
+        logging.info(f"roll_macro {character}, {macro_name}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-        Macro = await get_macro(ctx, engine)
+        guild = await get_guild(ctx, guild)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, engine, id=guild.id)
 
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == character))
-            char = result.scalars().one()
-        async with async_session() as session:
-            result = await session.execute(
-                select(Macro).where(Macro.character_id == char.id).where(Macro.name == macro_name.split(":")[0])
-            )
-        try:
-            macro_data = result.scalars().one()
-        except Exception:
+        if guild.system == "EPF":
+            logging.info("EPF")
+            model = await get_character(character, ctx, guild=guild, engine=engine)
+            dice_result = await model.roll_macro(macro_name, modifier)
+            output_string = f"{character}:\n{macro_name}\n{dice_result}"
+
+        else:
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                char = result.scalars().one()
             async with async_session() as session:
                 result = await session.execute(
                     select(Macro).where(Macro.character_id == char.id).where(Macro.name == macro_name.split(":")[0])
                 )
-                macro_list = result.scalars().all()
-            # print(macro_list)
-            macro_data = macro_list[0]
-            await ctx.channel.send(
-                "Error: Duplicate Macros with the Same Name. Rolling one macro, but please ensure that you do not have"
-                " duplicate names."
-            )
+            try:
+                macro_data = result.scalars().one()
+            except Exception:
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Macro).where(Macro.character_id == char.id).where(Macro.name == macro_name.split(":")[0])
+                    )
+                    macro_list = result.scalars().all()
+                # print(macro_list)
+                macro_data = macro_list[0]
+                await ctx.channel.send(
+                    "Error: Duplicate Macros with the Same Name. Rolling one macro, but please ensure that you do not have"
+                    " duplicate names."
+                )
 
-        if modifier != "":
-            if modifier[0] == "+" or modifier[0] == "-":
-                macro_string = macro_data.macro + modifier
+            if modifier != "":
+                if modifier[0] == "+" or modifier[0] == "-":
+                    macro_string = macro_data.macro + modifier
+                else:
+                    macro_string = macro_data.macro + "+" + modifier
             else:
-                macro_string = macro_data.macro + "+" + modifier
-        else:
-            macro_string = macro_data.macro
+                macro_string = macro_data.macro
 
-        dice_result = d20.roll(macro_string)
-        output_string = f"{character}:\n{macro_name.split(':')[0]}\n{dice_result}"
+            dice_result = d20.roll(macro_string)
+            output_string = f"{character}:\n{macro_name.split(':')[0]}\n{dice_result}"
 
         return output_string
 
@@ -382,30 +392,19 @@ class MacroCog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         try:
             if secret == "Open":
-                await ctx.send_followup(await self.roll_macro(ctx, character, macro, dc, modifier))
+                await ctx.send_followup(await self.roll_macro(ctx, character, macro, dc, modifier, guild=guild))
             else:
-                async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-                async with async_session() as session:
-                    result = await session.execute(
-                        select(Global).where(
-                            or_(
-                                Global.tracker_channel == ctx.interaction.channel_id,
-                                Global.gm_tracker_channel == ctx.interaction.channel_id,
-                            )
-                        )
+                if guild.gm_tracker_channel is not None:
+                    await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
+                    await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                        f"Secret Roll:\n{await self.roll_macro(ctx, character, macro, dc, modifier, guild=guild)}"
                     )
-                    guild = result.scalars().one()
-                    if guild.gm_tracker_channel is not None:
-                        await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
-                        await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                            f"Secret Roll:\n{await self.roll_macro(ctx, character, macro, dc, modifier)}"
-                        )
-                    else:
-                        await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
-                        await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc, modifier))
-
+                else:
+                    await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
+                    await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc, modifier, guild=guild))
             await engine.dispose()
         except Exception as e:
             print(f"roll_macro: {e}")

@@ -168,6 +168,16 @@ async def macro_select(ctx: discord.AutocompleteContext):
     Macro = await get_macro(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
+    if guild.system == 'EPF':
+        EPF_Char = await get_character(character, ctx, guild=guild, engine=engine)
+        macro_list = await EPF_Char.macro_list()
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in macro_list if val in option.lower()]
+        else:
+            return macro_list
+
+
     try:
         async with async_session() as session:
             char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))

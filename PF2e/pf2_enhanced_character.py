@@ -336,6 +336,11 @@ class PF2_Character(Character):
         else:
             return 0
 
+    async def roll_macro(self, macro, modifier):
+        roll_string = f"{await self.get_roll(macro)}{ParseModifiers(modifier)}"
+        dice_result = d20.roll(roll_string)
+        return dice_result
+
     async def macro_list(self):
         list = self.character_model.macros.split(",")
         logging.info(list)
