@@ -22,8 +22,7 @@ from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
 from utils.parsing import ParseModifiers
-from PF2e.pf2_enhanced_character import get_EPF_Character
-import PF2e.pf2_enhanced_functions
+import EPF.EPF_Functions
 
 # define global variables
 
@@ -82,11 +81,11 @@ class AttackCog(commands.Cog):
                 return D4e.d4e_functions.D4e_attributes
             elif guild.system == "EPF":
                 if ctx.value != "":
-                    option_list = PF2e.pf2_enhanced_character.PF2_attributes + PF2e.pf2_enhanced_character.PF2_skills
+                    option_list = EPF.pf2_enhanced_character.PF2_attributes + EPF.pf2_enhanced_character.PF2_skills
                     val = ctx.value.lower()
                     return [option for option in option_list if val in option.lower()]
                 else:
-                    return PF2e.pf2_enhanced_character.PF2_attributes
+                    return EPF.pf2_enhanced_character.PF2_attributes
             else:
                 try:
                     # This should currently be inaccessible,
@@ -170,7 +169,7 @@ class AttackCog(commands.Cog):
                 )
         elif guild.system == "EPF":
             logging.info("EPF")
-            output_string = await PF2e.pf2_enhanced_functions.attack(
+            output_string = await EPF.EPF_Functions.attack(
                 ctx, engine, self.bot, character, target, roll, vs, attack_modifier,
                 target_modifier
             )
@@ -229,8 +228,8 @@ class AttackCog(commands.Cog):
             output_string = await PF2e.pf2_functions.save(ctx, engine, self.bot, character, target, save, dc, modifier)
             await ctx.send_followup(output_string)
         elif guild.system == "EPF":
-            output_string = await PF2e.pf2_enhanced_functions.save(ctx, engine, self.bot, character, target, save, dc,
-                                                                   modifier)
+            output_string = await EPF.EPF_Functions.save(ctx, engine, self.bot, character, target, save, dc,
+                                                         modifier)
             await ctx.send_followup(output_string)
         elif guild.system == "D4e":
             await ctx.send_followup(

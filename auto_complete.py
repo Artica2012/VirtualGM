@@ -20,7 +20,7 @@ import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
-from PF2e.pf2_enhanced_support import EPF_Conditions
+from EPF.EPF_Support import EPF_Conditions
 
 # define global variables
 

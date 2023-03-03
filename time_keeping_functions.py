@@ -126,9 +126,10 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=No
             )
         return ""
     except Exception as e:
-        print(f"output_datetime: {e}")
-        report = ErrorReport(ctx, "output_datetime", e, bot)
-        await report.report()
+        logging.error(f"output_datetime: {e}")
+        if ctx is not None and bot is not None:
+            report = ErrorReport(ctx, "output_datetime", e, bot)
+            await report.report()
         return ""
 
 

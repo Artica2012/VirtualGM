@@ -68,6 +68,7 @@ class Character():
         self.temp_hp = character.max_hp
         self.init_string = character.init_string
         self.init = character.init
+        self.active = character.active
         self.character_model = character
 
     async def character(self):
@@ -127,6 +128,7 @@ class Character():
                 character.current_hp = new_hp
                 character.temp_hp = new_thp
                 await session.commit()
+                await self.update()
 
             if character.player:  # Show the HP it its a player
                 if heal:
@@ -138,26 +140,26 @@ class Character():
             else:  # Obscure the HP if its an NPC
                 if heal:
                     await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. {await self.calculate_hp(new_hp, character.max_hp)}")
+                        f"{self.name} healed for {amount}. {await self.calculate_hp()}")
                 else:
                     await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. {await self.calculate_hp(new_hp, character.max_hp)}")
+                        f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
             await self.update()
             return True
         except Exception as e:
             logging.warning(f"change_hp: {e}")
             return False
 
-    async def calculate_hp(self, chp, maxhp):
-        logging.info(f"Calculate hp {chp}/{maxhp}")
-        hp = chp / maxhp
+    async def calculate_hp(self):
+        logging.info("Calculate hp")
+        hp = self.current_hp / self.max_hp
         if hp == 1:
             hp_string = "Uninjured"
         elif hp > 0.5:
             hp_string = "Injured"
         elif hp >= 0.1:
             hp_string = "Bloodied"
-        elif chp > 0:
+        elif hp > 0:
             hp_string = "Critical"
         else:
             hp_string = "Dead"
@@ -321,4 +323,59 @@ class Character():
         except Exception as e:
             logging.warning(f"delete_cc: {e}")
             return False
+
+    async def edit_cc(self, condition: str, value: int):
+        logging.info("edit_cc")
+
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition).where(Condition.character_id == self.id).where(Condition.title == condition)
+                )
+                condition = result.scalars().one()
+
+                if condition.time:
+                    await self.ctx.send_followup(
+                        "Unable to edit time based conditions. Try again in a future update.", ephemeral=True
+                    )
+                    return False
+                else:
+                    condition.number = value
+                    await session.commit()
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"edit_cc: {e}")
+            return False
+
+    async def check_time_cc(self, bot=None):
+        logging.info("Clean CC")
+        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Condition = await get_condition(self.ctx, self.engine, self.guild)
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == self.id)
+                                           .where(Condition.time == true()))
+            con_list = result.scalars().all()
+
+        for row in con_list:
+            await asyncio.sleep(0)
+            time_stamp = datetime.datetime.fromtimestamp(row.number)
+            time_left = time_stamp - current_time
+            if time_left.total_seconds() <= 0:
+                result = await self.delete_cc(row.title)
+            if result:
+                if self.ctx is not None:
+                    await self.ctx.channel.send(f"{row.title} removed from {self.char_name}")
+                elif bot is not None:
+                    tracker_channel = bot.get_channel(self.guild.tracker_channel)
+                    tracker_channel.send(f"{row.title} removed from {self.char_name}")
+
 

@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from PF2e.pf2_enhanced_character import get_EPF_Character
+from EPF.EPF_Character import get_EPF_Character
 from character import Character
 from character_functions import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_models import get_tracker

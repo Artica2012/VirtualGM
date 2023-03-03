@@ -11,7 +11,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_, select
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -20,7 +19,7 @@ from sqlalchemy.orm import sessionmaker
 # define global variables
 # import initiative
 # import initiative
-from PF2e import pf2_enhanced_support
+from EPF import EPF_Support
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -160,7 +159,7 @@ async def get_tracker_table(ctx, metadata, engine, guild=None):
         guild = result.scalars().one()
 
     if guild.system == "EPF":
-        table = pf2_enhanced_support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
+        table = EPF_Support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
 
     else:
         table = TrackerTable(ctx, metadata, guild.id).tracker_table()
@@ -452,7 +451,7 @@ async def get_condition_table(ctx, metadata, engine, guild=None):
             )
             guild = result.scalars().one()
     if guild.system == "EPF":
-        return pf2_enhanced_support.EPF_ConditionTable(ctx, metadata, guild.id).condition_table()
+        return EPF_Support.EPF_ConditionTable(ctx, metadata, guild.id).condition_table()
 
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
     return table

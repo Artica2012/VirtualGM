@@ -3,38 +3,24 @@ import logging
 import os
 
 # imports
-from datetime import datetime
-from math import floor
 
-import aiohttp
 import discord
-from discord import Interaction
 from dotenv import load_dotenv
-import sqlalchemy as db
-from sqlalchemy import select, false, true
+from sqlalchemy import true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, BigInteger
-from sqlalchemy import String, Boolean
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 import d20
 
 from PF2e.pf2_functions import PF2_eval_succss
-from PF2e.pf2_enhanced_character import get_EPF_Character
+from EPF.EPF_Character import get_EPF_Character
 from utils.utils import get_guild
 from database_models import (
     get_condition,
-    get_pf2_e_tracker,
 )
-from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
 
 # define global variables
