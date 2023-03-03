@@ -443,7 +443,7 @@ class PF2_Character(Character):
                     session.add(condition)
                 await session.commit()
                 # await update_pinned_tracker(ctx, engine, bot)
-                await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+                await self.update()
                 return True
 
         except NoResultFound:
@@ -453,6 +453,36 @@ class PF2_Character(Character):
             logging.warning(f"set_cc: {e}")
             return False
 
+    # Delete CC
+    async def delete_cc(self, condition):
+        logging.info("delete_Cc")
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.visible == true())
+                        .where(Condition.title == condition)
+                )
+                con_list = result.scalars().all()
+            if len(con_list) == 0:
+                return False
+
+            for con in con_list:
+                await asyncio.sleep(0)
+                async with async_session() as session:
+                    await session.delete(con)
+                    await session.commit()
+            await self.update()
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"delete_cc: {e}")
+            return False
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}
@@ -679,6 +709,7 @@ async def calculate(ctx, engine, char_name, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    print(bonuses)
 
     async with async_session() as session:
         # try:
@@ -955,4 +986,5 @@ async def parse_bonuses(ctx, engine, char_name:str, guild=None):
                         bonuses["item_neg"][key] = value
                 else:
                     bonuses["item_neg"][key] = value
+    print(bonuses)
     return bonuses

@@ -5,7 +5,6 @@
 import asyncio
 import datetime
 import logging
-import os
 import inspect
 import sys
 
@@ -15,7 +14,6 @@ import sqlalchemy as db
 from discord import option, Interaction
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from dotenv import load_dotenv
 from sqlalchemy import or_, select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +22,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
-from character_functions import get_character
+from utils.Char_Getter import get_character
 import auto_complete
 import time_keeping_functions
 import ui_components
@@ -35,31 +33,10 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from auto_complete import character_select, character_select_gm, cc_select, npc_select, condition_select_EPF
-
 import warnings
 from sqlalchemy import exc
-
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    # TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    # TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 
 #################################################################
@@ -1367,7 +1344,7 @@ async def block_get_tracker(
     logging.info(f"BGT: Guild: {guild.id}")
     init_list = await get_init_list(ctx, engine, guild=guild)
 
-    if guild.system == "PF2" or "EPF":
+    if guild.system == "PF2":
         logging.info("PF2")
         output_string = await PF2e.pf2_functions.pf2_get_tracker(init_list, selected, ctx, engine, bot, gm, guild=guild)
     elif guild.system == "D4e":

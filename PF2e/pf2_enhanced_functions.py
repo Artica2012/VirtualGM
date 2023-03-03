@@ -226,3 +226,5 @@ async def EPF_init_con(ctx: discord.ApplicationContext, engine, bot, current_cha
         if ctx is not None:
             report = ErrorReport(ctx, EPF_init_con.__name__, e, bot)
             await report.report()
+
+

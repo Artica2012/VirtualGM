@@ -179,7 +179,7 @@ EPF_Conditions = {
     "Flat-Footed": "ac -2 c",
     "Frightened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
     "Paralyzed": "ac -2 c",
-    "Prone": "ac -2 c, attacl -2 c",
+    "Prone": "ac -2 c, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
     "Stupefied": "itl -X s, wis -X s, cha -X s",
     "Unconscious": "ac -4 s, perception -4 s, reflex -4 s",

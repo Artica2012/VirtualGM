@@ -282,8 +282,6 @@ async def advance_time(
         return False
     except Exception as e:
         logging.error(f"advance_time: {e}")
-        report = ErrorReport(ctx, "advance_time", e, bot)
-        await report.report()
         return False
 
 

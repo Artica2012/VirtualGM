@@ -291,3 +291,34 @@ class Character():
         except Exception as e:
             logging.warning(f"set_cc: {e}")
             return False
+
+    # Delete CC
+    async def delete_cc(self, condition):
+        logging.info("delete_Cc")
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.visible == true())
+                        .where(Condition.title == condition)
+                )
+                con_list = result.scalars().all()
+            if len(con_list) == 0:
+                return False
+
+            for con in con_list:
+                await asyncio.sleep(0)
+                async with async_session() as session:
+                    await session.delete(con)
+                    await session.commit()
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"delete_cc: {e}")
+            return False
+

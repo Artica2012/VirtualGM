@@ -22,7 +22,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from auto_complete import character_select, macro_select, character_select_gm
 from utils.utils import get_guild
-from character_functions import get_character
+from utils.Char_Getter import get_character
 
 # define global variables
 

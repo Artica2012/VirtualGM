@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import PF2e.pf2_functions
-from character_functions import get_character
+from utils.Char_Getter import get_character
 import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
