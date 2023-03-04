@@ -35,6 +35,7 @@ from time_keeping_functions import output_datetime, check_timekeeper, advance_ti
 from auto_complete import character_select, character_select_gm, cc_select, npc_select, condition_select_EPF
 import warnings
 from sqlalchemy import exc
+from utils.Tracker_Getter import get_tracker_model
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
@@ -2816,13 +2817,11 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             await ctx.response.defer()
-            # Advance Init and Display
-            await block_advance_initiative(ctx, engine, self.bot)  # Advance the init
+            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine )
+            await Tracker_Object.next()
 
-            # Query the initiative position for the tracker and post it
-            await block_post_init(ctx, engine, self.bot)
-            # await update_pinned_tracker(ctx, engine, self.bot)  # update the pinned tracker
-
+            # await block_advance_initiative(ctx, engine, self.bot)  # Advance the init
+            # await block_post_init(ctx, engine, self.bot)
         except NoResultFound:
             await ctx.respond(error_not_initialized, ephemeral=True)
         except PermissionError:
@@ -2856,15 +2855,13 @@ class InitiativeCog(commands.Cog):
         else:
             try:
                 roll = d20.roll(initiative)
-                if guild.system == "EPF":
-                    model = await get_character(character, ctx, guild=guild, engine=engine)
-                    await model.set_init(roll.total)
-                else:
-                    await set_init(ctx, self.bot, character, roll.total, engine)
+                model = await get_character(character, ctx, guild=guild, engine=engine)
+                await model.set_init(roll.total)
                 await ctx.respond(f"Initiative set to {roll.total} for {character}")
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
-        await update_pinned_tracker(ctx, engine, self.bot)
+        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Object.update_pinned_tracker()
         await engine.dispose()
 
     @i.command(

@@ -23,7 +23,7 @@ from database_models import (
     get_pf2_e_tracker,
 )
 from database_operations import get_asyncio_db_engine
-from character import Character
+from Generic.Character import Character
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers

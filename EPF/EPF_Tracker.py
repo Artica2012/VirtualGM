@@ -1,34 +1,32 @@
 # imports
 import asyncio
-import datetime
 import logging
 
 import d20
-from sqlalchemy import select, false, true, or_
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_condition, get_tracker, Global
+from database_models import get_tracker, Global
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, get_time, advance_time
+from error_handling_reporting import ErrorReport
+from time_keeping_functions import advance_time
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Tracker import Tracker
+from Generic.Tracker import Tracker
 from utils.Char_Getter import get_character
 
 
-async def get_EPF_Tracker(ctx, bot, guild=None, engine=None):
+async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    await get_guild(ctx, guild)
-    return EPF_Tracker(ctx, bot, engine=engine, guild=guild)
+    guild = await get_guild(ctx, guild)
+    return EPF_Tracker(ctx, engine, init_list, bot, guild=guild)
 
 
 class EPF_Tracker(Tracker):
-    def __init__(self, ctx, bot, engine=None, guild=None):
-        super().__init__(ctx, bot, engine, guild)
+    def __init__(self, ctx, engine, init_list, bot, guild=None):
+        super().__init__(ctx, engine, init_list, bot, guild)
 
     async def advance_initiative(self):
         if self.guild.block:
