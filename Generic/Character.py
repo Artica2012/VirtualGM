@@ -19,8 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
-import D4e.d4e_functions
-import PF2e.pf2_functions
 import time_keeping_functions
 import ui_components
 from utils.utils import get_guild
@@ -65,7 +63,7 @@ class Character():
         self.user = character.user
         self.current_hp = character.current_hp
         self.max_hp = character.max_hp
-        self.temp_hp = character.max_hp
+        self.temp_hp = character.temp_hp
         self.init_string = character.init_string
         self.init = character.init
         self.active = character.active
@@ -86,6 +84,21 @@ class Character():
 
         except NoResultFound:
             return None
+
+    async def conditions(self, ctx):
+        logging.info("Returning PF2 Character Conditions")
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        if self.guild is not None:
+            Condition = await get_condition(ctx, self.engine, id=self.guild.id)
+        else:
+            Condition = await get_condition(ctx, self.engine)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(Condition)
+                                               .where(Condition.character_id == self.id))
+                return result.scalars().all()
+        except NoResultFound:
+            return []
 
     async def change_hp(self, amount: int, heal: bool):
         logging.info("Edit HP")
@@ -377,5 +390,125 @@ class Character():
                 elif bot is not None:
                     tracker_channel = bot.get_channel(self.guild.tracker_channel)
                     tracker_channel.send(f"{row.title} removed from {self.char_name}")
+
+    async def get_char_sheet(self, bot):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            # Load the tables
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+
+            if self.character_model.player:
+                status = "PC:"
+            else:
+                status = "NPC:"
+
+            condition_list = await self.conditions()
+            user_name = bot.get_user(self.user).name
+
+            embed = discord.Embed(
+                title=f"{self.char_name}",
+                fields=[
+                    discord.EmbedField(name="Name: ", value=self.char_name, inline=False),
+                    discord.EmbedField(name=status, value=user_name, inline=False),
+                    discord.EmbedField(
+                        name="HP: ",
+                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)",
+                        inline=False,
+                    ),
+                    discord.EmbedField(name="Initiative: ", value=self.init_string, inline=False),
+                ],
+                color=discord.Color.dark_gold(),
+            )
+            # if condition_list != None:
+            condition_embed = discord.Embed(
+                title="Conditions",
+                fields=[],
+                color=discord.Color.dark_teal(),
+            )
+            counter_embed = discord.Embed(
+                title="Counters",
+                fields=[],
+                color=discord.Color.dark_magenta(),
+            )
+            for item in condition_list:
+                await asyncio.sleep(0)
+                if not item.visible:
+                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
+                elif item.visible and not item.time:
+                    if not item.counter:
+                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                    elif item.counter:
+                        if item.number != 0:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                        else:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
+                elif item.visible and item.time and not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title,
+                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number)
+                        )
+                    )
+            return [embed, counter_embed, condition_embed]
+        except NoResultFound:
+            await self.ctx.respond(error_not_initialized, ephemeral=True)
+            return False
+        except IndexError:
+            await self.ctx.respond("Ensure that you have added characters to the initiative list.")
+        except Exception:
+            await self.ctx.respond("Failed")
+
+    async def edit_character(self,
+            name: str,
+            hp: int,
+            init: str,
+            active: bool,
+            player: discord.User,
+            bot
+    ):
+        logging.info("edit_character")
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+
+            # Give an error message if the character is the active character and making them inactive
+            if self.guild.saved_order == name:
+                await self.ctx.channel.send(
+                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
+                    " turn and try again."
+                )
+
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == name))
+                character = result.scalars().one()
+
+                if hp is not None:
+                    character.max_hp = hp
+                if init is not None:
+                    character.init_string = str(init)
+                if player is not None:
+                    character.user = player.id
+                if active is not None:
+                    character.active = active
+                if active is not None and self.guild.saved_order != name:
+                    character.active = active
+
+                await session.commit()
+                await self.ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+                return True
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"add_character: {e}")
+            return False
+
+
+
+
 
 

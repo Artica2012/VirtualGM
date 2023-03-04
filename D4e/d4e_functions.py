@@ -17,32 +17,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import d20
+from utils.utils import get_guild
+from utils.Char_Getter import get_character
+from utils.Tracker_Getter import get_tracker_model
+import Generic.character_functions
 import initiative
 from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 D4e_attributes = ["AC", "Fort", "Reflex", "Will"]
 D4e_base_roll = d20.roll(f"{10}")
@@ -396,35 +381,20 @@ async def gm_check(ctx, engine, guild=None):
         return False
 
 
-async def edit_stats(ctx, engine, bot, name: str):
+async def edit_stats(ctx, engine, name: str, bot):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id,
-                    )
-                )
-            )
-            guild = result.scalars().one()
+        if engine == None:
+            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        guild = await get_guild(ctx, None)
 
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = result.scalars().one()
-
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == character.id))
-            conditions = result.scalars().all()
+        Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
         condition_dict = {}
-        for con in conditions:
+        for con in await Character_Model.conditions():
             await asyncio.sleep(0)
             condition_dict[con.title] = con.number
         editModal = D4eEditCharacterModal(
-            character=character, cons=condition_dict, ctx=ctx, engine=engine, bot=bot, title=character.name
+            character=await Character_Model.character(), cons=condition_dict, ctx=ctx, engine=engine, title=name, bot=bot
         )
         await ctx.send_modal(editModal)
 
@@ -442,7 +412,7 @@ class D4eEditCharacterModal(discord.ui.Modal):
         self.name = character.name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.engine = engine
         self.bot = bot
         super().__init__(
             discord.ui.InputText(label="AC", placeholder="Armor Class", value=cons["AC"]),
@@ -497,9 +467,10 @@ class D4eEditCharacterModal(discord.ui.Modal):
                 condition.number = int(item.value)
                 await session.commit()
 
-        await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
+        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        await Tracker_Model.update_pinned_tracker()
         # print('Tracker Updated')
-        await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
+        await self.ctx.channel.send(embeds=await Generic.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)

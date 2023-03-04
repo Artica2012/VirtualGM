@@ -1,4 +1,4 @@
-from Generic.character_functions import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Generic.Tracker import get_init_list, Tracker
 from database_operations import get_asyncio_db_engine

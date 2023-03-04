@@ -22,12 +22,12 @@ from sqlalchemy.sql.ddl import DropTable
 
 import D4e.d4e_functions
 import PF2e.pf2_functions
+from Generic.character_functions import add_character, edit_character, copy_character, delete_character
 from utils.Char_Getter import get_character
 import auto_complete
-import time_keeping_functions
 import ui_components
 from database_models import Global
-from database_models import get_tracker, get_condition, get_macro
+from database_models import get_tracker, get_condition
 from database_models import get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -36,6 +36,8 @@ from auto_complete import character_select, character_select_gm, cc_select, npc_
 import warnings
 from sqlalchemy import exc
 from utils.Tracker_Getter import get_tracker_model
+from utils.utils import gm_check
+
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
@@ -239,433 +241,6 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # CHARACTER MANAGEMENT
-
-
-# Add a character to the database
-async def add_character(ctx: discord.ApplicationContext, engine, bot, name: str, hp: int, player_bool: bool, init: str):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await get_guild(ctx, None)
-
-        initiative = 0
-        if guild.initiative is not None:
-            try:
-                roll = d20.roll(init)
-                initiative = roll.total
-            except ValueError:
-                await ctx.channel.send(f"Invalid Initiative String `{init}`, Please check and try again.")
-                return False
-            except Exception:
-                initiative = 0
-
-        if guild.system == "PF2":
-            pf2Modal = PF2AddCharacterModal(
-                name=name,
-                hp=hp,
-                init=init,
-                initiative=initiative,
-                player=player_bool,
-                ctx=ctx,
-                engine=engine,
-                bot=bot,
-                title=name,
-            )
-            await ctx.send_modal(pf2Modal)
-            return True
-        elif guild.system == "D4e":
-            D4eModal = D4eAddCharacterModal(
-                name=name,
-                hp=hp,
-                init=init,
-                initiative=initiative,
-                player=player_bool,
-                ctx=ctx,
-                engine=engine,
-                bot=bot,
-                title=name,
-            )
-            await ctx.send_modal(D4eModal)
-            return True
-        else:
-            async with async_session() as session:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                async with session.begin():
-                    tracker = Tracker(
-                        name=name,
-                        init_string=init,
-                        init=initiative,
-                        player=player_bool,
-                        user=ctx.user.id,
-                        current_hp=hp,
-                        max_hp=hp,
-                        temp_hp=0,
-                    )
-                    session.add(tracker)
-                await session.commit()
-
-        await engine.dispose()
-        await update_pinned_tracker(ctx, engine, bot)
-        return True
-    except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
-        return False
-    except Exception as e:
-        logging.warning(f"add_character: {e}")
-        report = ErrorReport(ctx, add_character.__name__, e, bot)
-        await report.report()
-        return False
-
-
-# Add a character to the database
-async def edit_character(
-    ctx: discord.ApplicationContext,
-    engine,
-    bot,
-    name: str,
-    hp: int,
-    init: str,
-    active: bool,
-    player: discord.User,
-    guild=None,
-):
-    logging.info("edit_character")
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await get_guild(ctx, guild)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-
-        # Give an error message if the character is the active character and making them inactive
-        if guild.saved_order == name:
-            await ctx.channel.send(
-                "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                " turn and try again."
-            )
-
-        async with async_session() as session:
-            result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = result.scalars().one()
-
-            if hp is not None:
-                character.max_hp = hp
-            if init is not None:
-                character.init_string = str(init)
-            if player is not None:
-                character.user = player.id
-            if active is not None:
-                character.active = active
-            if active is not None and guild.saved_order != name:
-                character.active = active
-
-            await session.commit()
-        if guild.system == "PF2":
-            response = await PF2e.pf2_functions.edit_stats(ctx, engine, bot, name)
-            if response:
-                # await update_pinned_tracker(ctx, engine, bot)
-                return True
-            else:
-                return False
-        elif guild.system == "D4e":
-            response = await D4e.d4e_functions.edit_stats(ctx, engine, bot, name)
-            if response:
-                # await update_pinned_tracker(ctx, engine, bot)
-                return True
-            else:
-                return False
-        else:
-            await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
-            await update_pinned_tracker(ctx, engine, bot)
-            await engine.dispose()
-            return True
-
-    except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
-        return False
-    except Exception as e:
-        logging.warning(f"add_character: {e}")
-        report = ErrorReport(ctx, add_character.__name__, e, bot)
-        await report.report()
-        return False
-
-
-async def copy_character(ctx: discord.ApplicationContext, engine, bot, name: str, new_name: str):
-    logging.info("copy_character")
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await get_guild(ctx, None)
-
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        Macro = await get_macro(ctx, engine, id=guild.id)
-
-        # Load up the old character
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = char_result.scalars().one()
-
-        # If initiative is active, roll initiative
-        initiative = 0
-        if guild.initiative is not None:
-            try:
-                roll = d20.roll(character.init_string)
-                initiative = roll.total
-            except Exception:
-                initiative = 0
-
-        # Copy the character over into a new character with a new name
-        async with session.begin():
-            new_char = Tracker(
-                name=new_name,
-                init_string=character.init_string,
-                init=initiative,
-                player=character.player,
-                user=character.user,
-                current_hp=character.current_hp,
-                max_hp=character.max_hp,
-                temp_hp=character.temp_hp,
-            )
-            session.add(new_char)
-        await session.commit()
-
-        # Load the new character from the database, to get its ID
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == new_name))
-            new_character = char_result.scalars().one()
-
-        # Copy conditions
-        async with async_session() as session:
-            con_result = await session.execute(
-                select(Condition).where(Condition.character_id == character.id).where(Condition.visible == false())
-            )
-            conditions = con_result.scalars().all()
-
-        async with session.begin():
-            for condit in conditions:
-                await asyncio.sleep(0)
-                new_condition = Condition(
-                    character_id=new_character.id,
-                    counter=condit.counter,
-                    title=condit.title,
-                    number=condit.number,
-                    auto_increment=condit.auto_increment,
-                    time=condit.time,
-                    visible=condit.visible,
-                )
-                session.add(new_condition)
-            await session.commit()
-
-        # Copy Macros
-        async with async_session() as session:
-            macro_result = await session.execute(select(Macro).where(Macro.character_id == character.id))
-            macros = macro_result.scalars().all()
-
-        async with session.begin():
-            for mac in macros:
-                await asyncio.sleep(0)
-                new_macro = Macro(character_id=new_character.id, name=mac.name, macro=mac.macro)
-                session.add(new_macro)
-            await session.commit()
-
-        await engine.dispose()
-        return True
-
-    except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
-        return False
-    except Exception as e:
-        logging.warning("add_character: {e}")
-        report = ErrorReport(ctx, copy_character.__name__, e, bot)
-        await report.report()
-        return False
-
-
-# Delete a character
-async def delete_character(ctx: discord.ApplicationContext, character: str, engine, bot):
-    logging.info("delete_Character")
-    try:
-        # load tables
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await get_guild(ctx, None)
-
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        Macro = await get_macro(ctx, engine, id=guild.id)
-
-        async with async_session() as session:
-            # print(character)
-            result = await session.execute(select(Tracker).where(Tracker.name == character))
-            char = result.scalars().one()
-            # print(char.id)
-            result = await session.execute(select(Condition).where(Condition.character_id == char.id))
-            Condition_list = result.scalars().all()
-            # print(Condition_list)
-            result = await session.execute(select(Macro).where(Macro.character_id == char.id))
-            Macro_list = result.scalars().all()
-        # Delete Conditions
-        for con in Condition_list:
-            await asyncio.sleep(0)
-            async with async_session() as session:
-                await session.delete(con)
-                await session.commit()
-        # Delete Macros
-        for mac in Macro_list:
-            await asyncio.sleep(0)
-            async with async_session() as session:
-                await session.delete(mac)
-                await session.commit()
-        # Delete the Character
-        async with async_session() as session:
-            await session.delete(char)
-            await session.commit()
-        await ctx.channel.send(f"{char.name} Deleted")
-
-        await engine.dispose()
-        return True
-    except Exception as e:
-        logging.warning(f"delete_character: {e}")
-        report = ErrorReport(ctx, delete_character.__name__, e, bot)
-        await report.report()
-        return False
-
-
-# Generate the character sheet
-async def get_char_sheet(ctx: discord.ApplicationContext, engine, bot: discord.Bot, name: str, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    try:
-        # Load the tables
-        guild = await get_guild(ctx, guild)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-
-        if guild.system == "EPF":
-            character = await get_character(name, ctx, guild=guild, engine=engine)
-            user = bot.get_user(character.character_model.user).name
-            if character.character_model.player:
-                status = "PC:"
-            else:
-                status = "NPC:"
-
-            condition_list = await character.conditions(ctx)
-
-            embed = discord.Embed(
-                title=f"{name}",
-                fields=[
-                    discord.EmbedField(name="Name: ", value=character.character_model.name, inline=False),
-                    discord.EmbedField(name=status, value=user, inline=False),
-                    discord.EmbedField(
-                        name="HP: ",
-                        value=f"{character.current_hp}/{character.max_hp}: ({character.temp_hp} Temp)",
-                        inline=False,
-                    ),
-                    discord.EmbedField(name="Initiative: ", value=character.init_string, inline=False),
-                ],
-                color=discord.Color.dark_gold(),
-            )
-            # if condition_list != None:
-            condition_embed = discord.Embed(
-                title="Conditions",
-                fields=[],
-                color=discord.Color.dark_teal(),
-            )
-            counter_embed = discord.Embed(
-                title="Counters",
-                fields=[],
-                color=discord.Color.dark_magenta(),
-            )
-            for item in condition_list:
-                await asyncio.sleep(0)
-                if not item.visible:
-                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
-                elif item.visible and not item.time:
-                    if not item.counter:
-                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                    elif item.counter:
-                        if item.number != 0:
-                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                        else:
-                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
-                elif item.visible and item.time and not item.counter:
-                    condition_embed.fields.append(
-                        discord.EmbedField(
-                            name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
-                        )
-                    )
-            print("returning 3")
-            return [embed, counter_embed, condition_embed]
-            # else:
-            #     print("returning 1")
-            #     return [embed]
-
-        else:
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == name))
-                character = result.scalars().one()
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Condition).where(Condition.character_id == character.id).order_by(Condition.title.asc())
-                )
-                condition_list = result.scalars().all()
-
-            user = bot.get_user(character.user).name
-            if character.player:
-                status = "PC:"
-            else:
-                status = "NPC:"
-            con_dict = {}
-
-            for item in condition_list:
-                con_dict[item.title] = item.number
-
-            embed = discord.Embed(
-                title=f"{name}",
-                fields=[
-                    discord.EmbedField(name="Name: ", value=character.name, inline=False),
-                    discord.EmbedField(name=status, value=user, inline=False),
-                    discord.EmbedField(
-                        name="HP: ",
-                        value=f"{character.current_hp}/{character.max_hp}: ( {character.temp_hp} Temp)",
-                        inline=False,
-                    ),
-                    discord.EmbedField(name="Initiative: ", value=character.init_string, inline=False),
-                ],
-                color=discord.Color.dark_gold(),
-            )
-            condition_embed = discord.Embed(
-                title="Conditions",
-                fields=[],
-                color=discord.Color.dark_teal(),
-            )
-            counter_embed = discord.Embed(
-                title="Counters",
-                fields=[],
-                color=discord.Color.dark_magenta(),
-            )
-
-            for item in condition_list:
-                await asyncio.sleep(0)
-                if not item.visible:
-                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
-                elif item.visible and not item.time:
-                    if not item.counter:
-                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                    elif item.counter:
-                        if item.number != 0:
-                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
-                        else:
-                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
-                elif item.visible and item.time and not item.counter:
-                    condition_embed.fields.append(
-                        discord.EmbedField(
-                            name=item.title, value=await time_keeping_functions.time_left(ctx, engine, bot, item.number)
-                        )
-                    )
-
-            return [embed, counter_embed, condition_embed]
-    except Exception as e:
-        logging.info(f"get character sheet: {e}")
-        report = ErrorReport(ctx, get_char_sheet.__name__, e, bot)
-        await report.report()
-
 
 # Calculates the HP String
 async def calculate_hp(chp, maxhp):
@@ -1909,55 +1484,6 @@ async def set_cc(
         return False
 
 
-async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: str, condition: str, bot, guild=None):
-    logging.info("edit_cc_interface")
-    view = discord.ui.View()
-    try:
-        guild = await get_guild(ctx, guild)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        async with async_session() as session:
-            result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            char = result.scalars().one()
-    except NoResultFound:
-        if ctx is not None:
-            await ctx.channel.send(error_not_initialized, delete_after=30)
-        return [None, None]
-    except Exception as e:
-        logging.info(f"edit_cc: {e}")
-        if ctx is not None:
-            report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
-            await report.report()
-        return [None, None]
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition).where(Condition.character_id == char).where(Condition.title == condition)
-            )
-            cond = result.scalars().one()
-
-            if cond.time or cond.number is None:
-                await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
-                return [None, None]
-            else:
-                output_string = f"{cond.title}: {cond.number}"
-                view.add_item(ui_components.ConditionMinus(ctx, bot, character, condition, guild))
-                view.add_item(ui_components.ConditionAdd(ctx, bot, character, condition, guild))
-                return output_string, view
-    except NoResultFound:
-        if ctx is not None:
-            await ctx.channel.send(error_not_initialized, delete_after=30)
-        return [None, None]
-    except Exception as e:
-        logging.info(f"edit_cc: {e}")
-        if ctx is not None:
-            report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
-            await report.report()
-        return [None, None]
-
-
 async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condition: str, value: int, bot):
     logging.info("edit_cc")
     try:
@@ -2008,59 +1534,6 @@ async def edit_cc(ctx: discord.ApplicationContext, engine, character: str, condi
 
 
 # Function called by the + and - buttons for the edit_cc interface
-async def increment_cc(
-    ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
-):
-    logging.info("increment_cc")
-    try:
-        guild = await get_guild(ctx, guild)
-
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        async with async_session() as session:
-            result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            character = result.scalars().one()
-
-    except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
-        return False
-    except Exception as e:
-        logging.info(f"increment_cc: {e}")
-        if ctx is not None:
-            report = ErrorReport(ctx, increment_cc.__name__, e, bot)
-            await report.report()
-        return False
-
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition).where(Condition.character_id == character).where(Condition.title == condition)
-            )
-            condition = result.scalars().one()
-            current_value = condition.number
-
-            if condition.time or condition.number is None:
-                await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
-                return False
-            else:
-                if add is True:
-                    condition.number = current_value + 1
-                else:
-                    condition.number = current_value - 1
-                await session.commit()
-        # await update_pinned_tracker(ctx, engine, bot)
-        await engine.dispose()
-        return True
-    except NoResultFound:
-        await ctx.channel.send(error_not_initialized, delete_after=30)
-        return False
-    except Exception as e:
-        logging.warning(f"edit_cc: {e}")
-        report = ErrorReport(ctx, edit_cc.__name__, e, bot)
-        await report.report()
-        return False
 
 
 # Delete CC
@@ -2148,53 +1621,6 @@ async def check_cc(ctx: discord.ApplicationContext, engine, bot, guild=None):
                 tracker_channel = bot.get_channel(guild.tracker_channel)
                 tracker_channel.send(f"{row.title} removed from {character.name}")
     await engine.dispose()
-
-
-# ---------------------------------------------------------------
-# ---------------------------------------------------------------
-# UTILITY FUNCTIONS
-
-
-# Checks to see if the user of the slash command is the GM, returns a boolean
-async def gm_check(ctx, engine):
-    logging.info("gm_check")
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global.gm).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id,
-                    )
-                )
-            )
-            gm = result.scalars().one()
-            if int(gm) != int(ctx.interaction.user.id):
-                return False
-            else:
-                return True
-    except Exception:
-        return False
-
-
-# checks to see if the player is the owner of the character
-# possibly depreciated due to auto-complete
-async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
-    logging.info("player_check")
-    try:
-        Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == character))
-            character = char_result.scalars().one()
-        return character
-
-    except Exception as e:
-        logging.warning(f"player_check: {e}")
-        report = ErrorReport(ctx, player_check.__name__, e, bot)
-        await report.report()
 
 
 #############################################################################
@@ -2357,142 +1783,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
 
 
 # D&D 4e Specific
-class D4eAddCharacterModal(discord.ui.Modal):
-    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
-        self.name = name
-        self.hp = hp
-        self.init = init
-        self.initiative = initiative
-        self.player = player
-        self.ctx = ctx
-        self.engine = engine
-        self.bot = bot
-        super().__init__(
-            discord.ui.InputText(
-                label="AC",
-                placeholder="Armor Class",
-            ),
-            discord.ui.InputText(
-                label="Fort",
-                placeholder="Fortitude",
-            ),
-            discord.ui.InputText(
-                label="Reflex",
-                placeholder="Reflex",
-            ),
-            discord.ui.InputText(
-                label="Will",
-                placeholder="Will",
-            ),
-            *args,
-            **kwargs,
-        )
 
-    async def callback(self, interaction: discord.Interaction):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    or_(
-                        Global.tracker_channel == self.ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == self.ctx.interaction.channel_id,
-                    )
-                )
-            )
-            guild = result.scalars().one()
-
-        embed = discord.Embed(
-            title="Character Created (D&D 4e)",
-            fields=[
-                discord.EmbedField(name="Name: ", value=self.name, inline=True),
-                discord.EmbedField(name="HP: ", value=f"{self.hp}", inline=True),
-                discord.EmbedField(name="AC: ", value=self.children[0].value, inline=True),
-                discord.EmbedField(name="Fort: ", value=self.children[1].value, inline=True),
-                discord.EmbedField(name="Reflex: ", value=self.children[2].value, inline=True),
-                discord.EmbedField(name="Will: ", value=self.children[3].value, inline=True),
-                discord.EmbedField(name="Initiative: ", value=self.init, inline=True),
-            ],
-            color=discord.Color.dark_gold(),
-        )
-
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
-            async with session.begin():
-                tracker = Tracker(
-                    name=self.name,
-                    init_string=self.init,
-                    init=self.initiative,
-                    player=self.player,
-                    user=self.ctx.user.id,
-                    current_hp=self.hp,
-                    max_hp=self.hp,
-                    temp_hp=0,
-                )
-                session.add(tracker)
-            await session.commit()
-
-        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
-            character = char_result.scalars().one()
-
-        async with session.begin():
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="AC",
-                    number=int(self.children[0].value),
-                    counter=True,
-                    visible=False,
-                )
-            )
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="Fort",
-                    number=int(self.children[1].value),
-                    counter=True,
-                    visible=False,
-                )
-            )
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="Reflex",
-                    number=int(self.children[2].value),
-                    counter=True,
-                    visible=False,
-                )
-            )
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="Will",
-                    number=int(self.children[3].value),
-                    counter=True,
-                    visible=False,
-                )
-            )
-            await session.commit()
-
-        async with session.begin():
-            if guild.initiative is not None:
-                if not await init_integrity_check(self.ctx, guild.initiative, guild.saved_order, self.engine):
-                    # print(f"integrity check was false: init_pos: {guild.initiative}")
-                    for pos, row in enumerate(await get_init_list(self.ctx, self.engine)):
-                        await asyncio.sleep(0)
-                        if row.name == guild.saved_order:
-                            guild.initiative = pos
-                            # print(f"integrity checked init_pos: {guild.initiative}")
-                            await session.commit()
-
-        await update_pinned_tracker(self.ctx, self.engine, self.bot)
-        # print("Tracker Updated")
-        await interaction.response.send_message(embeds=[embed])
-
-    async def on_error(self, error: Exception, interaction: Interaction) -> None:
-        logging.warning(error)
 
 
 #############################################################################
@@ -2594,13 +1885,15 @@ class InitiativeCog(commands.Cog):
         player: discord.User = None,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        guild = await get_guild(ctx, None)
         response = False
         if await auto_complete.hard_lock(ctx, name):
-            response = await edit_character(ctx, engine, self.bot, name, hp, initiative, active, player)
+            Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
+            response = await Character_Model.edit_character(name, hp, initiative, active, player, self.bot)
             if not response:
                 await ctx.respond("Error Editing Character", ephemeral=True)
-
-            # await update_pinned_tracker(ctx, engine, self.bot)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
 
@@ -2682,7 +1975,8 @@ class InitiativeCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await auto_complete.hard_lock(ctx, name):
-            embed = await get_char_sheet(ctx, engine, self.bot, name)
+            Character_Model = await get_character(name, ctx, engine=engine)
+            embed = await Character_Model.get_char_sheet(self.bot)
             await ctx.send_followup(embeds=embed)
         else:
             ctx.send_followup("You do not have the appropriate permissions to view this character.")
@@ -2698,88 +1992,20 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         try:
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                guild = result.scalars().one()
+            guild = await get_guild(ctx, None)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
             if not await gm_check(ctx, engine):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             else:
                 if mode == "start":
                     await ctx.response.defer()
-                    await block_advance_initiative(ctx, engine, self.bot)
-                    await block_post_init(ctx, engine, self.bot)
-                    # await update_pinned_tracker(ctx, engine, self.bot)
-                    # await ctx.respond('Initiative Started', ephemeral=True)
+                    await Tracker_Model.next()
+
                 elif mode == "stop":  # Stop initiative
                     await ctx.response.defer()
-                    # remove the buttons from the last tracker
-                    try:
-                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                        old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
-                        await old_tracker_msg.edit(view=None)
-                    except Exception:
-                        pass
+                    await Tracker_Model.end()
 
-                    # Reset variables to the neutral state
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Global).where(
-                                or_(
-                                    Global.tracker_channel == ctx.interaction.channel_id,
-                                    Global.gm_tracker_channel == ctx.interaction.channel_id,
-                                )
-                            )
-                        )
-                        guild = result.scalars().one()
-                        guild.initiative = None
-                        guild.saved_order = ""
-                        guild.round = 0
-                        guild.last_tracker = None
-                        await session.commit()
-                    db.MetaData()
-                    # Update the tables
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
-                    Condition = await get_condition(ctx, engine, id=guild.id)
-
-                    # tracker cleanup
-                    # Delete condition with round timers
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Condition).where(Condition.auto_increment == true()).where(Condition.time == false())
-                        )
-                        con_del_list = result.scalars().all()
-                    for con in con_del_list:
-                        await asyncio.sleep(0)
-                        # print(con.title)
-                        async with async_session() as session:
-                            await session.delete(con)
-                            await session.commit()
-
-                    # Delete any dead NPCs
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
-                        )
-                        delete_list = result.scalars().all()
-                    for npc in delete_list:
-                        await delete_character(ctx, npc.name, engine, self.bot)
-
-                    # Set all initiatives to 0
-                    async with async_session() as session:
-                        result = await session.execute(select(Tracker))
-                        tracker_list = result.scalars().all()
-                        for item in tracker_list:
-                            item.init = 0
-                        await session.commit()
-                    await update_pinned_tracker(ctx, engine, self.bot)
                     await ctx.send_followup("Initiative Ended.")
                 elif mode == "delete character":
                     # print(f"Character {character}")
@@ -2797,7 +2023,7 @@ class InitiativeCog(commands.Cog):
                         result = await delete_character(ctx, character, engine, self.bot)
                         if result:
                             await ctx.send_followup(f"{character} deleted", ephemeral=True)
-                            await update_pinned_tracker(ctx, engine, self.bot)
+                            await Tracker_Model.update_pinned_tracker()
                         else:
                             await ctx.send_followup("Delete Operation Failed", ephemeral=True)
             await engine.dispose()
@@ -2875,32 +2101,25 @@ class InitiativeCog(commands.Cog):
         response = False
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
-        # EPF Code, will hopefully transition to everything after the new character model is enacted
-        if guild.system == "EPF":
-            model = await get_character(name, ctx, guild=guild, engine=engine)
-            if mode == "Temporary HP":
-                response = await model.add_thp(amount)
-                if response:
-                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
-            else:
-                if mode == "Heal":
-                    heal = True
-                else:
-                    heal = False
-                response = await model.change_hp(amount, heal)
 
+        model = await get_character(name, ctx, guild=guild, engine=engine)
+        if mode == "Temporary HP":
+            response = await model.add_thp(amount)
+            if response:
+                await ctx.respond(f"{amount} Temporary HP added to {name}.")
         else:
             if mode == "Heal":
-                response = await change_hp(ctx, engine, self.bot, name, amount, True)
-            elif mode == "Damage":
-                response = await change_hp(ctx, engine, self.bot, name, amount, False)
-            elif mode == "Temporary HP":
-                response = await add_thp(ctx, engine, self.bot, name, amount)
-                if response:
-                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
+                heal = True
+            else:
+                heal = False
+            response = await model.change_hp(amount, heal)
+
         if not response:
             await ctx.respond("Failed", ephemeral=True)
-        await update_pinned_tracker(ctx, engine, self.bot)
+
+        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        await Tracker_Object.update_pinned_tracker()
+        await engine.dispose()
 
     @cc.command(
         description="Add conditions and counters",
@@ -2941,14 +2160,11 @@ class InitiativeCog(commands.Cog):
         else:
             auto_bool = False
 
-        if guild.system == "EPF":
-            model = await get_character(character, ctx, guild=guild, engine=engine)
-            response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
-            await update_pinned_tracker(ctx, engine, self.bot, guild=guild )
-        else:
-            response = await set_cc(
-                ctx, engine, character, title, counter_bool, number, unit, auto_bool, self.bot, flex=flex_bool
-            )
+        model = await get_character(character, ctx, guild=guild, engine=engine)
+        Tracker = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+        response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
+        await Tracker.update_pinned_tracker()
+
         if response:
             await ctx.send_followup(f"Condition {title} added on {character}")
         else:
@@ -2967,21 +2183,23 @@ class InitiativeCog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
+        Character_Model = await get_character(character, ctx, engine=engine)
+
         if mode == "delete":
-            result = await delete_cc(ctx, engine, character, condition, self.bot)
+            result = Character_Model.delete_cc(condition)
             if result:
                 await ctx.send_followup("Successful Delete", ephemeral=True)
                 await ctx.send(f"{condition} on {character} deleted.")
         elif mode == "edit":
             # print("editing")
             if value is not None:
-                result = await edit_cc(ctx, engine, character, condition, value, self.bot)
+                result = await Character_Model.edit_cc(condition, value)
                 if result:
                     await ctx.send_followup(f"{condition} on {character} updated to {value}.")
                 else:
                     await ctx.send_followup("Error")
             else:
-                output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
+                output = await ui_components.edit_cc_interface(ctx, engine, character, condition, self.bot)
                 if output[0] is not None:
                     await ctx.send_followup(output[0], view=output[1], ephemeral=True)
                 else:

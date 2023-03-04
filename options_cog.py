@@ -20,7 +20,8 @@ from sqlalchemy.orm import sessionmaker
 from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
+from initiative import setup_tracker, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
+from utils.utils import gm_check
 from time_keeping_functions import set_datetime
 
 # define global variables

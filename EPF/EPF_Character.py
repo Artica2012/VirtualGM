@@ -28,26 +28,9 @@ from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from EPF.EPF_Support import EPF_Conditions
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 # define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    # TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    # TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
@@ -64,10 +47,8 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    if guild is not None:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
-    else:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+    guild = await get_guild(ctx, guild)
+    PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
@@ -344,21 +325,6 @@ class PF2_Character(Character):
         else:
             return []
 
-    async def conditions(self, ctx):
-        logging.info("Returning PF2 Character Conditions")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        if self.guild is not None:
-            Condition = await get_condition(ctx, self.engine, id=self.guild.id)
-        else:
-            Condition = await get_condition(ctx, self.engine)
-        try:
-            async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == self.id))
-                return result.scalars().all()
-        except NoResultFound:
-            return []
-
     async def set_cc(self,
                      title: str,
                      counter: bool,
@@ -447,34 +413,9 @@ class PF2_Character(Character):
 
     # Delete CC
     async def delete_cc(self, condition):
-        logging.info("delete_Cc")
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        try:
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Condition)
-                        .where(Condition.character_id == self.id)
-                        .where(Condition.visible == true())
-                        .where(Condition.title == condition)
-                )
-                con_list = result.scalars().all()
-            if len(con_list) == 0:
-                return False
-
-            for con in con_list:
-                await asyncio.sleep(0)
-                async with async_session() as session:
-                    await session.delete(con)
-                    await session.commit()
-            await self.update()
-            return True
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"delete_cc: {e}")
-            return False
+        result = await super().delete_cc(condition)
+        await self.update()
+        return result
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}

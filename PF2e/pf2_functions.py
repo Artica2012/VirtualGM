@@ -15,7 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import d20
-import initiative
+
+import Generic.character_functions
+# import initiative
 from database_models import (
     get_condition,
     get_tracker,
@@ -24,6 +26,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
+from utils.utils import get_guild
 
 # define global variables
 
@@ -239,7 +242,7 @@ async def pf2_get_tracker(
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
 
-    guild = await initiative.get_guild(ctx, guild)
+    guild = await get_guild(ctx, guild)
     logging.info(f"BGT1: Guild: {guild.id}")
     if guild.block and guild.initiative is not None:
         turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
@@ -464,11 +467,11 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 condition = result.scalars().one()
                 condition.number = int(item.value)
                 await session.commit()
-        await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
+        await self.ctx.channel.send(embeds=await Generic.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
 
-        await self.ctx.channel.send(embeds=await initiative.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
+        await self.ctx.channel.send(embeds=await Generic.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)

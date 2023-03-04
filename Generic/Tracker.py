@@ -12,13 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-import initiative
 import ui_components
 from database_models import get_tracker, Global, get_condition
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.utils import get_guild
 from utils.Char_Getter import get_character
+from Generic.character_functions import delete_character
 
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
@@ -63,6 +63,67 @@ class Tracker():
     async def next(self):
         await self.advance_initiative()
         await self.block_post_init()
+
+    async def end(self):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        try:
+            tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+            old_tracker_msg = await tracker_channel.fetch_message(self.guild.last_tracker)
+            await old_tracker_msg.edit(view=None)
+        except Exception:
+            pass
+
+        # Reset variables to the neutral state
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global).where(
+                    Global.id == self.guild.id
+                )
+            )
+            guild = result.scalars().one()
+            guild.initiative = None
+            guild.saved_order = ""
+            guild.round = 0
+            guild.last_tracker = None
+            await session.commit()
+        await self.update()
+        # Update the tables
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        # tracker cleanup
+        # Delete condition with round timers
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.auto_increment == true()).where(Condition.time == false())
+            )
+            con_del_list = result.scalars().all()
+        for con in con_del_list:
+            await asyncio.sleep(0)
+            # print(con.title)
+            async with async_session() as session:
+                await session.delete(con)
+                await session.commit()
+
+        # Delete any dead NPCs
+        async with async_session() as session:
+            result = await session.execute(
+                select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
+            )
+            delete_list = result.scalars().all()
+        for npc in delete_list:
+            await delete_character(self.ctx, npc.name, self.engine, self.bot)
+
+        # Set all initiatives to 0
+        async with async_session() as session:
+            result = await session.execute(select(Tracker))
+            tracker_list = result.scalars().all()
+            for item in tracker_list:
+                item.init = 0
+            await session.commit()
+        await self.update()
+        await self.update_pinned_tracker()
+
 
     async def update(self):
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
