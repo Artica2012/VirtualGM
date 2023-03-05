@@ -36,7 +36,7 @@ from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 import warnings
 from sqlalchemy import exc
 
-async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
+async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -54,77 +54,19 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
             stats = {}
             for item in stats_list:
                 stats[f"{item.title}"] = item.number
-            return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
+            return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:
         return None
 
-class D4e_Character(Character):
+class PF2_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
         self.ac = stats['AC']
         self.fort = stats["Fort"]
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
+        self.dc = stats["DC"]
         super().__init__(char_name, ctx, engine, character, guild)
-
-    async def change_hp(self, amount: int, heal: bool):
-        logging.info("Edit HP")
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
-                character = char_result.scalars().one()
-
-                chp = character.current_hp
-                new_hp = chp
-                maxhp = character.max_hp
-                thp = character.temp_hp
-                new_thp = 0
-
-                # If its D4e, let the HP go below 0, but start healing form 0.
-                # Bottom out at 0 for everyone else
-                if heal:
-                    if chp < 0:
-                        chp = 0
-                    new_hp = chp + amount
-                    if new_hp > maxhp:
-                        new_hp = maxhp
-                if not heal:
-                    if thp == 0:
-                        new_hp = chp - amount
-                    else:
-                        if thp > amount:
-                            new_thp = thp - amount
-                            new_hp = chp
-                        else:
-                            new_thp = 0
-                            new_hp = chp - amount + thp
-
-                character.current_hp = new_hp
-                character.temp_hp = new_thp
-                await session.commit()
-                await self.update()
-
-            if character.player:  # Show the HP it its a player
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
-            else:  # Obscure the HP if its an NPC
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. {await self.calculate_hp()}")
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
-            await self.update()
-            return True
-        except Exception as e:
-            logging.warning(f"change_hp: {e}")
-            return False
 
     async def edit_character(self,
             name: str,
@@ -185,7 +127,8 @@ class D4e_Character(Character):
             await report.report()
             return False
 
-async def edit_stats(ctx, engine, name: str, bot):
+async def edit_stats(ctx, engine, bot, name: str):
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         if engine == None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -196,8 +139,8 @@ async def edit_stats(ctx, engine, name: str, bot):
         for con in await Character_Model.conditions():
             await asyncio.sleep(0)
             condition_dict[con.title] = con.number
-        editModal = D4eEditCharacterModal(
-            character=await Character_Model.character(), cons=condition_dict, ctx=ctx, engine=engine, title=name, bot=bot
+        editModal = PF2EditCharacterModal(
+            character=Character_Model.character(), cons=condition_dict, ctx=ctx, engine=engine, bot=bot, title=Character_Model.char_name
         )
         await ctx.send_modal(editModal)
 
@@ -207,21 +150,21 @@ async def edit_stats(ctx, engine, name: str, bot):
         return False
 
 
-# D&D 4e Specific
-class D4eEditCharacterModal(discord.ui.Modal):
+class PF2EditCharacterModal(discord.ui.Modal):
     def __init__(self, character, cons: dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
         self.character = character
-        self.cons = (cons,)
+        self.cons = cons
         self.name = character.name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = engine
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         super().__init__(
             discord.ui.InputText(label="AC", placeholder="Armor Class", value=cons["AC"]),
             discord.ui.InputText(label="Fort", placeholder="Fortitude", value=cons["Fort"]),
             discord.ui.InputText(label="Reflex", placeholder="Reflex", value=cons["Reflex"]),
             discord.ui.InputText(label="Will", placeholder="Will", value=cons["Will"]),
+            discord.ui.InputText(label="DC", placeholder="DC", value=cons["DC"]),
             *args,
             **kwargs,
         )
@@ -232,10 +175,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
         guild = await get_guild(self.ctx, None)
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(self.name,self.ctx, guild=guild, engine=self.engine)
-
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-
+        Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
 
         for item in self.children:
             async with async_session() as session:
@@ -248,8 +189,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
 
         Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
         await Tracker_Model.update_pinned_tracker()
-        # print('Tracker Updated')
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
+
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)

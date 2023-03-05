@@ -118,15 +118,13 @@ class Character():
                 # If its D4e, let the HP go below 0, but start healing form 0.
                 # Bottom out at 0 for everyone else
                 if heal:
-                    if self.guild.system == "D4e" and chp < 0:
-                        chp = 0
                     new_hp = chp + amount
                     if new_hp > maxhp:
                         new_hp = maxhp
                 if not heal:
                     if thp == 0:
                         new_hp = chp - amount
-                        if new_hp < 0 and self.guild.system != "D4e":
+                        if new_hp < 0:
                             new_hp = 0
                     else:
                         if thp > amount:
@@ -135,7 +133,7 @@ class Character():
                         else:
                             new_thp = 0
                             new_hp = chp - amount + thp
-                        if new_hp < 0 and self.guild.system != "D4e":
+                        if new_hp < 0:
                             new_hp = 0
 
                 character.current_hp = new_hp
@@ -506,6 +504,8 @@ class Character():
         except Exception as e:
             logging.warning(f"add_character: {e}")
             return False
+
+
 
 
 

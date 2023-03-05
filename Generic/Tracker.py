@@ -18,7 +18,7 @@ from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.utils import get_guild
 from utils.Char_Getter import get_character
-from Generic.character_functions import delete_character
+
 
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 

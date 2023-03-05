@@ -29,7 +29,7 @@ from utils.Tracker_Getter import get_tracker_model
 from Generic.Generic_Utilities import Utilities
 from Generic.Tracker import get_init_list
 
-class D4e_Utilities(Utilities):
+class PF2_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
@@ -50,18 +50,18 @@ class D4e_Utilities(Utilities):
                 except Exception:
                     initiative = 0
 
-            D4eModal = D4eAddCharacterModal(
-                    name=name,
-                    hp=hp,
-                    init=init,
-                    initiative=initiative,
-                    player=player_bool,
-                    ctx=self.ctx,
-                    engine=self.engine,
-                    bot=bot,
-                    title=name,
-                )
-            await self.ctx.send_modal(D4eModal)
+            pf2Modal = PF2AddCharacterModal(
+                name=name,
+                hp=hp,
+                init=init,
+                initiative=initiative,
+                player=player_bool,
+                ctx=self.ctx,
+                engine=self.engine,
+                bot=bot,
+                title=name,
+            )
+            await self.ctx.send_modal(pf2Modal)
             return True
 
         except NoResultFound:
@@ -73,65 +73,8 @@ class D4e_Utilities(Utilities):
             await report.report()
             return False
 
-    async def edit_character(self,
-                             bot,
-                             name: str,
-                             hp: int,
-                             init: str,
-                             active: bool,
-                             player: discord.User,
-                             ):
-        logging.info("edit_character")
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker_Model = await get_tracker_model(self.ctx, bot, guild=self.guild, engine=self.engine)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-            # Give an error message if the character is the active character and making them inactive
-            if self.guild.saved_order == name:
-                await self.ctx.channel.send(
-                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                    " turn and try again."
-                )
-
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == name))
-                character = result.scalars().one()
-
-                if hp is not None:
-                    character.max_hp = hp
-                if init is not None:
-                    character.init_string = str(init)
-                if player is not None:
-                    character.user = player.id
-                if active is not None:
-                    character.active = active
-                if active is not None and self.guild.saved_order != name:
-                    character.active = active
-
-                await session.commit()
-
-
-            response = await D4e.d4e_functions.edit_stats(ctx, engine, bot, name)
-            if response:
-                # await update_pinned_tracker(ctx, engine, bot)
-                return True
-            else:
-                return False
-
-
-
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"add_character: {e}")
-            report = ErrorReport(self.ctx, "edit_character", e, self.bot)
-            await report.report()
-            return False
-
-
-class D4eAddCharacterModal(discord.ui.Modal):
+class PF2AddCharacterModal(discord.ui.Modal):
     def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
         self.name = name
         self.hp = hp
@@ -158,6 +101,10 @@ class D4eAddCharacterModal(discord.ui.Modal):
                 label="Will",
                 placeholder="Will",
             ),
+            discord.ui.InputText(
+                label="Class / Spell DC",
+                placeholder="DC",
+            ),
             *args,
             **kwargs,
         )
@@ -168,7 +115,7 @@ class D4eAddCharacterModal(discord.ui.Modal):
         Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
 
         embed = discord.Embed(
-            title="Character Created (D&D 4e)",
+            title="Character Created (PF2)",
             fields=[
                 discord.EmbedField(name="Name: ", value=self.name, inline=True),
                 discord.EmbedField(name="HP: ", value=f"{self.hp}", inline=True),
@@ -176,6 +123,7 @@ class D4eAddCharacterModal(discord.ui.Modal):
                 discord.EmbedField(name="Fort: ", value=self.children[1].value, inline=True),
                 discord.EmbedField(name="Reflex: ", value=self.children[2].value, inline=True),
                 discord.EmbedField(name="Will: ", value=self.children[3].value, inline=True),
+                discord.EmbedField(name="Class/Spell DC: ", value=self.children[4].value, inline=True),
                 discord.EmbedField(name="Initiative: ", value=self.init, inline=True),
             ],
             color=discord.Color.dark_gold(),
@@ -237,6 +185,15 @@ class D4eAddCharacterModal(discord.ui.Modal):
                     visible=False,
                 )
             )
+            session.add(
+                Condition(
+                    character_id=Character_Model.id,
+                    title="DC",
+                    number=int(self.children[4].value),
+                    counter=True,
+                    visible=False,
+                )
+            )
             await session.commit()
 
         async with session.begin():
@@ -249,12 +206,10 @@ class D4eAddCharacterModal(discord.ui.Modal):
                             guild.initiative = pos
                             # print(f"integrity checked init_pos: {guild.initiative}")
                             await session.commit()
+
         await Tracker_Model.update()
         await Tracker_Model.update_pinned_tracker()
-        # print("Tracker Updated")
         await interaction.response.send_message(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
-
-

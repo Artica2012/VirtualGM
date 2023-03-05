@@ -13,6 +13,7 @@ from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from Generic.Generic_Utilities import Utilities
 from D4e.D4e_utilities import D4e_Utilities
+from PF2e.PF2_utilities import PF2_Utilities
 
 
 async def get_utilities(ctx, guild=None, engine=None):
@@ -22,6 +23,8 @@ async def get_utilities(ctx, guild=None, engine=None):
     guild = await get_guild(ctx, guild)
     if guild.system == "D4e":
         return D4e_Utilities(ctx, guild, engine)
+    elif guild.system == "PF2":
+        return PF2_Utilities(ctx, guild, engine)
     else:
         return Utilities(ctx, guild, engine)
 
