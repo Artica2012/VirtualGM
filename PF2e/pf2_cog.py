@@ -14,7 +14,7 @@ import initiative
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
 from database_operations import get_asyncio_db_engine
-from initiative import update_pinned_tracker
+from utils.Tracker_Getter import get_tracker_model
 from EPF.EPF_Character import pb_import, calculate
 
 # define global variables
@@ -52,11 +52,12 @@ class PF2Cog(commands.Cog):
 
         # try:
         guild = await initiative.get_guild(ctx, None)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
 
         if guild.system == "PF2":
             response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
             if response:
-                await update_pinned_tracker(ctx, engine, self.bot)
+                await Tracker_Model.update_pinned_tracker()
                 # await ctx.send_followup("Success")
 
             else:
@@ -69,7 +70,7 @@ class PF2Cog(commands.Cog):
                 logging.info('Calculating')
                 await calculate(ctx, engine, name, guild=guild)
                 logging.info("Calculated")
-                await update_pinned_tracker(ctx, engine, self.bot)
+                await Tracker_Model.update_pinned_tracker()
                 await ctx.send_followup("Success")
                 logging.info("Import Successful")
 

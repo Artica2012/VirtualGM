@@ -20,7 +20,8 @@ from sqlalchemy.orm import sessionmaker
 from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from initiative import setup_tracker, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
+from initiative import setup_tracker, set_gm, delete_tracker
+from utils.Tracker_Getter import get_tracker_model
 from utils.utils import gm_check
 from time_keeping_functions import set_datetime
 
@@ -109,7 +110,8 @@ class OptionsCog(commands.Cog):
             try:
                 if mode == "reset trackers":
                     await ctx.response.defer(ephemeral=True)
-                    response = await repost_trackers(ctx, engine, self.bot)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    response = await Tracker_Model.repost_trackers()
                     if response:
                         await ctx.send_followup("Trackers Placed", ephemeral=True)
                     else:
@@ -183,7 +185,8 @@ class OptionsCog(commands.Cog):
                         )
                     else:
                         guild.timekeeping = toggler
-                    await update_pinned_tracker(ctx, engine, self.bot)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
                 elif module == "Block Initiative":
                     guild.block = toggler
                 else:

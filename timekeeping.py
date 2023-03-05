@@ -13,8 +13,8 @@ from sqlalchemy.exc import NoResultFound
 
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
-from initiative import update_pinned_tracker, check_cc
 from time_keeping_functions import output_datetime, set_datetime, advance_time
+from utils.Tracker_Getter import get_tracker_model
 
 # define global variables
 load_dotenv(verbose=True)
@@ -59,8 +59,9 @@ class TimekeeperCog(commands.Cog):
             )
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
-                await check_cc(ctx, engine, self.bot)
-                await update_pinned_tracker(ctx, engine, self.bot)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.check_cc()
+                await Tracker_Model.update_pinned_tracker()
             else:
                 await ctx.respond("Error Setting Date and Time", ephemeral=True)
         except NoResultFound:

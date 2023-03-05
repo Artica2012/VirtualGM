@@ -10,7 +10,6 @@ from sqlalchemy.orm import sessionmaker
 
 from database_models import get_tracker, get_condition, get_macro
 from error_handling_reporting import error_not_initialized, ErrorReport
-from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
 
@@ -52,8 +51,7 @@ class Utilities():
                     )
                     session.add(tracker)
                 await session.commit()
-            Tracker_Model = await get_tracker_model(self.ctx, bot, guild=self.guild, engine=self.engine)
-            await Tracker_Model.update_pinned_tracker()
+
             return True
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)

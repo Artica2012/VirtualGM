@@ -25,7 +25,7 @@ from error_handling_reporting import error_not_initialized, ErrorReport
 # from initiative import get_guild, PF2AddCharacterModal, D4eAddCharacterModal, update_pinned_tracker
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
-from utils.Tracker_Getter import get_tracker_model
+# from utils.Tracker_Getter import get_tracker_model
 from Generic.Generic_Utilities import Utilities
 from Generic.Tracker import get_init_list
 
@@ -73,63 +73,6 @@ class D4e_Utilities(Utilities):
             await report.report()
             return False
 
-    async def edit_character(self,
-                             bot,
-                             name: str,
-                             hp: int,
-                             init: str,
-                             active: bool,
-                             player: discord.User,
-                             ):
-        logging.info("edit_character")
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker_Model = await get_tracker_model(self.ctx, bot, guild=self.guild, engine=self.engine)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-
-            # Give an error message if the character is the active character and making them inactive
-            if self.guild.saved_order == name:
-                await self.ctx.channel.send(
-                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                    " turn and try again."
-                )
-
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == name))
-                character = result.scalars().one()
-
-                if hp is not None:
-                    character.max_hp = hp
-                if init is not None:
-                    character.init_string = str(init)
-                if player is not None:
-                    character.user = player.id
-                if active is not None:
-                    character.active = active
-                if active is not None and self.guild.saved_order != name:
-                    character.active = active
-
-                await session.commit()
-
-
-            response = await D4e.d4e_functions.edit_stats(ctx, engine, bot, name)
-            if response:
-                # await update_pinned_tracker(ctx, engine, bot)
-                return True
-            else:
-                return False
-
-
-
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"add_character: {e}")
-            report = ErrorReport(self.ctx, "edit_character", e, self.bot)
-            await report.report()
-            return False
-
 
 class D4eAddCharacterModal(discord.ui.Modal):
     def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
@@ -165,7 +108,7 @@ class D4eAddCharacterModal(discord.ui.Modal):
     async def callback(self, interaction: discord.Interaction):
         guild = await get_guild(self.ctx, None)
         Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
-        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
 
         embed = discord.Embed(
             title="Character Created (D&D 4e)",

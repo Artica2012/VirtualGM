@@ -13,11 +13,12 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
 import ui_components
-from database_models import get_tracker, Global, get_condition
+from database_models import get_tracker, Global, get_condition, get_macro
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.utils import get_guild
 from utils.Char_Getter import get_character
+# from utils.Util_Getter import get_utilities
 
 
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -90,6 +91,7 @@ class Tracker():
         # Update the tables
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        # Utilies = await get_utilities(self.ctx, guild=self.guild, engine=self.engine)
 
         # tracker cleanup
         # Delete condition with round timers
@@ -111,8 +113,35 @@ class Tracker():
                 select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
             )
             delete_list = result.scalars().all()
+        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
         for npc in delete_list:
-            await delete_character(self.ctx, npc.name, self.engine, self.bot)
+            async with async_session() as session:
+                # print(character)
+                result = await session.execute(select(Tracker).where(Tracker.name == npc.name))
+                char = result.scalars().one()
+                # print(char.id)
+                result = await session.execute(select(Condition).where(Condition.character_id == char.id))
+                Condition_list = result.scalars().all()
+                # print(Condition_list)
+                result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                Macro_list = result.scalars().all()
+            # Delete Conditions
+            for con in Condition_list:
+                await asyncio.sleep(0)
+                async with async_session() as session:
+                    await session.delete(con)
+                    await session.commit()
+            # Delete Macros
+            for mac in Macro_list:
+                await asyncio.sleep(0)
+                async with async_session() as session:
+                    await session.delete(mac)
+                    await session.commit()
+            # Delete the Character
+            async with async_session() as session:
+                await session.delete(char)
+                await session.commit()
+            await self.ctx.channel.send(f"{char.name} Deleted")
 
         # Set all initiatives to 0
         async with async_session() as session:
@@ -691,76 +720,160 @@ class Tracker():
         logging.info(f"update_pinned_tracker")
 
         # Query the initiative position for the tracker and post it
-        # try:
-        logging.info(f"BPI1: guild: {self.guild.id}")
-
-
-        if self.guild.block:
-            # print(guild.id)
-            turn_list = await self.get_turn_list()
-            block = True
-            # print(f"block_post_init: \n {turn_list}")
-        else:
-            block = False
-            turn_list = []
-
-        # Fix the Tracker if needed, then refresh the guild
-        await self.init_integrity()
-        await self.update()
-
-        tracker_string = await self.block_get_tracker(self.guild.initiative)
         try:
-            logging.info("BPI2")
-            ping_string = ""
-            if block:
-                for character in turn_list:
-                    await asyncio.sleep(0)
-                    user = self.bot.get_user(character.user)
-                    ping_string += f"{user.mention}, it's your turn.\n"
+            logging.info(f"BPI1: guild: {self.guild.id}")
+
+
+            if self.guild.block:
+                # print(guild.id)
+                turn_list = await self.get_turn_list()
+                block = True
+                # print(f"block_post_init: \n {turn_list}")
             else:
-                user = self.bot.get_user(self.init_list[self.guild.initiative].user)
-                ping_string += f"{user.mention}, it's your turn.\n"
-        except Exception:
-            # print(f'post_init: {e}')
-            ping_string = ""
-        view = discord.ui.View(timeout=None)
-        # Check for systems:
-        if self.guild.last_tracker is not None:
-            view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-            view.add_item((ui_components.NextButton(self.bot, guild=self.guild)))
+                block = False
+                turn_list = []
+
+            # Fix the Tracker if needed, then refresh the guild
+            await self.init_integrity()
+            await self.update()
+
+            tracker_string = await self.block_get_tracker(self.guild.initiative)
+            try:
+                logging.info("BPI2")
+                ping_string = ""
+                if block:
+                    for character in turn_list:
+                        await asyncio.sleep(0)
+                        user = self.bot.get_user(character.user)
+                        ping_string += f"{user.mention}, it's your turn.\n"
+                else:
+                    user = self.bot.get_user(self.init_list[self.guild.initiative].user)
+                    ping_string += f"{user.mention}, it's your turn.\n"
+            except Exception:
+                # print(f'post_init: {e}')
+                ping_string = ""
+            view = discord.ui.View(timeout=None)
+            # Check for systems:
             if self.guild.last_tracker is not None:
-                tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
-                edit_message = await tracker_channel.fetch_message(self.guild.last_tracker)
-                await edit_message.edit(
-                    content=f"{tracker_string}\n{ping_string}",
-                    view=view,
+                view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
+                view.add_item((ui_components.NextButton(self.bot, guild=self.guild)))
+                if self.guild.last_tracker is not None:
+                    tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+                    edit_message = await tracker_channel.fetch_message(self.guild.last_tracker)
+                    await edit_message.edit(
+                        content=f"{tracker_string}\n{ping_string}",
+                        view=view,
+                    )
+            if self.guild.tracker is not None:
+                try:
+                    channel = self.bot.get_channel(self.guild.tracker_channel)
+                    message = await channel.fetch_message(self.guild.tracker)
+                    await message.edit(content=tracker_string)
+                except:
+                    logging.warning(f"Invalid Tracker: {self.guild.id}")
+                    channel = self.bot.get_channel(self.guild.tracker_channel)
+                    await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
+
+            if self.guild.gm_tracker is not None:
+                try:
+                    gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
+                    gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+                    gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
+                    await gm_message.edit(content=gm_tracker_display_string)
+                except:
+                    logging.warning(f"Invalid GMTracker: {self.guild.id}")
+                    channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+                    await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        except Exception as e:
+            logging.error(f"update_pinned_tracker: {e}")
+            report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
+            await report.report()
+
+    async def repost_trackers(self):
+        logging.info("repost_trackers")
+        try:
+            channel = self.bot.get_channel(self.guild.tracker_channel)
+            gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+            await self.set_pinned_tracker(channel)  # set the tracker in the player channel
+            await self.set_pinned_tracker(gm_channel, gm=True)  # set up the gm_track in the GM channel
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"repost_trackers: {e}")
+            report = ErrorReport(self.ctx, "repost_trackers", e, self.bot)
+            await report.report()
+            return False
+
+    # Function sets the pinned trackers and records their position in the Global table.
+    async def set_pinned_tracker(self, channel: discord.TextChannel, gm=False):
+        logging.info("set_pinned_tracker")
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Global).where(
+                        or_(
+                            Global.tracker_channel == self.ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == self.ctx.interaction.channel_id,
+                        )
+                    )
                 )
-        if self.guild.tracker is not None:
-            try:
-                channel = self.bot.get_channel(self.guild.tracker_channel)
-                message = await channel.fetch_message(self.guild.tracker)
-                await message.edit(content=tracker_string)
-            except:
-                logging.warning(f"Invalid Tracker: {self.guild.id}")
-                channel = self.bot.get_channel(self.guild.tracker_channel)
-                await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
+                guild = result.scalars().one()
 
-        if self.guild.gm_tracker is not None:
-            try:
-                gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
-                gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
-                gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
-                await gm_message.edit(content=gm_tracker_display_string)
-            except:
-                logging.warning(f"Invalid GMTracker: {self.guild.id}")
-                channel = self.bot.get_channel(self.guild.gm_tracker_channel)
-                await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
+                try:
+                    init_pos = int(guild.initiative)
+                except Exception:
+                    init_pos = None
+                display_string = await self.block_get_tracker(init_pos, gm=gm)
 
-        # except NoResultFound:
-        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
-        # except Exception as e:
-        #     logging.error(f"update_pinned_tracker: {e}")
-        #     report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
-        #     await report.report()
+                interaction = await self.bot.get_channel(channel.id).send(display_string)
+                await interaction.pin()
+                if gm:
+                    guild.gm_tracker = interaction.id
+                    guild.gm_tracker_channel = channel.id
+                else:
+                    guild.tracker = interaction.id
+                    guild.tracker_channel = channel.id
+                await session.commit()
+            return True
+        except Exception as e:
+            logging.warning(f"set_pinned_tracker: {e}")
+            report = ErrorReport(self.ctx, "set_pinned_tracker", e, self.bot)
+            await report.report()
+            return False
+
+    async def check_cc(self):
+        logging.info("check_cc")
+        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.time == true()))
+            con_list = result.scalars().all()
+
+        for row in con_list:
+            await asyncio.sleep(0)
+            time_stamp = datetime.fromtimestamp(row.number)
+            time_left = time_stamp - current_time
+            if time_left.total_seconds() <= 0:
+                async with async_session() as session:
+                    result = await session.execute(select(Tracker).where(Tracker.id == row.character_id))
+                    character = result.scalars().one()
+                async with async_session() as session:
+                    await session.delete(row)
+                    await session.commit()
+                if self.ctx is not None:
+                    await self.ctx.channel.send(f"{row.title} removed from {character.name}")
+                else:
+                    tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+                    tracker_channel.send(f"{row.title} removed from {character.name}")
 
 
