@@ -31,7 +31,7 @@ class D4e_Tracker(Tracker):
         # Query the initiative position for the tracker and post it
 
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild.block:
                 turn_list = await self.get_turn_list()
                 block = True

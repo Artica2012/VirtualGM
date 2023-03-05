@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import d20
+
+from Generic.Tracker import get_init_list
 from utils.utils import get_guild
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
@@ -389,7 +391,8 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
 
-    init_list = await initiative.get_init_list(ctx, engine, guild=guild)
+
+    init_list = await get_init_list(ctx, engine, guild=guild)
 
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))

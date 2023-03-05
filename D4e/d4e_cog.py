@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import D4e.d4e_functions
-import initiative
+
 import ui_components
 from auto_complete import character_select_gm
 from database_models import Global, get_condition, get_tracker
@@ -22,6 +22,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 
 # define global variables
+from utils.utils import get_guild
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -48,12 +49,7 @@ DATABASE = os.getenv("DATABASE")
 
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
-async def gm_check(ctx, engine):
-    guild = await initiative.get_guild(ctx, None)
-    if int(guild.gm) != int(ctx.interaction.user.id):
-        return False
-    else:
-        return True
+
 
 
 class D4eCog(commands.Cog):
@@ -71,7 +67,7 @@ class D4eCog(commands.Cog):
 
         try:
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            guild = await initiative.get_guild(ctx, None)
+            guild = await get_guild(ctx, None)
             Tracker = await get_tracker(ctx, engine, id=guild.id)
             Condition = await get_condition(ctx, engine, id=guild.id)
 
@@ -108,7 +104,7 @@ class D4eCog(commands.Cog):
     async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ""):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        guild = await initiative.get_guild(ctx, None)
+        guild = await get_guild(ctx, None)
         if guild.system == "D4e":
             output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
             await engine.dispose()

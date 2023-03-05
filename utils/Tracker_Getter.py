@@ -5,6 +5,7 @@ from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from EPF.EPF_Tracker import get_EPF_Tracker
 from D4e.D4e_Tracker import get_D4e_Tracker
+from PF2e.PF2_Tracker import get_PF2_Tracker
 
 
 async def get_tracker_model(ctx, bot, guild=None, engine=None):
@@ -16,6 +17,8 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
         return await get_EPF_Tracker(ctx, engine, init_list, bot, guild=guild)
     elif guild.system == "D4e":
         return await get_D4e_Tracker(ctx, engine, init_list, bot, guild=guild)
+    elif guild.system == "PD2":
+        return await get_PF2_Tracker(ctx, engine, init_list, bot, guild=guild)
     else:
         return Tracker(ctx, engine, init_list, bot, guild=guild)
 
