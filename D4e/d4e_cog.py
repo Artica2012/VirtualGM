@@ -13,6 +13,7 @@ from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import D4e.D4e_Tracker
 import D4e.d4e_functions
 
 import ui_components
@@ -133,7 +134,7 @@ class D4eCog(commands.Cog):
                         tracker_channel = self.bot.get_channel(guild.tracker_channel)
                         last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
 
-                        view = await D4e.d4e_functions.D4eTrackerButtons(None, self.bot, guild)
+                        view = await D4e.D4e_Tracker.D4eTrackerButtons(None, self.bot, guild)
                         view.add_item(ui_components.InitRefreshButton(None, self.bot, guild=guild))
                         view.add_item(ui_components.NextButton(self.bot, guild=guild))
                         await last_tracker.edit(view=view)

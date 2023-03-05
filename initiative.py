@@ -473,22 +473,22 @@ class InitiativeCog(commands.Cog):
     )
     async def next(self, ctx: discord.ApplicationContext):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        try:
-            await ctx.response.defer()
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine )
-            await Tracker_Object.next()
+        # try:
+        await ctx.response.defer()
+        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine )
+        await Tracker_Object.next()
 
             # await block_advance_initiative(ctx, engine, self.bot)  # Advance the init
             # await block_post_init(ctx, engine, self.bot)
-        except NoResultFound:
-            await ctx.respond(error_not_initialized, ephemeral=True)
-        except PermissionError:
-            await ctx.message.delete()
-        except Exception as e:
-            await ctx.respond("Error", ephemeral=True)
-            logging.warning(f"/i next: {e}")
-            report = ErrorReport(ctx, "slash command /i next", e, self.bot)
-            await report.report()
+        # except NoResultFound:
+        #     await ctx.respond(error_not_initialized, ephemeral=True)
+        # except PermissionError:
+        #     await ctx.message.delete()
+        # except Exception as e:
+        #     await ctx.respond("Error", ephemeral=True)
+        #     logging.warning(f"/i next: {e}")
+        #     report = ErrorReport(ctx, "slash command /i next", e, self.bot)
+        #     await report.report()
 
     @i.command(
         description="Set Init (Number or XdY+Z)",

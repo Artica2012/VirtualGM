@@ -1,34 +1,24 @@
 # pf2_functions.py
 
 
-import asyncio
 import logging
-import os
 
 # imports
-from datetime import datetime
 
 import discord
-from discord import Interaction
-from dotenv import load_dotenv
-from sqlalchemy import or_, select, false, true
+from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import d20
 
-from Generic.Tracker import get_init_list
 from utils.utils import get_guild
 from utils.Char_Getter import get_character
-import Generic.character_functions
 
 from database_models import Global, get_condition, get_tracker
-from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, get_time
 from utils.parsing import ParseModifiers
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 D4e_attributes = ["AC", "Fort", "Reflex", "Will"]
 D4e_base_roll = d20.roll(f"{10}")
@@ -156,46 +146,6 @@ def D4e_eval_success(dice_result: d20.RollResult, goal: d20.RollResult):
 # Builds the tracker string. Updated to work with block initiative
 
 
-
-class D4eConditionButton(discord.ui.Button):
-    def __init__(self, condition, ctx: discord.ApplicationContext, bot, character, guild=None):
-        self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-        self.bot = bot
-        self.character = character
-        self.condition = condition
-        self.guild = guild
-        super().__init__(
-            label=condition.title,
-            style=discord.ButtonStyle.primary,
-            custom_id=str(f"{condition.character_id}_{condition.title}"),
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Saving...")
-        self.guild = await initiative.get_guild(self.ctx, self.guild)
-        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
-            try:
-
-                output_string = await save(
-                    self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier="",
-                    guild=self.guild
-                )
-                await interaction.edit_original_response(content=output_string)
-                await initiative.update_pinned_tracker(
-                    self.ctx, self.engine, self.bot, guild=self.guild
-                )
-            except Exception:
-                output_string = "Unable to process save, perhaps the condition was removed."
-                await interaction.edit_original_response(content=output_string)
-        else:
-            output_string = "Roll your own save!"
-            await interaction.edit_original_response(content=output_string)
-
-        # await self.ctx.channel.send(output_string)
-
-
 # Checks to see if the user of the slash command is the GM, returns a boolean
 async def gm_check(ctx, engine, guild=None):
     if ctx is None and guild is None:
@@ -225,27 +175,3 @@ async def gm_check(ctx, engine, guild=None):
         return False
 
 
-async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    guild = await initiative.get_guild(ctx, guild, refresh=True)
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    view = discord.ui.View(timeout=None)
-
-
-    init_list = await get_init_list(ctx, engine, guild=guild)
-
-    async with async_session() as session:
-        result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
-        char = result.scalars().one()
-
-    async with async_session() as session:
-        result = await session.execute(
-            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
-        )
-        conditions = result.scalars().all()
-    for con in conditions:
-        new_button = D4eConditionButton(con, ctx, bot, char, guild=guild)
-        view.add_item(new_button)
-    return view

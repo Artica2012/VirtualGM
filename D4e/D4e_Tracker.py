@@ -3,21 +3,24 @@ import asyncio
 import logging
 from datetime import datetime
 
-from sqlalchemy import select, or_
+import discord
+from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import ui_components
 from D4e import d4e_functions
-from database_models import Global, get_condition
-from database_operations import get_asyncio_db_engine
+from D4e.d4e_functions import gm_check, save
+from database_models import Global, get_condition, get_tracker
+from database_operations import get_asyncio_db_engine, USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, get_time
 from utils.Char_Getter import get_character
+# from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Generic.Tracker import Tracker
+from Generic.Tracker import Tracker, get_init_list
 
 
 async def get_D4e_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -35,102 +38,102 @@ class D4e_Tracker(Tracker):
         logging.info(f"block_post_init")
         # Query the initiative position for the tracker and post it
 
+        # try:
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        if self.guild.block:
+            turn_list = await self.get_turn_list()
+            block = True
+            # print(f"block_post_init: \n {turn_list}")
+        else:
+            block = False
+            turn_list = []
+
+        # print(init_list)
+        tracker_string = await self.block_get_tracker(self.guild.initiative)
+        # print(tracker_string)
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            if self.guild.block:
-                turn_list = await self.get_turn_list()
-                block = True
-                # print(f"block_post_init: \n {turn_list}")
-            else:
-                block = False
-                turn_list = []
-
-            # print(init_list)
-            tracker_string = await self.block_get_tracker(self.guild.initiative)
-            # print(tracker_string)
-            try:
-                logging.info("BPI2")
-                ping_string = ""
-                if block:
-                    for character in turn_list:
-                        await asyncio.sleep(0)
-                        user = self.bot.get_user(character.user)
-                        ping_string += f"{user.mention}, it's your turn.\n"
-                else:
-                    user = self.bot.get_user(self.init_list[self.guild.initiative].user)
+            logging.info("BPI2")
+            ping_string = ""
+            if block:
+                for character in turn_list:
+                    await asyncio.sleep(0)
+                    user = self.bot.get_user(character.user)
                     ping_string += f"{user.mention}, it's your turn.\n"
-            except Exception:
-                # print(f'post_init: {e}')
-                ping_string = ""
-
-            # Check for systems:
-
-            logging.info("BPI3: d4e")
-            # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
-            view = await d4e_functions.D4eTrackerButtons(self.ctx, self.bot, guild=self.guild)
-            # print("Buttons Generated")
-            view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-            view.add_item(ui_components.NextButton(self.bot, guild=self.guild))
-
-            if self.ctx is not None:
-                if self.ctx.channel.id == self.guild.tracker_channel:
-                    tracker_msg = await self.ctx.send_followup(f"{tracker_string}\n{ping_string}", view=view)
-                else:
-                    await self.bot.get_channel(self.guild.tracker_channel).send(
-                        f"{tracker_string}\n{ping_string}",
-                        view=view,
-                    )
-                    tracker_msg = await self.ctx.send_followup("Initiative Advanced.")
-                    logging.info("BPI4")
             else:
-                tracker_msg = await self.bot.get_channel(self.guild.tracker_channel).send(
+                user = self.bot.get_user(self.init_list[self.guild.initiative].user)
+                ping_string += f"{user.mention}, it's your turn.\n"
+        except Exception:
+            # print(f'post_init: {e}')
+            ping_string = ""
+
+        # Check for systems:
+
+        logging.info("BPI3: d4e")
+        # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
+        view = await D4eTrackerButtons(self.ctx, self.bot, guild=self.guild)
+        # print("Buttons Generated")
+        view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
+        view.add_item(ui_components.NextButton(self.bot, guild=self.guild))
+
+        if self.ctx is not None:
+            if self.ctx.channel.id == self.guild.tracker_channel:
+                tracker_msg = await self.ctx.send_followup(f"{tracker_string}\n{ping_string}", view=view)
+            else:
+                await self.bot.get_channel(self.guild.tracker_channel).send(
                     f"{tracker_string}\n{ping_string}",
                     view=view,
                 )
-                logging.info("BPI4 Guild")
-            if self.guild.tracker is not None:
-                channel = self.bot.get_channel(self.guild.tracker_channel)
-                message = await channel.fetch_message(self.guild.tracker)
-                await message.edit(content=tracker_string)
-            if self.guild.gm_tracker is not None:
-                gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
-                gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
-                gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
-                await gm_message.edit(content=gm_tracker_display_string)
+                tracker_msg = await self.ctx.send_followup("Initiative Advanced.")
+                logging.info("BPI4")
+        else:
+            tracker_msg = await self.bot.get_channel(self.guild.tracker_channel).send(
+                f"{tracker_string}\n{ping_string}",
+                view=view,
+            )
+            logging.info("BPI4 Guild")
+        if self.guild.tracker is not None:
+            channel = self.bot.get_channel(self.guild.tracker_channel)
+            message = await channel.fetch_message(self.guild.tracker)
+            await message.edit(content=tracker_string)
+        if self.guild.gm_tracker is not None:
+            gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
+            gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+            gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
+            await gm_message.edit(content=gm_tracker_display_string)
 
-            async with async_session() as session:
-                if self.ctx is None:
-                    result = await session.execute(select(Global).where(Global.id == self.guild.id))
-                else:
-                    result = await session.execute(
-                        select(Global).where(
-                            or_(
-                                Global.tracker_channel == self.ctx.interaction.channel_id,
-                                Global.gm_tracker_channel == self.ctx.interaction.channel_id,
-                            )
+        async with async_session() as session:
+            if self.ctx is None:
+                result = await session.execute(select(Global).where(Global.id == self.guild.id))
+            else:
+                result = await session.execute(
+                    select(Global).where(
+                        or_(
+                            Global.tracker_channel == self.ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == self.ctx.interaction.channel_id,
                         )
                     )
-                guild = result.scalars().one()
-                # print(f"Saved last tracker: {guild.last_tracker}")
-                # old_tracker = guild.last_tracker
-                try:
-                    if guild.last_tracker is not None:
-                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                        old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
-                        await old_tracker_msg.edit(view=None)
-                except Exception as e:
-                    logging.warning(e)
-                guild.last_tracker = tracker_msg.id
-                await session.commit()
+                )
+            guild = result.scalars().one()
+            # print(f"Saved last tracker: {guild.last_tracker}")
+            # old_tracker = guild.last_tracker
+            try:
+                if guild.last_tracker is not None:
+                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                    old_tracker_msg = await tracker_channel.fetch_message(guild.last_tracker)
+                    await old_tracker_msg.edit(view=None)
+            except Exception as e:
+                logging.warning(e)
+            guild.last_tracker = tracker_msg.id
+            await session.commit()
 
-        except NoResultFound:
-            if self.ctx is not None:
-                await self.ctx.channel.send(error_not_initialized, delete_after=30)
-        except Exception as e:
-            logging.error(f"block_post_init: {e}")
-            if self.ctx is not None and self.bot is not None:
-                report = ErrorReport(self.ctx, "block_post_init", e, self.bot)
-                await report.report()
+        # except NoResultFound:
+        #     if self.ctx is not None:
+        #         await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        # except Exception as e:
+        #     logging.error(f"block_post_init: {e}")
+        #     if self.ctx is not None and self.bot is not None:
+        #         report = ErrorReport(self.ctx, "block_post_init", e, self.bot)
+        #         await report.report()
 
     async def block_get_tracker(self, selected: int, gm: bool = False):
         # Get the datetime
@@ -271,11 +274,76 @@ class D4e_Tracker(Tracker):
                         output_string += con_string
             output_string += "```"
             # print(output_string)
-            await engine.dispose()
+            await self.update()
             return output_string
         except Exception as e:
-            if ctx is not None:
-                report = ErrorReport(ctx, d4e_get_tracker.__name__, e, bot)
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "block_get_tracker (d4e)", e, self.bot)
                 await report.report()
             logging.info(f"d4e_get_tracker: {e}")
 
+
+async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    guild = await get_guild(ctx, guild, refresh=True)
+    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+    view = discord.ui.View(timeout=None)
+
+
+    init_list = await get_init_list(ctx, engine, guild=guild)
+
+    async with async_session() as session:
+        result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+        char = result.scalars().one()
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
+        )
+        conditions = result.scalars().all()
+    for con in conditions:
+        new_button = D4eConditionButton(con, ctx, bot, char, guild=guild)
+        view.add_item(new_button)
+    return view
+
+
+class D4eConditionButton(discord.ui.Button):
+    def __init__(self, condition, ctx: discord.ApplicationContext, bot, character, guild=None):
+        self.ctx = ctx
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
+        self.bot = bot
+        self.character = character
+        self.condition = condition
+        self.guild = guild
+        super().__init__(
+            label=condition.title,
+            style=discord.ButtonStyle.primary,
+            custom_id=str(f"{condition.character_id}_{condition.title}"),
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Saving...")
+        Tracker_Model = await get_D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, guild=self.guild), self.bot, guild=self.guild)
+        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
+            try:
+
+                output_string = await save(
+                    self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier="",
+                    guild=self.guild
+                )
+                await interaction.edit_original_response(content=output_string)
+                await Tracker_Model.update_pinned_tracker()
+                # await initiative.update_pinned_tracker(
+                #     self.ctx, self.engine, self.bot, guild=self.guild
+                # )
+            except Exception:
+                output_string = "Unable to process save, perhaps the condition was removed."
+                await interaction.edit_original_response(content=output_string)
+        else:
+            output_string = "Roll your own save!"
+            await interaction.edit_original_response(content=output_string)
+
+        # await self.ctx.channel.send(output_string)
