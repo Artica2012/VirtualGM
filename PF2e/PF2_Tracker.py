@@ -100,8 +100,8 @@ class PF2_Tracker(Tracker):
                     init_num = f"{character.init}"
 
                 if block:
-                    for character in turn_list:
-                        if character.id == character.id:
+                    for char in turn_list:
+                        if character.id == char.id:
                             sel_bool = True
                 else:
                     if x == selected:
