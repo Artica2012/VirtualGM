@@ -293,7 +293,7 @@ class Tracker():
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(self.init_list):
                             await asyncio.sleep(0)
-                            if row.name == current_character:
+                            if row.name == current_character.char_name:
                                 init_pos = pos
                                 # print(f"integrity checked init_pos: {init_pos}")
                     init_pos += 1  # increase the init position by 1
@@ -305,7 +305,7 @@ class Tracker():
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
                             await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
-                            await current_character.check_time_cc(self.bot)
+                            # await current_character.check_time_cc(self.bot)
                             logging.info("BAI16: cc checked")
 
                             # block initiative loop
@@ -364,8 +364,6 @@ class Tracker():
         logging.info("Decrementing Conditions")
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         # Run through the conditions on the current character
 
         try:
@@ -528,7 +526,7 @@ class Tracker():
                     else:
                         string = f"{selector}  {init_num} {str(character.char_name).title()}: {character.current_hp}/{character.max_hp}\n"
                 else:
-                    string = f"{selector}  {init_num} {str(row.name).title()}: {await character.calculate_hp()} \n"
+                    string = f"{selector}  {init_num} {str(character.char_name).title()}: {await character.calculate_hp()} \n"
                 output_string += string
 
                 for con_row in condition_list:
@@ -580,7 +578,7 @@ class Tracker():
             return output_string
         except Exception as e:
             logging.info(f"block_get_tracker 2: {e}")
-            return ""
+            return "ERROR"
 
     # Note: Works backwards
     # This is the turn list, a list of all of characters that are part of the turn in block initiative

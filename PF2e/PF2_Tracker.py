@@ -1,15 +1,19 @@
 # imports
 import asyncio
 import logging
+from datetime import datetime
 
-from sqlalchemy import select, or_
+import d20
+from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global
+from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
+from time_keeping_functions import output_datetime, get_time, advance_time
+from utils.Char_Getter import get_character
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Generic.Tracker import Tracker
@@ -34,66 +38,56 @@ class PF2_Tracker(Tracker):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
 
-        logging.info(f"BGT1: Guild: {guild.id}")
-        if guild.block and guild.initiative is not None:
-            turn_list = await initiative.get_turn_list(ctx, engine, bot, guild=guild)
+        logging.info(f"BGT1: Guild: {self.guild.id}")
+        if self.guild.block and self.guild.initiative is not None:
+            turn_list = await self.get_turn_list()
             block = True
         else:
             turn_list = []
             block = False
-        logging.info(f"BGT2: round: {guild.round}")
-
-        active_length = len(init_list)
+        logging.info(f"BGT2: round: {self.guild.round}")
+        total_list = self.init_list
+        active_length = len(total_list)
         # print(f'Active Length: {active_length}')
-        inactive_list = await initiative.get_inactive_list(ctx, engine, guild)
+        inactive_list = await self.get_inactive_list()
         if len(inactive_list) > 0:
-            init_list.extend(inactive_list)
+            total_list.extend(inactive_list)
             # print(f'Total Length: {len(init_list)}')
 
         try:
-            if await check_timekeeper(ctx, engine, guild=guild):
-                datetime_string = f" {await output_datetime(ctx, engine, bot, guild=guild)}\n________________________\n"
+            if self.guild.timekeeping:
+                datetime_string = f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
         except NoResultFound:
-            if ctx is not None:
-                await ctx.channel.send(error_not_initialized, delete_after=30)
+            if self.ctx is not None:
+                await self.ctx.channel.send(error_not_initialized, delete_after=30)
             logging.info("Channel Not Set Up")
         except Exception as e:
             logging.error(f"get_tracker: {e}")
-            report = ErrorReport(ctx, "get_tracker", e, bot)
-            await report.report()
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "get_tracker", e, self.bot)
+                await report.report()
 
         try:
-            Condition = await get_condition(ctx, engine, id=guild.id)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
 
-            if guild.round != 0:
-                round_string = f"Round: {guild.round}"
+            if self.guild.round != 0:
+                round_string = f"Round: {self.guild.round}"
             else:
                 round_string = ""
 
             output_string = f"```{datetime_string}Initiative: {round_string}\n"
 
-            for x, row in enumerate(init_list):
+            for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-                if len(init_list) > active_length and x == active_length:
+                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
+
                 async with async_session() as session:
                     result = await session.execute(
                         select(Condition).where(Condition.character_id == row.id).where(Condition.visible == true())
                     )
                     condition_list = result.scalars().all()
-                try:
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Condition.number)
-                                .where(Condition.character_id == row.id)
-                                .where(Condition.visible == false())
-                                .where(Condition.title == "AC")
-                        )
-                        armor_class = result.scalars().one()
-                        # print(armor_class.number)
-                        ac = armor_class
-                except Exception:
-                    ac = ""
 
                 await asyncio.sleep(0)
                 sel_bool = False
@@ -101,13 +95,13 @@ class PF2_Tracker(Tracker):
 
                 # don't show an init if not in combat
                 if row.init == 0 or row.active is False:
-                    init_string = ""
+                    init_num = ""
                 else:
-                    init_string = f"{row.init}"
+                    init_num = f"{character.init}"
 
                 if block:
                     for character in turn_list:
-                        if row.id == character.id:
+                        if character.id == character.id:
                             sel_bool = True
                 else:
                     if x == selected:
@@ -117,19 +111,18 @@ class PF2_Tracker(Tracker):
 
                 if sel_bool:
                     selector = ">>"
-                if row.player or gm:
+                if character.player or gm:
                     if row.temp_hp != 0:
                         string = (
-                            f"{selector}  {init_string} {str(row.name).title()}:"
-                            f" {row.current_hp}/{row.max_hp} ({row.temp_hp}) Temp AC:{ac}\n "
+                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp AC:{character.ac_total}\n "
                         )
                     else:
                         string = (
-                            f"{selector}  {init_string} {str(row.name).title()}: {row.current_hp}/{row.max_hp} AC: {ac}\n"
+                            f"{selector}  {init_num} {str(character.char_name).title()}: {character.current_hp}/{character.max_hp} AC: {character.ac_total}\n"
                         )
                 else:
-                    hp_string = await initiative.calculate_hp(row.current_hp, row.max_hp)
-                    string = f"{selector}  {init_string} {str(row.name).title()}: {hp_string} \n"
+                    string = f"{selector}  {init_num} {str(character.char_name).title()}: {await character.calculate_hp()} \n"
                 output_string += string
 
                 for con_row in condition_list:
@@ -140,7 +133,7 @@ class PF2_Tracker(Tracker):
                         if con_row.number is not None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(ctx, engine, guild=guild)
+                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -181,12 +174,125 @@ class PF2_Tracker(Tracker):
                     # print(output_string)
             output_string += "```"
             # print(output_string)
-            await engine.dispose()
             return output_string
         except Exception as e:
             logging.info(f"block_get_tracker: {e}")
-            if ctx is not None:
-                report = ErrorReport(ctx, pf2_get_tracker.__name__, e, bot)
-                await report.report()
+            return "ERROR"
 
+    async def advance_initiative(self):
+        if self.guild.block:
+            return await super().block_advance_initiative()
+        else:
+            return await self.non_block_advance_initiative()
+
+    # Upgraded Advance Initiative Function to work with block initiative options
+    async def non_block_advance_initiative(self):
+        logging.info("non_block_advance_initiative")
+
+        first_pass = False
+        round = self.guild.round
+
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+            logging.info(f"BAI1: guild: {self.guild.id}")
+
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker))
+                character = char_result.scalars().all()
+                logging.info("BAI2: characters")
+
+                # print(f"guild.initiative: {guild.initiative}")
+                if self.guild.initiative is None:
+                    init_pos = -1
+                    round = 1
+                    first_pass = True
+                    for char in character:
+                        await asyncio.sleep(0)
+                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        if model.init == 0:
+                            await asyncio.sleep(0)
+                            try:
+                                roll = d20.roll(char.init_string)
+                                await model.set_init(roll)
+                            except ValueError:
+                                await model.set_init(0)
+                else:
+                    init_pos = int(self.guild.initiative)
+
+            await self.update()
+            logging.info("BAI3: Updated")
+
+            if self.guild.saved_order == "":
+                current_character = await get_character(self.init_list[0].name, self.ctx, engine=self.engine,
+                                                        guild=self.guild)
+            else:
+                current_character = await get_character(self.guild.saved_order, self.ctx, engine=self.engine,
+                                                        guild=self.guild)
+
+            # Process the conditions with the after trait (Flex = False) for the current character
+            await self.init_con(current_character, False)
+
+            # Advance the Turn
+            # Check to make sure the init list hasn't changed, if so, correct it
+            if not await self.init_integrity_check(init_pos, current_character.char_name) and not first_pass:
+                logging.info("BAI6: init_itegrity failied")
+                # print(f"integrity check was false: init_pos: {init_pos}")
+                for pos, row in enumerate(self.init_list):
+                    await asyncio.sleep(0)
+                    if row.name == current_character.char_name:
+                        init_pos = pos
+                        # print(f"integrity checked init_pos: {init_pos}")
+
+            # Increase the initiative positing by 1
+            init_pos += 1  # increase the init position by 1
+            # print(f"new init_pos: {init_pos}")
+            # If we have exceeded the end of the list, then loop back to the beginning
+            if init_pos >= len(self.init_list):  # if it has reached the end, loop back to the beginning
+                init_pos = 0
+                round += 1
+                if self.guild.timekeeping:  # if timekeeping is enable on the server
+                    logging.info("BAI7: timekeeping")
+                    # Advance time time by the number of seconds in the guild.time column. Default is 6
+                    # seconds ala D&D standard
+                    await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                    # await current_character.check_time_cc(self.bot)
+                    logging.info("BAI8: cc checked")
+
+            current_character = await get_character(self.init_list[init_pos].name, self.ctx, engine=self.engine,
+                                                    guild=self.guild)
+
+            # Delete the before conditions on the new current_character
+            await self.init_con(current_character, True)
+
+            # Write the updates to the database
+            async with async_session() as session:
+                if self.ctx is None:
+                    result = await session.execute(select(Global).where(Global.id == self.guild.id))
+                else:
+                    result = await session.execute(
+                        select(Global).where(
+                            or_(
+                                Global.tracker_channel == self.ctx.interaction.channel_id,
+                                Global.gm_tracker_channel == self.ctx.interaction.channel_id,
+                            )
+                        )
+                    )
+                guild = result.scalars().one()
+                logging.info(f"BAI17: guild updated: {guild.id}")
+                # Out side while statement - for reference
+                guild.initiative = init_pos  # set it
+                guild.round = round
+                guild.saved_order = str(self.init_list[init_pos].name)
+                logging.info(f"BAI18: saved order: {guild.saved_order}")
+                await session.commit()
+                logging.info("BAI19: Writted")
+            await self.update()
+            return True
+        except Exception as e:
+            logging.error(f"block_advance_initiative: {e}")
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "non_block_advance_initiative", e, self.bot)
+                await report.report()
 
