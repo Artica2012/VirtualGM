@@ -15,6 +15,7 @@ from sqlalchemy import select, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from utils.Tracker_Getter import get_tracker_model
 
 # import D4e.d4e_functions
 import PF2e.pf2_functions
@@ -108,7 +109,7 @@ class D4eAddCharacterModal(discord.ui.Modal):
     async def callback(self, interaction: discord.Interaction):
         guild = await get_guild(self.ctx, None)
         Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
-        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
 
         embed = discord.Embed(
             title="Character Created (D&D 4e)",
