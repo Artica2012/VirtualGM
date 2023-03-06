@@ -3,12 +3,10 @@
 # Consolidating all of the autocompletes into one place.
 
 # imports
-import os
 import logging
 import datetime
 
 import discord
-from dotenv import load_dotenv
 from sqlalchemy import false, not_, select, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,27 +21,9 @@ from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from EPF.EPF_Support import EPF_Conditions
 import EPF.EPF_Character
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from utils.Auto_Complete_Getter import get_autocomplete
 
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 async def hard_lock(ctx: discord.ApplicationContext, name: str):
@@ -82,84 +62,19 @@ async def gm_check(ctx, engine):
 # Autocompletes
 # returns a list of all characters
 async def character_select(ctx: discord.AutocompleteContext):
-    logging.info(f"{datetime.datetime.now()} - character_select")
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-            character = char_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in character if val in option.lower()]
-        return character
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"character_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.character_select()
 
 
 # Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
-    # bughunt code
-    logging.info(f"{datetime.datetime.now()} - attack_cog character_select_gm")
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    gm_status = await gm_check(ctx, engine)
-
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-
-        async with async_session() as session:
-            if gm_status:
-                char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-            else:
-                char_result = await session.execute(
-                    select(Tracker.name).where(Tracker.user == ctx.interaction.user.id).order_by(Tracker.name.asc())
-                )
-            character = char_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in character if val in option.lower()]
-        else:
-            return character
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"character_select_gm: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.character_select(gm=True)
 
 
 async def npc_select(ctx: discord.AutocompleteContext):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine)
-
-        async with async_session() as session:
-            char_result = await session.execute(
-                select(Tracker.name).where(Tracker.player == false()).order_by(Tracker.name.asc())
-            )
-            character = char_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in character if val in option.lower()]
-        else:
-            return character
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"npc_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.npc_select()
 
 async def condition_select_EPF(ctx: discord.AutocompleteContext):
     guild = await get_guild(ctx, None)
