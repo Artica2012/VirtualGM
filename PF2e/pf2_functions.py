@@ -72,7 +72,7 @@ async def attack(
     else:
         roll = roll_list[1]
 
-    roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+    roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
     dice_result = d20.roll(roll_string)
     # print(f"{dice_result}")
 
@@ -120,7 +120,7 @@ async def attack(
 
     try:
         logging.info(f"Target Modifier: {target_modifier}")
-        goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+        goal_string: str = f"({goal_value}){ParseModifiers(target_modifier)}"
         logging.info(f"Goal: {goal_string}")
         goal_result = d20.roll(goal_string)
         # print(f"{dice_result}")

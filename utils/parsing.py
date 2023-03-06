@@ -3,7 +3,7 @@ import d20
 
 
 def ParseModifiers(modifier_st: str):
-    return f"{'+' if modifier_st and modifier_st[0] not in ['+', '-', '*', '/'] else ''}{modifier_st}"
+    return f"{'+' if modifier_st and modifier_st[0] not in ['+', '-', '*','/'] else ''}{modifier_st}"
 
 
 def opposed_roll(roll: d20.RollResult, dc: d20.RollResult):

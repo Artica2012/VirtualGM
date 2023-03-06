@@ -46,7 +46,7 @@ async def attack(
     # Roll the dice
     # print(roll)
     try:
-        roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
+        roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
     except:
         roll_string = roll
     dice_result = d20.roll(roll_string)
@@ -89,7 +89,7 @@ async def attack(
     logging.info(f"Target Modifier: {target_modifier}")
 
     try:
-        target_string = f"{con_vs.number}{ParseModifiers(target_modifier)}"
+        target_string = f"({con_vs.number}){ParseModifiers(target_modifier)}"
         goal = d20.roll(target_string)
     except Exception as e:
         report = ErrorReport(ctx, "/attack (con)", e, bot)
