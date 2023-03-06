@@ -17,7 +17,7 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
         return await get_EPF_Tracker(ctx, engine, init_list, bot, guild=guild)
     elif guild.system == "D4e":
         return await get_D4e_Tracker(ctx, engine, init_list, bot, guild=guild)
-    elif guild.system == "PD2":
+    elif guild.system == "PF2":
         return await get_PF2_Tracker(ctx, engine, init_list, bot, guild=guild)
     else:
         return Tracker(ctx, engine, init_list, bot, guild=guild)

@@ -85,17 +85,28 @@ class Character():
         except NoResultFound:
             return None
 
-    async def conditions(self, ctx):
+    async def conditions(self, no_time=False):
         logging.info("Returning PF2 Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
-            Condition = await get_condition(ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         else:
-            Condition = await get_condition(ctx, self.engine)
+            Condition = await get_condition(self.ctx, self.engine)
         try:
             async with async_session() as session:
-                result = await session.execute(select(Condition)
-                                               .where(Condition.character_id == self.id))
+                if no_time:
+                    result = await session.execute(
+                        select(Condition.title)
+                            .where(Condition.character_id == self.id)
+                            .where(Condition.time == false())
+                            .where(Condition.visible == true())
+                            .order_by(Condition.title.asc())
+                    )
+                else:
+                    result = await session.execute(select(Condition)
+                                                   .where(Condition.character_id == self.id)
+                                                   .where(Condition.visible == true())
+                                                   .order_by(Condition.title.asc()))
                 return result.scalars().all()
         except NoResultFound:
             return []
@@ -396,7 +407,6 @@ class Character():
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
 
-
             if self.character_model.player:
                 status = "PC:"
             else:
@@ -459,13 +469,13 @@ class Character():
             await self.ctx.respond("Failed")
 
     async def edit_character(self,
-            name: str,
-            hp: int,
-            init: str,
-            active: bool,
-            player: discord.User,
-            bot
-    ):
+                             name: str,
+                             hp: int,
+                             init: str,
+                             active: bool,
+                             player: discord.User,
+                             bot
+                             ):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -504,11 +514,3 @@ class Character():
         except Exception as e:
             logging.warning(f"add_character: {e}")
             return False
-
-
-
-
-
-
-
-

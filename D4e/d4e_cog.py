@@ -21,6 +21,7 @@ from auto_complete import character_select_gm
 from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from utils.Auto_Complete_Getter import get_autocomplete
 
 # define global variables
 from utils.utils import get_guild
@@ -47,7 +48,9 @@ DATABASE = os.getenv("DATABASE")
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # UTILITY FUNCTIONS
-
+async def cc_select_visible_flex(ctx: discord.AutocompleteContext):
+    Autocomplete = await get_autocomplete(ctx)
+    return await Autocomplete.cc_select(flex=True)
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 
@@ -62,35 +65,7 @@ class D4eCog(commands.Cog):
     # Autocomplete Methods
 
     # Provide a list of conditions with the visible and flex tags
-    async def cc_select_visible_flex(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        character = ctx.options["character"]
 
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            guild = await get_guild(ctx, None)
-            Tracker = await get_tracker(ctx, engine, id=guild.id)
-            Condition = await get_condition(ctx, engine, id=guild.id)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-                char = char_result.scalars().one()
-            async with async_session() as session:
-                con_result = await session.execute(
-                    select(Condition.title)
-                    .where(Condition.character_id == char)
-                    .where(Condition.visible == true())
-                    .where(Condition.flex == true())
-                )
-                condition = con_result.scalars().all()
-            await engine.dispose()
-            return condition
-
-        except Exception as e:
-            logging.warning(f"cc_select: {e}")
-            report = ErrorReport(ctx, self.cc_select.__name__, e, self.bot)
-            await report.report()
-            return []
 
     ########################################
     ########################################

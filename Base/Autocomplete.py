@@ -1,12 +1,13 @@
 import logging
 
 import discord
-from sqlalchemy import select, false
+from sqlalchemy import select, false, not_
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_session
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_tracker
+from database_models import get_tracker, get_macro, get_condition
+from utils.Char_Getter import get_character
 
 
 class AutoComplete():
@@ -63,3 +64,95 @@ class AutoComplete():
             logging.warning(f"character_select: {e}")
             await self.engine.dispose()
             return []
+
+    async def add_condition_select(self):
+        self.engine.dispose()
+        return []
+
+    async def macro_select(self, attk=False):
+        character = self.ctx.options["character"]
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        try:
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
+                char = char_result.scalars().one()
+
+            async with async_session() as session:
+                if not attk:
+                    macro_result = await session.execute(
+                        select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc())
+                    )
+                else:
+                    macro_result = await session.execute(
+                        select(Macro.name)
+                            .where(Macro.character_id == char)
+                            .where(not_(Macro.macro.contains(",")))
+                            .order_by(Macro.name.asc())
+                    )
+                macro_list = macro_result.scalars().all()
+            await self.engine.dispose()
+            if self.ctx.value != "":
+                val = self.ctx.value.lower()
+                return [option for option in macro_list if val in option.lower()]
+            else:
+                return macro_list
+        except Exception as e:
+            logging.warning(f"a_macro_select: {e}")
+            self.engine.dispose()
+            return []
+
+    async def cc_select(self, no_time=False, flex=False):
+        character = self.ctx.options["character"]
+
+        try:
+            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            condition = await Character_Model.conditions(no_time=no_time)
+            await self.engine.dispose()
+            if self.ctx.value != "":
+                val = self.ctx.value.lower()
+                return [option for option in condition if val in option.lower()]
+            else:
+                return condition
+        except NoResultFound:
+            await self.engine.dispose()
+            return []
+        except Exception as e:
+            logging.warning(f"cc_select: {e}")
+            await self.engine.dispose()
+            return []
+
+    async def save_select(self):
+        await self.engine.dispose()
+        return []
+
+    async def get_attributes(self):
+        logging.info(f"get_attributes")
+        try:
+            target = self.ctx.options["target"]
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == target))
+                tar_char = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition.title)
+                        .where(Condition.character_id == tar_char.id)
+                        .where(Condition.visible == false())
+                )
+                invisible_conditions = result.scalars().all()
+            await self.engine.dispose()
+            if self.ctx.value != "":
+                val = self.ctx.value.lower()
+                return [option for option in invisible_conditions if val in option.lower()]
+            else:
+                return invisible_conditions
+
+        except Exception as e:
+            logging.warning(f"get_attributes, {e}")
+            await self.engine.dispose()
+            return []
+

@@ -76,227 +76,38 @@ async def npc_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.npc_select()
 
-async def condition_select_EPF(ctx: discord.AutocompleteContext):
-    guild = await get_guild(ctx, None)
-    if guild.system == "EPF":
-        key_list = list(EPF_Conditions.keys())
-        # print(key_list)
-        key_list.sort()
-        val = ctx.value.lower()
-        return [option for option in key_list if val in option.lower()]
-    else:
-        return []
+async def add_condition_select(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.add_condition_select()
 
 
 
 async def macro_select(ctx: discord.AutocompleteContext):
-    character = ctx.options["character"]
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    guild = await initiative.get_guild(ctx, None)
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    Macro = await get_macro(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    if guild.system == 'EPF':
-        EPF_Char = await get_character(character, ctx, guild=guild, engine=engine)
-        macro_list = await EPF_Char.macro_list()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in macro_list if val in option.lower()]
-        else:
-            return macro_list
-
-
-    try:
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            char = char_result.scalars().one()
-
-        async with async_session() as session:
-            macro_result = await session.execute(
-                select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc())
-            )
-            macro_list = macro_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in macro_list if val in option.lower()]
-        else:
-            return macro_list
-    except Exception as e:
-        logging.warning(f"a_macro_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.macro_select()
 
 
 async def a_macro_select(ctx: discord.AutocompleteContext):
-    # bughunt code
-    logging.info(f"{datetime.datetime.now()} - attack_cog a_macro_select")
-
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    character = ctx.options["character"]
-    guild = await initiative.get_guild(ctx, None)
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    Macro = await get_macro(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    if guild.system == 'EPF':
-        EPF_Char = await get_character(character, ctx, guild=guild, engine=engine)
-        macro_list = await EPF_Char.macro_list()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in macro_list if val in option.lower()]
-        else:
-            return macro_list
-
-    try:
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            char = char_result.scalars().one()
-        async with async_session() as session:
-            macro_result = await session.execute(
-                select(Macro.name)
-                    .where(Macro.character_id == char)
-                    .where(not_(Macro.macro.contains(",")))
-                    .order_by(Macro.name.asc())
-            )
-            macro_list = macro_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in macro_list if val in option.lower()]
-        else:
-            return macro_list
-
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"a_macro_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.macro_select(attk=True)
 
 
 async def cc_select(ctx: discord.AutocompleteContext):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    character = ctx.options["character"]
-
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await initiative.get_guild(ctx, None)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            char = char_result.scalars().one()
-        async with async_session() as session:
-            con_result = await session.execute(
-                select(Condition.title)
-                    .where(Condition.character_id == char)
-                    .where(Condition.visible == true())
-                    .order_by(Condition.title.asc())
-            )
-            condition = con_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in condition if val in option.lower()]
-        else:
-            return condition
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"cc_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.cc_select()
 
 
 async def cc_select_no_time(ctx: discord.AutocompleteContext):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    character = ctx.options["character"]
-
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await initiative.get_guild(ctx, None)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-            char = char_result.scalars().one()
-        async with async_session() as session:
-            con_result = await session.execute(
-                select(Condition.title)
-                    .where(Condition.character_id == char)
-                    .where(Condition.time == false())
-                    .where(Condition.visible == true())
-                    .order_by(Condition.title.asc())
-            )
-            condition = con_result.scalars().all()
-        await engine.dispose()
-        if ctx.value != "":
-            val = ctx.value.lower()
-            return [option for option in condition if val in option.lower()]
-        else:
-            return condition
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"cc_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.cc_select(no_time=True)
 
 
 async def save_select(ctx: discord.AutocompleteContext):
-    try:
-        guild = await initiative.get_guild(ctx, None)
-        if guild.system == "PF2" or guild.system == "EPF":
-            return PF2e.pf2_functions.PF2_saves
-        else:
-            return []
-    except NoResultFound:
-        return []
-    except Exception as e:
-        logging.warning(f"cc_select: {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.save_select()
 
 async def get_attributes(ctx: discord.AutocompleteContext):
-    # bughunt code
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
-    try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        guild = await get_guild(ctx, None)
-        await engine.dispose()
-        if guild.system == "PF2":
-            return PF2e.pf2_functions.PF2_attributes
-        elif guild.system == "D4e":
-            return D4e.d4e_functions.D4e_attributes
-        elif guild.system == "EPF":
-            if ctx.value != "":
-                option_list = EPF.EPF_Character.PF2_attributes + EPF.EPF_Character.PF2_skills
-                val = ctx.value.lower()
-                return [option for option in option_list if val in option.lower()]
-            else:
-                return EPF.EPF_Character.PF2_attributes
-        else:
-            try:
-                # This should currently be inaccessible,
-                # but it might be useful for a future build your own system thing
-                target = ctx.options["target"]
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                Condition = await get_condition(ctx, engine, id=guild.id)
-                async with async_session() as session:
-                    result = await session.execute(select(Tracker).where(Tracker.name == target))
-                    tar_char = result.scalars().one()
-                async with async_session() as session:
-                    result = await session.execute(
-                        select(Condition.title)
-                            .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible == false())
-                    )
-                    invisible_conditions = result.scalars().all()
-                return invisible_conditions
-            except Exception:
-                return []
-    except Exception as e:
-        logging.warning(f"get_attributes, {e}")
-        return []
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.get_attributes()
 
 

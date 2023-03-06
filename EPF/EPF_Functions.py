@@ -205,7 +205,7 @@ async def EPF_init_con(ctx: discord.ApplicationContext, engine, bot, current_cha
                             await tracker_channel.send(f"{con_row.title} removed from {character.name}")
                     await session.commit()
                 elif selected_condition.time:  # If time is true
-                    await character.conditions(ctx)
+                    await character.conditions()
 
     except Exception as e:
         logging.error(f"block_advance_initiative: {e}")

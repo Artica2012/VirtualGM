@@ -22,7 +22,7 @@ from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
 from time_keeping_functions import check_timekeeper
-from auto_complete import character_select, character_select_gm, cc_select, npc_select, condition_select_EPF
+from auto_complete import character_select, character_select_gm, cc_select, npc_select, add_condition_select
 import warnings
 from sqlalchemy import exc
 from utils.Tracker_Getter import get_tracker_model
@@ -377,7 +377,7 @@ class InitiativeCog(commands.Cog):
         # guild_ids=[GUILD]
     )
     @option("character", description="Character to select", autocomplete=character_select)
-    @option("title", autocomplete=condition_select_EPF)
+    @option("title", autocomplete=add_condition_select)
     @option("type", choices=["Condition", "Counter"])
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
     @option("unit", autocomplete=time_check_ac)
