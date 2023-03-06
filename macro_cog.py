@@ -23,6 +23,7 @@ from error_handling_reporting import ErrorReport
 from auto_complete import character_select, macro_select, character_select_gm
 
 # define global variables
+from utils.parsing import ParseModifiers
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -235,15 +236,16 @@ class MacroCog(commands.Cog):
                 " duplicate names."
             )
 
-        if modifier != "":
-            if modifier[0] == "+" or modifier[0] == "-":
-                macro_string = macro_data.macro + modifier
-            else:
-                macro_string = macro_data.macro + "+" + modifier
-        else:
-            macro_string = macro_data.macro
+        # if modifier != "":
+        #     if modifier[0] == "+" or modifier[0] == "-":
+        #         macro_string = macro_data.macro + modifier
+        #     else:
+        #         macro_string = macro_data.macro + "+" + modifier
+        # else:
+        #     macro_string = macro_data.macro
 
-        dice_result = d20.roll(macro_string)
+        # dice_result = d20.roll(macro_string)
+        dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
         output_string = f"{character}:\n{macro_name.split(':')[0]}\n{dice_result}"
 
         return output_string
