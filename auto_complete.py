@@ -93,6 +93,9 @@ async def character_select(ctx: discord.AutocompleteContext):
             char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
             character = char_result.scalars().all()
         await engine.dispose()
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in character if val in option.lower()]
         return character
     except NoResultFound:
         return []
@@ -122,7 +125,11 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
                 )
             character = char_result.scalars().all()
         await engine.dispose()
-        return character
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in character if val in option.lower()]
+        else:
+            return character
     except NoResultFound:
         return []
     except Exception as e:
@@ -143,7 +150,11 @@ async def npc_select(ctx: discord.AutocompleteContext):
             )
             character = char_result.scalars().all()
         await engine.dispose()
-        return character
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in character if val in option.lower()]
+        else:
+            return character
     except NoResultFound:
         return []
     except Exception as e:
@@ -192,7 +203,11 @@ async def macro_select(ctx: discord.AutocompleteContext):
             )
             macro_list = macro_result.scalars().all()
         await engine.dispose()
-        return macro_list
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in macro_list if val in option.lower()]
+        else:
+            return macro_list
     except Exception as e:
         logging.warning(f"a_macro_select: {e}")
         return []
@@ -231,7 +246,11 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
             )
             macro_list = macro_result.scalars().all()
         await engine.dispose()
-        return macro_list
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in macro_list if val in option.lower()]
+        else:
+            return macro_list
 
     except NoResultFound:
         return []
@@ -262,7 +281,11 @@ async def cc_select(ctx: discord.AutocompleteContext):
             )
             condition = con_result.scalars().all()
         await engine.dispose()
-        return condition
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in condition if val in option.lower()]
+        else:
+            return condition
     except NoResultFound:
         return []
     except Exception as e:
@@ -293,7 +316,11 @@ async def cc_select_no_time(ctx: discord.AutocompleteContext):
             )
             condition = con_result.scalars().all()
         await engine.dispose()
-        return condition
+        if ctx.value != "":
+            val = ctx.value.lower()
+            return [option for option in condition if val in option.lower()]
+        else:
+            return condition
     except NoResultFound:
         return []
     except Exception as e:

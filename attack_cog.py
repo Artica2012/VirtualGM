@@ -58,8 +58,55 @@ class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def get_attributes(self, ctx: discord.AutocompleteContext):
+        # bughunt code
+        logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
+        try:
+            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Global).where(
+                        or_(
+                            Global.tracker_channel == ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == ctx.interaction.channel_id,
+                        )
+                    )
+                )
+                guild = result.scalars().one()
+            await engine.dispose()
+            if guild.system == "PF2":
+                return PF2e.pf2_functions.PF2_attributes
+            elif guild.system == "D4e":
+                return D4e.d4e_functions.D4e_attributes
+            else:
+                try:
+                    # This should currently be inaccessible,
+                    # but it might be useful for a future build your own system thing
+                    target = ctx.options["target"]
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Condition = await get_condition(ctx, engine, id=guild.id)
+                    async with async_session() as session:
+                        result = await session.execute(select(Tracker).where(Tracker.name == target))
+                        tar_char = result.scalars().one()
+                    async with async_session() as session:
+                        result = await session.execute(
+                            select(Condition.title)
+                            .where(Condition.character_id == tar_char.id)
+                            .where(Condition.visible == false())
+                        )
+                        invisible_conditions = result.scalars().all()
+                    if ctx.value != "":
+                        val = ctx.value.lower()
+                        return [option for option in invisible_conditions if val in option.lower()]
+                    else:
+                        return invisible_conditions
+                except Exception:
+                    return []
+        except Exception as e:
+            logging.warning(f"get_attributes, {e}")
+            return []
 
     # ---------------------------------------------------
     # ---------------------------------------------------
