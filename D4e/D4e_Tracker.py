@@ -20,7 +20,7 @@ from utils.Char_Getter import get_character
 # from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Generic.Tracker import Tracker, get_init_list
+from Base.Tracker import Tracker, get_init_list
 
 
 async def get_D4e_Tracker(ctx, engine, init_list, bot, guild=None):

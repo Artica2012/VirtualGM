@@ -13,7 +13,7 @@ from error_handling_reporting import ErrorReport
 from time_keeping_functions import advance_time
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Generic.Tracker import Tracker
+from Base.Tracker import Tracker
 from utils.Char_Getter import get_character
 
 

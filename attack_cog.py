@@ -17,15 +17,16 @@ import D4e.d4e_functions
 import PF2e.pf2_functions
 import auto_complete
 import d20
-import initiative
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from auto_complete import character_select, character_select_gm, a_macro_select
+from utils.Char_Getter import get_character
+from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 import EPF.EPF_Functions
 
 # define global variables
-
+from utils.utils import get_guild
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -57,58 +58,8 @@ class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def get_attributes(self, ctx: discord.AutocompleteContext):
-        # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
-        try:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                guild = result.scalars().one()
-            await engine.dispose()
-            if guild.system == "PF2":
-                return PF2e.pf2_functions.PF2_attributes
-            elif guild.system == "D4e":
-                return D4e.d4e_functions.D4e_attributes
-            elif guild.system == "EPF":
-                if ctx.value != "":
-                    option_list = EPF.pf2_enhanced_character.PF2_attributes + EPF.pf2_enhanced_character.PF2_skills
-                    val = ctx.value.lower()
-                    return [option for option in option_list if val in option.lower()]
-                else:
-                    return EPF.pf2_enhanced_character.PF2_attributes
-            else:
-                try:
-                    # This should currently be inaccessible,
-                    # but it might be useful for a future build your own system thing
-                    target = ctx.options["target"]
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
-                    Condition = await get_condition(ctx, engine, id=guild.id)
-                    async with async_session() as session:
-                        result = await session.execute(select(Tracker).where(Tracker.name == target))
-                        tar_char = result.scalars().one()
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Condition.title)
-                                .where(Condition.character_id == tar_char.id)
-                                .where(Condition.visible == false())
-                        )
-                        invisible_conditions = result.scalars().all()
-                    return invisible_conditions
-                except Exception:
-                    return []
-        except Exception as e:
-            logging.warning(f"get_attributes, {e}")
-            return []
+
 
     # ---------------------------------------------------
     # ---------------------------------------------------
@@ -120,7 +71,7 @@ class AttackCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("roll", description="Roll or Macro Roll", autocomplete=a_macro_select)
-    @option("vs", description="Target Attribute", autocomplete=get_attributes)
+    @option("vs", description="Target Attribute", autocomplete=auto_complete.get_attributes)
     @option("attack_modifier", description="Modifier to the macro (defaults to +)", required=False)
     @option("target_modifier", description="Modifier to the target's dc (defaults to +)", required=False)
     async def attack(
@@ -140,7 +91,7 @@ class AttackCog(commands.Cog):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         await ctx.response.defer()
-        guild = await initiative.get_guild(ctx, None)
+        guild = await get_guild(ctx, None)
         if not guild.system:
             await ctx.respond("No system set, command inactive.")
             return
@@ -219,7 +170,7 @@ class AttackCog(commands.Cog):
         logging.info(f"{datetime.datetime.now()} - attack_cog save")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        guild = await initiative.get_guild(ctx, None)
+        guild = await get_guild(ctx, None)
         if not guild.system:
             await ctx.respond("No system set, command inactive.")
             return
@@ -235,6 +186,7 @@ class AttackCog(commands.Cog):
             await ctx.send_followup(
                 "Please use `/d4e save` for D&D 4e save functionality, or manually roll the save with `/r`"
             )
+        await engine.dispose()
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -258,16 +210,9 @@ class AttackCog(commands.Cog):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         await ctx.response.defer()
-        async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    or_(
-                        Global.tracker_channel == ctx.interaction.channel_id,
-                        Global.gm_tracker_channel == ctx.interaction.channel_id,
-                    )
-                )
-            )
-            guild = result.scalars().one()
+        guild = await get_guild(ctx, None)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        Target_Model = await get_character(target, ctx, engine=engine, guild=guild)
         if not guild.system:
             await ctx.respond("No system set, command inactive.")
             return
@@ -297,8 +242,8 @@ class AttackCog(commands.Cog):
                 output_string = "Error: Invalid Roll, Please try again."
         # Apply the results
         await ctx.send_followup(output_string)
-        await initiative.change_hp(ctx, engine, self.bot, target, roll_result.total, healing, guild=guild)
-        await initiative.update_pinned_tracker(ctx, engine, self.bot, guild=guild)
+        await Target_Model.change_hp(roll_result.total, healing)
+        await Tracker_Model.update_pinned_tracker()
         await engine.dispose()
 
 

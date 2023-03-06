@@ -50,7 +50,6 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
             # print('Rolling')
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
             guild = await initiative.get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
@@ -68,8 +67,6 @@ class DiceRollerCog(commands.Cog):
                         await ctx.channel.send(f"_{roll}_\n{roll_str}")
                 else:
                     await ctx.respond(f"_{roll}_\n{roll_str}")
-
-                await engine.dispose()
             except Exception as e:
                 logging.warning(f"dice_roller_cog, post: {e}")
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)

@@ -29,7 +29,7 @@ from database_models import get_tracker_table, get_condition_table, get_macro_ta
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from Generic.Character import Character
+from Base.Character import Character
 from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 

@@ -15,12 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import PF2e.pf2_functions
+import D4e.d4e_functions
 from utils.Char_Getter import get_character
 import initiative
 from database_models import get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from EPF.EPF_Support import EPF_Conditions
+import EPF.EPF_Character
+
 
 # define global variables
 
@@ -310,3 +313,48 @@ async def save_select(ctx: discord.AutocompleteContext):
     except Exception as e:
         logging.warning(f"cc_select: {e}")
         return []
+
+async def get_attributes(ctx: discord.AutocompleteContext):
+    # bughunt code
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        guild = await get_guild(ctx, None)
+        await engine.dispose()
+        if guild.system == "PF2":
+            return PF2e.pf2_functions.PF2_attributes
+        elif guild.system == "D4e":
+            return D4e.d4e_functions.D4e_attributes
+        elif guild.system == "EPF":
+            if ctx.value != "":
+                option_list = EPF.EPF_Character.PF2_attributes + EPF.EPF_Character.PF2_skills
+                val = ctx.value.lower()
+                return [option for option in option_list if val in option.lower()]
+            else:
+                return EPF.EPF_Character.PF2_attributes
+        else:
+            try:
+                # This should currently be inaccessible,
+                # but it might be useful for a future build your own system thing
+                target = ctx.options["target"]
+                Tracker = await get_tracker(ctx, engine, id=guild.id)
+                Condition = await get_condition(ctx, engine, id=guild.id)
+                async with async_session() as session:
+                    result = await session.execute(select(Tracker).where(Tracker.name == target))
+                    tar_char = result.scalars().one()
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Condition.title)
+                            .where(Condition.character_id == tar_char.id)
+                            .where(Condition.visible == false())
+                    )
+                    invisible_conditions = result.scalars().all()
+                return invisible_conditions
+            except Exception:
+                return []
+    except Exception as e:
+        logging.warning(f"get_attributes, {e}")
+        return []
+
+

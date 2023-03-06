@@ -26,8 +26,8 @@ from error_handling_reporting import error_not_initialized, ErrorReport
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 # from utils.Tracker_Getter import get_tracker_model
-from Generic.Generic_Utilities import Utilities
-from Generic.Tracker import get_init_list
+from Base.Generic_Utilities import Utilities
+from Base.Tracker import get_init_list
 
 class D4e_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):

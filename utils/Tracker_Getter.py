@@ -1,6 +1,6 @@
 
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Generic.Tracker import get_init_list, Tracker
+from Base.Tracker import get_init_list, Tracker
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from EPF.EPF_Tracker import get_EPF_Tracker

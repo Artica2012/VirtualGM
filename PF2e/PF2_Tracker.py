@@ -16,7 +16,7 @@ from time_keeping_functions import output_datetime, get_time, advance_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Generic.Tracker import Tracker
+from Base.Tracker import Tracker
 
 
 async def get_PF2_Tracker(ctx, engine, init_list, bot, guild=None):

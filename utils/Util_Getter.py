@@ -6,12 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from EPF.EPF_Character import get_EPF_Character
-from Generic.Character import Character
+from Base.Character import Character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_models import get_tracker
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
-from Generic.Generic_Utilities import Utilities
+from Base.Generic_Utilities import Utilities
 from D4e.D4e_utilities import D4e_Utilities
 from PF2e.PF2_utilities import PF2_Utilities
 

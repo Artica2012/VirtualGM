@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 import d20
 
-import Generic.character_functions
+import Base.character_functions
 # import initiative
 from database_models import (
     get_condition,
@@ -144,7 +144,7 @@ async def save(
         return output_string
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    guild = await initiative.get_guild(ctx, None)
+    guild = await get_guild(ctx, None)
     Tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     orig_dc = dc
@@ -235,7 +235,7 @@ def PF2_eval_succss(dice_result: d20.RollResult, goal: d20.RollResult):
 async def edit_stats(ctx, engine, bot, name: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
-        guild = await initiative.get_guild(ctx, None)
+        guild = await get_guild(ctx, None)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
@@ -300,11 +300,11 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 condition = result.scalars().one()
                 condition.number = int(item.value)
                 await session.commit()
-        await self.ctx.channel.send(embeds=await Generic.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
+        await self.ctx.channel.send(embeds=await Base.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
         await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
         # print('Tracker Updated')
 
-        await self.ctx.channel.send(embeds=await Generic.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
+        await self.ctx.channel.send(embeds=await Base.character_functions.get_char_sheet(self.ctx, self.engine, self.bot, self.name))
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)

@@ -107,6 +107,7 @@ class MacroCog(commands.Cog):
             print(f"create_macro: {e}")
             report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
             await report.report()
+            await engine.dispose()
             return False
 
     async def mass_add(self, ctx: discord.ApplicationContext, character: str, data: str):
@@ -150,6 +151,7 @@ class MacroCog(commands.Cog):
             print(f"mass_add: {e}")
             report = ErrorReport(ctx, self.create_macro.__name__, e, self.bot)
             await report.report()
+            await engine.dispose()
             return False
 
     async def delete_macro(self, ctx: discord.ApplicationContext, character: str, macro_name: str):
@@ -177,6 +179,7 @@ class MacroCog(commands.Cog):
             print(f"delete_macro: {e}")
             report = ErrorReport(ctx, self.delete_macro.__name__, e, self.bot)
             await report.report()
+            await engine.dispose()
             return False
 
     async def delete_macro_all(self, ctx: discord.ApplicationContext, character: str):
@@ -197,14 +200,15 @@ class MacroCog(commands.Cog):
                 async with async_session() as session:
                     await session.delete(row)
                     await session.commit()
-
             await engine.dispose()
             return True
         except Exception as e:
             print(f"delete_macro: {e}")
             report = ErrorReport(ctx, self.delete_macro.__name__, e, self.bot)
             await report.report()
+            await engine.dispose()
             return False
+
 
     async def roll_macro(
         self, ctx: discord.ApplicationContext, character: str, macro_name: str, dc: int, modifier: str, guild=None
@@ -255,7 +259,7 @@ class MacroCog(commands.Cog):
 
             dice_result = d20.roll(macro_string)
             output_string = f"{character}:\n{macro_name.split(':')[0]}\n{dice_result}"
-
+        await engine.dispose()
         return output_string
 
     # ---------------------------------------------------
@@ -366,6 +370,7 @@ class MacroCog(commands.Cog):
                     view.clear_items()
                 view.add_item(button)
             await ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
+        await engine.dispose()
 
     @commands.slash_command(name="m", description="Roll Macro")
     @option(
@@ -405,12 +410,12 @@ class MacroCog(commands.Cog):
                 else:
                     await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
                     await ctx.channel.send(await self.roll_macro(ctx, character, macro, dc, modifier, guild=guild))
-            await engine.dispose()
         except Exception as e:
             print(f"roll_macro: {e}")
             report = ErrorReport(ctx, "roll_macro", e, self.bot)
             await report.report()
             await ctx.send_followup("Macro Roll Failed")
+        await engine.dispose()
 
 
 def setup(bot):
