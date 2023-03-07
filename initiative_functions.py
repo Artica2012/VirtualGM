@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from database_models import get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
-from ui_components import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
