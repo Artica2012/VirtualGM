@@ -1,26 +1,21 @@
 # imports
 import asyncio
 import logging
-import os
+from datetime import datetime
 
 import d20
 import discord
-from dotenv import load_dotenv
 from sqlalchemy import select, true, or_, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 
 from database_models import get_tracker, Global, get_condition, get_macro
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
-from utils.utils import get_guild
 from utils.Char_Getter import get_character
-# from utils.Util_Getter import get_utilities
-
-
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
+from utils.utils import get_guild
 
 
 async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):

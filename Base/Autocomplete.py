@@ -3,7 +3,7 @@ import logging
 import discord
 from sqlalchemy import select, false, not_
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession, async_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from database_models import get_tracker, get_macro, get_condition
@@ -132,6 +132,7 @@ class AutoComplete():
     async def get_attributes(self):
         logging.info(f"get_attributes")
         try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             target = self.ctx.options["target"]
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)

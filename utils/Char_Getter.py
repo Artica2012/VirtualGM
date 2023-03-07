@@ -34,6 +34,6 @@ async def get_character(char_name, ctx, guild=None, engine=None):
             async with async_session() as session:
                 result = await session.execute(select(tracker).where(tracker.name == char_name))
                 character = result.scalars().one()
-            return Character(char_name,ctx, engine, character, guild=guild)
+            return Character(char_name, ctx, engine, character, guild=guild)
         except NoResultFound:
             return None

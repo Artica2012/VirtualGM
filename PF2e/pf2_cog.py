@@ -2,40 +2,19 @@
 # For slash commands specific to pathfinder 2e
 # system specific module
 import logging
-import os
 
 # imports
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from dotenv import load_dotenv
 
 import initiative
+from EPF.EPF_Character import pb_import, calculate
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
 from utils.Tracker_Getter import get_tracker_model
-from EPF.EPF_Character import pb_import, calculate
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 class PF2Cog(commands.Cog):

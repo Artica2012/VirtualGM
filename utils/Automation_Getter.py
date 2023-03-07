@@ -1,16 +1,10 @@
 import logging
 
-from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-
 from Base.Automation import Automation
-from PF2e.PF2_Automation import PF2_Automation
 from D4e.D4e_Automation import D4e_Automation
 from EPF.EPF_Automation import EPF_Automation
+from PF2e.PF2_Automation import PF2_Automation
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from database_models import get_tracker
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 

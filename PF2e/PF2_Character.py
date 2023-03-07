@@ -36,28 +36,35 @@ from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 import warnings
 from sqlalchemy import exc
 
+
 async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    tracker = await get_tracker(char_name, ctx, id=guild.id)
-    condition = await get_condition(ctx, engine, id=guild.id)
+    tracker = await get_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
             result = await session.execute(select(tracker).where(tracker.name == char_name))
             character = result.scalars().one()
         async with async_session() as session:
-            result = await session.execute(select(condition).where(condition.id == character.id).where(condition.visible == false()))
-            stats_list = result.scalars().all()
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == character.id)
+                                           .where(Condition.visible == false())
+                                           .order_by(Condition.title.asc()))
+            stat_list = result.scalars().all()
+            # print(len(stat_list))
             stats = {}
-            for item in stats_list:
+            for item in stat_list:
                 stats[f"{item.title}"] = item.number
+            # print(stats)
             return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:
         return None
+
 
 class PF2_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
@@ -69,13 +76,13 @@ class PF2_Character(Character):
         super().__init__(char_name, ctx, engine, character, guild)
 
     async def edit_character(self,
-            name: str,
-            hp: int,
-            init: str,
-            active: bool,
-            player: discord.User,
+                             name: str,
+                             hp: int,
+                             init: str,
+                             active: bool,
+                             player: discord.User,
                              bot
-    ):
+                             ):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -105,7 +112,6 @@ class PF2_Character(Character):
 
                 await session.commit()
 
-
             response = await edit_stats(self.ctx, self.engine, name, bot)
             if response:
                 # await update_pinned_tracker(ctx, engine, bot)
@@ -127,6 +133,7 @@ class PF2_Character(Character):
             await report.report()
             return False
 
+
 async def edit_stats(ctx, engine, bot, name: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
@@ -134,13 +141,14 @@ async def edit_stats(ctx, engine, bot, name: str):
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 
-        Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
+        Character_Model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
         condition_dict = {}
         for con in await Character_Model.conditions():
             await asyncio.sleep(0)
             condition_dict[con.title] = con.number
         editModal = PF2EditCharacterModal(
-            character=Character_Model.character(), cons=condition_dict, ctx=ctx, engine=engine, bot=bot, title=Character_Model.char_name
+            character=Character_Model.character_model, cons=condition_dict, ctx=ctx, engine=engine, bot=bot,
+            title=Character_Model.char_name
         )
         await ctx.send_modal(editModal)
 
@@ -176,12 +184,13 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-        Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
+        Character_Model = await get_PF2_Character(self.name, self.ctx, guild=guild, engine=self.engine)
 
         for item in self.children:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == Character_Model.id).where(Condition.title == item.label)
+                    select(Condition).where(Condition.character_id == Character_Model.id).where(
+                        Condition.title == item.label)
                 )
                 condition = result.scalars().one()
                 condition.number = int(item.value)
@@ -190,7 +199,6 @@ class PF2EditCharacterModal(discord.ui.Modal):
         # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
         # await Tracker_Model.update_pinned_tracker()
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
-
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)

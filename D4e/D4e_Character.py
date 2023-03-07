@@ -1,40 +1,20 @@
 # imports
 import asyncio
-import datetime
 import logging
-import os
-import inspect
-import sys
 
 import discord
-import d20
-import sqlalchemy as db
-from discord import option, Interaction
-from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
-from dotenv import load_dotenv
-from sqlalchemy import or_, select, false, true
+from discord import Interaction
+from sqlalchemy import select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.ddl import DropTable
 
-import time_keeping_functions
-import ui_components
-# from utils.Tracker_Getter import get_tracker_model
-from utils.utils import get_guild
-from database_models import Global
-from database_models import get_tracker, get_condition, get_macro
-from database_models import get_tracker_table, get_condition_table, get_macro_table
+from Base.Character import Character
+from database_models import get_tracker, get_condition
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from Base.Character import Character
-# from utils.Char_Getter import get_character
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-
-import warnings
-from sqlalchemy import exc
+from utils.utils import get_guild
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
@@ -56,11 +36,11 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
                                            .where(Condition.visible == false())
                                            .order_by(Condition.title.asc()))
             stat_list = result.scalars().all()
-            print(len(stat_list))
+            # print(len(stat_list))
             stats = {}
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
-            print(stats)
+            # print(stats)
             return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:
@@ -238,7 +218,7 @@ class D4e_Character(Character):
 
 async def edit_stats(ctx, engine, name: str, bot):
     try:
-        if engine == None:
+        if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 

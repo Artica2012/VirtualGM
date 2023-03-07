@@ -1,13 +1,10 @@
-
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Base.Tracker import get_init_list, Tracker
-from database_operations import get_asyncio_db_engine
-from utils.utils import get_guild
 from Base.Autocomplete import AutoComplete
+from D4e.D4e_Autocomplete import D4e_Autocmplete
 from EPF.EPF_Autocomplete import EPF_Autocmplete
 from PF2e.PF2_Autocomplete import PF2_Autocmplete
-from D4e.D4e_Autocomplete import D4e_Autocmplete
-
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import get_asyncio_db_engine
+from utils.utils import get_guild
 
 
 async def get_autocomplete(ctx, guild=None, engine=None):
@@ -23,5 +20,3 @@ async def get_autocomplete(ctx, guild=None, engine=None):
         return PF2_Autocmplete(ctx, engine, guild)
     else:
         return AutoComplete(ctx, engine, guild)
-
-

@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 import d20
-import discord
 from sqlalchemy import select, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from database_models import get_tracker, get_condition, get_macro
 from error_handling_reporting import error_not_initialized, ErrorReport
-from utils.utils import get_guild
 
 
 class Utilities():

@@ -1,99 +1,33 @@
-# d4e_cog.py
+# Update_and__Maintenance_Cog.py
 # For slash commands specific to oathfinder 2e
 # system specific module
 import logging
-import os
 
 # imports
 import discord
-from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from dotenv import load_dotenv
-from sqlalchemy import select, true
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import Base.Tracker
 import D4e.D4e_Tracker
 import D4e.d4e_functions
-
-import ui_components
-from auto_complete import character_select_gm
-from database_models import Global, get_condition, get_tracker
+from database_models import Global
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport
 from utils.Auto_Complete_Getter import get_autocomplete
 
-# define global variables
-from utils.utils import get_guild
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
-
 
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
-# UTILITY FUNCTIONS
-async def cc_select_visible_flex(ctx: discord.AutocompleteContext):
-    Autocomplete = await get_autocomplete(ctx)
-    return await Autocomplete.cc_select(flex=True)
-
-# Checks to see if the user of the slash command is the GM, returns a boolean
-
-
-
-class D4eCog(commands.Cog):
+class Update_and_Maintenance_Cog(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
 
-    # ---------------------------------------------------
-    # ---------------------------------------------------
-    # Autocomplete Methods
-
-    # Provide a list of conditions with the visible and flex tags
-
-
-    ########################################
-    ########################################
-    # Slash Commands
-
-    dd = SlashCommandGroup("d4e", "D&D 4th Edition Specific Commands")
-
-    @dd.command(description="D&D 4e auto save")
-    # @commands.slash_command(name="d4e_save", guild_ids=[GUILD])
-    @option("character", description="Character Attacking", autocomplete=character_select_gm)
-    @option("condition", description="Select Condition", autocomplete=cc_select_visible_flex)
-    async def save(self, ctx: discord.ApplicationContext, character: str, condition: str, modifier: str = ""):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer()
-        guild = await get_guild(ctx, None)
-        if guild.system == "D4e":
-            output_string = await D4e.d4e_functions.save(ctx, engine, self.bot, character, condition, modifier)
-            await engine.dispose()
-            await ctx.send_followup(output_string)
-        else:
-            await ctx.send_followup("No system set, command inactive.")
-        await engine.dispose()
-        return
-
     @commands.Cog.listener()
     async def on_ready(self):
-        logging.info("4e Cog Loaded")
+        logging.info("U&M Cog Loaded")
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
@@ -135,4 +69,4 @@ class D4eCog(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(D4eCog(bot))
+    bot.add_cog(Update_and_Maintenance_Cog(bot))

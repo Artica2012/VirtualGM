@@ -3,34 +3,18 @@ import asyncio
 import datetime
 import logging
 import os
-import inspect
-import sys
 
 import discord
-import d20
-import sqlalchemy as db
-from discord import option, Interaction
-from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from sqlalchemy import or_, select, false, true
+from sqlalchemy import select, false, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.ddl import DropTable
 
 import time_keeping_functions
-import ui_components
-from utils.utils import get_guild
-from database_models import Global
-from database_models import get_tracker, get_condition, get_macro
-from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-
-import warnings
-from sqlalchemy import exc
+from database_models import get_tracker, get_condition
+from error_handling_reporting import error_not_initialized
+from time_keeping_functions import get_time
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":

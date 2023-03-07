@@ -3,6 +3,7 @@ import asyncio
 import logging
 from datetime import datetime
 
+import d20
 import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
@@ -10,19 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import Base.Tracker
-import ui_components
-from D4e import d4e_functions
-from D4e.d4e_functions import gm_check
+from Base.Tracker import Tracker, get_init_list
+from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 from database_models import Global, get_condition, get_tracker
-from database_operations import get_asyncio_db_engine, USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, get_time
-from utils.Automation_Getter import get_automation
 from utils.Char_Getter import get_character
-# from utils.Tracker_Getter import get_tracker_model
-from utils.utils import get_guild
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Base.Tracker import Tracker, get_init_list
+from utils.utils import get_guild, gm_check
 
 
 async def get_D4e_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -289,7 +286,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild, refresh=True)
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
+    tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
 
@@ -297,7 +294,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     init_list = await get_init_list(ctx, engine, guild=guild)
 
     async with async_session() as session:
-        result = await session.execute(select(Tracker).where(Tracker.name == init_list[guild.initiative].name))
+        result = await session.execute(select(tracker).where(tracker.name == init_list[guild.initiative].name))
         char = result.scalars().one()
 
     async with async_session() as session:
@@ -331,16 +328,25 @@ class D4eConditionButton(discord.ui.Button):
         Tracker_Model = await get_D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, guild=self.guild), self.bot, guild=self.guild)
         if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
             try:
-                Automation = await get_automation(self.ctx, self.guild, self.engine)
-                output_string = await Automation.save(
-                    self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier="",
-                    guild=self.guild
-                )
+                try:
+                    Character_Model = await get_character(self.character, self.ctx, engine=self.engine, guild=self.guild)
+                    roll_string = f"1d20"
+                    dice_result = d20.roll(roll_string)
+                    success_string = D4e_eval_success(dice_result, D4e_base_roll)
+                    # Format output string
+                    output_string = f"Save: {self.character}\n{dice_result}\n{success_string}"
+                    # CC modify
+                    if dice_result.total >= D4e_base_roll.total:
+                        await Character_Model.delete_cc(self.condition)
+                except NoResultFound:
+                    if self.ctx is not None:
+                        await self.ctx.channel.send(error_not_initialized, delete_after=30)
+                    return "Error"
+                except Exception as e:
+                    logging.warning(f"save: {e}")
+                    return "Error"
                 await interaction.edit_original_response(content=output_string)
                 await Tracker_Model.update_pinned_tracker()
-                # await initiative.update_pinned_tracker(
-                #     self.ctx, self.engine, self.bot, guild=self.guild
-                # )
             except Exception:
                 output_string = "Unable to process save, perhaps the condition was removed."
                 await interaction.edit_original_response(content=output_string)

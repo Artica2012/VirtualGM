@@ -2,28 +2,21 @@
 
 # Consolidating all of the autocompletes into one place.
 
+import datetime
 # imports
 import logging
-import datetime
 
 import discord
-from sqlalchemy import false, not_, select, true
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import PF2e.pf2_functions
-import D4e.d4e_functions
-from utils.Char_Getter import get_character
 import initiative
-from database_models import get_macro, get_tracker, get_condition
-from database_operations import get_asyncio_db_engine
-from utils.utils import get_guild
-from EPF.EPF_Support import EPF_Conditions
-import EPF.EPF_Character
+from database_models import get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import get_asyncio_db_engine
 from utils.Auto_Complete_Getter import get_autocomplete
-
+from utils.utils import get_guild
 
 
 async def hard_lock(ctx: discord.ApplicationContext, name: str):
@@ -71,6 +64,7 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.character_select(gm=True)
 
+
 async def a_save_target_custom(ctx: discord.AutocompleteContext):
     guild = await get_guild(ctx, None)
     AutoComplete = await get_autocomplete(ctx, guild=guild)
@@ -84,10 +78,10 @@ async def npc_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.npc_select()
 
+
 async def add_condition_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.add_condition_select()
-
 
 
 async def macro_select(ctx: discord.AutocompleteContext):
@@ -114,8 +108,7 @@ async def save_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.save_select()
 
+
 async def get_attributes(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.get_attributes()
-
-

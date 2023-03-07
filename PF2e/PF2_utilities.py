@@ -26,7 +26,7 @@ from error_handling_reporting import error_not_initialized, ErrorReport
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 from utils.Tracker_Getter import get_tracker_model
-from Base.Generic_Utilities import Utilities
+from Base.Utilities import Utilities
 from Base.Tracker import get_init_list
 
 class PF2_Utilities(Utilities):
