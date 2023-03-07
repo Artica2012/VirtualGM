@@ -21,7 +21,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import time_keeping_functions
 import ui_components
-from utils.Tracker_Getter import get_tracker_model
+# from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
@@ -293,8 +293,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
                 condition.number = int(item.value)
                 await session.commit()
 
-        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
-        await Tracker_Model.update_pinned_tracker()
+        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        # await Tracker_Model.update_pinned_tracker()
         # print('Tracker Updated')
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
 

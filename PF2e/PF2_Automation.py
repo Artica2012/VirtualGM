@@ -3,7 +3,7 @@ import logging
 import d20
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from pf2_functions import PF2_base_dc, PF2_eval_succss
+from PF2e.pf2_functions import PF2_base_dc, PF2_eval_succss
 
 from Base.Automation import Automation
 from utils.Char_Getter import get_character

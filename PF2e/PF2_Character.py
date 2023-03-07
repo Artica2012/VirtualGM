@@ -21,7 +21,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import time_keeping_functions
 import ui_components
-from utils.Tracker_Getter import get_tracker_model
+# from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 from database_models import Global
 from database_models import get_tracker, get_condition, get_macro
@@ -30,7 +30,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from Base.Character import Character
-from utils.Char_Getter import get_character
+# from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 import warnings
@@ -41,7 +41,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    tracker = await get_character(char_name, ctx, engine=engine, guild=guild)
+    tracker = await get_tracker(char_name, ctx, id=guild.id)
     condition = await get_condition(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
@@ -187,8 +187,8 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 condition.number = int(item.value)
                 await session.commit()
 
-        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
-        await Tracker_Model.update_pinned_tracker()
+        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        # await Tracker_Model.update_pinned_tracker()
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
 
 

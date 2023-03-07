@@ -13,11 +13,12 @@ from sqlalchemy.orm import sessionmaker
 
 import d20
 
-import initiative
+# import initiative
 from database_models import Global
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from utils.parsing import opposed_roll
+from utils.utils import get_guild
 
 # define global variables
 load_dotenv(verbose=True)
@@ -50,7 +51,7 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
             # print('Rolling')
-            guild = await initiative.get_guild(ctx, None)
+            guild = await get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
                 roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result

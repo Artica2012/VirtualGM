@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-import ui_components
 from database_models import get_tracker, Global, get_condition, get_macro
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
@@ -21,7 +20,7 @@ from utils.Char_Getter import get_character
 # from utils.Util_Getter import get_utilities
 
 
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
 
 
 async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
@@ -655,8 +654,8 @@ class Tracker():
             # Check for systems:
 
             view = discord.ui.View(timeout=None)
-            view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-            view.add_item(ui_components.NextButton(self.bot, guild=self.guild))
+            view.add_item(InitRefreshButton(self.ctx, self.bot, guild=self.guild))
+            view.add_item(NextButton(self.bot, guild=self.guild))
             # Always post the tracker to the player channel
             if self.ctx is not None:
                 if self.ctx.channel.id == self.guild.tracker_channel:
@@ -753,8 +752,8 @@ class Tracker():
             view = discord.ui.View(timeout=None)
             # Check for systems:
             if self.guild.last_tracker is not None:
-                view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-                view.add_item((ui_components.NextButton(self.bot, guild=self.guild)))
+                view.add_item(InitRefreshButton(self.ctx, self.bot, guild=self.guild))
+                view.add_item((NextButton(self.bot, guild=self.guild)))
                 if self.guild.last_tracker is not None:
                     tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
                     edit_message = await tracker_channel.fetch_message(self.guild.last_tracker)
@@ -875,3 +874,38 @@ class Tracker():
                     tracker_channel.send(f"{row.title} removed from {character.name}")
 
 
+class InitRefreshButton(discord.ui.Button):
+    def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
+        self.ctx = ctx
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.guild = guild
+        super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Refreshed", ephemeral=True)
+            print(interaction.message.id)
+            Tracker_model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild), self.bot, guild=self.guild)
+            await Tracker_model.update_pinned_tracker()
+        except Exception as e:
+            print(f"Error: {e}")
+            logging.info(e)
+
+
+class NextButton(discord.ui.Button):
+    def __init__(self, bot, guild=None):
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.guild = guild
+        super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+            Tracker_Model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild), self.bot, guild=self.guild)
+            await Tracker_Model.advance_initiative()
+            await Tracker_Model.block_post_init()
+        except Exception as e:
+            print(f"Error: {e}")
+            logging.info(e)

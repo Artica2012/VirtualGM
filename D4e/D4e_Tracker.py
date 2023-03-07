@@ -9,6 +9,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import Base.Tracker
 import ui_components
 from D4e import d4e_functions
 from D4e.d4e_functions import gm_check, save
@@ -72,8 +73,8 @@ class D4e_Tracker(Tracker):
         # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
         view = await D4eTrackerButtons(self.ctx, self.bot, guild=self.guild)
         # print("Buttons Generated")
-        view.add_item(ui_components.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-        view.add_item(ui_components.NextButton(self.bot, guild=self.guild))
+        view.add_item(Base.Tracker.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
+        view.add_item(Base.Tracker.NextButton(self.bot, guild=self.guild))
 
         if self.ctx is not None:
             if self.ctx.channel.id == self.guild.tracker_channel:
