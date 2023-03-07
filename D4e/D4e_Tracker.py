@@ -34,7 +34,7 @@ class D4e_Tracker(Tracker):
         super().__init__(ctx, init_list, bot, engine, guild)
 
     async def block_post_init(self):
-        logging.info(f"block_post_init")
+        logging.info(f"D4e block_post_init")
         # Query the initiative position for the tracker and post it
 
         # try:
@@ -67,12 +67,12 @@ class D4e_Tracker(Tracker):
 
         # Check for systems:
 
-        logging.info("BPI3: d4e")
+        logging.info("BPI3: d4e!!!!!!!!!!!!!!!!!!!!!!!!!!")
         # view = await D4e.d4e_functions.D4eTrackerButtons(ctx, bot, guild, init_list)
         view = await D4eTrackerButtons(self.ctx, self.bot, guild=self.guild)
         # print("Buttons Generated")
         view.add_item(Base.Tracker.InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-        view.add_item(Base.Tracker.NextButton(self.bot, guild=self.guild))
+        view.add_item(NextButton(self.bot, guild=self.guild))
 
         if self.ctx is not None:
             if self.ctx.channel.id == self.guild.tracker_channel:
@@ -136,6 +136,7 @@ class D4e_Tracker(Tracker):
 
     async def block_get_tracker(self, selected: int, gm: bool = False):
         # Get the datetime
+        # print("Getting D4e Tracker")
         datetime_string = ""
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -283,6 +284,7 @@ class D4e_Tracker(Tracker):
 
 
 async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
+    print("D4e Tracker Buttons")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     guild = await get_guild(ctx, guild, refresh=True)
@@ -302,6 +304,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
             select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
         )
         conditions = result.scalars().all()
+        print(len(conditions))
     for con in conditions:
         new_button = D4eConditionButton(con, ctx, bot, char, guild=guild)
         view.add_item(new_button)
@@ -326,18 +329,18 @@ class D4eConditionButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message("Saving...")
         Tracker_Model = await get_D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, guild=self.guild), self.bot, guild=self.guild)
-        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
+        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine):
             try:
                 try:
-                    Character_Model = await get_character(self.character, self.ctx, engine=self.engine, guild=self.guild)
+                    Character_Model = await get_character(self.character.name, self.ctx, engine=self.engine, guild=self.guild)
                     roll_string = f"1d20"
                     dice_result = d20.roll(roll_string)
                     success_string = D4e_eval_success(dice_result, D4e_base_roll)
                     # Format output string
-                    output_string = f"Save: {self.character}\n{dice_result}\n{success_string}"
+                    output_string = f"Save: {self.character.name}\n{dice_result}\n{success_string}"
                     # CC modify
                     if dice_result.total >= D4e_base_roll.total:
-                        await Character_Model.delete_cc(self.condition)
+                        await Character_Model.delete_cc(self.condition.title)
                 except NoResultFound:
                     if self.ctx is not None:
                         await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -355,3 +358,20 @@ class D4eConditionButton(discord.ui.Button):
             await interaction.edit_original_response(content=output_string)
 
         # await self.ctx.channel.send(output_string)
+
+class NextButton(discord.ui.Button):
+    def __init__(self, bot, guild=None):
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.guild = guild
+        super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+            Tracker_Model = D4e_Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild)
+            await Tracker_Model.advance_initiative()
+            await Tracker_Model.block_post_init()
+        except Exception as e:
+            print(f"Error: {e}")
+            logging.info(e)

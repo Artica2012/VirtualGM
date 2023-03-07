@@ -1,7 +1,7 @@
 import logging
 
 import discord
-from sqlalchemy import select, false, not_
+from sqlalchemy import select, false, not_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -67,7 +67,7 @@ class AutoComplete():
             return []
 
     async def add_condition_select(self):
-        self.engine.dispose()
+        await self.engine.dispose()
         return []
 
     async def macro_select(self, attk=False):
@@ -109,8 +109,15 @@ class AutoComplete():
         character = self.ctx.options["character"]
 
         try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-            condition = await Character_Model.conditions(no_time=no_time)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Condition.title)
+                                               .where(Condition.character_id == Character_Model.id)
+                                               .where(Condition.visible == true())
+                                               .order_by(Condition.title.asc()))
+                condition = result.scalars().all()
             await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()

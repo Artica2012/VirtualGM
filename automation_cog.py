@@ -107,7 +107,7 @@ class AutomationCog(commands.Cog):
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        Automation = await get_automation(ctx, engine=self.engine)
+        Automation = await get_automation(ctx, engine=engine)
         output_string = await Automation.damage(self.bot, character, target, user_roll_str, modifier, healing)
         await ctx.send_followup(output_string)
         await engine.dispose()

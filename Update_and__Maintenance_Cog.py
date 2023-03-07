@@ -17,6 +17,7 @@ from database_models import Global
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.Auto_Complete_Getter import get_autocomplete
+from utils.Tracker_Getter import NextButton
 
 
 # ---------------------------------------------------------------
@@ -46,7 +47,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
                         view = await D4e.D4e_Tracker.D4eTrackerButtons(None, self.bot, guild)
                         view.add_item(Base.Tracker.InitRefreshButton(None, self.bot, guild=guild))
-                        view.add_item(Base.Tracker.NextButton(self.bot, guild=guild))
+                        view.add_item(NextButton(self.bot, guild=guild))
                         await last_tracker.edit(view=view)
                         logging.info("D4e View Updated")
                     except Exception as e:

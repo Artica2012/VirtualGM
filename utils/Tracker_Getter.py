@@ -1,3 +1,6 @@
+import logging
+
+import discord
 
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Base.Tracker import get_init_list, Tracker
@@ -23,3 +26,19 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
         return Tracker(ctx, engine, init_list, bot, guild=guild)
 
 
+class NextButton(discord.ui.Button):
+    def __init__(self, bot, guild=None):
+        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.bot = bot
+        self.guild = guild
+        super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+            Tracker_Model = await get_tracker_model(None, self.bot, guild=self.guild, engine=self.engine)
+            await Tracker_Model.advance_initiative()
+            await Tracker_Model.block_post_init()
+        except Exception as e:
+            print(f"Error: {e}")
+            logging.info(e)

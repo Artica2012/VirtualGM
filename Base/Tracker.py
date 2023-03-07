@@ -354,7 +354,7 @@ class Tracker():
 
     # This is the code which check, decrements and removes conditions for the init next turn.
     async def init_con(self, current_character, before: bool):
-        logging.info(f"{current_character}, {before}")
+        logging.info(f"{current_character.char_name}, {before}")
         logging.info("Decrementing Conditions")
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -615,7 +615,7 @@ class Tracker():
 
     # Post a new initiative tracker and updates the pinned trackers
     async def block_post_init(self):
-        logging.info(f"block_post_init")
+        logging.info(f"base block_post_init")
         # Query the initiative position for the tracker and post it
 
         try:
@@ -898,7 +898,7 @@ class NextButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         try:
             await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-            Tracker_Model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild), self.bot, guild=self.guild)
+            Tracker_Model = Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild)
             await Tracker_Model.advance_initiative()
             await Tracker_Model.block_post_init()
         except Exception as e:

@@ -439,7 +439,7 @@ class InitiativeCog(commands.Cog):
         Character_Model = await get_character(character, ctx, engine=engine)
 
         if mode == "delete":
-            result = Character_Model.delete_cc(condition)
+            result = await Character_Model.delete_cc(condition)
             if result:
                 await ctx.send_followup("Successful Delete", ephemeral=True)
                 await ctx.send(f"{condition} on {character} deleted.")
