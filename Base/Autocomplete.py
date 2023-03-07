@@ -29,6 +29,7 @@ class AutoComplete():
                         select(Tracker.name).where(Tracker.user == self.ctx.interaction.user.id).order_by(Tracker.name.asc())
                     )
                 character = char_result.scalars().all()
+                print(len(character))
             await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()

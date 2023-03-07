@@ -19,7 +19,7 @@ import auto_complete
 import d20
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
-from auto_complete import character_select, character_select_gm, a_macro_select, get_attributes
+from auto_complete import character_select, character_select_gm, a_macro_select, get_attributes, a_save_target_custom, save_select
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
@@ -96,8 +96,8 @@ class AttackCog(commands.Cog):
 
     @att.command(description="Saving Throw")
     @option("character", description="Character forcing the sae", autocomplete=character_select_gm)
-    @option("target", description="Saving Character", autocomplete=character_select)
-    @option("save", description="Save", autocomplete=auto_complete.save_select)
+    @option("target", description="Saving Character", autocomplete=a_save_target_custom)
+    @option("save", description="Save", autocomplete=save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)
     async def save(
             self,

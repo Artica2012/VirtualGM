@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 import Base.Tracker
 import ui_components
 from D4e import d4e_functions
-from D4e.d4e_functions import gm_check, save
+from D4e.d4e_functions import gm_check
 from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine, USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from error_handling_reporting import ErrorReport, error_not_initialized

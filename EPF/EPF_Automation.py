@@ -1,11 +1,14 @@
 import logging
 
 import d20
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Automation import Automation
+from EPF.EPF_Character import get_EPF_Character
 from PF2e.pf2_functions import PF2_eval_succss
+from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 
@@ -40,4 +43,47 @@ class EPF_Automation(Automation):
         output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
         return output_string
 
+    async def save(self, character, target, save, dc, modifier):
+        if target is None:
+            output_string = "Error. No Target Specified."
+            return output_string
+        print(f" {save}, {dc}, {modifier}")
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        attacker = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
+        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
+
+        orig_dc = dc
+
+        if dc is None:
+            dc = await attacker.get_dc("DC")
+            print(dc)
+        try:
+            print(await opponent.get_roll(save))
+            dice_result = d20.roll(f"{await opponent.get_roll(save)}{ParseModifiers(modifier)}")
+            print(dice_result)
+            # goal_string: str = f"{dc}"
+            goal_result = d20.roll(f"{dc}")
+            print(goal_result)
+        except Exception as e:
+            logging.warning(f"attack: {e}")
+            return False
+        try:
+            success_string = PF2_eval_succss(dice_result, goal_result)
+            print(success_string)
+            # Format output string
+            if character == target:
+                output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
+            else:
+                output_string = (
+                    f"{target} makes a {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
+                )
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"attack: {e}")
+            return False
+
+        return output_string
 

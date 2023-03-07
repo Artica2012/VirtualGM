@@ -8,7 +8,7 @@ from utils.Char_Getter import get_character
 from D4e.d4e_functions import D4e_attributes
 
 
-class PF2_Autocmplete(AutoComplete):
+class D4e_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
@@ -34,3 +34,6 @@ class PF2_Autocmplete(AutoComplete):
 
     async def get_attributes(self):
         return D4e_attributes
+
+    async def save_select(self):
+        return ["Empty Intentionally"]

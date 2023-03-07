@@ -38,24 +38,29 @@ from sqlalchemy import exc
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
-    logging.info("Generating PF2_Character Class")
+    logging.info("Generating D4e_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    tracker = await get_tracker(char_name, ctx, id=guild.id)
-    condition = await get_condition(ctx, engine, id=guild.id)
+    tracker = await get_tracker(char_name, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
+
         async with async_session() as session:
             result = await session.execute(select(tracker).where(tracker.name == char_name))
             character = result.scalars().one()
         async with async_session() as session:
-            result = await session.execute(
-                select(condition).where(condition.id == character.id).where(condition.visible == false()))
-            stats_list = result.scalars().all()
+            result = await session.execute(select(Condition)
+                                           .where(Condition.character_id == character.id)
+                                           .where(Condition.visible == false())
+                                           .order_by(Condition.title.asc()))
+            stat_list = result.scalars().all()
+            print(len(stat_list))
             stats = {}
-            for item in stats_list:
+            for item in stat_list:
                 stats[f"{item.title}"] = item.number
+            print(stats)
             return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:

@@ -71,6 +71,14 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.character_select(gm=True)
 
+async def a_save_target_custom(ctx: discord.AutocompleteContext):
+    guild = await get_guild(ctx, None)
+    AutoComplete = await get_autocomplete(ctx, guild=guild)
+    if guild.system == "D4e":
+        return await AutoComplete.cc_select(flex=True)
+    else:
+        return await AutoComplete.character_select()
+
 
 async def npc_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
