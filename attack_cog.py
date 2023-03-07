@@ -19,11 +19,12 @@ import auto_complete
 import d20
 from database_models import Global, get_macro, get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
-from auto_complete import character_select, character_select_gm, a_macro_select
+from auto_complete import character_select, character_select_gm, a_macro_select, get_attributes
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 import EPF.EPF_Functions
+from utils.Automation_Getter import get_automation
 
 # define global variables
 from utils.utils import get_guild
@@ -58,57 +59,7 @@ class AttackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def get_attributes(self, ctx: discord.AutocompleteContext):
-        # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog get_attributes")
-        try:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                guild = result.scalars().one()
-            await engine.dispose()
-            if guild.system == "PF2":
-                return PF2e.pf2_functions.PF2_attributes
-            elif guild.system == "D4e":
-                return D4e.d4e_functions.D4e_attributes
-            else:
-                try:
-                    # This should currently be inaccessible,
-                    # but it might be useful for a future build your own system thing
-                    target = ctx.options["target"]
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
-                    Condition = await get_condition(ctx, engine, id=guild.id)
-                    async with async_session() as session:
-                        result = await session.execute(select(Tracker).where(Tracker.name == target))
-                        tar_char = result.scalars().one()
-                    async with async_session() as session:
-                        result = await session.execute(
-                            select(Condition.title)
-                            .where(Condition.character_id == tar_char.id)
-                            .where(Condition.visible == false())
-                        )
-                        invisible_conditions = result.scalars().all()
-                    if ctx.value != "":
-                        val = ctx.value.lower()
-                        return [option for option in invisible_conditions if val in option.lower()]
-                    else:
-                        return invisible_conditions
-                except Exception:
-                    return []
-        except Exception as e:
-            logging.warning(f"get_attributes, {e}")
-            return []
-
-    # ---------------------------------------------------
+        # ---------------------------------------------------
     # ---------------------------------------------------
     # Slash commands
 
@@ -118,7 +69,7 @@ class AttackCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("roll", description="Roll or Macro Roll", autocomplete=a_macro_select)
-    @option("vs", description="Target Attribute", autocomplete=auto_complete.get_attributes)
+    @option("vs", description="Target Attribute", autocomplete=get_attributes)
     @option("attack_modifier", description="Modifier to the macro (defaults to +)", required=False)
     @option("target_modifier", description="Modifier to the target's dc (defaults to +)", required=False)
     async def attack(
@@ -132,70 +83,14 @@ class AttackCog(commands.Cog):
             target_modifier: str = "",
     ):
         # bughunt code
-        logging.info(f"{datetime.datetime.now()} - attack_cog attack")
+        logging.info("attack_cog attack")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         await ctx.response.defer()
-        guild = await get_guild(ctx, None)
-        if not guild.system:
-            await ctx.respond("No system set, command inactive.")
-            return
-
-        if guild.system == "PF2":
-            # PF2 specific code
-            try:
-                output_string = await PF2e.pf2_functions.attack(
-                    ctx, engine, self.bot, character, target, roll, vs, attack_modifier, target_modifier
-                )
-            except Exception:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                Macro = await get_macro(ctx, engine, id=guild.id)
-
-                async with async_session() as session:
-                    result = await session.execute(select(Tracker).where(Tracker.name == character))
-                    char = result.scalars().one()
-
-                async with async_session() as session:
-                    result = await session.execute(
-                        select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == roll)
-                    )
-                    macro_roll = result.scalars().one()
-                output_string = await PF2e.pf2_functions.attack(
-                    ctx, engine, self.bot, character, target, macro_roll, vs, attack_modifier, target_modifier
-                )
-        elif guild.system == "EPF":
-            logging.info("EPF")
-            output_string = await EPF.EPF_Functions.attack(
-                ctx, engine, self.bot, character, target, roll, vs, attack_modifier,
-                target_modifier
-            )
-        elif guild.system == "D4e":
-            # D4e specific code
-            try:
-                output_string = await D4e.d4e_functions.attack(
-                    ctx, engine, self.bot, character, target, roll, vs, attack_modifier, target_modifier
-                )
-            except Exception:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
-                Macro = await get_macro(ctx, engine, id=guild.id)
-
-                async with async_session() as session:
-                    result = await session.execute(select(Tracker).where(Tracker.name == character))
-                    char = result.scalars().one()
-
-                async with async_session() as session:
-                    result = await session.execute(
-                        select(Macro.macro).where(Macro.character_id == char.id).where(Macro.name == roll)
-                    )
-                    macro_roll = result.scalars().one()
-                output_string = await D4e.d4e_functions.attack(
-                    ctx, engine, self.bot, character, target, macro_roll, vs, attack_modifier, target_modifier
-                )
-
-        else:
-            output_string = "Error"
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
         await ctx.send_followup(output_string)
         await engine.dispose()
 

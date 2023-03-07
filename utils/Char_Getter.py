@@ -5,6 +5,8 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from D4e.D4e_Character import get_D4e_Character
+from PF2e.PF2_Character import get_PF2_Character
 from EPF.EPF_Character import get_EPF_Character
 from Base.Character import Character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -21,6 +23,10 @@ async def get_character(char_name, ctx, guild=None, engine=None):
 
     if guild.system == "EPF":
         return await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
+    elif guild.system == "D4e":
+        return await get_D4e_Character(char_name, ctx, guild=guild, engine=engine)
+    elif guild.system == "PF2":
+        return await get_PF2_Character(char_name, ctx, guild=guild, engine=engine)
     else:
         tracker = await get_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

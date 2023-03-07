@@ -17,7 +17,7 @@ from database_models import get_tracker, get_condition
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
 from utils.utils import get_guild
-from utils.Tracker_Getter import get_tracker_model
+# from utils.Tracker_Getter import get_tracker_model
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":

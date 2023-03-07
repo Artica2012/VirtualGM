@@ -30,7 +30,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from Base.Character import Character
-from utils.Char_Getter import get_character
+# from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 import warnings
@@ -42,7 +42,7 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    tracker = await get_character(char_name, ctx, engine=engine, guild=guild)
+    tracker = await get_tracker(char_name, ctx, id=guild.id)
     condition = await get_condition(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
@@ -237,7 +237,7 @@ async def edit_stats(ctx, engine, name: str, bot):
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 
-        Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
+        Character_Model = await get_D4e_Character(name, ctx, guild=guild, engine=engine)
         condition_dict = {}
         for con in await Character_Model.conditions():
             await asyncio.sleep(0)
@@ -279,7 +279,7 @@ class D4eEditCharacterModal(discord.ui.Modal):
         guild = await get_guild(self.ctx, None)
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
+        Character_Model = await get_D4e_Character(self.name, self.ctx, guild=guild, engine=self.engine)
 
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
 
