@@ -17,6 +17,7 @@ from database_models import Global, get_condition, get_tracker
 from database_operations import get_asyncio_db_engine, USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, get_time
+from utils.Automation_Getter import get_automation
 from utils.Char_Getter import get_character
 # from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
@@ -330,8 +331,8 @@ class D4eConditionButton(discord.ui.Button):
         Tracker_Model = await get_D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, guild=self.guild), self.bot, guild=self.guild)
         if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine, self.guild):
             try:
-
-                output_string = await save(
+                Automation = await get_automation(self.ctx, self.guild, self.engine)
+                output_string = await Automation.save(
                     self.ctx, self.engine, self.bot, self.character.name, self.condition.title, modifier="",
                     guild=self.guild
                 )
