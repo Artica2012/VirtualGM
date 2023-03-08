@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 
 import d20
+import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +17,7 @@ from time_keeping_functions import output_datetime, get_time, advance_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Base.Tracker import Tracker
+from Base.Tracker import Tracker, get_init_list
 
 
 async def get_PF2_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -295,4 +296,44 @@ class PF2_Tracker(Tracker):
             if self.ctx is not None and self.bot is not None:
                 report = ErrorReport(self.ctx, "non_block_advance_initiative", e, self.bot)
                 await report.report()
+
+    class InitRefreshButton(discord.ui.Button):
+        def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
+            self.ctx = ctx
+            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
+                                                db=SERVER_DATA)
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
+
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Refreshed", ephemeral=True)
+                print(interaction.message.id)
+                Tracker_model = PF2_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
+                                        self.bot, guild=self.guild)
+                await Tracker_model.update_pinned_tracker()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
+
+    class NextButton(discord.ui.Button):
+        def __init__(self, bot, guild=None):
+            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
+                                                db=SERVER_DATA)
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+                Tracker_Model = PF2_Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot,
+                                        guild=self.guild)
+                await Tracker_Model.advance_initiative()
+                await Tracker_Model.block_post_init()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
+
 

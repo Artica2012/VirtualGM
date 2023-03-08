@@ -17,7 +17,7 @@ from database_models import Global
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.Auto_Complete_Getter import get_autocomplete
-from utils.Tracker_Getter import NextButton
+from utils.Tracker_Getter import NextButton, get_tracker_model
 
 
 # ---------------------------------------------------------------
@@ -39,34 +39,25 @@ class Update_and_Maintenance_Cog(commands.Cog):
             guild_list = result.scalars().all()
 
             for guild in guild_list:
-                if guild.system == "D4e":
-                    try:# Error handling to avoid locking on a bad message
-                        view.clear_items()
-                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                        last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                Tracker_Object = await get_tracker_model(None, self.bot, engine=engine, guild=guild)
+                Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
+                Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
 
+                try:# Error handling to avoid locking on a bad message
+                    view.clear_items()
+                    tracker_channel = self.bot.get_channel(guild.tracker_channel)
+                    last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                    if guild.system == "D4e":
                         view = await D4e.D4e_Tracker.D4eTrackerButtons(None, self.bot, guild)
-                        view.add_item(Base.Tracker.InitRefreshButton(None, self.bot, guild=guild))
-                        view.add_item(NextButton(self.bot, guild=guild))
-                        await last_tracker.edit(view=view)
-                        logging.info("D4e View Updated")
-                    except Exception as e:
-                        logging.error(f"d4e on ready attach buttons: {e} {guild.id}")
-                        # TODO add in more robust error reporting for this to see if it becomes an issue
-
-                else:
-                    try:
-                        view.clear_items()
-                        tracker_channel = self.bot.get_channel(guild.tracker_channel)
-                        last_tracker = await tracker_channel.fetch_message(guild.last_tracker)
+                    else:
                         view = discord.ui.View(timeout=None)
-                        view.add_item(Base.Tracker.InitRefreshButton(None, self.bot, guild=guild))
-                        view.add_item(Base.Tracker.NextButton(self.bot, guild=guild))
-                        await last_tracker.edit(view=view)
-                        logging.info("View Updated")
-                    except Exception as e:
-                        logging.error(f"pf2 on ready attach buttons: {e} {guild.id}")
-                        # TODO add in more robust error reporting for this to see if it becomes an issue
+                    view.add_item(Refresh_Button)
+                    view.add_item(Next_Button)
+                    await last_tracker.edit(view=view)
+                    logging.info(f"{guild.system} - View Updated")
+                except Exception as e:
+                    logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
+                    # TODO add in more robust error reporting for this to see if it becomes an issue
 
 
 def setup(bot):

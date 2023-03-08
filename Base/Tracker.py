@@ -147,7 +147,6 @@ class Tracker():
         await self.update()
         await self.update_pinned_tracker()
 
-
     async def update(self):
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
         self.init_list = await get_init_list(self.ctx, self.engine, guild=self.guild)
@@ -196,7 +195,7 @@ class Tracker():
         block_done = False
         turn_list = []
         first_pass = False
-        round=self.guild.round
+        round = self.guild.round
 
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -386,7 +385,7 @@ class Tracker():
                 await asyncio.sleep(0)
                 if not con_row.time:
                     if con_row.number >= 2:
-                        await current_character.edit_cc(con_row.title, con_row.number-1)
+                        await current_character.edit_cc(con_row.title, con_row.number - 1)
                     else:
                         await current_character.delete_cc(con_row.title)
                         if self.ctx is not None:
@@ -423,14 +422,14 @@ class Tracker():
             logging.error("error in get_init_list")
             return []
 
-    async def block_get_tracker(self, selected: int, gm: bool = False): # Probably should rename this eventually
+    async def block_get_tracker(self, selected: int, gm: bool = False):  # Probably should rename this eventually
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative
-        if self.guild.block and self.guild.initiative is None:  #Should this be initiative is not None?
+        if self.guild.block and self.guild.initiative is None:  # Should this be initiative is not None?
             turn_list = await self.get_turn_list()
             block = True
         else:
@@ -460,7 +459,6 @@ class Tracker():
                 report = ErrorReport(self.ctx, "get_tracker", e, self.bot)
                 await report.report()
 
-
         try:
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
 
@@ -482,7 +480,8 @@ class Tracker():
                 # Get all of the visible condition for the character
                 async with async_session() as session:
                     result = await session.execute(
-                        select(Condition).where(Condition.character_id == character.id).where(Condition.visible == true())
+                        select(Condition).where(Condition.character_id == character.id).where(
+                            Condition.visible == true())
                     )
                     condition_list = result.scalars().all()
 
@@ -649,14 +648,17 @@ class Tracker():
             # Check for systems:
 
             view = discord.ui.View(timeout=None)
-            view.add_item(InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-            view.add_item(NextButton(self.bot, guild=self.guild))
+            self.Refresh_Button = self.InitRefreshButton(self.ctx, self.bot, guild=self.guild)
+            self.Next_Button = self.NextButton(self.bot, guild=self.guild)
+            view.add_item(self.Refresh_Button)
+            view.add_item(self.Next_Button)
             # Always post the tracker to the player channel
             if self.ctx is not None:
                 if self.ctx.channel.id == self.guild.tracker_channel:
                     tracker_msg = await self.ctx.send_followup(f"{tracker_string}\n{ping_string}", view=view)
                 else:
-                    await self.bot.get_channel(self.guild.tracker_channel).send(f"{tracker_string}\n{ping_string}", view=view)
+                    await self.bot.get_channel(self.guild.tracker_channel).send(f"{tracker_string}\n{ping_string}",
+                                                                                view=view)
                     tracker_msg = await self.ctx.send_followup("Initiative Advanced.")
                     logging.info("BPI5")
             else:
@@ -715,7 +717,6 @@ class Tracker():
         try:
             logging.info(f"BPI1: guild: {self.guild.id}")
 
-
             if self.guild.block:
                 # print(guild.id)
                 turn_list = await self.get_turn_list()
@@ -747,8 +748,10 @@ class Tracker():
             view = discord.ui.View(timeout=None)
             # Check for systems:
             if self.guild.last_tracker is not None:
-                view.add_item(InitRefreshButton(self.ctx, self.bot, guild=self.guild))
-                view.add_item((NextButton(self.bot, guild=self.guild)))
+                self.Refresh_Button = self.InitRefreshButton(self.ctx, self.bot, guild=self.guild)
+                self.Next_Button = self.NextButton(self.bot, guild=self.guild)
+                view.add_item(self.Refresh_Button)
+                view.add_item(self.Next_Button)
                 if self.guild.last_tracker is not None:
                     tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
                     edit_message = await tracker_channel.fetch_message(self.guild.last_tracker)
@@ -868,39 +871,41 @@ class Tracker():
                     tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
                     tracker_channel.send(f"{row.title} removed from {character.name}")
 
+    class InitRefreshButton(discord.ui.Button):
+        def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
+            self.ctx = ctx
+            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
+                                                db=SERVER_DATA)
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
 
-class InitRefreshButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
-        self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        self.bot = bot
-        self.guild = guild
-        super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Refreshed", ephemeral=True)
+                print(interaction.message.id)
+                Tracker_model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
+                                        self.bot, guild=self.guild)
+                await Tracker_model.update_pinned_tracker()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
 
-    async def callback(self, interaction: discord.Interaction):
-        try:
-            await interaction.response.send_message("Refreshed", ephemeral=True)
-            print(interaction.message.id)
-            Tracker_model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild), self.bot, guild=self.guild)
-            await Tracker_model.update_pinned_tracker()
-        except Exception as e:
-            print(f"Error: {e}")
-            logging.info(e)
+    class NextButton(discord.ui.Button):
+        def __init__(self, bot, guild=None):
+            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
+                                                db=SERVER_DATA)
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
 
-
-class NextButton(discord.ui.Button):
-    def __init__(self, bot, guild=None):
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        self.bot = bot
-        self.guild = guild
-        super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
-
-    async def callback(self, interaction: discord.Interaction):
-        try:
-            await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-            Tracker_Model = Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild)
-            await Tracker_Model.advance_initiative()
-            await Tracker_Model.block_post_init()
-        except Exception as e:
-            print(f"Error: {e}")
-            logging.info(e)
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+                Tracker_Model = Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot,
+                                        guild=self.guild)
+                await Tracker_Model.advance_initiative()
+                await Tracker_Model.block_post_init()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
