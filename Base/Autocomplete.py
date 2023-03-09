@@ -165,3 +165,6 @@ class AutoComplete():
             await self.engine.dispose()
             return []
 
+    async def attacks(self):
+        return []
+

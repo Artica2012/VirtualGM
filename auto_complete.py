@@ -112,3 +112,7 @@ async def save_select(ctx: discord.AutocompleteContext):
 async def get_attributes(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.get_attributes()
+
+async def attacks(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.attacks()

@@ -325,6 +325,12 @@ class EPF_Character(Character):
         else:
             return []
 
+    async def attack_list(self):
+        list = []
+        for key in self.character_model.attacks:
+            list.append(key)
+        return list
+
     async def set_cc(self,
                      title: str,
                      counter: bool,
@@ -453,6 +459,40 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         feats += f"{item[0]}, "
 
     if overwrite:
+        attacks = character.attacks
+        name_list = []
+        for item in pb["build"]["weapons"]:
+            name_list.append(item["display"])
+        for key in attacks:
+            if key not in name_list:
+                del attacks[key]
+        for item in pb["build"]["weapons"]:
+            attacks[item["display"]] = {
+                "display": item["display"],
+                "prof": item["prof"],
+                "die": item["die"],
+                "pot": item["pot"],
+                "str": item["str"],
+                "name": item["name"],
+                "runes": item["runes"],
+            }
+    else:
+        attacks = {}
+        for item in pb["build"]["weapons"]:
+            attacks[item["display"]] = {
+                "display": item["display"],
+                "prof": item["prof"],
+                "die": item["die"],
+                "pot": item["pot"],
+                "str": item["str"],
+                "name": item["name"],
+                "runes": item["runes"],
+                "crit": "*2",
+                "stat": "str",
+                "dmg_type": "Bludgeoning"
+            }
+
+    if overwrite:
         async with async_session() as session:
             query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
             character = query.scalars().one()
@@ -525,7 +565,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
             character.lores = lores
             character.feats = feats
-            character.attacks = pb["build"]["weapons"]
+            character.attacks = attacks
             character.spells = pb["build"]["spellCasters"]
 
             await session.commit()
@@ -622,7 +662,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     lores=lores,
                     feats=feats,
                     key_ability=pb["build"]["keyability"],
-                    attacks=pb["build"]["weapons"],
+                    attacks=attacks,
                     spells=pb["build"]["spellCasters"],
                 )
                 session.add(new_char)
@@ -741,6 +781,7 @@ async def calculate(ctx, engine, char_name, guild=None):
 
         macros = []
         for item in character.attacks:
+            print(item)
             macros.append(item["display"])
         for item in character.spells:
             macros.append(f"Spell Attack: {item['name']}")
@@ -749,6 +790,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         for item in macros:
             macro_string += f"{item},"
         character.macros = macro_string
+
 
         await session.commit()
 

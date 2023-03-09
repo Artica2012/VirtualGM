@@ -7,7 +7,7 @@ from Base.Autocomplete import AutoComplete
 from EPF.EPF_Support import EPF_Conditions
 from utils.Char_Getter import get_character
 from PF2e.pf2_functions import PF2_saves
-from EPF.EPF_Character import PF2_attributes, PF2_skills
+from EPF.EPF_Character import PF2_attributes, PF2_skills, get_EPF_Character
 
 
 class EPF_Autocmplete(AutoComplete):
@@ -47,9 +47,14 @@ class EPF_Autocmplete(AutoComplete):
         return PF2_saves
 
     async def get_attributes(self):
+        await self.engine.dispose()
         if self.ctx.value != "":
             option_list = PF2_attributes + PF2_skills
             val = self.ctx.value.lower()
             return [option for option in option_list if val in option.lower()]
         else:
             return PF2_attributes
+
+    async def attacks(self):
+        Character_Model = await get_EPF_Character(self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine)
+        return await Character_Model.attack_list()
