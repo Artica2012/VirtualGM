@@ -177,7 +177,10 @@ EPF_Conditions = {
                   "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s",
     "Fatigued": "ac -1 s, fort -1 s, reflex -1 s, will -1 s",
     "Flat-Footed": "ac -2 c",
-    "Frightened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
+    "Frightened": "perception -X s, acrobatics -X s, arcana -X s, athletics -X s, crafting -X s, deception -X s, "
+                  "diplomacy -X s, intimidation -X s, medicine -X s, nature -X s, occultism -X s, perception -X s, "
+                  "performance -X s, religion -X s, society -X s, stealth -X s, survival -X s, thievery -X s, ac -X s,"
+                  "fort -X s, reflex -X s, will -X s, attack -X s",
     "Paralyzed": "ac -2 c",
     "Prone": "ac -2 c, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",

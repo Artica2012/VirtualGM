@@ -401,8 +401,8 @@ class EPF_Character(Character):
                     session.add(condition)
                 await session.commit()
                 # await update_pinned_tracker(ctx, engine, bot)
-                await self.update()
-                return True
+            await self.update()
+            return True
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -416,6 +416,7 @@ class EPF_Character(Character):
         result = await super().delete_cc(condition)
         await self.update()
         return result
+
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}
@@ -749,7 +750,6 @@ async def calculate(ctx, engine, char_name, guild=None):
             macro_string += f"{item},"
         character.macros = macro_string
 
-
         await session.commit()
 
         # except Exception as e:
@@ -839,7 +839,8 @@ async def bonus_calc(base, skill, bonuses):
 
     return mod
 
-async def parse_bonuses(ctx, engine, char_name:str, guild=None):
+
+async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
@@ -870,50 +871,60 @@ async def parse_bonuses(ctx, engine, char_name:str, guild=None):
         "status_neg": {},
         "item_neg": {}
     }
-
+    print("!!!!!!!!!!!!!!!!!!!111")
+    print(len(conditions))
     for condition in conditions:
+        print(f"{condition.title}, {condition.number}, {condition.action}")
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
         data: str = condition.action
         data_list = data.split(",")
         for item in data_list:
-            key = item[0]
-            if item[1][1:] == "X":
-                value = condition.number
+            parsed = item.strip().split(" ")
+            print(parsed)
+            print(parsed[0])
+            print(parsed[1][1:])
+            print(parsed[2])
+            key = parsed[0]
+            if parsed[1][1:] == "X":
+                value = int(condition.number)
             else:
-                value = item[1][1:]
-            if item[2] == "s" and item[1][1] == "+": # Status Positive
+                value = int(parsed[1][1:])
+            if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
                 if key in bonuses["status_pos"]:
                     if value > bonuses["status_pos"][key]:
                         bonuses["status_pos"][key] = value
                 else:
                     bonuses["status_pos"][key] = value
-            elif item[2] == "s" and item[1][1] == "-": # Status Negative
+            elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
                 if key in bonuses["status_neg"]:
                     if value > bonuses["status_neg"][key]:
                         bonuses["status_neg"][key] = value
                 else:
                     bonuses["status_neg"][key] = value
-            elif item[2] == "c" and item[1][1] == "+":  # Circumastances Positive
+                    print(f"{key}: {bonuses['status_neg'][key]}")
+            elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumastances Positive
                 if key in bonuses["circumstances_pos"]:
                     if value > bonuses["circumstances_pos"][key]:
                         bonuses["circumstances_pos"][key] = value
                 else:
                     bonuses["circumstances_pos"][key] = value
-            elif item[2] == "c" and item[1][1] == "-":  # Circumastances Positive
+            elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumastances Positive
                 if key in bonuses["circumstances_neg"]:
                     if value > bonuses["circumstances_neg"][key]:
                         bonuses["circumstances_neg"][key] = value
                 else:
                     bonuses["circumstances_neg"][key] = value
-            elif item[2] == "i" and item[1][1] == "+":  # Item Positive
+                    print(f"{key}: {bonuses['circumstances_neg'][key]}")
+            elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
                 if key in bonuses["item_pos"]:
                     if value > bonuses["item_pos"][key]:
                         bonuses["item_pos"][key] = value
                 else:
                     bonuses["item_pos"][key] = value
-            elif item[2] == "i" and item[1][1] == "-":  # Item Negative
+                    print(f"{key}: {bonuses['item_pos'][key]}")
+            elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
                 if key in bonuses["item_neg"]:
                     if value > bonuses["item_neg"][key]:
                         bonuses["item_neg"][key] = value

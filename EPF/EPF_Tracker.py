@@ -299,6 +299,10 @@ class EPF_Tracker(Tracker):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 print(interaction.message.id)
+                init_list = await get_init_list(self.ctx, self.engine, self.guild)
+                for char in init_list:
+                    Character_Model =  await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
+                    await Character_Model.update()
                 Tracker_model = EPF_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
                                         self.bot, guild=self.guild)
                 await Tracker_model.update_pinned_tracker()
