@@ -20,7 +20,7 @@ import d20
 from utils.utils import get_guild
 from database_models import (
     get_condition,
-    get_pf2_e_tracker,
+    get_EPF_tracker,
 )
 from database_operations import get_asyncio_db_engine
 from Base.Character import Character
@@ -48,24 +48,24 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+    EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+            result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
             character = result.scalars().one()
             if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
                 await calculate(ctx, engine, char_name, guild=guild)
-                result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+                result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
                 character = result.scalars().one()
-            return PF2_Character(char_name, ctx, engine, character, guild=guild)
+            return EPF_Character(char_name, ctx, engine, character, guild=guild)
 
     except NoResultFound:
         return None
 
 
 # A class to hold the data model and functions involved in the enhanced pf2 features
-class PF2_Character(Character):
+class EPF_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         super().__init__(char_name, ctx, engine, character, guild)
         self.str_mod = character.str_mod
@@ -108,9 +108,9 @@ class PF2_Character(Character):
     async def character(self):
         logging.info("Loading Character")
         if self.guild is not None:
-            PF2_tracker = await get_pf2_e_tracker(self.ctx, self.engine, id=self.guild.id)
+            PF2_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
         else:
-            PF2_tracker = await get_pf2_e_tracker(self.ctx, self.engine)
+            PF2_tracker = await get_EPF_tracker(self.ctx, self.engine)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             async with async_session() as session:
@@ -432,7 +432,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
     # try:
     guild = await get_guild(ctx, guild)
-    PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+    PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     # Check to see if character already exists, if it does, update instead of creating
@@ -636,9 +636,9 @@ async def calculate(ctx, engine, char_name, guild=None):
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     else:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+        PF2_tracker = await get_EPF_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
@@ -843,10 +843,10 @@ async def parse_bonuses(ctx, engine, char_name:str, guild=None):
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine, id=guild.id)
+        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
     else:
-        PF2_tracker = await get_pf2_e_tracker(ctx, engine)
+        PF2_tracker = await get_EPF_tracker(ctx, engine)
         Condition = await get_condition(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 

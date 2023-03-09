@@ -22,6 +22,7 @@ from database_models import (
 # imports
 
 # define global variables
+from utils.Tracker_Getter import get_tracker_model
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -241,7 +242,8 @@ class PF2NpcSelectButton(discord.ui.Button):
                 await session.commit()
             print("Committed")
 
-            await initiative.update_pinned_tracker(self.ctx, self.engine, self.bot)
+            Tracker_Model = await get_tracker_model(self.ctx, self.bot, engine=self.engine, guild=guild)
+            await Tracker_Model.update_pinned_tracker()
             output_string = f"{self.data.name} added as {self.name}"
 
             await self.ctx.channel.send(output_string)

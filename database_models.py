@@ -88,7 +88,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
             print(f"From ID:{guild.id}")
 
     if guild.system == "EPF":
-        return await get_pf2_e_tracker(ctx, engine, id=id)
+        return await get_EPF_tracker(ctx, engine, id=id)
     else:
         tablename = f"Tracker_{id}"
         logging.info(f"get_tracker: Guild: {id}")
@@ -169,7 +169,7 @@ class TrackerTable:
         )
         return emp
 
-async def get_pf2_e_tracker(ctx: discord.ApplicationContext, engine, id=None):
+async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
