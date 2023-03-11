@@ -220,26 +220,11 @@ class EPF_Character(Character):
         elif item == "Thievery":
             return f"1d20+{self.thievery_mod}"
         else:
-            for weapon in self.character_model.attacks:
-                # print(item)
-                # print(weapon["display"])
-                if item == weapon["display"]:
-                    proficiency = 0
-                    match weapon["prof"]:
-                        case "unarmed":
-                            proficiency = self.character_model.unarmed_prof
-                        case "simple":
-                            proficiency = self.character_model.simple_prof
-                        case "martial":
-                            proficiency = self.character_model.martial_prof
-                        case "advanced":
-                            proficiency = self.character_model.advanced_prof
-                    if proficiency > 0:
-                        attack_mod = self.str_mod + self.character_model.level + proficiency + weapon["pot"]
-                    else:
-                        attack_mod = self.str_mod
-                    # print(attack_mod)
-                    return f"1d20+{attack_mod}"
+            try:
+                return await self.weapon_attack(item)
+            except KeyError:
+                pass
+
             for attack in self.character_model.spells:
                 # print(item)
                 # print(attack["name"])
@@ -262,6 +247,51 @@ class EPF_Character(Character):
                     # print(attack_mod)
                     return f"1d20+{attack_mod}"
             return 0
+
+    async def weapon_attack(self, item):
+        weapon = self.character_model.attacks[item]
+        # print(item)
+        # print(weapon["display"])
+        proficiency = 0
+        match weapon["prof"]:
+            case "unarmed":
+                proficiency = self.character_model.unarmed_prof
+            case "simple":
+                proficiency = self.character_model.simple_prof
+            case "martial":
+                proficiency = self.character_model.martial_prof
+            case "advanced":
+                proficiency = self.character_model.advanced_prof
+        if proficiency > 0:
+            attack_mod = self.str_mod + self.character_model.level + proficiency + weapon["pot"]
+        else:
+            attack_mod = self.str_mod
+
+        bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses)
+        # print(attack_mod)
+        return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
+
+    async def weapon_dmg(self, item):
+        weapon = self.character_model.attacks[item]
+        bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
+        dmg_mod = 0
+        match weapon['stat']:
+            case "None":
+                dmg_mod = 0
+            case "str":
+                dmg_mod = self.str_mod
+            case "dex":
+                dmg_mod = self.dex_mod
+            case "con":
+                dmg_mod = self.con_mod
+            case "itl":
+                dmg_mod = self.itl_mod
+            case "wis":
+                dmg_mod = self.wis_mod
+            case "cha":
+                dmg_mod = self.cha_mod
+
+        return f"{weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def get_dc(self, item):
         if item == "AC":
@@ -467,18 +497,41 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
             if key not in name_list:
                 del attacks[key]
         for item in pb["build"]["weapons"]:
+            die_num = 0
+            match item["str"]:
+                case "":
+                    die_num = 1
+                case "striking":
+                    die_num = 2
+                case "greaterStriking":
+                    die_num = 3
+                case "majorStriking":
+                    die_num = 4
+
+
             attacks[item["display"]] = {
                 "display": item["display"],
                 "prof": item["prof"],
                 "die": item["die"],
                 "pot": item["pot"],
                 "str": item["str"],
+                "die_num": die_num,
                 "name": item["name"],
                 "runes": item["runes"],
             }
     else:
         attacks = {}
         for item in pb["build"]["weapons"]:
+            die_num = 0
+            match item["str"]:
+                case "":
+                    die_num = 1
+                case "striking":
+                    die_num = 2
+                case "greaterStriking":
+                    die_num = 3
+                case "majorStriking":
+                    die_num = 4
             attacks[item["display"]] = {
                 "display": item["display"],
                 "prof": item["prof"],
@@ -487,6 +540,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "str": item["str"],
                 "name": item["name"],
                 "runes": item["runes"],
+                "die_num": die_num,
                 "crit": "*2",
                 "stat": "str",
                 "dmg_type": "Bludgeoning"
@@ -780,9 +834,9 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.bonuses = bonuses
 
         macros = []
-        for item in character.attacks:
+        for item in character.attacks.keys():
             print(item)
-            macros.append(item["display"])
+            macros.append(item)
         for item in character.spells:
             macros.append(f"Spell Attack: {item['name']}")
         macros.extend(PF2_skills)

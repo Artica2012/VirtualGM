@@ -36,6 +36,8 @@ class EPF_Autocmplete(AutoComplete):
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
             else:
+                if attk:
+                    return await EPF_Char.attack_list()
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
