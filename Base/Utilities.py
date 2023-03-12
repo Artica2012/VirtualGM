@@ -188,7 +188,7 @@ class Utilities():
             logging.warning(f"delete_character: {e}")
             return False
 
-    async def edit_attack(self, character, attack, stat, crit, dmg):
+    async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg):
         await self.ctx.channel.send("Command Disabled for current system")
         return False
 

@@ -36,3 +36,21 @@ Example:
  +1 Intelligence Status Bonus:  "int +1 c;"
  +1 to Crafting Item: "crafting +1 i;"
  Flat Footed: "ac -2 c;"
+
+
+ ----------------------------------
+ Attack Data Structure
+ Display Name = {
+                "display": item["display"], # Display Name
+                "prof": item["prof"],  # Proficiency (Unarmed, Simple, Martial, Advanced)
+                "die": item["die"],  # Damage Die Size
+                "pot": item["pot"], # Potency Rune (1,2,3)
+                "str": item["str"], # "", striking, greaterStriking, majorStriking (Pathbuilder Legacy Purposes)
+                "name": item["name"],  # Weapon Name (For lookup)
+                "runes": item["runes"], # List of runes (For future use)
+                "die_num": die_num, # Number of damage die
+                "crit": "*2", # Crit string, defaults to *2, but could be *2+1d6 or something of the sort
+                "stat": "str",  # What stat to use for damage
+                "dmg_type": "Bludgeoning",  # Damage Type
+                "attk_stat": "str",  # What stat to use for the attack (probably str or dex)
+ }

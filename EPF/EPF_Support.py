@@ -164,6 +164,7 @@ class EPF_ConditionTable:
         )
         return con
 
+
 # Conditions
 EPF_Conditions = {
     "Blinded": "perception -4 s",
@@ -192,3 +193,38 @@ EPF_Conditions = {
     "Inspire Courage": "attack +1 s, dmg +1 s",
     "Inspire Defense": "ac +1 s, fort +1 s, reflex +1 s, will +1 s",
 }
+
+EPF_Stats = [
+    "str",
+    "dex",
+    "con",
+    "itl",
+    "wis",
+    "cha",
+    "None"
+]
+
+EPF_DMG_Types = [
+    "Bludgeoning",
+    "Piercing",
+    "Slashing",
+    "Acid",
+    "Cold",
+    "Electricity",
+    "Fire",
+    "Sonic",
+    "Positive",
+    "Negative",
+    "Force",
+    "Chaotic",
+    "Evil",
+    "Good",
+    "Lawful",
+    "Mental",
+    "Poison",
+    "Bleed",
+    "Precision",
+    "Cold Iron",
+    "Orichalcum",
+    "Silver"
+]

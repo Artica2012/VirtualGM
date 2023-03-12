@@ -23,16 +23,20 @@ class EPF_Utilities(Utilities):
         await self.ctx.channel.send("Please use `/pf2 pb_import` or `/pf2 add_npc` to add a character")
         return False
 
-    async def edit_attack(self, character, attack, stat, crit, dmg):
+    async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg):
         Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
-            attack_dict = Character_Model.character_model.attacks[attack]
-            if stat is not None:
-                attack_dict["stat"] = stat
+            attack_dict = Character_Model.character_model.attacks
+            print(attack_dict)
+            if dmg_stat is not None:
+                attack_dict[attack]["stat"] = dmg_stat
+            if attk_stat is not None:
+                attack_dict[attack]["attk_stat"] = attk_stat
             if crit is not None:
-                attack_dict["crit"] = crit
+                attack_dict[attack]["crit"] = crit
             if dmg is not None:
-                attack_dict["dmg"] = dmg
+                attack_dict[attack]["dmg_type"] = dmg
+            print(attack_dict)
         except Exception as e:
             logging.error(f"EPF utilities edit attack (edit): {e}")
             return False
@@ -43,12 +47,11 @@ class EPF_Utilities(Utilities):
                 query = await session.execute(select(EPF_Tracker).where(EPF_Tracker.name == character))
                 query_char = query.scalars().one()
 
-                attacks = query_char.attacks
-                attacks[attack] = attack_dict
-
+                query_char.attacks = attack_dict
                 await session.commit()
-
-
+            Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+            print(Character_Model.character_model.attacks)
+            return True
         except Exception as e:
             logging.error(f"EPF utilities edit attack (write): {e}")
             return False

@@ -12,7 +12,7 @@ import initiative
 from EPF.EPF_Character import pb_import, calculate
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
-from auto_complete import character_select_gm
+from auto_complete import character_select_gm, attacks, stats, dmg_type
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
@@ -83,12 +83,15 @@ class PF2Cog(commands.Cog):
 
     @pf2.command(description="Edit Attack")
     @option("character", description="Character to select", autocomplete=character_select_gm)
-
-    async def edit_attack(self, ctx: discord.ApplicationContext, character, attack, stat, crit, dmg):
+    @option("attack", description="Select Attack", autocomplete=attacks)
+    @option("dmg_stat", description="Stat to use for damage", autocomplete=stats)
+    @option("attk_stat", description="Stat to use for attack roll", autocomplete=stats)
+    @option("dmg", description="Damage Type", autocomplete=dmg_type)
+    async def edit_attack(self, ctx: discord.ApplicationContext, character, attack, dmg_stat=None, attk_stat=None, crit:str=None, dmg= None):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Utilities = await get_utilities(ctx, engine=engine)
-        response = await Utilities.edit_attack(character, attack, stat, crit, dmg)
+        response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg)
         if response:
             await ctx.send_followup("Success")
         else:

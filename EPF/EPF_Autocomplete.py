@@ -4,7 +4,7 @@ import discord
 
 import PF2e.pf2_functions
 from Base.Autocomplete import AutoComplete
-from EPF.EPF_Support import EPF_Conditions
+from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types
 from utils.Char_Getter import get_character
 from PF2e.pf2_functions import PF2_saves
 from EPF.EPF_Character import PF2_attributes, PF2_skills, get_EPF_Character
@@ -59,4 +59,28 @@ class EPF_Autocmplete(AutoComplete):
 
     async def attacks(self):
         Character_Model = await get_EPF_Character(self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine)
-        return await Character_Model.attack_list()
+        await self.engine.dispose()
+        if self.ctx.value != "":
+            option_list = await Character_Model.attack_list()
+            val = self.ctx.value.lower()
+            return [option for option in option_list if val in option.lower()]
+        else:
+            return await Character_Model.attack_list()
+
+    async def stats(self):
+        await self.engine.dispose()
+        if self.ctx.value != "":
+            option_list = EPF_Stats
+            val = self.ctx.value.lower()
+            return [option for option in option_list if val in option.lower()]
+        else:
+            return EPF_Stats
+
+    async def dmg_types(self):
+        await self.engine.dispose()
+        if self.ctx.value != "":
+            option_list = EPF_DMG_Types
+            val = self.ctx.value.lower()
+            return [option for option in option_list if val in option.lower()]
+        else:
+            return EPF_DMG_Types

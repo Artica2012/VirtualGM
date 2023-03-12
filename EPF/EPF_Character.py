@@ -252,6 +252,20 @@ class EPF_Character(Character):
         weapon = self.character_model.attacks[item]
         # print(item)
         # print(weapon["display"])
+        attk_stat = self.str_mod
+        match weapon['attk_stat']:
+            case "dex":
+                attk_stat = self.dex_mod
+            case "con":
+                attk_stat = self.con_mod
+            case "itl":
+                attk_stat = self.itl_mod
+            case "wis":
+                attk_stat = self.wis_mod
+            case "cha":
+                attk_stat = self.cha_mod
+            case "None":
+                attk_stat = 0
         proficiency = 0
         match weapon["prof"]:
             case "unarmed":
@@ -263,9 +277,9 @@ class EPF_Character(Character):
             case "advanced":
                 proficiency = self.character_model.advanced_prof
         if proficiency > 0:
-            attack_mod = self.str_mod + self.character_model.level + proficiency + weapon["pot"]
+            attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
         else:
-            attack_mod = self.str_mod
+            attack_mod = attk_stat
 
         bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses)
         # print(attack_mod)
@@ -543,7 +557,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "die_num": die_num,
                 "crit": "*2",
                 "stat": "str",
-                "dmg_type": "Bludgeoning"
+                "dmg_type": "Bludgeoning",
+                "attk_stat": "str"
             }
 
     if overwrite:

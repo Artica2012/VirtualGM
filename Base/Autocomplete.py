@@ -166,5 +166,14 @@ class AutoComplete():
             return []
 
     async def attacks(self):
+        await self.engine.dispose()
+        return []
+
+    async def stats(self):
+        await self.engine.dispose()
+        return []
+
+    async def dmg_types(self):
+        await self.engine.dispose()
         return []
 
