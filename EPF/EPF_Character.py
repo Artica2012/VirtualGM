@@ -285,7 +285,7 @@ class EPF_Character(Character):
         # print(attack_mod)
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
-    async def weapon_dmg(self, item):
+    async def weapon_dmg(self, item, crit: bool = False):
         weapon = self.character_model.attacks[item]
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
         dmg_mod = 0
@@ -304,8 +304,10 @@ class EPF_Character(Character):
                 dmg_mod = self.wis_mod
             case "cha":
                 dmg_mod = self.cha_mod
-
-        return f"{weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+        if crit:
+            return f"({weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
+        else:
+            return f"{weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def get_dc(self, item):
         if item == "AC":
@@ -521,7 +523,6 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     die_num = 3
                 case "majorStriking":
                     die_num = 4
-
 
             attacks[item["display"]] = {
                 "display": item["display"],
@@ -859,7 +860,6 @@ async def calculate(ctx, engine, char_name, guild=None):
         for item in macros:
             macro_string += f"{item},"
         character.macros = macro_string
-
 
         await session.commit()
 
