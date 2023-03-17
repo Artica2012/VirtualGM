@@ -29,11 +29,12 @@ class PF2_Automation(Automation):
             roll = roll_list[1]
         print(roll)
         try:
-            roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
+            Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
+            roll_string: str = f"({await Macro_Model.get_macro(character, roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
         except:
-            Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
-
+            roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
+            dice_result = d20.roll(roll_string)
 
         Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
         con_vs = 0
