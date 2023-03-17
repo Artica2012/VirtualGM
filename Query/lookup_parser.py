@@ -1,6 +1,5 @@
 # lookup_parser.py
-import importer
-import exporter
+from Query import exporter, importer
 
 
 def parser():
