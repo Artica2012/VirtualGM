@@ -75,22 +75,25 @@ class PF2_Automation(Automation):
         con_vs = 0
         match save:
             case "AC":
-                con_vs = Character_Model.ac
+                con_vs = Target_Model.ac
             case "Fort":
-                con_vs = Character_Model.fort
+                con_vs = Target_Model.fort
             case "Reflex":
-                con_vs = Character_Model.reflex
+                con_vs = Target_Model.reflex
             case "Will":
-                con_vs = Character_Model.will
+                con_vs = Target_Model.will
             case "DC":
-                con_vs = Character_Model.dc
+                con_vs = Target_Model.dc
 
         try:
             roll = f"1d20+{con_vs}"
+            # print(roll)
 
             if dc is None:
-                dc = Target_Model.dc
-
+                dc = Character_Model.dc
+                if Character_Model.dc is None:
+                    dc = 0
+            # print(dc)
             try:
                 dice_result = d20.roll(roll)
                 goal_string: str = f"{dc}{ParseModifiers(modifier)}"
@@ -103,6 +106,10 @@ class PF2_Automation(Automation):
             # Format output string
             if character == target:
                 output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
+            elif Character_Model.player == True:
+                output_string = (
+                    f"{target} makes a DC{dc} {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
+                )
             else:
                 output_string = (
                     f"{target} makes a {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"

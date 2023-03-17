@@ -63,7 +63,7 @@ class AutomationCog(commands.Cog):
         await engine.dispose()
 
     @att.command(description="Saving Throw")
-    @option("character", description="Character forcing the sae", autocomplete=character_select_gm)
+    @option("character", description="Character forcing the save", autocomplete=character_select_gm)
     @option("target", description="Saving Character", autocomplete=a_save_target_custom)
     @option("save", description="Save", autocomplete=save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)

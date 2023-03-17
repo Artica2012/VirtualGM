@@ -89,7 +89,7 @@ class PF2_Character(Character):
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
             # Give an error message if the character is the active character and making them inactive
-            if self.guild.saved_order == name:
+            if self.guild.saved_order == name and active is False:
                 await self.ctx.channel.send(
                     "Unable to inactivate a character while they are the active character in initiative.  Please advance"
                     " turn and try again."
