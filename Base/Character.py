@@ -35,7 +35,7 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 
-class Character():
+class Character:
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         self.char_name = char_name
         self.ctx = ctx
@@ -81,16 +81,18 @@ class Character():
                 if no_time:
                     result = await session.execute(
                         select(Condition.title)
-                            .where(Condition.character_id == self.id)
-                            .where(Condition.time == false())
-                            .where(Condition.visible == true())
-                            .order_by(Condition.title.asc())
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.time == false())
+                        .where(Condition.visible == true())
+                        .order_by(Condition.title.asc())
                     )
                 else:
-                    result = await session.execute(select(Condition)
-                                                   .where(Condition.character_id == self.id)
-                                                   .where(Condition.visible == true())
-                                                   .order_by(Condition.title.asc()))
+                    result = await session.execute(
+                        select(Condition)
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.visible == true())
+                        .order_by(Condition.title.asc())
+                    )
                 return result.scalars().all()
         except NoResultFound:
             return []
@@ -139,17 +141,17 @@ class Character():
                 if character.player:  # Show the HP it its a player
                     if heal:
                         await self.ctx.send_followup(
-                            f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
+                            f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
                     else:
                         await self.ctx.send_followup(
-                            f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
+                            f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
                 else:  # Obscure the HP if its an NPC
                     if heal:
-                        await self.ctx.send_followup(
-                            f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                        await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
                     else:
-                        await self.ctx.send_followup(
-                            f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
+                        await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
             await self.update()
             return True
         except Exception as e:
@@ -174,20 +176,20 @@ class Character():
 
     async def add_thp(self, amount: int):
         logging.info(f"add_thp {amount}")
-        # try:
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
-            character = char_result.scalars().one()
-            character.temp_hp = character.temp_hp + amount
-            await session.commit()
-        await self.update()
-        return True
-        # except Exception as e:
-        #     logging.warning(f"add_thp: {e}")
-        #     return False
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = char_result.scalars().one()
+                character.temp_hp = character.temp_hp + amount
+                await session.commit()
+            await self.update()
+            return True
+        except Exception as e:
+            logging.warning(f"add_thp: {e}")
+            return False
 
     # Set the initiative
     async def set_init(self, init: int):
@@ -198,7 +200,10 @@ class Character():
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:
-                Tracker = await get_tracker(self.ctx, self.engine, )
+                Tracker = await get_tracker(
+                    self.ctx,
+                    self.engine,
+                )
             else:
                 Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
@@ -225,15 +230,16 @@ class Character():
         self.init_string = self.character_model.init_string
         self.init = self.character_model.init
 
-    async def set_cc(self,
-                     title: str,
-                     counter: bool,
-                     number: int,
-                     unit: str,
-                     auto_decrement: bool,
-                     flex: bool = False,
-                     data: str = ""
-                     ):
+    async def set_cc(
+        self,
+        title: str,
+        counter: bool,
+        number: int,
+        unit: str,
+        auto_decrement: bool,
+        flex: bool = False,
+        data: str = "",
+    ):
         logging.info("set_cc")
         # Get the Character's data
 
@@ -309,9 +315,9 @@ class Character():
             async with async_session() as session:
                 result = await session.execute(
                     select(Condition)
-                        .where(Condition.character_id == self.id)
-                        .where(Condition.visible == true())
-                        .where(Condition.title == condition)
+                    .where(Condition.character_id == self.id)
+                    .where(Condition.visible == true())
+                    .where(Condition.title == condition)
                 )
                 con_list = result.scalars().all()
             if len(con_list) == 0:
@@ -366,9 +372,9 @@ class Character():
         Condition = await get_condition(self.ctx, self.engine, self.guild)
 
         async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == self.id)
-                                           .where(Condition.time == true()))
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == self.id).where(Condition.time == true())
+            )
             con_list = result.scalars().all()
 
         for row in con_list:
@@ -385,12 +391,7 @@ class Character():
                     tracker_channel.send(f"{row.title} removed from {self.char_name}")
 
     async def get_char_sheet(self, bot):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
-            # Load the tables
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-
             if self.character_model.player:
                 status = "PC:"
             else:
@@ -440,7 +441,7 @@ class Character():
                     condition_embed.fields.append(
                         discord.EmbedField(
                             name=item.title,
-                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number)
+                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number),
                         )
                     )
             return [embed, counter_embed, condition_embed]
@@ -452,14 +453,7 @@ class Character():
         except Exception:
             await self.ctx.respond("Failed")
 
-    async def edit_character(self,
-                             name: str,
-                             hp: int,
-                             init: str,
-                             active: bool,
-                             player: discord.User,
-                             bot
-                             ):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -469,8 +463,8 @@ class Character():
             # Give an error message if the character is the active character and making them inactive
             if self.guild.saved_order == name:
                 await self.ctx.channel.send(
-                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                    " turn and try again."
+                    "Unable to inactivate a character while they are the active character in initiative.  Please"
+                    " advance turn and try again."
                 )
 
             async with async_session() as session:

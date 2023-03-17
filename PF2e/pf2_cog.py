@@ -15,7 +15,6 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from auto_complete import character_select_gm, attacks, stats, dmg_type
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 
@@ -49,7 +48,7 @@ class PF2Cog(commands.Cog):
             response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
             logging.info("Imported")
             if response:
-                logging.info('Calculating')
+                logging.info("Calculating")
                 await calculate(ctx, engine, name, guild=guild)
                 logging.info("Calculated")
                 await Tracker_Model.update_pinned_tracker()
@@ -87,7 +86,16 @@ class PF2Cog(commands.Cog):
     @option("dmg_stat", description="Stat to use for damage", autocomplete=stats)
     @option("attk_stat", description="Stat to use for attack roll", autocomplete=stats)
     @option("dmg", description="Damage Type", autocomplete=dmg_type)
-    async def edit_attack(self, ctx: discord.ApplicationContext, character, attack, dmg_stat=None, attk_stat=None, crit:str=None, dmg= None):
+    async def edit_attack(
+        self,
+        ctx: discord.ApplicationContext,
+        character,
+        attack,
+        dmg_stat=None,
+        attk_stat=None,
+        crit: str = None,
+        dmg=None,
+    ):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Utilities = await get_utilities(ctx, engine=engine)
