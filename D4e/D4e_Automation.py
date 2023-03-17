@@ -6,6 +6,7 @@ from sqlalchemy.exc import NoResultFound
 from Base.Automation import Automation
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
+from utils.Macro_Getter import get_macro_object
 from utils.parsing import ParseModifiers
 from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 
@@ -23,8 +24,13 @@ class D4e_Automation(Automation):
         else:
             roll = roll_list[1]
 
-        roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
-        dice_result = d20.roll(roll_string)
+        try:
+            Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
+            roll_string: str = f"({await Macro_Model.get_macro(character, roll)}){ParseModifiers(attack_modifier)}"
+            dice_result = d20.roll(roll_string)
+        except:
+            roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
+            dice_result = d20.roll(roll_string)
 
         Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
         con_vs = 0
