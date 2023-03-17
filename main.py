@@ -13,7 +13,7 @@ import discord
 from dotenv import load_dotenv
 from sqlalchemy import exc
 
-from Query import lookup_parser
+import lookup_parser
 
 # Set up logging
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
@@ -77,7 +77,7 @@ async def on_error():
 lookup_parser.parser()
 
 # Load the bot
-bot.load_extension("Query.query_results")
+bot.load_extension("query_results")
 bot.load_extension("dice_roller_cog")
 bot.load_extension("initiative")
 bot.load_extension("error_reporting_cog")
@@ -86,8 +86,8 @@ bot.load_extension("timekeeping")
 bot.load_extension("macro_cog")
 bot.load_extension("options_cog")
 bot.load_extension("PF2e.pf2_cog")
-bot.load_extension("automation_cog")
-bot.load_extension("Update_and__Maintenance_Cog")
+bot.load_extension("attack_cog")
+bot.load_extension("D4e.d4e_cog")
 bot.load_extension("reminder_cog")
 
 # run the bot

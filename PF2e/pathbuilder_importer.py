@@ -17,8 +17,7 @@ from sqlalchemy.orm import sessionmaker
 import d20
 from database_models import get_macro, get_tracker, get_condition
 from error_handling_reporting import ErrorReport
-from utils.Tracker_Getter import get_tracker_model
-from utils.utils import get_guild
+from initiative import get_guild, init_integrity
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -254,8 +253,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                         session.add(new_char)
                     await session.commit()
 
-            Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
-            await Tracker_Model.init_integrity()
+            await init_integrity(ctx, engine, guild)
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))
                 character = result.scalars().one()

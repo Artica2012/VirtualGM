@@ -136,12 +136,12 @@ class ReminderCog(commands.Cog):
                     session.add(new_reminder)
                 await session.commit()
             await ctx.send_followup("Reminder Set")
+            await engine.dispose()
         except Exception as e:
             logging.warning(f"remind_me: {e}")
             report = ErrorReport(ctx, "remind_me", e, self.bot)
             await report.report()
             await ctx.send_followup("Reminder Failed", ephemeral=True)
-        await engine.dispose()
 
     # @remind.command(description="Show Reminders")
     # async def show(self, ctx:discord.ApplicationContext):
