@@ -253,7 +253,7 @@ class EPF_Character(Character):
                 # print(attack["name"])
                 if attack["name"] in item:
                     stat_mod = 0
-                    match attack["ability"]:
+                    match attack["ability"]: # noqa
                         case "con":
                             stat_mod = self.con_mod
                         case "int":
@@ -762,6 +762,11 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     key_ability=pb["build"]["keyability"],
                     attacks=attacks,
                     spells=pb["build"]["spellCasters"],
+                    resistance={
+                        "resist": {},
+                        "weak": {},
+                        "immune": {}
+                    }
                 )
                 session.add(new_char)
             await session.commit()

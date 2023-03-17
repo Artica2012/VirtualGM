@@ -106,6 +106,21 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Failed")
         await engine.dispose()
 
+    @pf2.command(description="Edit Character Resistances")
+    @option("character", description="Character to select", autocomplete=character_select_gm)
+    @option("element", autocomplete=dmg_type)
+    @option("resist_weak", choices=["Resistance", "Weaknes", "Immunity"])
+    async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
+        await ctx.response.defer(ephemeral=True)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        Utilities = await get_utilities(ctx, engine=engine)
+        response = await Utilities.edit_resistances(character, element, resist_weak, amount)
+        if response:
+            await ctx.send_followup("Success")
+        else:
+            await ctx.send_followup("Failed")
+        await engine.dispose()
+
 
 def setup(bot):
     bot.add_cog(PF2Cog(bot))

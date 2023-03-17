@@ -1,12 +1,11 @@
 import logging
 
-import discord
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Utilities import Utilities
-from EPF.EPF_Character import get_EPF_Character, EPF_Character
+from EPF.EPF_Character import get_EPF_Character
 from database_models import get_tracker
 
 
@@ -14,8 +13,7 @@ class EPF_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool,
-                            init: str):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
         await self.ctx.channel.send("Please use `/pf2 pb_import` or `/pf2 add_npc` to add a character")
         return False
 
@@ -54,4 +52,12 @@ class EPF_Utilities(Utilities):
             return True
         except Exception as e:
             logging.error(f"EPF utilities edit attack (write): {e}")
+            return False
+
+    async def edit_resistances(self, character, element, resist_weak, amount):
+        Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
+        try:
+            resistance = Character_Model.resistance
+            print(resistance)
+        except Exception:
             return False

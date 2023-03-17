@@ -58,5 +58,14 @@ Example:
 
 ----------------------------------
 Resistances / Weakness / Immunities
+resistance= {
+                        "resist": {
+                        "cold": 1
+                        },
+                        "weak": {},
+                        "immune": {}
+                    }
+
+
 attribute name (w, r, i) #;
   eg "cold r 1;"
