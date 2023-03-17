@@ -10,14 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import Base.Tracker
 import D4e.D4e_Tracker
 import D4e.d4e_functions
 from database_models import Global
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
-from utils.Auto_Complete_Getter import get_autocomplete
-from utils.Tracker_Getter import NextButton, get_tracker_model
+from utils.Tracker_Getter import get_tracker_model
 
 
 # ---------------------------------------------------------------
@@ -43,7 +41,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                 Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
                 Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
 
-                try:# Error handling to avoid locking on a bad message
+                try:  # Error handling to avoid locking on a bad message
                     view.clear_items()
                     tracker_channel = self.bot.get_channel(guild.tracker_channel)
                     last_tracker = await tracker_channel.fetch_message(guild.last_tracker)

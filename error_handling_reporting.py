@@ -1,6 +1,5 @@
 import os
 
-import discord
 from dotenv import load_dotenv
 
 # define global variables

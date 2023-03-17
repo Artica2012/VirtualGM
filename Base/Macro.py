@@ -12,14 +12,14 @@ from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers, opposed_roll
 
 
-class Macro():
+class Macro:
     def __init__(self, ctx, engine, guild):
         self.ctx = ctx
         self.engine = engine
         self.guild = guild
 
     async def create_macro(self, character: str, macro_name: str, macro_string: str):
-        logging.info(f"create_macro")
+        logging.info("create_macro")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -48,7 +48,7 @@ class Macro():
             return False
 
     async def mass_add(self, character: str, data: str):
-        logging.info(f"macro_mass_add")
+        logging.info("macro_mass_add")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -85,7 +85,7 @@ class Macro():
             return False
 
     async def delete_macro(self, character: str, macro_name: str):
-        logging.info(f"delete_macro")
+        logging.info("delete_macro")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine)
@@ -93,7 +93,9 @@ class Macro():
         try:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name.split(":")[0])
+                    select(Macro)
+                    .where(Macro.character_id == Character_Model.id)
+                    .where(Macro.name == macro_name.split(":")[0])
                 )
                 con = result.scalars().one()
                 await session.delete(con)
@@ -135,14 +137,18 @@ class Macro():
 
         async with async_session() as session:
             result = await session.execute(
-                select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name.split(":")[0])
+                select(Macro)
+                .where(Macro.character_id == Character_Model.id)
+                .where(Macro.name == macro_name.split(":")[0])
             )
         try:
             macro_data = result.scalars().one()
         except Exception:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name.split(":")[0])
+                    select(Macro)
+                    .where(Macro.character_id == Character_Model.id)
+                    .where(Macro.name == macro_name.split(":")[0])
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
@@ -165,14 +171,18 @@ class Macro():
 
         async with async_session() as session:
             result = await session.execute(
-                select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name.split(":")[0])
+                select(Macro)
+                .where(Macro.character_id == Character_Model.id)
+                .where(Macro.name == macro_name.split(":")[0])
             )
         try:
             macro_data = result.scalars().one()
         except Exception:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name.split(":")[0])
+                    select(Macro)
+                    .where(Macro.character_id == Character_Model.id)
+                    .where(Macro.name == macro_name.split(":")[0])
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
@@ -204,7 +214,6 @@ class Macro():
                 view.add_item(button)
             return view
 
-
     class MacroButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, engine, character, macro):
             self.ctx = ctx
@@ -222,4 +231,3 @@ class Macro():
             output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
 
             await interaction.response.send_message(output_string)
-

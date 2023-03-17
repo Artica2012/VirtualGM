@@ -1,8 +1,6 @@
-import logging
-
 import discord
+
 from Base.Autocomplete import AutoComplete
-from utils.Char_Getter import get_character
 from PF2e.pf2_functions import PF2_saves, PF2_attributes
 
 

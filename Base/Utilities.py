@@ -11,14 +11,13 @@ from database_models import get_tracker, get_condition, get_macro
 from error_handling_reporting import error_not_initialized, ErrorReport
 
 
-class Utilities():
+class Utilities:
     def __init__(self, ctx, guild, engine):
         self.ctx = ctx
         self.guild = guild
         self.engine = engine
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool,
-                            init: str):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
         logging.info("add_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -143,7 +142,7 @@ class Utilities():
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
             return False
         except Exception as e:
-            logging.warning("copy_character: {e}")
+            logging.warning(f"copy_character: {e}")
             return False
 
     async def delete_character(self, character: str):
@@ -187,4 +186,3 @@ class Utilities():
         except Exception as e:
             logging.warning(f"delete_character: {e}")
             return False
-

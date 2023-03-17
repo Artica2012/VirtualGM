@@ -2,8 +2,6 @@ import logging
 
 import d20
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Base.Automation import Automation
 from EPF.EPF_Character import get_EPF_Character
@@ -23,7 +21,7 @@ class EPF_Automation(Automation):
             roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
             print(roll_string)
             dice_result = d20.roll(roll_string)
-        except:
+        except Exception:
             char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             roll_string = f"({await char_model.get_roll(roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
@@ -48,7 +46,6 @@ class EPF_Automation(Automation):
             output_string = "Error. No Target Specified."
             return output_string
         print(f" {save}, {dc}, {modifier}")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         attacker = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         opponent = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
 
@@ -86,4 +83,3 @@ class EPF_Automation(Automation):
             return False
 
         return output_string
-

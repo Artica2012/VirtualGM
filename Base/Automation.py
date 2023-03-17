@@ -9,7 +9,7 @@ from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 
 
-class Automation():
+class Automation:
     def __init__(self, ctx, engine, guild):
         self.ctx = ctx
         self.engine = engine
@@ -40,12 +40,10 @@ class Automation():
                     macro_roll = result.scalars().one()
                 roll_result = d20.roll(f"({macro_roll}){ParseModifiers(modifier)}")
                 output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
-            except:  # Error handling in case that a non-macro string in input
+            except Exception:  # Error handling in case that a non-macro string in input
                 roll_result = d20.roll(0)
                 output_string = "Error: Invalid Roll, Please try again."
 
         await Target_Model.change_hp(roll_result.total, healing)
         await Tracker_Model.update_pinned_tracker()
         return output_string
-
-

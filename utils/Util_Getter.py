@@ -19,4 +19,3 @@ async def get_utilities(ctx, guild=None, engine=None):
         return PF2_Utilities(ctx, guild, engine)
     else:
         return Utilities(ctx, guild, engine)
-

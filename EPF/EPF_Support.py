@@ -1,17 +1,7 @@
-import os
 import logging
 
-import discord
 import sqlalchemy as db
-from dotenv import load_dotenv
-from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, BigInteger
-from sqlalchemy import String, Boolean
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 
 class PF2_Character_Model:
@@ -37,42 +27,34 @@ class PF2_Character_Model:
             db.Column("temp_hp", db.INTEGER(), default=0),
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
-
-            db.Column('char_class', db.String(255), nullable=False),
+            db.Column("char_class", db.String(255), nullable=False),
             db.Column("level", db.INTEGER(), nullable=False),
             db.Column("ac_base", db.INTEGER(), nullable=False),
             db.Column("class_dc", db.INTEGER(), nullable=False),
-
             db.Column("str", db.INTEGER(), nullable=False),
             db.Column("dex", db.INTEGER(), nullable=False),
             db.Column("con", db.INTEGER(), nullable=False),
             db.Column("itl", db.INTEGER(), nullable=False),
             db.Column("wis", db.INTEGER(), nullable=False),
             db.Column("cha", db.INTEGER(), nullable=False),
-
             db.Column("fort_prof", db.INTEGER(), nullable=False),
             db.Column("will_prof", db.INTEGER(), nullable=False),
             db.Column("reflex_prof", db.INTEGER(), nullable=False),
-
             db.Column("perception_prof", db.INTEGER(), nullable=False),
             db.Column("class_prof", db.INTEGER(), nullable=False),
             db.Column("key_ability", db.String(255), nullable=False),
-
             db.Column("unarmored_prof", db.INTEGER(), nullable=False),
             db.Column("light_armor_prof", db.INTEGER(), nullable=False),
             db.Column("medium_armor_prof", db.INTEGER(), nullable=False),
             db.Column("heavy_armor_prof", db.INTEGER(), nullable=False),
-
             db.Column("unarmed_prof", db.INTEGER(), nullable=False),
             db.Column("simple_prof", db.INTEGER(), nullable=False),
             db.Column("martial_prof", db.INTEGER(), nullable=False),
             db.Column("advanced_prof", db.INTEGER(), nullable=False),
-
             db.Column("arcane_prof", db.INTEGER(), nullable=False),
             db.Column("divine_prof", db.INTEGER(), nullable=False),
             db.Column("occult_prof", db.INTEGER(), nullable=False),
             db.Column("primal_prof", db.INTEGER(), nullable=False),
-
             db.Column("acrobatics_prof", db.INTEGER(), nullable=False),
             db.Column("arcana_prof", db.INTEGER(), nullable=False),
             db.Column("athletics_prof", db.INTEGER(), nullable=False),
@@ -89,21 +71,17 @@ class PF2_Character_Model:
             db.Column("stealth_prof", db.INTEGER(), nullable=False),
             db.Column("survival_prof", db.INTEGER(), nullable=False),
             db.Column("thievery_prof", db.INTEGER(), nullable=False),
-
-            db.Column('lores', db.String()),
-            db.Column('feats', db.String()),
-
+            db.Column("lores", db.String()),
+            db.Column("feats", db.String()),
             db.Column("str_mod", db.INTEGER()),
             db.Column("dex_mod", db.INTEGER()),
             db.Column("con_mod", db.INTEGER()),
             db.Column("itl_mod", db.INTEGER()),
             db.Column("wis_mod", db.INTEGER()),
             db.Column("cha_mod", db.INTEGER()),
-
             db.Column("fort_mod", db.INTEGER()),
             db.Column("will_mod", db.INTEGER()),
             db.Column("reflex_mod", db.INTEGER()),
-
             db.Column("acrobatics_mod", db.INTEGER()),
             db.Column("arcana_mod", db.INTEGER()),
             db.Column("athletics_mod", db.INTEGER()),
@@ -120,19 +98,17 @@ class PF2_Character_Model:
             db.Column("stealth_mod", db.INTEGER()),
             db.Column("survival_mod", db.INTEGER()),
             db.Column("thievery_mod", db.INTEGER()),
-
             db.Column("arcane_mod", db.INTEGER()),
             db.Column("divine_mod", db.INTEGER()),
             db.Column("occult_mod", db.INTEGER()),
             db.Column("primal_mod", db.INTEGER()),
-
             db.Column("ac_total", db.INTEGER()),
             db.Column("resistance", db.String()),
             db.Column("perception_mod", db.INTEGER()),
             db.Column("macros", db.String()),
             db.Column("attacks", db.JSON()),
             db.Column("spells", db.JSON()),
-            db.Column("bonuses", db.JSON())
+            db.Column("bonuses", db.JSON()),
         )
 
         logging.info("pf2_character_model_table")
@@ -145,7 +121,7 @@ class EPF_ConditionTable:
         self.id = id
 
     def condition_table(
-            self,
+        self,
     ):
         tablename = f"Condition_{self.id}"
         con = db.Table(
@@ -160,9 +136,10 @@ class EPF_ConditionTable:
             db.Column("time", db.BOOLEAN, default=False),
             db.Column("visible", db.BOOLEAN, default=True),
             db.Column("flex", db.BOOLEAN, default=False),
-            db.Column("action", db.String(), default="")
+            db.Column("action", db.String(), default=""),
         )
         return con
+
 
 # Conditions
 EPF_Conditions = {
@@ -172,9 +149,11 @@ EPF_Conditions = {
     "Deafened": "perception -2 s",
     "Drained": "con -X s",
     "Enfeebled": "str -X s",
-    "Fascinated": "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
-                  "diplomacy -2 s, intimidation -2 s, medicine -2 s, nature -2 s, occultism -2 s, perception -2 s, "
-                  "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s",
+    "Fascinated": (
+        "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
+        "diplomacy -2 s, intimidation -2 s, medicine -2 s, nature -2 s, occultism -2 s, perception -2 s, "
+        "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s"
+    ),
     "Fatigued": "ac -1 s, fort -1 s, reflex -1 s, will -1 s",
     "Flat-Footed": "ac -2 c",
     "Frightened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",

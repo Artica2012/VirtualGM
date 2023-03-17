@@ -1,12 +1,6 @@
 # options_cog.py
-import datetime
-import inspect
 import logging
 import os
-
-# imports
-import sys
-from datetime import datetime
 
 import discord
 import sqlalchemy as db
@@ -15,7 +9,6 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from dotenv import load_dotenv
 from sqlalchemy import or_, select
-from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -24,9 +17,11 @@ from sqlalchemy.sql.ddl import DropTable
 from database_models import Global, get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
+from time_keeping_functions import set_datetime
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import gm_check, get_guild
-from time_keeping_functions import set_datetime
+
+# imports
 
 # define global variables
 
@@ -323,7 +318,7 @@ async def setup_tracker(
 
 
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
-    logging.info(f"set_gm")
+    logging.info("set_gm")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:

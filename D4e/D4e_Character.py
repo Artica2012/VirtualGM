@@ -26,15 +26,16 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
     Condition = await get_condition(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
-
         async with async_session() as session:
             result = await session.execute(select(tracker).where(tracker.name == char_name))
             character = result.scalars().one()
         async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == character.id)
-                                           .where(Condition.visible == false())
-                                           .order_by(Condition.title.asc()))
+            result = await session.execute(
+                select(Condition)
+                .where(Condition.character_id == character.id)
+                .where(Condition.visible == false())
+                .order_by(Condition.title.asc())
+            )
             stat_list = result.scalars().all()
             # print(len(stat_list))
             stats = {}
@@ -49,7 +50,7 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
 
 class D4e_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
-        self.ac = stats['AC']
+        self.ac = stats["AC"]
         self.fort = stats["Fort"]
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
@@ -67,33 +68,35 @@ class D4e_Character(Character):
                 if no_time and not flex:
                     result = await session.execute(
                         select(Condition.title)
-                            .where(Condition.character_id == self.id)
-                            .where(Condition.time == false())
-                            .where(Condition.visible == true())
-                            .order_by(Condition.title.asc())
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.time == false())
+                        .where(Condition.visible == true())
+                        .order_by(Condition.title.asc())
                     )
                 elif flex and not no_time:
                     result = await session.execute(
                         select(Condition.title)
-                            .where(Condition.character_id == self.id)
-                            .where(Condition.visible == true())
-                            .where(Condition.flex == true())
-                            .order_by(Condition.title.asc())
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.visible == true())
+                        .where(Condition.flex == true())
+                        .order_by(Condition.title.asc())
                     )
                 elif flex and no_time:
                     result = await session.execute(
                         select(Condition.title)
-                            .where(Condition.character_id == self.id)
-                            .where(Condition.time == false())
-                            .where(Condition.visible == true())
-                            .where(Condition.flex == true())
-                            .order_by(Condition.title.asc())
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.time == false())
+                        .where(Condition.visible == true())
+                        .where(Condition.flex == true())
+                        .order_by(Condition.title.asc())
                     )
                 else:
-                    result = await session.execute(select(Condition)
-                                                   .where(Condition.character_id == self.id)
-                                                   .where(Condition.visible == true())
-                                                   .order_by(Condition.title.asc()))
+                    result = await session.execute(
+                        select(Condition)
+                        .where(Condition.character_id == self.id)
+                        .where(Condition.visible == true())
+                        .order_by(Condition.title.asc())
+                    )
                 return result.scalars().all()
         except NoResultFound:
             return []
@@ -140,31 +143,24 @@ class D4e_Character(Character):
             if character.player:  # Show the HP it its a player
                 if heal:
                     await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
+                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
+                    )
                 else:
                     await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
+                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
+                    )
             else:  # Obscure the HP if its an NPC
                 if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                    await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
                 else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
+                    await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
             await self.update()
             return True
         except Exception as e:
             logging.warning(f"change_hp: {e}")
             return False
 
-    async def edit_character(self,
-                             name: str,
-                             hp: int,
-                             init: str,
-                             active: bool,
-                             player: discord.User,
-                             bot
-                             ):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -173,8 +169,8 @@ class D4e_Character(Character):
             # Give an error message if the character is the active character and making them inactive
             if self.guild.saved_order == name:
                 await self.ctx.channel.send(
-                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                    " turn and try again."
+                    "Unable to inactivate a character while they are the active character in initiative.  Please"
+                    " advance turn and try again."
                 )
 
             async with async_session() as session:
@@ -226,10 +222,7 @@ async def edit_stats(ctx, engine, name: str, bot):
             condition_dict[con.title] = con.number
         print("GENERATING MODAL")
         print(condition_dict)
-        editModal = D4eEditCharacterModal(
-            character=Character_Model, ctx=ctx, engine=engine, title=name,
-            bot=bot
-        )
+        editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
         print(editModal)
         result = await ctx.send_modal(editModal)
 
@@ -270,8 +263,9 @@ class D4eEditCharacterModal(discord.ui.Modal):
         for item in self.children:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == Character_Model.id).where(
-                        Condition.title == item.label)
+                    select(Condition)
+                    .where(Condition.character_id == Character_Model.id)
+                    .where(Condition.title == item.label)
                 )
                 condition = result.scalars().one()
                 condition.number = int(item.value)
@@ -286,5 +280,3 @@ class D4eEditCharacterModal(discord.ui.Modal):
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
         self.stop()
-
-

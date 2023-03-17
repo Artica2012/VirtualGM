@@ -2,12 +2,11 @@ import logging
 
 import discord
 
-import PF2e.pf2_functions
 from Base.Autocomplete import AutoComplete
-from EPF.EPF_Support import EPF_Conditions
-from utils.Char_Getter import get_character
-from PF2e.pf2_functions import PF2_saves
 from EPF.EPF_Character import PF2_attributes, PF2_skills
+from EPF.EPF_Support import EPF_Conditions
+from PF2e.pf2_functions import PF2_saves
+from utils.Char_Getter import get_character
 
 
 class EPF_Autocmplete(AutoComplete):

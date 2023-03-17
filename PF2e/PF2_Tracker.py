@@ -38,7 +38,6 @@ class PF2_Tracker(Tracker):
         datetime_string = ""
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-
         logging.info(f"BGT1: Guild: {self.guild.id}")
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
@@ -57,7 +56,10 @@ class PF2_Tracker(Tracker):
 
         try:
             if self.guild.timekeeping:
-                datetime_string = f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                datetime_string = (
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
+                    "\n________________________\n"
+                )
         except NoResultFound:
             if self.ctx is not None:
                 await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -116,14 +118,19 @@ class PF2_Tracker(Tracker):
                     if row.temp_hp != 0:
                         string = (
                             f"{selector}  {init_num} {str(character.char_name).title()}:"
-                            f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp AC:{character.ac}\n "
+                            f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp"
+                            f" AC:{character.ac}\n "
                         )
                     else:
                         string = (
-                            f"{selector}  {init_num} {str(character.char_name).title()}: {character.current_hp}/{character.max_hp} AC: {character.ac}\n"
+                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f" {character.current_hp}/{character.max_hp} AC: {character.ac}\n"
                         )
                 else:
-                    string = f"{selector}  {init_num} {str(character.char_name).title()}: {await character.calculate_hp()} \n"
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" {await character.calculate_hp()} \n"
+                    )
                 output_string += string
 
                 for con_row in condition_list:
@@ -153,11 +160,14 @@ class PF2_Tracker(Tracker):
                                 else:
                                     if processed_hours_left != 0:
                                         con_string = (
-                                            f"       {con_row.title}: {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                            f"       {con_row.title}:"
+                                            f" {processed_hours_left}:{processed_minutes_left}:"
+                                            f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
-                                            f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                            f"       {con_row.title}:"
+                                            f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
                                 con_string = f"       {con_row.title}: {con_row.number}\n"
@@ -226,11 +236,13 @@ class PF2_Tracker(Tracker):
             logging.info("BAI3: Updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(self.init_list[0].name, self.ctx, engine=self.engine,
-                                                        guild=self.guild)
+                current_character = await get_character(
+                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
+                )
             else:
-                current_character = await get_character(self.guild.saved_order, self.ctx, engine=self.engine,
-                                                        guild=self.guild)
+                current_character = await get_character(
+                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
+                )
 
             # Process the conditions with the after trait (Flex = False) for the current character
             await self.init_con(current_character, False)
@@ -261,8 +273,9 @@ class PF2_Tracker(Tracker):
                     # await current_character.check_time_cc(self.bot)
                     logging.info("BAI8: cc checked")
 
-            current_character = await get_character(self.init_list[init_pos].name, self.ctx, engine=self.engine,
-                                                    guild=self.guild)
+            current_character = await get_character(
+                self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
+            )
 
             # Delete the before conditions on the new current_character
             await self.init_con(current_character, True)
@@ -300,8 +313,9 @@ class PF2_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -310,8 +324,13 @@ class PF2_Tracker(Tracker):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 print(interaction.message.id)
-                Tracker_model = PF2_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
-                                        self.bot, guild=self.guild)
+                Tracker_model = PF2_Tracker(
+                    self.ctx,
+                    self.engine,
+                    await get_init_list(self.ctx, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
                 print(f"Error: {e}")
@@ -319,8 +338,9 @@ class PF2_Tracker(Tracker):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
@@ -328,12 +348,11 @@ class PF2_Tracker(Tracker):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-                Tracker_Model = PF2_Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot,
-                                        guild=self.guild)
+                Tracker_Model = PF2_Tracker(
+                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
+                )
                 await Tracker_Model.advance_initiative()
                 await Tracker_Model.block_post_init()
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
-
-

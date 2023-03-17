@@ -5,6 +5,7 @@ from utils.utils import get_guild
 from Base.Macro import Macro
 from EPF.EPF_Macro import EPF_Macro
 
+
 async def get_macro_object(ctx, engine=None, guild=None):
     logging.info("get_character")
     if engine is None:

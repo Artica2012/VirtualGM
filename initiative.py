@@ -32,8 +32,6 @@ from utils.Util_Getter import get_utilities
 
 
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-
 
 
 #############################################################################
@@ -297,7 +295,7 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             await ctx.response.defer()
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine )
+            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Object.next()
 
         except NoResultFound:
@@ -394,7 +392,7 @@ class InitiativeCog(commands.Cog):
         unit: str = "Round",
         auto: str = "Static",
         flex: str = "False",
-        data:str = ""
+        data: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
@@ -467,5 +465,3 @@ class InitiativeCog(commands.Cog):
 
 def setup(bot):
     bot.add_cog(InitiativeCog(bot))
-
-
