@@ -38,7 +38,7 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 
-async def get_time(ctx: discord.ApplicationContext, engine, bot, guild=None):
+async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
@@ -79,9 +79,7 @@ async def get_time(ctx: discord.ApplicationContext, engine, bot, guild=None):
             )
         return None
     except Exception as e:
-        print(f"output_datetime: {e}")
-        report = ErrorReport(ctx, "get_time", e, bot)
-        await report.report()
+        logging.warning(f"get_time: {e}")
         return None
 
 
@@ -128,9 +126,10 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=No
             )
         return ""
     except Exception as e:
-        print(f"output_datetime: {e}")
-        report = ErrorReport(ctx, "output_datetime", e, bot)
-        await report.report()
+        logging.error(f"output_datetime: {e}")
+        if ctx is not None and bot is not None:
+            report = ErrorReport(ctx, "output_datetime", e, bot)
+            await report.report()
         return ""
 
 
@@ -284,14 +283,12 @@ async def advance_time(
         return False
     except Exception as e:
         logging.error(f"advance_time: {e}")
-        report = ErrorReport(ctx, "advance_time", e, bot)
-        await report.report()
         return False
 
 
 async def time_left(ctx: discord.ApplicationContext, engine, bot, con_time):
     time_stamp = datetime.datetime.fromtimestamp(con_time)
-    current_time = await get_time(ctx, engine, bot)
+    current_time = await get_time(ctx, engine)
     time_left = time_stamp - current_time
     days_left = time_left.days
     processed_minutes_left = divmod(time_left.seconds, 60)[0]

@@ -1,4 +1,6 @@
 import os
+
+import discord
 from dotenv import load_dotenv
 
 # define global variables
@@ -41,7 +43,7 @@ class ErrorReport:
             f"```\nGuild: {guild_id}, {self.ctx.interaction.guild.name} Channel: {channel},"
             f" {self.ctx.interaction.channel.name}\nOwner: {self.ctx.interaction.guild.owner_id},"
             f" {self.ctx.interaction.guild.owner.name}\nUser: {user_id}, {self.ctx.interaction.user.name}\nFunction:"
-            f" {self.name}, {self.ctx.interaction.message}\nError: {self.error_text}```"
+            f" {self.name}, {self.ctx.interaction.data}\nError: {self.error_text}```"
         )
         await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)
 

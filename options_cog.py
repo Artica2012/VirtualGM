@@ -1,26 +1,31 @@
 # options_cog.py
+import datetime
 import inspect
 import logging
 import os
 
 # imports
+import sys
 from datetime import datetime
 
 import discord
+import sqlalchemy as db
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.ddl import DropTable
 
-from database_models import Global
+from database_models import Global, get_tracker_table, get_condition_table, get_macro_table
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
-from initiative import setup_tracker, gm_check, repost_trackers, set_gm, update_pinned_tracker, delete_tracker
+from utils.Tracker_Getter import get_tracker_model
+from utils.utils import gm_check, get_guild
 from time_keeping_functions import set_datetime
 
 # define global variables
@@ -65,7 +70,7 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Generic", "Pathfinder 2e", "D&D 4e"], required=False)
+    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e"], required=False)
     async def start(
         self,
         ctx: discord.ApplicationContext,
@@ -75,14 +80,20 @@ class OptionsCog(commands.Cog):
         system: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
-        response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
-        if response:
-            await ctx.send_followup("Server Setup", ephemeral=True)
-            return
-        else:
-            await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+        try:
+            response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
+            if response:
+                await ctx.send_followup("Server Setup", ephemeral=True)
+                return
+            else:
+                await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+        except Exception as e:
+            await ctx.send_followup("Server Setup Failed", ephemeral=True)
+            report = ErrorReport(ctx, "start", e, self.bot)
+            await report.report()
+        await engine.dispose()
 
     @setup.command(
         description="Administrative Commands",
@@ -99,7 +110,7 @@ class OptionsCog(commands.Cog):
         gm: discord.User = discord.ApplicationContext.user,
         delete: str = "",
     ):
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if not await gm_check(ctx, engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
@@ -108,7 +119,8 @@ class OptionsCog(commands.Cog):
             try:
                 if mode == "reset trackers":
                     await ctx.response.defer(ephemeral=True)
-                    response = await repost_trackers(ctx, engine, self.bot)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    response = await Tracker_Model.repost_trackers()
                     if response:
                         await ctx.send_followup("Trackers Placed", ephemeral=True)
                     else:
@@ -140,6 +152,7 @@ class OptionsCog(commands.Cog):
                 print(f"/admin tracker: {e}")
                 report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
                 await report.report()
+        await engine.dispose()
 
     @setup.command(description="Optional Modules")
     @option(
@@ -153,7 +166,7 @@ class OptionsCog(commands.Cog):
     @option("toggle", choices=["On", "Off"], required=False)
     @option("time", description="Number of Seconds per round (optional)", required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         if toggle == "On":
@@ -182,7 +195,8 @@ class OptionsCog(commands.Cog):
                         )
                     else:
                         guild.timekeeping = toggler
-                    await update_pinned_tracker(ctx, engine, self.bot)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
                 elif module == "Block Initiative":
                     guild.block = toggler
                 else:
@@ -200,13 +214,13 @@ class OptionsCog(commands.Cog):
                 )
                 updated_guild = result.scalars().one()
                 if updated_guild.system is None:
-                    system_str = "Generic"
+                    system_str = "Base"
                 elif updated_guild.system == "PF2":
                     system_str = "Pathfinder Second Edition"
                 elif updated_guild.system == "D4e":
                     system_str = "D&D 4th Edition"
                 else:
-                    system_str = "Generic"
+                    system_str = "Base"
 
                 embed = await self.display_options(
                     timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str
@@ -221,7 +235,166 @@ class OptionsCog(commands.Cog):
             report = ErrorReport(ctx, "/admin options", e, self.bot)
             await report.report()
             return False
+        await engine.dispose()
 
 
 def setup(bot):
     bot.add_cog(OptionsCog(bot))
+
+
+async def setup_tracker(
+    ctx: discord.ApplicationContext,
+    engine,
+    bot,
+    gm: discord.User,
+    channel: discord.TextChannel,
+    gm_channel: discord.TextChannel,
+    system: str,
+):
+    logging.info("Setup Tracker")
+
+    # Check to make sure bot has permissions in both channels
+    if not channel.can_send() or not gm_channel.can_send():
+        await ctx.respond(
+            "Setup Failed. Ensure VirtualGM has message posting permissions in both channels.", ephemeral=True
+        )
+        return False
+
+    if system == "Pathfinder 2e":
+        g_system = "PF2"
+    elif system == "D&D 4e":
+        g_system = "D4e"
+    elif system == "Enhanced PF2":
+        g_system = "EPF"
+    else:
+        g_system = None
+
+    try:
+        metadata = db.MetaData()
+        # Build the row in Global first, because the other tables reference it
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            async with session.begin():
+                guild = Global(
+                    guild_id=ctx.guild.id,
+                    time=0,
+                    gm=str(gm.id),
+                    tracker_channel=channel.id,
+                    gm_tracker_channel=gm_channel.id,
+                    system=g_system,
+                )
+                session.add(guild)
+            await session.commit()
+
+        # Build the tracker, con and macro tables
+        try:
+            async with engine.begin() as conn:  # Call the tables directly to save a database call
+                await get_tracker_table(ctx, metadata, engine)
+                await get_condition_table(ctx, metadata, engine)
+                await get_macro_table(ctx, metadata, engine)
+                await conn.run_sync(metadata.create_all)
+
+            # Update the pinned trackers
+            Tracker_Model = await get_tracker_model(ctx, bot, engine=engine)
+            await Tracker_Model.set_pinned_tracker(channel)  # set the tracker in the player channel
+            await Tracker_Model.set_pinned_tracker(gm_channel, gm=True)  # set up the gm_track in the GM channel
+        except Exception:
+            await ctx.respond("Please check permissions and try again")
+            await delete_tracker(ctx, engine, bot)
+            await engine.dispose()
+            return False
+
+        guild = await get_guild(ctx, None, refresh=True)
+        if guild.tracker is None or guild.gm_tracker is None:
+            await delete_tracker(ctx, engine, bot, guild=guild)
+            await ctx.respond("Please check permissions and try again")
+            await engine.dispose()
+            return False
+
+        await engine.dispose()
+        return True
+
+    except Exception as e:
+        logging.warning(f"setup_tracker: {e}")
+        report = ErrorReport(ctx, setup_tracker.__name__, e, bot)
+        await report.report()
+        await ctx.respond("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
+        return False
+
+
+async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
+    logging.info(f"set_gm")
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
+            guild = result.scalars().one()
+            guild.gm = str(new_gm.id)  # I accidentally stored the GM as a string instead of an int initially
+            # if I ever have to wipe the database, this should be changed
+            await session.commit()
+        await engine.dispose()
+
+        return True
+    except Exception as e:
+        logging.warning(f"set_gm: {e}")
+        report = ErrorReport(ctx, set_gm.__name__, e, bot)
+        await report.report()
+        return False
+
+
+async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
+    logging.info("delete_tracker")
+    try:
+        # Everything in the opposite order of creation
+        metadata = db.MetaData()
+        # delete each table
+        emp = await get_tracker_table(ctx, metadata, engine, guild=guild)
+        con = await get_condition_table(ctx, metadata, engine, guild=guild)
+        macro = await get_macro_table(ctx, metadata, engine, guild=guild)
+
+        async with engine.begin() as conn:
+            try:
+                await conn.execute(DropTable(macro, if_exists=True))
+            except Exception:
+                logging.warning("Unable to delete Macro Table")
+            try:
+                await conn.execute(DropTable(con, if_exists=True))
+            except Exception:
+                logging.warning("Unable to drop Con Table")
+            try:
+                await conn.execute(DropTable(emp, if_exists=True))
+            except Exception:
+                logging.warning("Unable to Drop Tracker Table")
+
+        try:
+            # delete the row from Global
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Global).where(
+                        or_(
+                            Global.tracker_channel == ctx.interaction.channel_id,
+                            Global.gm_tracker_channel == ctx.interaction.channel_id,
+                        )
+                    )
+                )
+                guild = result.scalars().one()
+                await session.delete(guild)
+                await session.commit()
+        except Exception as e:
+            logging.warning(f"guild: delete tracker: {e}")
+            report = ErrorReport(ctx, "guild: delete_tracker", e, bot)
+            await report.report()
+        return True
+    except Exception as e:
+        logging.warning(f"delete tracker: {e}")
+        report = ErrorReport(ctx, "delete_tracker", e, bot)
+        await report.report()

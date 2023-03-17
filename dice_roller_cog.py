@@ -2,22 +2,17 @@
 import logging
 import os
 
+import d20
 # imports
 import discord
 from discord import option
 from discord.ext import commands
 from dotenv import load_dotenv
-from sqlalchemy import select, or_
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-import d20
-
-import initiative
-from database_models import Global
-from database_operations import get_asyncio_db_engine
+# import initiative
 from error_handling_reporting import ErrorReport
 from utils.parsing import opposed_roll
+from utils.utils import get_guild
 
 # define global variables
 load_dotenv(verbose=True)
@@ -50,8 +45,7 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
             # print('Rolling')
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-            guild = await initiative.get_guild(ctx, None)
+            guild = await get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
                 roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result
@@ -68,8 +62,6 @@ class DiceRollerCog(commands.Cog):
                         await ctx.channel.send(f"_{roll}_\n{roll_str}")
                 else:
                     await ctx.respond(f"_{roll}_\n{roll_str}")
-
-                await engine.dispose()
             except Exception as e:
                 logging.warning(f"dice_roller_cog, post: {e}")
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)

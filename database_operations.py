@@ -38,7 +38,7 @@ def get_asyncio_db_engine(user, password, host, port, db):
     # print(url)
     # if not database_exists(url):
     #     create_database(url)
-    engine = create_async_engine(url, echo=False, pool_size=10, max_overflow=-1)
+    engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1)
     return engine
 
 
