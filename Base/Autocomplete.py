@@ -22,11 +22,16 @@ class AutoComplete():
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(self.ctx, self.engine)
             async with async_session() as session:
-                if gm and self.guild.gm == self.ctx.interaction.user.id:
+                if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
+                    print('You are the GM')
+                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+                elif not gm:
                     char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                 else:
+                    print("Not the GM")
                     char_result = await session.execute(
-                        select(Tracker.name).where(Tracker.user == self.ctx.interaction.user.id).order_by(Tracker.name.asc())
+                        select(Tracker.name).where(Tracker.user == self.ctx.interaction.user.id).order_by(
+                            Tracker.name.asc())
                     )
                 character = char_result.scalars().all()
                 print(len(character))

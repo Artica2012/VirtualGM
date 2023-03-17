@@ -200,11 +200,6 @@ class D4e_Character(Character):
                 return True
             else:
                 return False
-            #
-            # await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
-            # await update_pinned_tracker(ctx, engine, bot)
-            # await engine.dispose()
-            # return True
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -217,6 +212,7 @@ class D4e_Character(Character):
 
 
 async def edit_stats(ctx, engine, name: str, bot):
+    print("edit_stats")
     try:
         if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -226,14 +222,18 @@ async def edit_stats(ctx, engine, name: str, bot):
         condition_dict = {}
         for con in await Character_Model.conditions():
             await asyncio.sleep(0)
+            print(con)
             condition_dict[con.title] = con.number
+        print("GENERATING MODAL")
+        print(condition_dict)
         editModal = D4eEditCharacterModal(
-            character=await Character_Model.character(), cons=condition_dict, ctx=ctx, engine=engine, title=name,
+            character=Character_Model, ctx=ctx, engine=engine, title=name,
             bot=bot
         )
-        await ctx.send_modal(editModal)
+        print(editModal)
+        result = await ctx.send_modal(editModal)
 
-        return True
+        return result
 
     except Exception:
         return False
@@ -241,19 +241,18 @@ async def edit_stats(ctx, engine, name: str, bot):
 
 # D&D 4e Specific
 class D4eEditCharacterModal(discord.ui.Modal):
-    def __init__(self, character, cons: dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+    def __init__(self, character, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
         self.character = character
-        self.cons = (cons,)
         self.name = character.name
         self.player = ctx.user.id
         self.ctx = ctx
         self.engine = engine
         self.bot = bot
         super().__init__(
-            discord.ui.InputText(label="AC", placeholder="Armor Class", value=cons["AC"]),
-            discord.ui.InputText(label="Fort", placeholder="Fortitude", value=cons["Fort"]),
-            discord.ui.InputText(label="Reflex", placeholder="Reflex", value=cons["Reflex"]),
-            discord.ui.InputText(label="Will", placeholder="Will", value=cons["Will"]),
+            discord.ui.InputText(label="AC", placeholder="Armor Class", value=character.ac),
+            discord.ui.InputText(label="Fort", placeholder="Fortitude", value=character.fort),
+            discord.ui.InputText(label="Reflex", placeholder="Reflex", value=character.reflex),
+            discord.ui.InputText(label="Will", placeholder="Will", value=character.will),
             *args,
             **kwargs,
         )
@@ -282,7 +281,10 @@ class D4eEditCharacterModal(discord.ui.Modal):
         # await Tracker_Model.update_pinned_tracker()
         # print('Tracker Updated')
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
+        return True
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
         self.stop()
+
+

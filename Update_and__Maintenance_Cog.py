@@ -59,6 +59,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
                     # TODO add in more robust error reporting for this to see if it becomes an issue
 
+        await engine.dispose()
+
 
 def setup(bot):
     bot.add_cog(Update_and_Maintenance_Cog(bot))

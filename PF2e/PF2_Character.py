@@ -112,17 +112,12 @@ class PF2_Character(Character):
 
                 await session.commit()
 
-            response = await edit_stats(self.ctx, self.engine, name, bot)
-            if response:
-                # await update_pinned_tracker(ctx, engine, bot)
-                return True
-            else:
-                return False
-            #
-            # await ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
-            # await update_pinned_tracker(ctx, engine, bot)
-            # await engine.dispose()
-            # return True
+                response = await edit_stats(self.ctx, self.engine, bot, name)
+                if response:
+                    # await update_pinned_tracker(ctx, engine, bot)
+                    return True
+                else:
+                    return False
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -135,19 +130,14 @@ class PF2_Character(Character):
 
 
 async def edit_stats(ctx, engine, bot, name: str):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         if engine == None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 
         Character_Model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
-        condition_dict = {}
-        for con in await Character_Model.conditions():
-            await asyncio.sleep(0)
-            condition_dict[con.title] = con.number
         editModal = PF2EditCharacterModal(
-            character=Character_Model.character_model, cons=condition_dict, ctx=ctx, engine=engine, bot=bot,
+            character=Character_Model, ctx=ctx, engine=engine, bot=bot,
             title=Character_Model.char_name
         )
         await ctx.send_modal(editModal)
@@ -159,20 +149,19 @@ async def edit_stats(ctx, engine, bot, name: str):
 
 
 class PF2EditCharacterModal(discord.ui.Modal):
-    def __init__(self, character, cons: dict, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+    def __init__(self, character, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
         self.character = character
-        self.cons = cons
-        self.name = character.name
+        self.name = character.char_name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        self.engine = engine
         self.bot = bot
         super().__init__(
-            discord.ui.InputText(label="AC", placeholder="Armor Class", value=cons["AC"]),
-            discord.ui.InputText(label="Fort", placeholder="Fortitude", value=cons["Fort"]),
-            discord.ui.InputText(label="Reflex", placeholder="Reflex", value=cons["Reflex"]),
-            discord.ui.InputText(label="Will", placeholder="Will", value=cons["Will"]),
-            discord.ui.InputText(label="DC", placeholder="DC", value=cons["DC"]),
+            discord.ui.InputText(label="AC", placeholder="Armor Class", value=character.ac),
+            discord.ui.InputText(label="Fort", placeholder="Fortitude", value=character.fort),
+            discord.ui.InputText(label="Reflex", placeholder="Reflex", value=character.reflex),
+            discord.ui.InputText(label="Will", placeholder="Will", value=character.will),
+            discord.ui.InputText(label="DC", placeholder="DC", value=character.dc),
             *args,
             **kwargs,
         )
@@ -184,12 +173,11 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-        Character_Model = await get_PF2_Character(self.name, self.ctx, guild=guild, engine=self.engine)
 
         for item in self.children:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == Character_Model.id).where(
+                    select(Condition).where(Condition.character_id == self.character.id).where(
                         Condition.title == item.label)
                 )
                 condition = result.scalars().one()
@@ -198,7 +186,8 @@ class PF2EditCharacterModal(discord.ui.Modal):
 
         # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
         # await Tracker_Model.update_pinned_tracker()
-        await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
+        await self.ctx.channel.send(embeds=await self.character.get_char_sheet(self.bot))
+        return True
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
