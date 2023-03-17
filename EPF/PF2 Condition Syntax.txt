@@ -54,3 +54,9 @@ Example:
                 "dmg_type": "Bludgeoning",  # Damage Type
                 "attk_stat": "str",  # What stat to use for the attack (probably str or dex)
  }
+
+
+----------------------------------
+Resistances / Weakness / Immunities
+attribute name (w, r, i) #;
+  eg "cold r 1;"

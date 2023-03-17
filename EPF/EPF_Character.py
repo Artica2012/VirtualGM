@@ -179,54 +179,77 @@ class EPF_Character(Character):
 
     async def get_roll(self, item):
         logging.info(f"Returning roll: {item}")
-        if item == "Fortitude" or "Fort":
+        print(item)
+        if item == "Fortitude" or item == "Fort":
+            print("a")
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex":
+            print("b")
             return f"1d20+{self.reflex_mod}"
         elif item == "Will":
+            print("c")
             return f"1d20+{self.will_mod}"
         elif item == "Acrobatics":
+            print("d")
             return f"1d20+{self.acrobatics_mod}"
         elif item == "Arcana":
+            print("e")
             return f"1d20+{self.arcana_mod}"
         elif item == "Athletics":
+            print("f")
             return f"1d20+{self.athletics_mod}"
         elif item == "Crafting":
+            print("g")
             return f"1d20+{self.crafting_mod}"
         elif item == "Deception":
+            print("h")
             return f"1d20+{self.deception_mod}"
         elif item == "Diplomacy":
+            print("i")
             return f"1d20+{self.diplomacy_mod}"
         elif item == "Intimidation":
+            print("j")
             return f"1d20+{self.intimidation_mod}"
         elif item == "Medicine":
+            print("k")
             return f"1d20+{self.medicine_mod}"
         elif item == "Nature":
+            print("l")
             return f"1d20+{self.nature_mod}"
         elif item == "Occultism":
+            print("m")
             return f"1d20+{self.occult_mod}"
         elif item == "Perception":
+            print("n")
             return f"1d20+{self.perception_mod}"
         elif item == "Performance":
+            print("o")
             return f"1d20+{self.performance_mod}"
         elif item == "Religion":
+            print("p")
             return f"1d20+{self.religion_mod}"
         elif item == "Society":
+            print("q")
             return f"1d20+{self.society_mod}"
         elif item == "Stealth":
+            print("r")
             return f"1d20+{self.stealth_mod}"
         elif item == "Survival":
+            print("s")
             return f"1d20+{self.survival_mod}"
         elif item == "Thievery":
+            print("t")
             return f"1d20+{self.thievery_mod}"
         else:
+            print("Not a check")
             try:
+                print(f"{item} - attk")
                 return await self.weapon_attack(item)
             except KeyError:
                 pass
 
             for attack in self.character_model.spells:
-                # print(item)
+                print(f"{item} - spell")
                 # print(attack["name"])
                 if attack["name"] in item:
                     stat_mod = 0
@@ -249,9 +272,10 @@ class EPF_Character(Character):
             return 0
 
     async def weapon_attack(self, item):
+        logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
-        # print(item)
-        # print(weapon["display"])
+        print(item)
+        print(weapon["display"])
         attk_stat = self.str_mod
         match weapon['attk_stat']:
             case "dex":
@@ -276,6 +300,10 @@ class EPF_Character(Character):
                 proficiency = self.character_model.martial_prof
             case "advanced":
                 proficiency = self.character_model.advanced_prof
+        print(proficiency)
+        print(attk_stat)
+        print(self.character_model.level)
+        print(weapon["pot"])
         if proficiency > 0:
             attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
         else:

@@ -304,7 +304,7 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         primal_mod = Column(Integer())
 
         ac_total = Column(Integer())
-        resistance = Column(String())
+        resistance = Column(JSON())
         perception_mod = Column(Integer())
         macros = Column(String())
         attacks = Column(JSON())

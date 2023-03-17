@@ -95,7 +95,7 @@ class Character():
         except NoResultFound:
             return []
 
-    async def change_hp(self, amount: int, heal: bool):
+    async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -135,21 +135,21 @@ class Character():
                 character.temp_hp = new_thp
                 await session.commit()
                 await self.update()
-
-            if character.player:  # Show the HP it its a player
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
-            else:  # Obscure the HP if its an NPC
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. {await self.calculate_hp()}")
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
+            if post:
+                if character.player:  # Show the HP it its a player
+                    if heal:
+                        await self.ctx.send_followup(
+                            f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}")
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}")
+                else:  # Obscure the HP if its an NPC
+                    if heal:
+                        await self.ctx.send_followup(
+                            f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
             await self.update()
             return True
         except Exception as e:
