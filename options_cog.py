@@ -80,7 +80,7 @@ class OptionsCog(commands.Cog):
         system: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
         try:
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
@@ -110,7 +110,7 @@ class OptionsCog(commands.Cog):
         gm: discord.User = discord.ApplicationContext.user,
         delete: str = "",
     ):
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if not await gm_check(ctx, engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
@@ -166,7 +166,7 @@ class OptionsCog(commands.Cog):
     @option("toggle", choices=["On", "Off"], required=False)
     @option("time", description="Number of Seconds per round (optional)", required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
-        logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
+        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         if toggle == "On":
@@ -323,7 +323,7 @@ async def setup_tracker(
 
 
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info(f"set_gm")
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -350,7 +350,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
 
 
 async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=None):
-    logging.info(f"{datetime.datetime.now()} - {inspect.stack()[0][3]} - {sys.argv[0]}")
+    logging.info("delete_tracker")
     try:
         # Everything in the opposite order of creation
         metadata = db.MetaData()
