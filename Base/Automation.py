@@ -48,4 +48,6 @@ class Automation():
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
+    async def auto(self, bot, character, target, attack):
+        return "Auto Function not set up for current system"
 

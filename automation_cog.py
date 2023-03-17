@@ -112,6 +112,27 @@ class AutomationCog(commands.Cog):
         await ctx.send_followup(output_string)
         await engine.dispose()
 
+    @att.command(description="Automatic Attack")
+    @option("character", description="Character Attacking", autocomplete=character_select_gm)
+    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("attack", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    async def auto(
+            self,
+            ctx: discord.ApplicationContext,
+            character: str,
+            target: str,
+            attack: str,
+    ):
+        # bughunt code
+        logging.info(f"attack_cog auto")
+
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        await ctx.response.defer()
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.damage(self.bot, character, target, user_roll_str, modifier, healing)
+        await ctx.send_followup(output_string)
+        await engine.dispose()
+
 
 def setup(bot):
     bot.add_cog(AutomationCog(bot))

@@ -108,8 +108,34 @@ class EPF_Automation(Automation):
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
-    async def auto(self, bot, character, target, roll, vs, attack_modifier, target_modifier, healing):
-        pass
+    async def auto(self, bot, character, target, attack):
+        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+
+        # Attack
+        roll_string = f"({await Character_Model.get_roll(attack)})"
+        dice_result = d20.roll(roll_string)
+
+        goal_value = await Target_Model.ac_total
+
+        try:
+            goal_string: str = f"{goal_value}"
+            goal_result = d20.roll(goal_string)
+        except Exception as e:
+            logging.warning(f"auto: {e}")
+            return "Error"
+
+        # Format output string
+        success_string = PF2_eval_succss(dice_result, goal_result)
+        attk_output_string = f"{character} vs {target}:\n{dice_result}\n{success_string}"
+
+        # Damage
+        dmg_roll =
+
+
+
+
 
 
 
