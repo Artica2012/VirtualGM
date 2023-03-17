@@ -148,8 +148,9 @@ class InitiativeCog(commands.Cog):
             response = await Character_Model.edit_character(name, hp, initiative, active, player, self.bot)
             if not response:
                 await ctx.respond("Error Editing Character", ephemeral=True)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
+            else:
+                Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
         await engine.dispose()
