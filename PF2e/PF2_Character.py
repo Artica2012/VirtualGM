@@ -1,10 +1,5 @@
 # imports
-import asyncio
-import datetime
 import logging
-import os
-import inspect
-import sys
 
 import discord
 import d20
@@ -34,9 +29,11 @@ from Base.Character import Character
 
 # from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport, error_not_initialized
 
-import warnings
-from sqlalchemy import exc
+# from utils.Tracker_Getter import get_tracker_model
+from utils.utils import get_guild
 
 
 async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
@@ -86,7 +83,7 @@ class PF2_Character(Character):
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
             # Give an error message if the character is the active character and making them inactive
-            if self.guild.saved_order == name:
+            if self.guild.saved_order == name and active is False:
                 await self.ctx.channel.send(
                     "Unable to inactivate a character while they are the active character in initiative.  Please"
                     " advance turn and try again."
@@ -128,7 +125,7 @@ class PF2_Character(Character):
 
 async def edit_stats(ctx, engine, bot, name: str):
     try:
-        if engine == None:
+        if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 

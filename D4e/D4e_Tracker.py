@@ -10,7 +10,6 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import Base.Tracker
 from Base.Tracker import Tracker, get_init_list
 from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 from database_models import Global, get_condition, get_tracker
@@ -34,7 +33,7 @@ class D4e_Tracker(Tracker):
         super().__init__(ctx, init_list, bot, engine, guild)
 
     async def block_post_init(self):
-        logging.info(f"D4e block_post_init")
+        logging.info("D4e block_post_init")
         # Query the initiative position for the tracker and post it
 
         # try:
@@ -161,7 +160,8 @@ class D4e_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
+                    "\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -259,7 +259,8 @@ class D4e_Tracker(Tracker):
                                         if processed_hours_left != 0:
                                             con_string = (
                                                 f"       {con_row.title}:"
-                                                f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                                f" {processed_hours_left}:{processed_minutes_left}:"
+                                                f"{processed_seconds_left}\n"
                                             )
                                         else:
                                             con_string = (
@@ -347,7 +348,7 @@ class D4eConditionButton(discord.ui.Button):
                     Character_Model = await get_character(
                         self.character.name, self.ctx, engine=self.engine, guild=self.guild
                     )
-                    roll_string = f"1d20"
+                    roll_string = "1d20"
                     dice_result = d20.roll(roll_string)
                     success_string = D4e_eval_success(dice_result, D4e_base_roll)
                     # Format output string

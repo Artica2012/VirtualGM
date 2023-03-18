@@ -57,7 +57,8 @@ class PF2_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
+                    "\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -160,7 +161,8 @@ class PF2_Tracker(Tracker):
                                     if processed_hours_left != 0:
                                         con_string = (
                                             f"       {con_row.title}:"
-                                            f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                            f" {processed_hours_left}:{processed_minutes_left}:"
+                                            f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (

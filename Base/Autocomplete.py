@@ -145,7 +145,7 @@ class AutoComplete:
         return []
 
     async def get_attributes(self):
-        logging.info(f"get_attributes")
+        logging.info("get_attributes")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             target = self.ctx.options["target"]

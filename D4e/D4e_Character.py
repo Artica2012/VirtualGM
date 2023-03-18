@@ -57,7 +57,7 @@ class D4e_Character(Character):
         super().__init__(char_name, ctx, engine, character, guild)
 
     async def conditions(self, no_time=False, flex=False):
-        logging.info("Returning PF2 Character Conditions")
+        logging.info("Returning D4e Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
@@ -92,16 +92,17 @@ class D4e_Character(Character):
                     )
                 else:
                     result = await session.execute(
-                        select(Condition)
+                        select(Condition.title)
                         .where(Condition.character_id == self.id)
                         .where(Condition.visible == true())
                         .order_by(Condition.title.asc())
                     )
                 return result.scalars().all()
+
         except NoResultFound:
             return []
 
-    async def change_hp(self, amount: int, heal: bool):
+    async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

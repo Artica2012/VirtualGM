@@ -15,6 +15,7 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from auto_complete import character_select_gm, attacks, stats, dmg_type
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 

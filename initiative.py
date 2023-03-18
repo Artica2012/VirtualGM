@@ -32,7 +32,6 @@ from utils.Util_Getter import get_utilities
 
 
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 
 #############################################################################
@@ -114,7 +113,7 @@ class InitiativeCog(commands.Cog):
         response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative)
         if response:
             await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("Error Adding Character", ephemeral=True)

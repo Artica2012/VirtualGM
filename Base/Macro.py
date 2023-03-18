@@ -19,7 +19,7 @@ class Macro:
         self.guild = guild
 
     async def create_macro(self, character: str, macro_name: str, macro_string: str):
-        logging.info(f"create_macro")
+        logging.info("create_macro")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -48,7 +48,7 @@ class Macro:
             return False
 
     async def mass_add(self, character: str, data: str):
-        logging.info(f"macro_mass_add")
+        logging.info("macro_mass_add")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -85,7 +85,7 @@ class Macro:
             return False
 
     async def delete_macro(self, character: str, macro_name: str):
-        logging.info(f"delete_macro")
+        logging.info("delete_macro")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine)

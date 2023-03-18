@@ -1,33 +1,20 @@
 # macro_cog.py
 # Macro-Roller Module for VirtualGM initiative Tracker
-import asyncio
-import os
 import logging
-import datetime
-import inspect
 
 # imports
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from dotenv import load_dotenv
-from sqlalchemy import or_
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-import d20
 
-from database_models import Global, get_macro, get_tracker
-from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport
 from auto_complete import character_select, macro_select, character_select_gm
-from utils.Macro_Getter import get_macro_object
-from utils.utils import get_guild
-from utils.Char_Getter import get_character
 
 # define global variables
-from utils.parsing import ParseModifiers
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport
+from utils.Macro_Getter import get_macro_object
+from utils.utils import get_guild
 
 
 class MacroCog(commands.Cog):

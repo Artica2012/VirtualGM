@@ -40,7 +40,7 @@ class Automation:
                     macro_roll = result.scalars().one()
                 roll_result = d20.roll(f"({macro_roll}){ParseModifiers(modifier)}")
                 output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
-            except:  # Error handling in case that a non-macro string in input
+            except Exception:  # Error handling in case that a non-macro string in input
                 roll_result = d20.roll(0)
                 output_string = "Error: Invalid Roll, Please try again."
 

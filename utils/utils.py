@@ -3,12 +3,12 @@ import os
 
 import discord
 from dotenv import load_dotenv
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+
 from database_models import Global, get_tracker
 from database_operations import get_asyncio_db_engine
-from sqlalchemy import or_, select, false, true
-
 from error_handling_reporting import ErrorReport
 
 load_dotenv(verbose=True)

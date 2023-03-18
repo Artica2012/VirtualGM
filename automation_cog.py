@@ -6,8 +6,6 @@ import logging
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from auto_complete import (
     character_select,
@@ -61,8 +59,6 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog attack")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
         await ctx.response.defer()
         Automation = await get_automation(ctx, engine=engine)
         output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
@@ -70,7 +66,7 @@ class AutomationCog(commands.Cog):
         await engine.dispose()
 
     @att.command(description="Saving Throw")
-    @option("character", description="Character forcing the sae", autocomplete=character_select_gm)
+    @option("character", description="Character forcing the save", autocomplete=character_select_gm)
     @option("target", description="Saving Character", autocomplete=a_save_target_custom)
     @option("save", description="Save", autocomplete=save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)
@@ -110,7 +106,7 @@ class AutomationCog(commands.Cog):
         healing: bool = False,
     ):
         # bughunt code
-        logging.info(f"attack_cog damage")
+        logging.info("attack_cog damage")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()

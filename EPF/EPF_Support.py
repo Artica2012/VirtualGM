@@ -1,17 +1,7 @@
-import os
 import logging
 
-import discord
 import sqlalchemy as db
-from dotenv import load_dotenv
-from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer, BigInteger
-from sqlalchemy import String, Boolean
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 
 class PF2_Character_Model:

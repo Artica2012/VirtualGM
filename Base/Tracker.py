@@ -186,7 +186,7 @@ class Tracker:
         return await self.block_advance_initiative()
 
     async def block_advance_initiative(self):
-        logging.info(f"advance_initiative")
+        logging.info("advance_initiative")
 
         block_done = False
         turn_list = []
@@ -217,7 +217,7 @@ class Tracker:
                             try:
                                 roll = d20.roll(char.init_string)
                                 await model.set_init(roll)
-                            except:
+                            except Exception:
                                 await model.set_init(0)
                 else:
                     init_pos = int(self.guild.initiative)
@@ -442,7 +442,8 @@ class Tracker:
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
+                    "\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -554,7 +555,8 @@ class Tracker:
                                     if processed_hours_left != 0:
                                         con_string = (
                                             f"       {con_row.title}:"
-                                            f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                            f" {processed_hours_left}:{processed_minutes_left}:"
+                                            f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
@@ -620,7 +622,7 @@ class Tracker:
 
     # Post a new initiative tracker and updates the pinned trackers
     async def block_post_init(self):
-        logging.info(f"base block_post_init")
+        logging.info("base block_post_init")
         # Query the initiative position for the tracker and post it
 
         try:
@@ -718,7 +720,7 @@ class Tracker:
 
     # Updates the active initiative tracker (not the pinned tracker)
     async def update_pinned_tracker(self):
-        logging.info(f"update_pinned_tracker")
+        logging.info("update_pinned_tracker")
 
         # Query the initiative position for the tracker and post it
         try:
@@ -771,7 +773,7 @@ class Tracker:
                     channel = self.bot.get_channel(self.guild.tracker_channel)
                     message = await channel.fetch_message(self.guild.tracker)
                     await message.edit(content=tracker_string)
-                except:
+                except Exception:
                     logging.warning(f"Invalid Tracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.tracker_channel)
                     await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
@@ -782,7 +784,7 @@ class Tracker:
                     gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
                     gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
                     await gm_message.edit(content=gm_tracker_display_string)
-                except:
+                except Exception:
                     logging.warning(f"Invalid GMTracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.gm_tracker_channel)
                     await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
