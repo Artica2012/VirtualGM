@@ -15,7 +15,6 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from auto_complete import character_select_gm, attacks, stats, dmg_type
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 
@@ -110,7 +109,7 @@ class PF2Cog(commands.Cog):
     @pf2.command(description="Edit Character Resistances")
     @option("character", description="Character to select", autocomplete=character_select_gm)
     @option("element", autocomplete=dmg_type)
-    @option("resist_weak", choices=["Resistance", "Weaknes", "Immunity"])
+    @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)

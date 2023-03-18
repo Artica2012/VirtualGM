@@ -58,6 +58,9 @@ class EPF_Utilities(Utilities):
         Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
             resistance = Character_Model.resistance
+            if resist_weak == "Resistance":
+                resistance["resist"][element] = amount
+
             print(resistance)
         except Exception:
             return False
