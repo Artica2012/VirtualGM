@@ -14,6 +14,7 @@ from auto_complete import (
     get_attributes,
     a_save_target_custom,
     save_select,
+    dmg_type,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -96,6 +97,7 @@ class AutomationCog(commands.Cog):
     @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option("modifier", description="Roll Modifer", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
+    @option("damage_type", description="Damage Type", autocomplete=dmg_type, required=False)
     async def damage(
         self,
         ctx: discord.ApplicationContext,
@@ -104,6 +106,7 @@ class AutomationCog(commands.Cog):
         user_roll_str: str,
         modifier: str = "",
         healing: bool = False,
+        damage_type: str = "",
     ):
         # bughunt code
         logging.info("attack_cog damage")
@@ -111,7 +114,9 @@ class AutomationCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.damage(self.bot, character, target, user_roll_str, modifier, healing)
+        output_string = await Automation.damage(
+            self.bot, character, target, user_roll_str, modifier, healing, damage_type
+        )
         await ctx.send_followup(output_string)
         await engine.dispose()
 
@@ -127,7 +132,7 @@ class AutomationCog(commands.Cog):
         attack: str,
     ):
         # bughunt code
-        logging.info(f"attack_cog auto")
+        logging.info("attack_cog auto")
 
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()

@@ -36,9 +36,25 @@ from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
 PF2_base_dc = 10
-PF2_skills = ["Acrobatics", "Arcana", "Athletics", "Crafting", "Deception", "Diplomacy", "Intimidation", "Medicine",
-              "Nature", "Occultism", "Perception", "Performance", "Religion", "Society", "Stealth", "Survival",
-              "Thievery"]
+PF2_skills = [
+    "Acrobatics",
+    "Arcana",
+    "Athletics",
+    "Crafting",
+    "Deception",
+    "Diplomacy",
+    "Intimidation",
+    "Medicine",
+    "Nature",
+    "Occultism",
+    "Perception",
+    "Performance",
+    "Religion",
+    "Society",
+    "Stealth",
+    "Survival",
+    "Thievery",
+]
 
 
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
@@ -278,7 +294,7 @@ class EPF_Character(Character):
         print(item)
         print(weapon["display"])
         attk_stat = self.str_mod
-        match weapon['attk_stat']:
+        match weapon["attk_stat"]:
             case "dex":
                 attk_stat = self.dex_mod
             case "con":
@@ -318,7 +334,7 @@ class EPF_Character(Character):
         weapon = self.character_model.attacks[item]
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
         dmg_mod = 0
-        match weapon['stat']:
+        match weapon["stat"]:
             case "None":
                 dmg_mod = 0
             case "str":
@@ -337,6 +353,9 @@ class EPF_Character(Character):
             return f"({weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
         else:
             return f"{weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+
+    async def get_weapon(self, item):
+        return self.character_model.attacks[item]
 
     async def get_dc(self, item):
         if item == "AC":
@@ -406,15 +425,16 @@ class EPF_Character(Character):
             list.append(key)
         return list
 
-    async def set_cc(self,
-                     title: str,
-                     counter: bool,
-                     number: int,
-                     unit: str,
-                     auto_decrement: bool,
-                     flex: bool = False,
-                     data: str = ""
-                     ):
+    async def set_cc(
+        self,
+        title: str,
+        counter: bool,
+        number: int,
+        unit: str,
+        auto_decrement: bool,
+        flex: bool = False,
+        data: str = "",
+    ):
         logging.info("set_cc")
         # Get the Character's data
 
@@ -451,7 +471,7 @@ class EPF_Character(Character):
                         auto_increment=auto_decrement,
                         time=False,
                         flex=flex,
-                        action=data
+                        action=data,
                     )
                     session.add(condition)
                 await session.commit()
@@ -477,7 +497,7 @@ class EPF_Character(Character):
                         counter=counter,
                         auto_increment=True,
                         time=True,
-                        action=data
+                        action=data,
                     )
                     session.add(condition)
                 await session.commit()
@@ -530,7 +550,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         lores += output
 
     feats = ""
-    for item in pb['build']['feats']:
+    for item in pb["build"]["feats"]:
         feats += f"{item[0]}, "
 
     if overwrite:
@@ -588,7 +608,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "crit": "*2",
                 "stat": "str",
                 "dmg_type": "Bludgeoning",
-                "attk_stat": "str"
+                "attk_stat": "str",
             }
 
     if overwrite:
@@ -598,22 +618,22 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
             # Write the data from the JSON
             character.max_hp = (
-                    pb["build"]["attributes"]["ancestryhp"]
-                    + pb["build"]["attributes"]["classhp"]
-                    + pb["build"]["attributes"]["bonushp"]
-                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                    + (
-                            (pb["build"]["level"] - 1)
-                            * (
-                                    pb["build"]["attributes"]["classhp"]
-                                    + pb["build"]["attributes"]["bonushpPerLevel"]
-                                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                            )
+                pb["build"]["attributes"]["ancestryhp"]
+                + pb["build"]["attributes"]["classhp"]
+                + pb["build"]["attributes"]["bonushp"]
+                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                + (
+                    (pb["build"]["level"] - 1)
+                    * (
+                        pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushpPerLevel"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                     )
+                )
             )
             character.char_class = pb["build"]["class"]
             character.level = pb["build"]["level"]
-            character.ac_base = pb["build"]["acTotal"]['acTotal']
+            character.ac_base = pb["build"]["acTotal"]["acTotal"]
             character.class_prof = pb["build"]["proficiencies"]["classDC"]
             character.class_dc = 0
             character.key_ability = pb["build"]["keyability"]
@@ -678,67 +698,60 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     player=True,
                     user=ctx.user.id,
                     current_hp=(
-                            pb["build"]["attributes"]["ancestryhp"]
-                            + pb["build"]["attributes"]["classhp"]
-                            + pb["build"]["attributes"]["bonushp"]
-                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                            + (
-                                    (pb["build"]["level"] - 1)
-                                    * (
-                                            pb["build"]["attributes"]["classhp"]
-                                            + pb["build"]["attributes"]["bonushpPerLevel"]
-                                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                                    )
+                        pb["build"]["attributes"]["ancestryhp"]
+                        + pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushp"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        + (
+                            (pb["build"]["level"] - 1)
+                            * (
+                                pb["build"]["attributes"]["classhp"]
+                                + pb["build"]["attributes"]["bonushpPerLevel"]
+                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             )
+                        )
                     ),
                     max_hp=(
-                            pb["build"]["attributes"]["ancestryhp"]
-                            + pb["build"]["attributes"]["classhp"]
-                            + pb["build"]["attributes"]["bonushp"]
-                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                            + (
-                                    (pb["build"]["level"] - 1)
-                                    * (
-                                            pb["build"]["attributes"]["classhp"]
-                                            + pb["build"]["attributes"]["bonushpPerLevel"]
-                                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                                    )
+                        pb["build"]["attributes"]["ancestryhp"]
+                        + pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushp"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        + (
+                            (pb["build"]["level"] - 1)
+                            * (
+                                pb["build"]["attributes"]["classhp"]
+                                + pb["build"]["attributes"]["bonushpPerLevel"]
+                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             )
+                        )
                     ),
                     temp_hp=0,
-
                     char_class=pb["build"]["class"],
                     level=pb["build"]["level"],
-                    ac_base=pb["build"]["acTotal"]['acTotal'],
+                    ac_base=pb["build"]["acTotal"]["acTotal"],
                     class_prof=pb["build"]["proficiencies"]["classDC"],
                     class_dc=0,
-
                     str=pb["build"]["abilities"]["str"],
                     dex=pb["build"]["abilities"]["dex"],
                     con=pb["build"]["abilities"]["con"],
                     itl=pb["build"]["abilities"]["int"],
                     wis=pb["build"]["abilities"]["wis"],
                     cha=pb["build"]["abilities"]["cha"],
-
                     fort_prof=pb["build"]["proficiencies"]["fortitude"],
                     reflex_prof=pb["build"]["proficiencies"]["reflex"],
                     will_prof=pb["build"]["proficiencies"]["will"],
-
                     unarmored_prof=pb["build"]["proficiencies"]["unarmored"],
                     light_armor_prof=pb["build"]["proficiencies"]["light"],
                     medium_armor_prof=pb["build"]["proficiencies"]["medium"],
                     heavy_armor_prof=pb["build"]["proficiencies"]["heavy"],
-
                     unarmed_prof=pb["build"]["proficiencies"]["unarmed"],
                     simple_prof=pb["build"]["proficiencies"]["simple"],
                     martial_prof=pb["build"]["proficiencies"]["martial"],
                     advanced_prof=pb["build"]["proficiencies"]["advanced"],
-
                     arcane_prof=pb["build"]["proficiencies"]["castingArcane"],
                     divine_prof=pb["build"]["proficiencies"]["castingDivine"],
                     occult_prof=pb["build"]["proficiencies"]["castingOccult"],
                     primal_prof=pb["build"]["proficiencies"]["castingPrimal"],
-
                     acrobatics_prof=pb["build"]["proficiencies"]["acrobatics"],
                     arcana_prof=pb["build"]["proficiencies"]["arcana"],
                     athletics_prof=pb["build"]["proficiencies"]["athletics"],
@@ -750,24 +763,18 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     nature_prof=pb["build"]["proficiencies"]["nature"],
                     occultism_prof=pb["build"]["proficiencies"]["occultism"],
                     perception_prof=pb["build"]["proficiencies"]["perception"],
-
                     performance_prof=pb["build"]["proficiencies"]["performance"],
                     religion_prof=pb["build"]["proficiencies"]["religion"],
                     society_prof=pb["build"]["proficiencies"]["society"],
                     stealth_prof=pb["build"]["proficiencies"]["stealth"],
                     survival_prof=pb["build"]["proficiencies"]["survival"],
                     thievery_prof=pb["build"]["proficiencies"]["thievery"],
-
                     lores=lores,
                     feats=feats,
                     key_ability=pb["build"]["keyability"],
                     attacks=attacks,
                     spells=pb["build"]["spellCasters"],
-                    resistance={
-                        "resist": {},
-                        "weak": {},
-                        "immune": {}
-                    }
+                    resistance={"resist": {}, "weak": {}, "immune": {}},
                 )
                 session.add(new_char)
             await session.commit()
@@ -777,7 +784,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
 
 async def calculate(ctx, engine, char_name, guild=None):
-    logging.info('Updating Character Model')
+    logging.info("Updating Character Model")
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
@@ -809,52 +816,68 @@ async def calculate(ctx, engine, char_name, guild=None):
         character.cha_mod = await ability_mod_calc(character.cha, "cha", bonuses)
 
         # Saves
-        character.fort_mod = await save_mod_calc(character.con_mod, "fort", character.fort_prof,
-                                                 character.level, bonuses)
-        character.reflex_mod = await save_mod_calc(character.dex_mod, "reflex", character.reflex_prof,
-                                                   character.level, bonuses)
-        character.will_mod = await save_mod_calc(character.wis_mod, "wis", character.will_prof,
-                                                 character.level, bonuses)
+        character.fort_mod = await save_mod_calc(
+            character.con_mod, "fort", character.fort_prof, character.level, bonuses
+        )
+        character.reflex_mod = await save_mod_calc(
+            character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
+        )
+        character.will_mod = await save_mod_calc(
+            character.wis_mod, "wis", character.will_prof, character.level, bonuses
+        )
 
         # Skills
-        character.athletics_mod = await skill_mod_calc(character.str_mod, "athletics",
-                                                       character.athletics_prof, character.level, bonuses, ui)
-        character.acrobatics_mod = await skill_mod_calc(character.dex_mod, "acrobatics",
-                                                        character.acrobatics_prof, character.level,
-                                                        bonuses, ui)
-        character.arcana_mod = await skill_mod_calc(character.itl_mod, "arcana",
-                                                    character.arcana_prof, character.level, bonuses, ui)
-        character.crafting_mod = await skill_mod_calc(character.itl_mod, "crafting",
-                                                      character.acrobatics_prof, character.level, bonuses, ui)
-        character.deception_mod = await skill_mod_calc(character.cha_mod, "deception",
-                                                       character.deception_prof, character.level, bonuses, ui)
-        character.diplomacy_mod = await skill_mod_calc(character.cha_mod, "diplomacy",
-                                                       character.diplomacy_prof, character.level, bonuses, ui)
-        character.intimidation_mod = await skill_mod_calc(character.cha_mod, "intimidation",
-                                                          character.intimidation_prof, character.level,
-                                                          bonuses, ui)
-        character.medicine_mod = await skill_mod_calc(character.wis_mod, "medicine",
-                                                      character.medicine_prof, character.level, bonuses, ui)
-        character.nature_mod = await skill_mod_calc(character.wis_mod, "nature",
-                                                    character.nature_prof, character.level, bonuses, ui)
-        character.occultism_mod = await skill_mod_calc(character.itl_mod, "occultism",
-                                                       character.occultism_prof, character.level, bonuses, ui)
-        character.perception_mod = await skill_mod_calc(character.wis_mod, "perception",
-                                                        character.perception_prof, character.level,
-                                                        bonuses, ui)
-        character.performance_mod = await skill_mod_calc(character.cha_mod, "performance",
-                                                         character.performance_prof, character.level,
-                                                         bonuses, ui)
-        character.religion_mod = await skill_mod_calc(character.wis_mod, "religion",
-                                                      character.religion_prof, character.level, bonuses, ui)
-        character.society_mod = await skill_mod_calc(character.itl_mod, "society",
-                                                     character.society_prof, character.level, bonuses, ui)
-        character.stealth_mod = await skill_mod_calc(character.dex_mod, "stealth",
-                                                     character.stealth_prof, character.level, bonuses, ui)
-        character.survival_mod = await skill_mod_calc(character.wis_mod, "survival",
-                                                      character.survival_prof, character.level, bonuses, ui)
-        character.thievery_mod = await skill_mod_calc(character.dex_mod, "thievery",
-                                                      character.thievery_prof, character.level, bonuses, ui)
+        character.athletics_mod = await skill_mod_calc(
+            character.str_mod, "athletics", character.athletics_prof, character.level, bonuses, ui
+        )
+        character.acrobatics_mod = await skill_mod_calc(
+            character.dex_mod, "acrobatics", character.acrobatics_prof, character.level, bonuses, ui
+        )
+        character.arcana_mod = await skill_mod_calc(
+            character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
+        )
+        character.crafting_mod = await skill_mod_calc(
+            character.itl_mod, "crafting", character.acrobatics_prof, character.level, bonuses, ui
+        )
+        character.deception_mod = await skill_mod_calc(
+            character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
+        )
+        character.diplomacy_mod = await skill_mod_calc(
+            character.cha_mod, "diplomacy", character.diplomacy_prof, character.level, bonuses, ui
+        )
+        character.intimidation_mod = await skill_mod_calc(
+            character.cha_mod, "intimidation", character.intimidation_prof, character.level, bonuses, ui
+        )
+        character.medicine_mod = await skill_mod_calc(
+            character.wis_mod, "medicine", character.medicine_prof, character.level, bonuses, ui
+        )
+        character.nature_mod = await skill_mod_calc(
+            character.wis_mod, "nature", character.nature_prof, character.level, bonuses, ui
+        )
+        character.occultism_mod = await skill_mod_calc(
+            character.itl_mod, "occultism", character.occultism_prof, character.level, bonuses, ui
+        )
+        character.perception_mod = await skill_mod_calc(
+            character.wis_mod, "perception", character.perception_prof, character.level, bonuses, ui
+        )
+        character.performance_mod = await skill_mod_calc(
+            character.cha_mod, "performance", character.performance_prof, character.level, bonuses, ui
+        )
+        character.religion_mod = await skill_mod_calc(
+            character.wis_mod, "religion", character.religion_prof, character.level, bonuses, ui
+        )
+        character.society_mod = await skill_mod_calc(
+            character.itl_mod, "society", character.society_prof, character.level, bonuses, ui
+        )
+        character.stealth_mod = await skill_mod_calc(
+            character.dex_mod, "stealth", character.stealth_prof, character.level, bonuses, ui
+        )
+        character.survival_mod = await skill_mod_calc(
+            character.wis_mod, "survival", character.survival_prof, character.level, bonuses, ui
+        )
+        character.thievery_mod = await skill_mod_calc(
+            character.dex_mod, "thievery", character.thievery_prof, character.level, bonuses, ui
+        )
 
         # Casting, Armor and Attacks
         key_ability = None
@@ -872,18 +895,23 @@ async def calculate(ctx, engine, char_name, guild=None):
             case "cha":
                 key_ability = character.cha_mod
 
-        character.arcane_mod = await skill_mod_calc(key_ability, "arcane", character.arcane_prof,
-                                                    character.level, bonuses, False)
-        character.divine_mod = await skill_mod_calc(key_ability, "divine", character.divine_prof,
-                                                    character.level, bonuses, False)
-        character.occult_mod = await skill_mod_calc(key_ability, "occult", character.arcane_prof,
-                                                    character.level, bonuses, False)
-        character.primal_mod = await skill_mod_calc(key_ability, "primal", character.arcane_prof,
-                                                    character.level, bonuses, False)
+        character.arcane_mod = await skill_mod_calc(
+            key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
+        )
+        character.divine_mod = await skill_mod_calc(
+            key_ability, "divine", character.divine_prof, character.level, bonuses, False
+        )
+        character.occult_mod = await skill_mod_calc(
+            key_ability, "occult", character.arcane_prof, character.level, bonuses, False
+        )
+        character.primal_mod = await skill_mod_calc(
+            key_ability, "primal", character.arcane_prof, character.level, bonuses, False
+        )
 
         character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
-        character.class_dc = await skill_mod_calc(key_ability, "class_dc", character.class_prof, character.level,
-                                                  bonuses, False)
+        character.class_dc = await skill_mod_calc(
+            key_ability, "class_dc", character.class_prof, character.level, bonuses, False
+        )
         character.init_string = f"1d20+{character.perception_mod}"
         character.bonuses = bonuses
 
@@ -1012,8 +1040,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
             char = result.scalars().one()
 
         async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == char))
+            result = await session.execute(select(Condition).where(Condition.character_id == char))
             conditions = result.scalars().all()
     except NoResultFound:
         conditions = []
@@ -1024,7 +1051,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         "item_pos": {},
         "circumstances_neg": {},
         "status_neg": {},
-        "item_neg": {}
+        "item_neg": {},
     }
     print("!!!!!!!!!!!!!!!!!!!111")
     print(len(conditions))

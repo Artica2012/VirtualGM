@@ -21,7 +21,7 @@ class Automation:
     async def save(self, character, target, save, dc, modifier):
         return "Save Function not set up for current system."
 
-    async def damage(self, bot, character, target, roll, modifier, healing):
+    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)

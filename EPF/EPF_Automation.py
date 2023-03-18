@@ -85,7 +85,7 @@ class EPF_Automation(Automation):
 
         return output_string
 
-    async def damage(self, bot, character, target, roll, modifier, healing, crit=False):
+    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
@@ -94,14 +94,24 @@ class EPF_Automation(Automation):
         except Exception:
             try:
                 roll_result = d20.roll(f"({Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
-            except:
+            except Exception:
                 try:
                     roll_result = d20.roll(f"{Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
-                except:
+                except Exception:
                     roll_result = d20.roll("0 [Error]")
+        dmg = roll_result.total
+        if not healing:
+            if damage_type in Target_Model.resistance["resist"]:
+                dmg = dmg - Target_Model.resistance["resist"][damage_type]
+                if dmg < 0:
+                    dmg = 0
+            elif damage_type in Target_Model.resistance["weak"]:
+                dmg = dmg + Target_Model.resistance["weak"][damage_type]
+            elif damage_type in Target_Model.resistance["immune"]:
+                dmg = 0
 
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
-        await Target_Model.change_hp(roll_result.total, healing)
+        await Target_Model.change_hp(dmg, healing)
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
@@ -145,16 +155,28 @@ class EPF_Automation(Automation):
 
         if dmg_output_string is not None:
             dmg_roll = d20.roll(dmg_output_string)
+            dmg = dmg_roll.total
+            weapon = Character_Model.get_weapon(attack)
+            if weapon["dmg_type"] in Target_Model.resistance["resist"]:
+                dmg = dmg - Target_Model.resistance["resist"][weapon["dmg_type"]]
+                if dmg < 0:
+                    dmg = 0
+            elif weapon["dmg_type"] in Target_Model.resistance["weak"]:
+                dmg = dmg + Target_Model.resistance["weak"][weapon["dmg_type"]]
+            elif weapon["dmg_type"] in Target_Model.resistance["immune"]:
+                dmg = 0
+
             dmg_output_string = f"{character} damages {target} for:\n{dmg_roll}"
-            await Target_Model.change_hp(dmg_roll.total, heal=False, post=False)
+            await Target_Model.change_hp(dmg, heal=False, post=False)
+            await Tracker_Model.update_pinned_tracker()
             if Target_Model.player:
                 return (
                     f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
-                    f" {dmg_roll.total}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                    f" {dmg}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
                 )
             else:
                 return (
-                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg_roll.total}."
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg}."
                     f" {await Target_Model.calculate_hp()}"
                 )
         else:
