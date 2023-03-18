@@ -33,9 +33,9 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         async with async_session() as session:
             result = await session.execute(
                 select(Tracker)
-                    .where(Tracker.active == true())
-                    .order_by(Tracker.init.desc())
-                    .order_by(Tracker.id.desc())
+                .where(Tracker.active == true())
+                .order_by(Tracker.init.desc())
+                .order_by(Tracker.id.desc())
             )
             init_list = result.scalars().all()
             logging.info("GIL: Init list gotten")
@@ -47,7 +47,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
         return []
 
 
-class Tracker():
+class Tracker:
     def __init__(self, ctx, engine, init_list, bot, guild=None):
         self.ctx = ctx
         self.engine = engine
@@ -70,11 +70,7 @@ class Tracker():
 
         # Reset variables to the neutral state
         async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(
-                    Global.id == self.guild.id
-                )
-            )
+            result = await session.execute(select(Global).where(Global.id == self.guild.id))
             guild = result.scalars().one()
             guild.initiative = None
             guild.saved_order = ""
@@ -230,11 +226,13 @@ class Tracker():
             logging.info("BAI3: updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(self.init_list[0].name, self.ctx, engine=self.engine,
-                                                        guild=self.guild)
+                current_character = await get_character(
+                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
+                )
             else:
-                current_character = await get_character(self.guild.saved_order, self.ctx, engine=self.engine,
-                                                        guild=self.guild)
+                current_character = await get_character(
+                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
+                )
 
             # Record the initial to break an infinite loop
             iterations = 0
@@ -248,10 +246,7 @@ class Tracker():
                     # if its not, set the init position to the position of the current character before advancing it
                     # print("Yes guild.block")
                     logging.info(f"BAI5: guild.block: {self.guild.block}")
-                    if (
-                            not await self.init_integrity_check(init_pos, current_character.char_name)
-                            and not first_pass
-                    ):
+                    if not await self.init_integrity_check(init_pos, current_character.char_name) and not first_pass:
                         logging.info("BAI6: init_itegrity failied")
                         for pos, row in enumerate(self.init_list):
                             await asyncio.sleep(0)
@@ -278,10 +273,7 @@ class Tracker():
                     logging.info("BAI14: Not Block")
                     # print("Not guild.block")
                     # if its not, set the init position to the position of the current character before advancing it
-                    if (
-                            not await self.init_integrity_check(init_pos, current_character.char_name)
-                            and not first_pass
-                    ):
+                    if not await self.init_integrity_check(init_pos, current_character.char_name) and not first_pass:
                         logging.info("BAI15: Integrity check failed")
                         # print(f"integrity check was false: init_pos: {init_pos}")
                         for pos, row in enumerate(self.init_list):
@@ -315,8 +307,9 @@ class Tracker():
                     block_done = True
 
                 turn_list.append(self.init_list[init_pos].name)
-                current_character = await get_character(self.init_list[init_pos].name, self.ctx, engine=self.engine,
-                                                        guild=self.guild)
+                current_character = await get_character(
+                    self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
+                )
                 iterations += 1
                 if iterations >= len(self.init_list):  # stop an infinite loop
                     block_done = True
@@ -366,15 +359,15 @@ class Tracker():
                 if before is not None:
                     char_result = await session.execute(
                         select(Condition)
-                            .where(Condition.character_id == current_character.id)
-                            .where(Condition.flex == before)
-                            .where(Condition.auto_increment == true())
+                        .where(Condition.character_id == current_character.id)
+                        .where(Condition.flex == before)
+                        .where(Condition.auto_increment == true())
                     )
                 else:
                     char_result = await session.execute(
                         select(Condition)
-                            .where(Condition.character_id == current_character.id)
-                            .where(Condition.auto_increment == true())
+                        .where(Condition.character_id == current_character.id)
+                        .where(Condition.auto_increment == true())
                     )
                 con_list = char_result.scalars().all()
                 logging.info("BAI9: condition's retrieved")
@@ -410,9 +403,9 @@ class Tracker():
             async with async_session() as session:
                 result = await session.execute(
                     select(Tracker)
-                        .where(Tracker.active == false())
-                        .order_by(Tracker.init.desc())
-                        .order_by(Tracker.id.desc())
+                    .where(Tracker.active == false())
+                    .order_by(Tracker.init.desc())
+                    .order_by(Tracker.id.desc())
                 )
                 init_list = result.scalars().all()
                 logging.info("GIL: Init list gotten")
@@ -448,7 +441,9 @@ class Tracker():
         # Generate the data_time string if timekeeper is active
         try:
             if self.guild.timekeeping:
-                datetime_string = f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                datetime_string = (
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                )
         except NoResultFound:
             if self.ctx is not None:
                 await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -480,8 +475,9 @@ class Tracker():
                 # Get all of the visible condition for the character
                 async with async_session() as session:
                     result = await session.execute(
-                        select(Condition).where(Condition.character_id == character.id).where(
-                            Condition.visible == true())
+                        select(Condition)
+                        .where(Condition.character_id == character.id)
+                        .where(Condition.visible == true())
                     )
                     condition_list = result.scalars().all()
 
@@ -497,8 +493,10 @@ class Tracker():
 
                 if block:
                     for (
-                            char
-                    ) in turn_list:  # ignore this error, turn list is gotten if block is true, so this will always apply
+                        char
+                    ) in (
+                        turn_list
+                    ):  # ignore this error, turn list is gotten if block is true, so this will always apply
                         # print(f'character.id = {character.id}')
                         if character.id == char.id:
                             sel_bool = True
@@ -517,9 +515,15 @@ class Tracker():
                             f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp\n"
                         )
                     else:
-                        string = f"{selector}  {init_num} {str(character.char_name).title()}: {character.current_hp}/{character.max_hp}\n"
+                        string = (
+                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f" {character.current_hp}/{character.max_hp}\n"
+                        )
                 else:
-                    string = f"{selector}  {init_num} {str(character.char_name).title()}: {await character.calculate_hp()} \n"
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" {await character.calculate_hp()} \n"
+                    )
                 output_string += string
 
                 for con_row in condition_list:
@@ -549,11 +553,13 @@ class Tracker():
                                 else:
                                     if processed_hours_left != 0:
                                         con_string = (
-                                            f"       {con_row.title}: {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                            f"       {con_row.title}:"
+                                            f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
-                                            f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                            f"       {con_row.title}:"
+                                            f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
                                 con_string = f"       {con_row.title}: {con_row.number}\n"
@@ -642,7 +648,7 @@ class Tracker():
                     user = self.bot.get_user(self.init_list[self.guild.initiative].user)
                     ping_string += f"{user.mention}, it's your turn.\n"
             except Exception as e:
-                logging.error(f'post_init: {e}')
+                logging.error(f"post_init: {e}")
                 ping_string = ""
 
             # Check for systems:
@@ -657,8 +663,9 @@ class Tracker():
                 if self.ctx.channel.id == self.guild.tracker_channel:
                     tracker_msg = await self.ctx.send_followup(f"{tracker_string}\n{ping_string}", view=view)
                 else:
-                    await self.bot.get_channel(self.guild.tracker_channel).send(f"{tracker_string}\n{ping_string}",
-                                                                                view=view)
+                    await self.bot.get_channel(self.guild.tracker_channel).send(
+                        f"{tracker_string}\n{ping_string}", view=view
+                    )
                     tracker_msg = await self.ctx.send_followup("Initiative Advanced.")
                     logging.info("BPI5")
             else:
@@ -874,8 +881,9 @@ class Tracker():
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -884,8 +892,13 @@ class Tracker():
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 print(interaction.message.id)
-                Tracker_model = Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
-                                        self.bot, guild=self.guild)
+                Tracker_model = Tracker(
+                    self.ctx,
+                    self.engine,
+                    await get_init_list(self.ctx, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
                 print(f"Error: {e}")
@@ -893,8 +906,9 @@ class Tracker():
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
@@ -902,8 +916,9 @@ class Tracker():
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-                Tracker_Model = Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot,
-                                        guild=self.guild)
+                Tracker_Model = Tracker(
+                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
+                )
                 await Tracker_Model.advance_initiative()
                 await Tracker_Model.block_post_init()
             except Exception as e:

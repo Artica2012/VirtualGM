@@ -17,10 +17,9 @@ class EPF_Macro(Macro):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def roll_macro(self, character: str, macro_name: str, dc,modifier: str, guild=None):
+    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info("EPF roll_macro")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
 
         logging.info("EPF")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
@@ -49,7 +48,7 @@ class EPF_Macro(Macro):
         def __init__(self, ctx: discord.ApplicationContext, engine, character, macro):
             self.ctx = ctx
             self.engine = engine
-            self.character: EPF_Character  = character
+            self.character: EPF_Character = character
             self.macro = macro
             super().__init__(
                 label=f"{macro}",

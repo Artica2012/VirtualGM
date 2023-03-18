@@ -58,7 +58,9 @@ class EPF_Autocmplete(AutoComplete):
             return PF2_attributes
 
     async def attacks(self):
-        Character_Model = await get_EPF_Character(self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_EPF_Character(
+            self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
+        )
         await self.engine.dispose()
         if self.ctx.value != "":
             option_list = await Character_Model.attack_list()

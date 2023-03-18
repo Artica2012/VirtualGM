@@ -37,42 +37,34 @@ class PF2_Character_Model:
             db.Column("temp_hp", db.INTEGER(), default=0),
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
-
-            db.Column('char_class', db.String(255), nullable=False),
+            db.Column("char_class", db.String(255), nullable=False),
             db.Column("level", db.INTEGER(), nullable=False),
             db.Column("ac_base", db.INTEGER(), nullable=False),
             db.Column("class_dc", db.INTEGER(), nullable=False),
-
             db.Column("str", db.INTEGER(), nullable=False),
             db.Column("dex", db.INTEGER(), nullable=False),
             db.Column("con", db.INTEGER(), nullable=False),
             db.Column("itl", db.INTEGER(), nullable=False),
             db.Column("wis", db.INTEGER(), nullable=False),
             db.Column("cha", db.INTEGER(), nullable=False),
-
             db.Column("fort_prof", db.INTEGER(), nullable=False),
             db.Column("will_prof", db.INTEGER(), nullable=False),
             db.Column("reflex_prof", db.INTEGER(), nullable=False),
-
             db.Column("perception_prof", db.INTEGER(), nullable=False),
             db.Column("class_prof", db.INTEGER(), nullable=False),
             db.Column("key_ability", db.String(255), nullable=False),
-
             db.Column("unarmored_prof", db.INTEGER(), nullable=False),
             db.Column("light_armor_prof", db.INTEGER(), nullable=False),
             db.Column("medium_armor_prof", db.INTEGER(), nullable=False),
             db.Column("heavy_armor_prof", db.INTEGER(), nullable=False),
-
             db.Column("unarmed_prof", db.INTEGER(), nullable=False),
             db.Column("simple_prof", db.INTEGER(), nullable=False),
             db.Column("martial_prof", db.INTEGER(), nullable=False),
             db.Column("advanced_prof", db.INTEGER(), nullable=False),
-
             db.Column("arcane_prof", db.INTEGER(), nullable=False),
             db.Column("divine_prof", db.INTEGER(), nullable=False),
             db.Column("occult_prof", db.INTEGER(), nullable=False),
             db.Column("primal_prof", db.INTEGER(), nullable=False),
-
             db.Column("acrobatics_prof", db.INTEGER(), nullable=False),
             db.Column("arcana_prof", db.INTEGER(), nullable=False),
             db.Column("athletics_prof", db.INTEGER(), nullable=False),
@@ -89,21 +81,17 @@ class PF2_Character_Model:
             db.Column("stealth_prof", db.INTEGER(), nullable=False),
             db.Column("survival_prof", db.INTEGER(), nullable=False),
             db.Column("thievery_prof", db.INTEGER(), nullable=False),
-
-            db.Column('lores', db.String()),
-            db.Column('feats', db.String()),
-
+            db.Column("lores", db.String()),
+            db.Column("feats", db.String()),
             db.Column("str_mod", db.INTEGER()),
             db.Column("dex_mod", db.INTEGER()),
             db.Column("con_mod", db.INTEGER()),
             db.Column("itl_mod", db.INTEGER()),
             db.Column("wis_mod", db.INTEGER()),
             db.Column("cha_mod", db.INTEGER()),
-
             db.Column("fort_mod", db.INTEGER()),
             db.Column("will_mod", db.INTEGER()),
             db.Column("reflex_mod", db.INTEGER()),
-
             db.Column("acrobatics_mod", db.INTEGER()),
             db.Column("arcana_mod", db.INTEGER()),
             db.Column("athletics_mod", db.INTEGER()),
@@ -120,12 +108,10 @@ class PF2_Character_Model:
             db.Column("stealth_mod", db.INTEGER()),
             db.Column("survival_mod", db.INTEGER()),
             db.Column("thievery_mod", db.INTEGER()),
-
             db.Column("arcane_mod", db.INTEGER()),
             db.Column("divine_mod", db.INTEGER()),
             db.Column("occult_mod", db.INTEGER()),
             db.Column("primal_mod", db.INTEGER()),
-
             db.Column("ac_total", db.INTEGER()),
             db.Column("resistance", db.JSON()),
             db.Column("perception_mod", db.INTEGER()),
@@ -145,7 +131,7 @@ class EPF_ConditionTable:
         self.id = id
 
     def condition_table(
-            self,
+        self,
     ):
         tablename = f"Condition_{self.id}"
         con = db.Table(
@@ -160,7 +146,7 @@ class EPF_ConditionTable:
             db.Column("time", db.BOOLEAN, default=False),
             db.Column("visible", db.BOOLEAN, default=True),
             db.Column("flex", db.BOOLEAN, default=False),
-            db.Column("action", db.String(), default="")
+            db.Column("action", db.String(), default=""),
         )
         return con
 
@@ -173,15 +159,19 @@ EPF_Conditions = {
     "Deafened": "perception -2 s",
     "Drained": "con -X s",
     "Enfeebled": "str -X s",
-    "Fascinated": "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
-                  "diplomacy -2 s, intimidation -2 s, medicine -2 s, nature -2 s, occultism -2 s, perception -2 s, "
-                  "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s",
+    "Fascinated": (
+        "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
+        "diplomacy -2 s, intimidation -2 s, medicine -2 s, nature -2 s, occultism -2 s, perception -2 s, "
+        "performance -2 s, religion -2 s, society -2 s, stealth -2 s, survival -2 s, thievery -2 s"
+    ),
     "Fatigued": "ac -1 s, fort -1 s, reflex -1 s, will -1 s",
     "Flat-Footed": "ac -2 c",
-    "Frightened": "perception -X s, acrobatics -X s, arcana -X s, athletics -X s, crafting -X s, deception -X s, "
-                  "diplomacy -X s, intimidation -X s, medicine -X s, nature -X s, occultism -X s, perception -X s, "
-                  "performance -X s, religion -X s, society -X s, stealth -X s, survival -X s, thievery -X s, ac -X s,"
-                  "fort -X s, reflex -X s, will -X s, attack -X s",
+    "Frightened": (
+        "perception -X s, acrobatics -X s, arcana -X s, athletics -X s, crafting -X s, deception -X s, "
+        "diplomacy -X s, intimidation -X s, medicine -X s, nature -X s, occultism -X s, perception -X s, "
+        "performance -X s, religion -X s, society -X s, stealth -X s, survival -X s, thievery -X s, ac -X s,"
+        "fort -X s, reflex -X s, will -X s, attack -X s"
+    ),
     "Paralyzed": "ac -2 c",
     "Prone": "ac -2 c, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
@@ -194,15 +184,7 @@ EPF_Conditions = {
     "Inspire Defense": "ac +1 s, fort +1 s, reflex +1 s, will +1 s",
 }
 
-EPF_Stats = [
-    "str",
-    "dex",
-    "con",
-    "itl",
-    "wis",
-    "cha",
-    "None"
-]
+EPF_Stats = ["str", "dex", "con", "itl", "wis", "cha", "None"]
 
 EPF_DMG_Types = [
     "Bludgeoning",
@@ -226,5 +208,5 @@ EPF_DMG_Types = [
     "Precision",
     "Cold Iron",
     "Orichalcum",
-    "Silver"
+    "Silver",
 ]

@@ -20,12 +20,12 @@ from utils.utils import get_guild
 
 # import D4e.d4e_functions
 
+
 class D4e_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool,
-                            init: str):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
         logging.info("add_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -42,16 +42,16 @@ class D4e_Utilities(Utilities):
                     initiative = 0
 
             D4eModal = D4eAddCharacterModal(
-                    name=name,
-                    hp=hp,
-                    init=init,
-                    initiative=initiative,
-                    player=player_bool,
-                    ctx=self.ctx,
-                    engine=self.engine,
-                    bot=bot,
-                    title=name,
-                )
+                name=name,
+                hp=hp,
+                init=init,
+                initiative=initiative,
+                player=player_bool,
+                ctx=self.ctx,
+                engine=self.engine,
+                bot=bot,
+                title=name,
+            )
             await self.ctx.send_modal(D4eModal)
             return True
 
@@ -190,5 +190,3 @@ class D4eAddCharacterModal(discord.ui.Modal):
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
-
-

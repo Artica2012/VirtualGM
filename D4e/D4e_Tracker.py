@@ -142,7 +142,6 @@ class D4e_Tracker(Tracker):
         datetime_string = ""
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
             block = True
@@ -161,7 +160,9 @@ class D4e_Tracker(Tracker):
 
         try:
             if self.guild.timekeeping:
-                datetime_string = f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                datetime_string = (
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                )
         except NoResultFound:
             if self.ctx is not None:
                 await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -171,7 +172,6 @@ class D4e_Tracker(Tracker):
             if self.ctx is not None and self.bot is not None:
                 report = ErrorReport(self.ctx, "get_tracker", e, self.bot)
                 await report.report()
-
 
         try:
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
@@ -224,7 +224,10 @@ class D4e_Tracker(Tracker):
                             f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp\n"
                         )
                     else:
-                        string = f"{selector}  {init_num} {str(character.char_name).title()}: {character.current_hp}/{character.max_hp}\n"
+                        string = (
+                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f" {character.current_hp}/{character.max_hp}\n"
+                        )
                 else:
                     string = f"{selector}  {init_num} {str(row.name).title()}: {await character.calculate_hp()} \n"
                 output_string += string
@@ -255,11 +258,13 @@ class D4e_Tracker(Tracker):
                                     else:
                                         if processed_hours_left != 0:
                                             con_string = (
-                                                f"       {con_row.title}: {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                                f"       {con_row.title}:"
+                                                f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
                                             )
                                         else:
                                             con_string = (
-                                                f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                                f"       {con_row.title}:"
+                                                f" {processed_minutes_left}:{processed_seconds_left}\n"
                                             )
                                 else:
                                     con_string = f"       {con_row.title}: {con_row.number}\n"
@@ -293,7 +298,6 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
-
 
     init_list = await get_init_list(ctx, engine, guild=guild)
 
@@ -330,11 +334,19 @@ class D4eConditionButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message("Saving...")
-        Tracker_Model = await get_D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, guild=self.guild), self.bot, guild=self.guild)
+        Tracker_Model = await get_D4e_Tracker(
+            self.ctx,
+            self.engine,
+            await get_init_list(self.ctx, self.engine, guild=self.guild),
+            self.bot,
+            guild=self.guild,
+        )
         if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine):
             try:
                 try:
-                    Character_Model = await get_character(self.character.name, self.ctx, engine=self.engine, guild=self.guild)
+                    Character_Model = await get_character(
+                        self.character.name, self.ctx, engine=self.engine, guild=self.guild
+                    )
                     roll_string = f"1d20"
                     dice_result = d20.roll(roll_string)
                     success_string = D4e_eval_success(dice_result, D4e_base_roll)
@@ -364,8 +376,9 @@ class D4eConditionButton(discord.ui.Button):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -374,8 +387,13 @@ class D4eConditionButton(discord.ui.Button):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 print(interaction.message.id)
-                Tracker_model = D4e_Tracker(self.ctx, self.engine, await get_init_list(self.ctx, self.engine, self.guild),
-                                        self.bot, guild=self.guild)
+                Tracker_model = D4e_Tracker(
+                    self.ctx,
+                    self.engine,
+                    await get_init_list(self.ctx, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
                 print(f"Error: {e}")
@@ -383,8 +401,9 @@ class D4eConditionButton(discord.ui.Button):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT,
-                                                db=SERVER_DATA)
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
@@ -392,8 +411,9 @@ class D4eConditionButton(discord.ui.Button):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-                Tracker_Model = D4e_Tracker(None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot,
-                                        guild=self.guild)
+                Tracker_Model = D4e_Tracker(
+                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
+                )
                 await Tracker_Model.advance_initiative()
                 await Tracker_Model.block_post_init()
             except Exception as e:

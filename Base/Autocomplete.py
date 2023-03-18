@@ -10,8 +10,8 @@ from database_models import get_tracker, get_macro, get_condition
 from utils.Char_Getter import get_character
 
 
-class AutoComplete():
-    def __init__(self, ctx:discord.AutocompleteContext, engine, guild):
+class AutoComplete:
+    def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         self.ctx = ctx
         self.engine = engine
         self.guild = guild
@@ -23,15 +23,16 @@ class AutoComplete():
             Tracker = await get_tracker(self.ctx, self.engine)
             async with async_session() as session:
                 if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
-                    print('You are the GM')
+                    print("You are the GM")
                     char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                 elif not gm:
                     char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                 else:
                     print("Not the GM")
                     char_result = await session.execute(
-                        select(Tracker.name).where(Tracker.user == self.ctx.interaction.user.id).order_by(
-                            Tracker.name.asc())
+                        select(Tracker.name)
+                        .where(Tracker.user == self.ctx.interaction.user.id)
+                        .order_by(Tracker.name.asc())
                     )
                 character = char_result.scalars().all()
                 print(len(character))
@@ -94,9 +95,9 @@ class AutoComplete():
                 else:
                     macro_result = await session.execute(
                         select(Macro.name)
-                            .where(Macro.character_id == char)
-                            .where(not_(Macro.macro.contains(",")))
-                            .order_by(Macro.name.asc())
+                        .where(Macro.character_id == char)
+                        .where(not_(Macro.macro.contains(",")))
+                        .order_by(Macro.name.asc())
                     )
                 macro_list = macro_result.scalars().all()
             await self.engine.dispose()
@@ -118,10 +119,12 @@ class AutoComplete():
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
             async with async_session() as session:
-                result = await session.execute(select(Condition.title)
-                                               .where(Condition.character_id == Character_Model.id)
-                                               .where(Condition.visible == true())
-                                               .order_by(Condition.title.asc()))
+                result = await session.execute(
+                    select(Condition.title)
+                    .where(Condition.character_id == Character_Model.id)
+                    .where(Condition.visible == true())
+                    .order_by(Condition.title.asc())
+                )
                 condition = result.scalars().all()
             await self.engine.dispose()
             if self.ctx.value != "":
@@ -154,8 +157,8 @@ class AutoComplete():
             async with async_session() as session:
                 result = await session.execute(
                     select(Condition.title)
-                        .where(Condition.character_id == tar_char.id)
-                        .where(Condition.visible == false())
+                    .where(Condition.character_id == tar_char.id)
+                    .where(Condition.visible == false())
                 )
                 invisible_conditions = result.scalars().all()
             await self.engine.dispose()
@@ -181,4 +184,3 @@ class AutoComplete():
     async def dmg_types(self):
         await self.engine.dispose()
         return []
-

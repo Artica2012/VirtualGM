@@ -3,6 +3,7 @@
 # Consolidating all of the autocompletes into one place.
 
 import datetime
+
 # imports
 import logging
 
@@ -113,13 +114,16 @@ async def get_attributes(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.get_attributes()
 
+
 async def attacks(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.attacks()
 
-async def stats(ctx:discord.AutocompleteContext):
+
+async def stats(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.stats()
+
 
 async def dmg_type(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)

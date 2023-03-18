@@ -43,7 +43,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                 Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
                 Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
 
-                try:# Error handling to avoid locking on a bad message
+                try:  # Error handling to avoid locking on a bad message
                     view.clear_items()
                     tracker_channel = self.bot.get_channel(guild.tracker_channel)
                     last_tracker = await tracker_channel.fetch_message(guild.last_tracker)

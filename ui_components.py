@@ -24,5 +24,3 @@ class QueryLinkButton(discord.ui.Button):
     def __init__(self, name: str, link: str):
         """A button for one role."""
         super().__init__(label=name, style=discord.ButtonStyle.link, url=link)
-
-

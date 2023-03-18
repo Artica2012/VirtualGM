@@ -9,8 +9,14 @@ from discord.ext import commands
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from auto_complete import character_select, character_select_gm, a_macro_select, get_attributes, a_save_target_custom, \
-    save_select
+from auto_complete import (
+    character_select,
+    character_select_gm,
+    a_macro_select,
+    get_attributes,
+    a_save_target_custom,
+    save_select,
+)
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.Automation_Getter import get_automation
@@ -28,6 +34,7 @@ class AutomationCog(commands.Cog):
         self.bot = bot
 
         # ---------------------------------------------------
+
     # ---------------------------------------------------
     # Slash commands
 
@@ -41,14 +48,14 @@ class AutomationCog(commands.Cog):
     @option("attack_modifier", description="Modifier to the macro (defaults to +)", required=False)
     @option("target_modifier", description="Modifier to the target's dc (defaults to +)", required=False)
     async def attack(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            target: str,
-            roll: str,
-            vs: str,
-            attack_modifier: str = "",
-            target_modifier: str = "",
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        roll: str,
+        vs: str,
+        attack_modifier: str = "",
+        target_modifier: str = "",
     ):
         # bughunt code
         logging.info("attack_cog attack")
@@ -68,13 +75,13 @@ class AutomationCog(commands.Cog):
     @option("save", description="Save", autocomplete=save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)
     async def save(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            target: str,
-            save: str,
-            dc: int = None,
-            modifier: str = "",
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        save: str,
+        dc: int = None,
+        modifier: str = "",
     ):
         # bughunt code
         logging.info("attack_cog save")
@@ -91,16 +98,16 @@ class AutomationCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
-    @option("modifier", description="Roll Modifer", default='', type=str)
+    @option("modifier", description="Roll Modifer", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     async def damage(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            target: str,
-            user_roll_str: str,
-            modifier: str = '',
-            healing: bool = False,
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        user_roll_str: str,
+        modifier: str = "",
+        healing: bool = False,
     ):
         # bughunt code
         logging.info(f"attack_cog damage")
@@ -117,11 +124,11 @@ class AutomationCog(commands.Cog):
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("attack", description="Roll or Macro Roll", autocomplete=a_macro_select)
     async def auto(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            target: str,
-            attack: str,
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        attack: str,
     ):
         # bughunt code
         logging.info(f"attack_cog auto")

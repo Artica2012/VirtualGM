@@ -22,4 +22,3 @@ async def get_utilities(ctx, guild=None, engine=None):
         return EPF_Utilities(ctx, guild, engine)
     else:
         return Utilities(ctx, guild, engine)
-

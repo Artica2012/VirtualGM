@@ -9,7 +9,7 @@ from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 
 
-class Automation():
+class Automation:
     def __init__(self, ctx, engine, guild):
         self.ctx = ctx
         self.engine = engine
@@ -50,4 +50,3 @@ class Automation():
 
     async def auto(self, bot, character, target, attack):
         return "Auto Function not set up for current system"
-

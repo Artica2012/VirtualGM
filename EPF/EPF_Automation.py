@@ -153,23 +153,14 @@ class EPF_Automation(Automation):
             dmg_output_string = f"{character} damages {target} for:\n{dmg_roll}"
             await Target_Model.change_hp(dmg_roll.total, heal=False, post=False)
             if Target_Model.player:
-                return f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg_roll.total}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                return (
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
+                    f" {dmg_roll.total}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                )
             else:
-                return f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg_roll.total}. {await Target_Model.calculate_hp()}"
+                return (
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg_roll.total}."
+                    f" {await Target_Model.calculate_hp()}"
+                )
         else:
             return attk_output_string
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -81,9 +81,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
     else:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(Global.id == id)
-            )
+            result = await session.execute(select(Global).where(Global.id == id))
             guild = result.scalars().one()
             print(f"From ID:{guild.id}")
 
@@ -168,6 +166,7 @@ class TrackerTable:
             db.Column("active", db.BOOLEAN, default=True),
         )
         return emp
+
 
 async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
@@ -342,9 +341,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
     else:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(
-                select(Global).where(Global.id == id)
-            )
+            result = await session.execute(select(Global).where(Global.id == id))
             guild = result.scalars().one()
             print(f"From ID:{guild.id}")
 
@@ -371,6 +368,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
 
         logging.info("get_condition: returning condition")
         return Condition
+
 
 async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:

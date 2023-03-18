@@ -21,6 +21,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 import time_keeping_functions
 import ui_components
+
 # from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 from database_models import Global
@@ -30,6 +31,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
 from Base.Character import Character
+
 # from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
@@ -50,10 +52,12 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
             result = await session.execute(select(tracker).where(tracker.name == char_name))
             character = result.scalars().one()
         async with async_session() as session:
-            result = await session.execute(select(Condition)
-                                           .where(Condition.character_id == character.id)
-                                           .where(Condition.visible == false())
-                                           .order_by(Condition.title.asc()))
+            result = await session.execute(
+                select(Condition)
+                .where(Condition.character_id == character.id)
+                .where(Condition.visible == false())
+                .order_by(Condition.title.asc())
+            )
             stat_list = result.scalars().all()
             # print(len(stat_list))
             stats = {}
@@ -68,21 +72,14 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
 
 class PF2_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
-        self.ac = stats['AC']
+        self.ac = stats["AC"]
         self.fort = stats["Fort"]
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
         self.dc = stats["DC"]
         super().__init__(char_name, ctx, engine, character, guild)
 
-    async def edit_character(self,
-                             name: str,
-                             hp: int,
-                             init: str,
-                             active: bool,
-                             player: discord.User,
-                             bot
-                             ):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -91,8 +88,8 @@ class PF2_Character(Character):
             # Give an error message if the character is the active character and making them inactive
             if self.guild.saved_order == name:
                 await self.ctx.channel.send(
-                    "Unable to inactivate a character while they are the active character in initiative.  Please advance"
-                    " turn and try again."
+                    "Unable to inactivate a character while they are the active character in initiative.  Please"
+                    " advance turn and try again."
                 )
 
             async with async_session() as session:
@@ -137,8 +134,7 @@ async def edit_stats(ctx, engine, bot, name: str):
 
         Character_Model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
         editModal = PF2EditCharacterModal(
-            character=Character_Model, ctx=ctx, engine=engine, bot=bot,
-            title=Character_Model.char_name
+            character=Character_Model, ctx=ctx, engine=engine, bot=bot, title=Character_Model.char_name
         )
         await ctx.send_modal(editModal)
 
@@ -177,8 +173,9 @@ class PF2EditCharacterModal(discord.ui.Modal):
         for item in self.children:
             async with async_session() as session:
                 result = await session.execute(
-                    select(Condition).where(Condition.character_id == self.character.id).where(
-                        Condition.title == item.label)
+                    select(Condition)
+                    .where(Condition.character_id == self.character.id)
+                    .where(Condition.title == item.label)
                 )
                 condition = result.scalars().one()
                 condition.number = int(item.value)

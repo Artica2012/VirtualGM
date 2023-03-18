@@ -34,7 +34,7 @@ else:
     logging.basicConfig(level=logging.INFO)
     logging.info("Script Started")
 
-TOKEN = os.environ['BOT_TOKEN']
+TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
 
