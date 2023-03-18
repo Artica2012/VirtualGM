@@ -5,12 +5,14 @@ import logging
 import d20
 import discord
 from discord import Interaction
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Tracker import get_init_list
 from Base.Utilities import Utilities
+from PF2e.PF2_Character import get_PF2_Character
 from database_models import get_tracker, get_condition
 from error_handling_reporting import error_not_initialized, ErrorReport
 
@@ -101,8 +103,10 @@ class PF2AddCharacterModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        self.stop()
+        await interaction.response.send_message(f"{self.name} Created")
         guild = await get_guild(self.ctx, None)
-        Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
+        # Character_Model = await get_PF2_Character(self.name, self.ctx, guild=guild, engine=self.engine)
         Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
 
         embed = discord.Embed(
@@ -137,12 +141,15 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 session.add(tracker)
             await session.commit()
 
+        async with async_session() as session:
+            result = await session.execute(select(Tracker.id).where(Tracker.name == self.name))
+            id = result.scalars().one()
         Condition = await get_condition(self.ctx, self.engine, id=guild.id)
 
         async with session.begin():
             session.add(
                 Condition(
-                    character_id=Character_Model.id,
+                    character_id=id,
                     title="AC",
                     number=int(self.children[0].value),
                     counter=True,
@@ -151,7 +158,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             )
             session.add(
                 Condition(
-                    character_id=Character_Model.id,
+                    character_id=id,
                     title="Fort",
                     number=int(self.children[1].value),
                     counter=True,
@@ -160,7 +167,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             )
             session.add(
                 Condition(
-                    character_id=Character_Model.id,
+                    character_id=id,
                     title="Reflex",
                     number=int(self.children[2].value),
                     counter=True,
@@ -169,7 +176,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             )
             session.add(
                 Condition(
-                    character_id=Character_Model.id,
+                    character_id=id,
                     title="Will",
                     number=int(self.children[3].value),
                     counter=True,
@@ -178,7 +185,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             )
             session.add(
                 Condition(
-                    character_id=Character_Model.id,
+                    character_id=id,
                     title="DC",
                     number=int(self.children[4].value),
                     counter=True,
@@ -200,7 +207,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
 
         await Tracker_Model.update()
         await Tracker_Model.update_pinned_tracker()
-        await interaction.response.send_message(embeds=[embed])
+        await self.ctx.channel.send(embeds=[embed])
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         logging.warning(error)
