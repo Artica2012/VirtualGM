@@ -3,6 +3,7 @@ import logging
 import d20
 from sqlalchemy.exc import NoResultFound
 
+import EPF.EPF_Character
 from Base.Automation import Automation
 from EPF.EPF_Character import get_EPF_Character
 from PF2e.pf2_functions import PF2_eval_succss
@@ -101,21 +102,14 @@ class EPF_Automation(Automation):
                     roll_result = d20.roll("0 [Error]")
         dmg = roll_result.total
         if not healing:
-            if damage_type in Target_Model.resistance["resist"]:
-                dmg = dmg - Target_Model.resistance["resist"][damage_type]
-                if dmg < 0:
-                    dmg = 0
-            elif damage_type in Target_Model.resistance["weak"]:
-                dmg = dmg + Target_Model.resistance["weak"][damage_type]
-            elif damage_type in Target_Model.resistance["immune"]:
-                dmg = 0
-
+            dmg = damage_calc_resist(dmg, damage_type, Target_Model)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await Target_Model.change_hp(dmg, healing)
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
     async def auto(self, bot, character, target, attack):
+        logging.info("/a auto")
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
@@ -145,39 +139,71 @@ class EPF_Automation(Automation):
 
         # Damage
         if success_string == "Critical Success":
-            dmg_output_string = await Character_Model.weapon_dmg(attack, crit=True)
-            print(dmg_output_string)
+            dmg_string, total_damage = await roll_dmg_resist(Character_Model, Target_Model, attack, True)
         elif success_string == "Success":
-            dmg_output_string = await Character_Model.weapon_dmg(attack)
-            print(dmg_output_string)
+            dmg_string, total_damage = await roll_dmg_resist(Character_Model, Target_Model, attack, True)
         else:
-            dmg_output_string = None
+            dmg_string = None
 
-        if dmg_output_string is not None:
-            dmg_roll = d20.roll(dmg_output_string)
-            dmg = dmg_roll.total
-            weapon = Character_Model.get_weapon(attack)
-            if weapon["dmg_type"] in Target_Model.resistance["resist"]:
-                dmg = dmg - Target_Model.resistance["resist"][weapon["dmg_type"]]
-                if dmg < 0:
-                    dmg = 0
-            elif weapon["dmg_type"] in Target_Model.resistance["weak"]:
-                dmg = dmg + Target_Model.resistance["weak"][weapon["dmg_type"]]
-            elif weapon["dmg_type"] in Target_Model.resistance["immune"]:
-                dmg = 0
-
-            dmg_output_string = f"{character} damages {target} for:\n{dmg_roll}"
-            await Target_Model.change_hp(dmg, heal=False, post=False)
+        if dmg_string is not None:
+            dmg_output_string = f"{character} damages {target} for:\n{dmg_string}"
+            await Target_Model.change_hp(total_damage, heal=False, post=False)
             await Tracker_Model.update_pinned_tracker()
             if Target_Model.player:
                 return (
                     f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
-                    f" {dmg}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                    f" {total_damage}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
                 )
             else:
                 return (
-                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {dmg}."
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {total_damage}."
                     f" {await Target_Model.calculate_hp()}"
                 )
         else:
             return attk_output_string
+
+
+async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character):
+    logging.info("damage_calc_resist")
+    dmg = dmg_roll
+
+    if dmg_type in target.resistance["resist"]:
+        dmg = dmg - target.resistance["resist"][dmg_type]
+        if dmg < 0:
+            dmg = 0
+    elif dmg_type in target.resistance["weak"]:
+        dmg = dmg + target.resistance["weak"][dmg_type]
+    elif dmg_type in target.resistance["immune"]:
+        dmg = 0
+    return dmg
+
+
+async def roll_dmg_resist(
+    Character_Model: EPF.EPF_Character.EPF_Character,
+    Target_Model: EPF.EPF_Character.EPF_Character,
+    attack: str,
+    crit: bool,
+):
+    """
+    Rolls damage and calculates resists
+    :param Character_Model:
+    :param Target_Model:
+    :param attack:
+    :param crit:
+    :return: Tuple of damage_output_string(string), total_damage(int)
+    """
+    logging.info("roll_dmg_resist")
+    # Roll the critical damage and apply resistances
+    damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit))
+    weapon = await Character_Model.get_weapon(attack)
+    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model)
+    dmg_output_string = f"{damage_roll}"
+    # Check for bonus damage
+    if "bonus" in Character_Model.character_model.attacks[attack]:
+        for item in Character_Model.character_model.attacks[attack]["bonus"]:
+            bonus_roll = d20.roll(item["damage"])
+            bonus_damage = await damage_calc_resist(bonus_roll.total, item["dmg_type"])
+            dmg_output_string = f"{dmg_output_string}+{bonus_roll}"
+            total_damage += bonus_damage
+    print(dmg_output_string, total_damage)
+    return dmg_output_string, total_damage
