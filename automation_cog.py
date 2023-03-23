@@ -124,12 +124,16 @@ class AutomationCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
     @option("attack", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("attack_modifier", description="Attack Modifier", required=False)
+    @option("target_modifier", description="Target Modifier", required=False)
     async def auto(
         self,
         ctx: discord.ApplicationContext,
         character: str,
         target: str,
         attack: str,
+        attack_modifer: str = "",
+        target_modifier: str = "",
     ):
         # bughunt code
         logging.info("attack_cog auto")
@@ -137,7 +141,7 @@ class AutomationCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.auto(self.bot, character, target, attack)
+        output_string = await Automation.auto(self.bot, character, target, attack, attack_modifer, target_modifier)
         await ctx.send_followup(output_string)
         await engine.dispose()
 

@@ -108,7 +108,7 @@ class EPF_Automation(Automation):
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
-    async def auto(self, bot, character, target, attack):
+    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier):
         logging.info("/a auto")
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -116,14 +116,14 @@ class EPF_Automation(Automation):
 
         # Attack
         roll_string = f"({await Character_Model.get_roll(attack)})"
-        print(roll_string)
-        dice_result = d20.roll(roll_string)
+        print("roll string", roll_string)
+        dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
 
         goal_value = Target_Model.ac_total
-        print(goal_value)
+        print("goal value", goal_value)
         try:
-            goal_string: str = f"{goal_value}"
-            print(goal_string)
+            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+            print("goal string ", goal_string)
             goal_result = d20.roll(goal_string)
             print(goal_result)
         except Exception as e:
@@ -141,7 +141,7 @@ class EPF_Automation(Automation):
         if success_string == "Critical Success":
             dmg_string, total_damage = await roll_dmg_resist(Character_Model, Target_Model, attack, True)
         elif success_string == "Success":
-            dmg_string, total_damage = await roll_dmg_resist(Character_Model, Target_Model, attack, True)
+            dmg_string, total_damage = await roll_dmg_resist(Character_Model, Target_Model, attack, False)
         else:
             dmg_string = None
 

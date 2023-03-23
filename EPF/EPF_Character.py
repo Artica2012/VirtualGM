@@ -291,9 +291,11 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
+        print(weapon)
         print(item)
         print(weapon["display"])
         attk_stat = self.str_mod
+        print(f"Saved attack stat: {weapon['attk_stat']}")
         match weapon["attk_stat"]:
             case "dex":
                 attk_stat = self.dex_mod
@@ -317,11 +319,13 @@ class EPF_Character(Character):
                 proficiency = self.character_model.martial_prof
             case "advanced":
                 proficiency = self.character_model.advanced_prof
-        print(proficiency)
-        print(attk_stat)
+        print(f"proficiency: {proficiency}")
+        print(f"attack stat: {attk_stat}")
         print(self.character_model.level)
-        print(weapon["pot"])
-        if proficiency > 0:
+        print(f"potency {weapon['pot']}")
+        if weapon["prof"] == "NPC":
+            attack_mod = attk_stat + self.character_model.level + weapon["pot"]
+        elif proficiency > 0:
             attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
         else:
             attack_mod = attk_stat
@@ -349,10 +353,12 @@ class EPF_Character(Character):
                 dmg_mod = self.wis_mod
             case "cha":
                 dmg_mod = self.cha_mod
+            case _:
+                dmg_mod = weapon["stat"]
         if crit:
-            return f"({weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
+            return f"({weapon['die_num']}d{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+            return f"{weapon['die_num']}d{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
