@@ -1,13 +1,18 @@
 import logging
 
 import discord
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-import PF2e.pf2_functions
 from Base.Autocomplete import AutoComplete
-from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types
-from utils.Char_Getter import get_character
-from PF2e.pf2_functions import PF2_saves
 from EPF.EPF_Character import PF2_attributes, PF2_skills, get_EPF_Character
+from EPF.EPF_NPC_Importer import EPF_NPC
+from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types
+from PF2e.pf2_functions import PF2_saves
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, DATABASE
+from database_operations import get_asyncio_db_engine
+from utils.Char_Getter import get_character
 
 
 class EPF_Autocmplete(AutoComplete):
@@ -86,3 +91,17 @@ class EPF_Autocmplete(AutoComplete):
             return [option for option in option_list if val in option.lower()]
         else:
             return EPF_DMG_Types
+
+    async def npc_search(self):
+        await self.engine.dispose()
+        lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+        async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(EPF_NPC.name)
+                .where(func.lower(EPF_NPC.name).contains(self.ctx.value.lower()))
+                .order_by(EPF_NPC.name.asc())
+            )
+            lookup_list = result.scalars().all()
+        await lookup_engine.dispose()
+        return lookup_list

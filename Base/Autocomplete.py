@@ -184,3 +184,7 @@ class AutoComplete:
     async def dmg_types(self):
         await self.engine.dispose()
         return []
+
+    async def npc_lookup(self):
+        await self.engine.dispose()
+        return []

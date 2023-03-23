@@ -880,7 +880,8 @@ async def calculate(ctx, engine, char_name, guild=None):
         )
 
         # Casting, Armor and Attacks
-        key_ability = None
+        key_ability = 0
+
         match character.key_ability:
             case "str":
                 key_ability = character.str_mod

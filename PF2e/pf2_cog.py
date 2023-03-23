@@ -10,13 +10,15 @@ from discord.ext import commands
 
 import initiative
 from EPF.EPF_Character import pb_import, calculate
+from EPF.EPF_NPC_Importer import epf_npc_lookup
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
-from auto_complete import character_select_gm, attacks, stats, dmg_type
+from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
+from utils.utils import get_guild
 
 
 class PF2Cog(commands.Cog):
@@ -70,12 +72,18 @@ class PF2Cog(commands.Cog):
         #     await engine.dispose()
 
     @pf2.command(description="Pathbuilder Import")
+    @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
     @option("elite_weak", choices=["weak", "elite"], required=False)
     async def add_npc(self, ctx: discord.ApplicationContext, name: str, lookup: str, elite_weak: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
-        response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        guild = await get_guild(ctx, None)
+        response = None
+        if guild.system == "PF2":
+            response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        elif guild.system == "EPF":
+            response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
         if not response:
             await ctx.send_followup("Import Failed")
         await engine.dispose()

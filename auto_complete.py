@@ -128,3 +128,8 @@ async def stats(ctx: discord.AutocompleteContext):
 async def dmg_type(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.dmg_types()
+
+
+async def npc_search(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.npc_search()
