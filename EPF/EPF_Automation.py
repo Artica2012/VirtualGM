@@ -166,7 +166,8 @@ class EPF_Automation(Automation):
 async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character):
     logging.info("damage_calc_resist")
     dmg = dmg_roll
-
+    print(target.resistance)
+    print(dmg_type)
     if dmg_type in target.resistance["resist"]:
         dmg = dmg - target.resistance["resist"][dmg_type]
         if dmg < 0:
@@ -196,7 +197,7 @@ async def roll_dmg_resist(
     # Roll the critical damage and apply resistances
     damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit))
     weapon = await Character_Model.get_weapon(attack)
-    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model)
+    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"].title(), Target_Model)
     dmg_output_string = f"{damage_roll}"
     # Check for bonus damage
     if "bonus" in Character_Model.character_model.attacks[attack]:

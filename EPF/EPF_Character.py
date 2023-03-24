@@ -11,7 +11,7 @@ from math import floor
 import aiohttp
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import true
+from sqlalchemy import true, Column, Integer, String, JSON
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,8 +22,9 @@ from utils.utils import get_guild
 from database_models import (
     get_condition,
     get_EPF_tracker,
+    Base,
 )
-from database_operations import get_asyncio_db_engine
+from database_operations import get_asyncio_db_engine, DATABASE
 from Base.Character import Character
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
@@ -355,10 +356,15 @@ class EPF_Character(Character):
                 dmg_mod = self.cha_mod
             case _:
                 dmg_mod = weapon["stat"]
+
+        die = weapon["die"]
+        if die[0] != "d":
+            die = f"d{die}"
+
         if crit:
-            return f"({weapon['die_num']}d{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
+            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}d{weapon['die']}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
@@ -616,6 +622,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "dmg_type": "Bludgeoning",
                 "attk_stat": "str",
             }
+            edited_attack = await attack_lookup(attacks[item["display"]], pb)
+            attacks[item["display"]] = edited_attack
 
     if overwrite:
         async with async_session() as session:
@@ -1121,3 +1129,59 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     bonuses["item_neg"][key] = value
     print(bonuses)
     return bonuses
+
+
+class EPF_Weapon(Base):
+    __tablename__ = "EPF_item_data"
+    # Columns
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    name = Column(String(), unique=True)
+    level = Column(Integer())
+    base_item = Column(String(), unique=False)
+    category = Column(String(), unique=False)
+    damage_type = Column(String(), unique=False)
+    damage_dice = Column(Integer())
+    damage_die = Column(String(), unique=False)
+    group = Column(String(), unique=False)
+    range = Column(Integer())
+    potency_rune = Column(Integer())
+    striking_rune = Column(String(), unique=False)
+    runes = Column(String())
+    traits = Column(JSON())
+
+
+async def attack_lookup(attack, pathbuilder):
+    lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
+    async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(EPF_Weapon).where(EPF_Weapon.name == attack["display"]))
+            data = result.scalars().one()
+    except Exception:
+        async with async_session() as session:
+            result = await session.execute(select(EPF_Weapon).where(EPF_Weapon.name == attack["name"]))
+            data = result.scalars().one()
+    await lookup_engine.dispose()
+
+    print(data.name)
+    print(data.traits)
+    for item in data.traits:
+        if "deadly" in item:
+            if "deadly" in item:
+                string = item.split("-")
+                if data.striking_rune == "greaterStriking":
+                    dd = 2
+                elif data.striking_rune == "majorStriking":
+                    dd = 3
+                else:
+                    dd = 1
+                attack["crit"] = f"*2 + {dd}{string[1]}"
+        if (
+            item.strip().lower() == "finesse"
+            and pathbuilder["build"]["abilities"]["dex"] > pathbuilder["build"]["abilities"]["str"]
+        ):
+            print("Finesse")
+            attack["attk_stat"] = "dex"
+    attack["traits"] = data.traits
+    attack["dmg_type"] = data.damage_type
+    return attack

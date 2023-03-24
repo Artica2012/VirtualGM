@@ -62,5 +62,6 @@ class EPF_Utilities(Utilities):
                 resistance["resist"][element] = amount
 
             print(resistance)
+            return True
         except Exception:
             return False
