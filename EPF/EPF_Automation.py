@@ -145,8 +145,9 @@ class EPF_Automation(Automation):
         else:
             dmg_string = None
 
+        weapon = await Character_Model.get_weapon(attack)
         if dmg_string is not None:
-            dmg_output_string = f"{character} damages {target} for:\n{dmg_string}"
+            dmg_output_string = f"{character} damages {target} for:\n{dmg_string} {weapon['dmg_type'].title()}"
             await Target_Model.change_hp(total_damage, heal=False, post=False)
             await Tracker_Model.update_pinned_tracker()
             if Target_Model.player:
@@ -168,13 +169,14 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     dmg = dmg_roll
     print(target.resistance)
     print(dmg_type)
-    if dmg_type in target.resistance["resist"]:
+    # if dmg_type
+    if dmg_type.lower() in target.resistance["resist"]:
         dmg = dmg - target.resistance["resist"][dmg_type]
         if dmg < 0:
             dmg = 0
-    elif dmg_type in target.resistance["weak"]:
+    elif dmg_type.lower() in target.resistance["weak"]:
         dmg = dmg + target.resistance["weak"][dmg_type]
-    elif dmg_type in target.resistance["immune"]:
+    elif dmg_type.lower() in target.resistance["immune"]:
         dmg = 0
     return dmg
 

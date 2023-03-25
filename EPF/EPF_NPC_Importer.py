@@ -102,128 +102,129 @@ async def epf_npc_lookup(
             hp_mod = -30
         stat_mod = -2
 
-    # try:
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    guild = await get_guild(ctx, None)
-    initiative_num = 0
-    perception = 0
-    if guild.initiative is not None:
-        try:
-            # print(f"Init: {init}")
-            perception = int(data.perception_prof) + data.level + stat_mod
-            roll = d20.roll(f"1d20+{perception}")
-            initiative_num = roll.total
-            print(initiative_num)
-        except Exception:
-            initiative_num = 0
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        guild = await get_guild(ctx, None)
+        initiative_num = 0
+        perception = 0
+        if guild.initiative is not None:
+            try:
+                # print(f"Init: {init}")
+                perception = int(data.perception_prof) + data.level + stat_mod
+                roll = d20.roll(f"1d20+{perception}")
+                initiative_num = roll.total
+                print(initiative_num)
+            except Exception:
+                initiative_num = 0
 
-    if data.class_dc is None:
-        class_dc = 0
-    else:
-        class_dc = data.class_dc
+        if data.class_dc is None:
+            class_dc = 0
+        else:
+            class_dc = data.class_dc
 
-    async with async_session() as session:
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
+            async with session.begin():
+                tracker = Tracker(
+                    name=name,
+                    init=initiative_num,
+                    player=False,
+                    user=ctx.user.id,
+                    current_hp=data.max_hp + hp_mod,
+                    max_hp=data.max_hp + hp_mod,
+                    temp_hp=0,
+                    init_string=f"{perception}",
+                    active=True,
+                    char_class=data.type,
+                    level=data.level,
+                    ac_base=data.ac_base + stat_mod,
+                    class_dc=class_dc,
+                    str=data.str,
+                    dex=data.dex,
+                    con=data.con,
+                    itl=data.itl,
+                    wis=data.wis,
+                    cha=data.cha,
+                    fort_prof=data.fort_prof + stat_mod,
+                    reflex_prof=data.reflex_prof + stat_mod,
+                    will_prof=data.will_prof + stat_mod,
+                    perception_prof=data.perception_prof + stat_mod,
+                    class_prof=0,
+                    key_ability="",
+                    unarmored_prof=0,
+                    light_armor_prof=0,
+                    medium_armor_prof=0,
+                    heavy_armor_prof=0,
+                    unarmed_prof=0,
+                    simple_prof=0,
+                    martial_prof=0,
+                    advanced_prof=0,
+                    arcane_prof=data.arcane_prof,
+                    divine_prof=data.divine_prof,
+                    occult_prof=data.occult_prof,
+                    primal_prof=data.primal_prof,
+                    acrobatics_prof=data.acrobatics_prof,
+                    arcana_prof=data.arcana_prof,
+                    athletics_prof=data.athletics_prof,
+                    crafting_prof=data.crafting_prof,
+                    deception_prof=data.deception_prof,
+                    diplomacy_prof=data.diplomacy_prof,
+                    intimidation_prof=data.intimidation_prof,
+                    medicine_prof=data.medicine_prof,
+                    nature_prof=data.nature_prof,
+                    occultism_prof=data.occultism_prof,
+                    performance_prof=data.performance_prof,
+                    religion_prof=data.religion_prof,
+                    society_prof=data.society_prof,
+                    stealth_prof=data.stealth_prof,
+                    survival_prof=data.survival_prof,
+                    thievery_prof=data.thievery_prof,
+                    lores="",
+                    feats="",
+                    resistance=data.resistance,
+                    macros="",
+                    attacks=data.attacks,
+                    spells=data.spells,
+                )
+                session.add(tracker)
+            await session.commit()
+        await engine.dispose()
+
+        print("Committed")
+
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character = char_result.scalars().one()
+
         async with session.begin():
-            tracker = Tracker(
-                name=name,
-                init=initiative_num,
-                player=False,
-                user=ctx.user.id,
-                current_hp=data.max_hp + hp_mod,
-                max_hp=data.max_hp + hp_mod,
-                temp_hp=0,
-                init_string=f"{perception}",
-                active=True,
-                char_class=data.type,
-                level=data.level,
-                ac_base=data.ac_base + stat_mod,
-                class_dc=class_dc,
-                str=data.str,
-                dex=data.dex,
-                con=data.con,
-                itl=data.itl,
-                wis=data.wis,
-                cha=data.cha,
-                fort_prof=data.fort_prof + stat_mod,
-                reflex_prof=data.reflex_prof + stat_mod,
-                will_prof=data.will_prof + stat_mod,
-                perception_prof=data.perception_prof + stat_mod,
-                class_prof=0,
-                key_ability="",
-                unarmored_prof=0,
-                light_armor_prof=0,
-                medium_armor_prof=0,
-                heavy_armor_prof=0,
-                unarmed_prof=0,
-                simple_prof=0,
-                martial_prof=0,
-                advanced_prof=0,
-                arcane_prof=data.arcane_prof,
-                divine_prof=data.divine_prof,
-                occult_prof=data.occult_prof,
-                primal_prof=data.primal_prof,
-                acrobatics_prof=data.acrobatics_prof,
-                arcana_prof=data.arcana_prof,
-                athletics_prof=data.athletics_prof,
-                crafting_prof=data.crafting_prof,
-                deception_prof=data.deception_prof,
-                diplomacy_prof=data.diplomacy_prof,
-                intimidation_prof=data.intimidation_prof,
-                medicine_prof=data.medicine_prof,
-                nature_prof=data.nature_prof,
-                occultism_prof=data.occultism_prof,
-                performance_prof=data.performance_prof,
-                religion_prof=data.religion_prof,
-                society_prof=data.society_prof,
-                stealth_prof=data.stealth_prof,
-                survival_prof=data.survival_prof,
-                thievery_prof=data.thievery_prof,
-                lores="",
-                feats="",
-                resistance=data.resistance,
-                macros="",
-                attacks=data.attacks,
-                spells=data.spells,
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="stat_modification",
+                    number=0,
+                    counter=True,
+                    visible=False,
+                    action=(
+                        f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
+                        f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
+                        f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
+                        f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
+                        f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
+                        f" thievery {stat_mod} i"
+                    ),
+                )
             )
-            session.add(tracker)
-        await session.commit()
-    await engine.dispose()
+            await session.commit()
 
-    print("Committed")
+        print("Condition Comitted")
 
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    async with async_session() as session:
-        char_result = await session.execute(select(Tracker).where(Tracker.name == name))
-        character = char_result.scalars().one()
+        Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
+        await Tracker_Model.update_pinned_tracker()
+        output_string = f"{data.name} added as {name}"
 
-    async with session.begin():
-        session.add(
-            Condition(
-                character_id=character.id,
-                title="stat_modification",
-                number=0,
-                counter=True,
-                visible=False,
-                action=(
-                    f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i, arcana"
-                    f" {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i, diplomacy"
-                    f" {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature {stat_mod} i, occultism"
-                    f" {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i, religion {stat_mod} i, society"
-                    f" {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i, thievery {stat_mod} i"
-                ),
-            )
-        )
-        await session.commit()
-
-    print("Condition Comitted")
-
-    Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
-    await Tracker_Model.update_pinned_tracker()
-    output_string = f"{data.name} added as {name}"
-
-    await ctx.send_followup(output_string)
-    return True
-    # except Exception:
-    #     await ctx.send_followup("Action Failed, please try again", delete_after=60)
-    #     return False
+        await ctx.send_followup(output_string)
+        return True
+    except Exception:
+        await ctx.send_followup("Action Failed, please try again", delete_after=60)
+        return False
