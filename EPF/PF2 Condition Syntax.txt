@@ -30,12 +30,12 @@ Status Bonus = s
 Item Bonus = i
 
 Condition Data Syntax:
-    modifier (+/-)# (type);
+    modifier (+/-)# (type),
 
 Example:
- +1 Intelligence Status Bonus:  "int +1 c;"
- +1 to Crafting Item: "crafting +1 i;"
- Flat Footed: "ac -2 c;"
+ +1 Intelligence Status Bonus:  "int +1 c,"
+ +1 to Crafting Item: "crafting +1 i,"
+ Flat Footed: "ac -2 c,"
 
 
  ----------------------------------

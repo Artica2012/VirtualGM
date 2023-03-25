@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from sqlalchemy import true, Column, Integer, String, JSON
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_session
 from sqlalchemy.orm import sessionmaker
 
 import d20
@@ -145,6 +145,7 @@ class EPF_Character(Character):
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
+
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
         self.char_name = self.character_model.name
@@ -417,6 +418,7 @@ class EPF_Character(Character):
 
     async def roll_macro(self, macro, modifier):
         roll_string = f"{await self.get_roll(macro)}{ParseModifiers(modifier)}"
+        print(roll_string)
         dice_result = d20.roll(roll_string)
         return dice_result
 
@@ -530,6 +532,63 @@ class EPF_Character(Character):
         await self.update()
         return result
 
+    async def update_resistance(self, weak, item, amount):
+        try:
+            updated_resistance = self.resistance
+            print(updated_resistance)
+            if amount == 0:
+                if item in updated_resistance[weak].keys():
+                    del updated_resistance[weak][item]
+                    print(f"Deleting {item}")
+                return True
+            else:
+                updated_resistance[weak][item] = amount
+                print(updated_resistance)
+                EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                async with async_session() as session:
+                    query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == self.char_name))
+                    character = query.scalars().one()
+                    character.resistance = updated_resistance
+                    await session.commit()
+                print("Comitted")
+            await self.update()
+            print(self.resistance)
+            return True
+        except Exception:
+            return False
+
+    async def show_resistance(self):
+        embeds = [discord.Embed(title=self.char_name)]
+
+        resists = ""
+        for key, value in self.resistance["resist"].items():
+            resists += f"{key}: {value}\n"
+        resist_embed = discord.Embed(
+            title="Resistances",
+            description=resists,
+        )
+        embeds.append(resist_embed)
+
+        weak = ""
+        for key, value in self.resistance["weak"].items():
+            weak += f"{key}: {value}\n"
+        weak_embed = discord.Embed(
+            title="Weaknesses",
+            description=weak,
+        )
+        embeds.append(weak_embed)
+
+        immune = ""
+        for key, value in self.resistance["immune"].items():
+            immune += f"{key}\n"
+        immune_embed = discord.Embed(
+            title="Immunities",
+            description=immune,
+        )
+        embeds.append(immune_embed)
+        return embeds
+
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}
@@ -546,12 +605,12 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
     # try:
     guild = await get_guild(ctx, guild)
-    PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+    EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     # Check to see if character already exists, if it does, update instead of creating
     async with async_session() as session:
-        query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+        query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
         character = query.scalars().all()
     if len(character) > 0:
         overwrite = True
@@ -627,7 +686,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
     if overwrite:
         async with async_session() as session:
-            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+            query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
             character = query.scalars().one()
 
             # Write the data from the JSON
@@ -707,7 +766,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     else:  # Create a new character
         async with async_session() as session:
             async with session.begin():
-                new_char = PF2_tracker(
+                new_char = EPF_tracker(
                     name=char_name,
                     player=True,
                     user=ctx.user.id,
@@ -806,7 +865,7 @@ async def calculate(ctx, engine, char_name, guild=None):
     else:
         PF2_tracker = await get_EPF_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
+    print(char_name)
     bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
     print(bonuses)
 
@@ -1014,7 +1073,7 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
         mod += bonuses["item_pos"][skill]
     if skill in bonuses["item_neg"]:
         mod -= bonuses["item_neg"][skill]
-
+    print(f"{skill}, {stat_mod} {skill_prof} {level}: {mod}")
     return mod
 
 
@@ -1078,55 +1137,61 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         data: str = condition.action
         data_list = data.split(",")
         for item in data_list:
-            parsed = item.strip().split(" ")
-            print(parsed)
-            print(parsed[0])
-            print(parsed[1][1:])
-            print(parsed[2])
-            key = parsed[0]
-            if parsed[1][1:] == "X":
-                value = int(condition.number)
-            else:
-                value = int(parsed[1][1:])
-            if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                if key in bonuses["status_pos"]:
-                    if value > bonuses["status_pos"][key]:
+            try:
+                parsed = item.strip().split(" ")
+                print(parsed)
+                print(parsed[0])
+                print(parsed[1][1:])
+                print(parsed[2])
+                key = parsed[0]
+                if parsed[1][1:] == "X":
+                    value = int(condition.number)
+                else:
+                    try:
+                        value = int(parsed[1][1:])
+                    except ValueError:
+                        value = int(parsed[1])
+                if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
+                    if key in bonuses["status_pos"]:
+                        if value > bonuses["status_pos"][key]:
+                            bonuses["status_pos"][key] = value
+                    else:
                         bonuses["status_pos"][key] = value
-                else:
-                    bonuses["status_pos"][key] = value
-            elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                if key in bonuses["status_neg"]:
-                    if value > bonuses["status_neg"][key]:
+                elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
+                    if key in bonuses["status_neg"]:
+                        if value > bonuses["status_neg"][key]:
+                            bonuses["status_neg"][key] = value
+                    else:
                         bonuses["status_neg"][key] = value
-                else:
-                    bonuses["status_neg"][key] = value
-                    print(f"{key}: {bonuses['status_neg'][key]}")
-            elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumastances Positive
-                if key in bonuses["circumstances_pos"]:
-                    if value > bonuses["circumstances_pos"][key]:
+                        print(f"{key}: {bonuses['status_neg'][key]}")
+                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumastances Positive
+                    if key in bonuses["circumstances_pos"]:
+                        if value > bonuses["circumstances_pos"][key]:
+                            bonuses["circumstances_pos"][key] = value
+                    else:
                         bonuses["circumstances_pos"][key] = value
-                else:
-                    bonuses["circumstances_pos"][key] = value
-            elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumastances Positive
-                if key in bonuses["circumstances_neg"]:
-                    if value > bonuses["circumstances_neg"][key]:
+                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumastances Positive
+                    if key in bonuses["circumstances_neg"]:
+                        if value > bonuses["circumstances_neg"][key]:
+                            bonuses["circumstances_neg"][key] = value
+                    else:
                         bonuses["circumstances_neg"][key] = value
-                else:
-                    bonuses["circumstances_neg"][key] = value
-                    print(f"{key}: {bonuses['circumstances_neg'][key]}")
-            elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                if key in bonuses["item_pos"]:
-                    if value > bonuses["item_pos"][key]:
+                        print(f"{key}: {bonuses['circumstances_neg'][key]}")
+                elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
+                    if key in bonuses["item_pos"]:
+                        if value > bonuses["item_pos"][key]:
+                            bonuses["item_pos"][key] = value
+                    else:
                         bonuses["item_pos"][key] = value
-                else:
-                    bonuses["item_pos"][key] = value
-                    print(f"{key}: {bonuses['item_pos'][key]}")
-            elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                if key in bonuses["item_neg"]:
-                    if value > bonuses["item_neg"][key]:
+                        print(f"{key}: {bonuses['item_pos'][key]}")
+                elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
+                    if key in bonuses["item_neg"]:
+                        if value > bonuses["item_neg"][key]:
+                            bonuses["item_neg"][key] = value
+                    else:
                         bonuses["item_neg"][key] = value
-                else:
-                    bonuses["item_neg"][key] = value
+            except Exception:
+                pass
     print(bonuses)
     return bonuses
 

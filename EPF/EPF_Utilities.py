@@ -53,15 +53,3 @@ class EPF_Utilities(Utilities):
         except Exception as e:
             logging.error(f"EPF utilities edit attack (write): {e}")
             return False
-
-    async def edit_resistances(self, character, element, resist_weak, amount):
-        Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
-        try:
-            resistance = Character_Model.resistance
-            if resist_weak == "Resistance":
-                resistance["resist"][element] = amount
-
-            print(resistance)
-            return True
-        except Exception:
-            return False

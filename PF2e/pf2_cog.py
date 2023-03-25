@@ -16,6 +16,7 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
+from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
@@ -121,10 +122,21 @@ class PF2Cog(commands.Cog):
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Utilities = await get_utilities(ctx, engine=engine)
-        response = await Utilities.edit_resistances(character, element, resist_weak, amount)
+        Character = await get_character(character, ctx, engine=engine)
+
+        match resist_weak:
+            case "Resistance":
+                table = "resist"
+            case "Weakness":
+                table = "weak"
+            case "Immunity":
+                table = "immune"
+            case _:
+                table = ""
+
+        response = await Character.update_resistance(table, element, amount)
         if response:
-            await ctx.send_followup("Success")
+            await ctx.send_followup(embeds=await Character.show_resistance())
         else:
             await ctx.send_followup("Failed")
         await engine.dispose()
