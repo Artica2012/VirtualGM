@@ -293,11 +293,11 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
-        print(weapon)
-        print(item)
-        print(weapon["display"])
+        # print(weapon)
+        # print(item)
+        # print(weapon["display"])
         attk_stat = self.str_mod
-        print(f"Saved attack stat: {weapon['attk_stat']}")
+        # print(f"Saved attack stat: {weapon['attk_stat']}")
         match weapon["attk_stat"]:
             case "dex":
                 attk_stat = self.dex_mod
@@ -321,10 +321,10 @@ class EPF_Character(Character):
                 proficiency = self.character_model.martial_prof
             case "advanced":
                 proficiency = self.character_model.advanced_prof
-        print(f"proficiency: {proficiency}")
-        print(f"attack stat: {attk_stat}")
-        print(self.character_model.level)
-        print(f"potency {weapon['pot']}")
+        # print(f"proficiency: {proficiency}")
+        # print(f"attack stat: {attk_stat}")
+        # print(self.character_model.level)
+        # print(f"potency {weapon['pot']}")
         if weapon["prof"] == "NPC":
             attack_mod = attk_stat + self.character_model.level + weapon["pot"]
         elif proficiency > 0:
@@ -418,7 +418,7 @@ class EPF_Character(Character):
 
     async def roll_macro(self, macro, modifier):
         roll_string = f"{await self.get_roll(macro)}{ParseModifiers(modifier)}"
-        print(roll_string)
+        # print(roll_string)
         dice_result = d20.roll(roll_string)
         return dice_result
 
@@ -466,12 +466,12 @@ class EPF_Character(Character):
                 return False
 
         # Process Data
-        print(data)
+        # print(data)
         if data == "":
-            print(title)
+            # print(title)
             if title in EPF_Conditions:
                 data = EPF_Conditions[title]
-                print(data)
+                # print(data)
 
         # Write the condition to the table
         try:
@@ -536,15 +536,15 @@ class EPF_Character(Character):
         try:
             item = item.lower()
             updated_resistance = self.resistance
-            print(updated_resistance)
+            # print(updated_resistance)
             if amount == 0:
                 if item in updated_resistance[weak].keys():
                     del updated_resistance[weak][item]
-                    print(f"Deleting {item}")
+                    # print(f"Deleting {item}")
                 return True
             else:
                 updated_resistance[weak][item] = amount
-                print(updated_resistance)
+                # print(updated_resistance)
                 EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
@@ -552,9 +552,9 @@ class EPF_Character(Character):
                     character = query.scalars().one()
                     character.resistance = updated_resistance
                     await session.commit()
-                print("Comitted")
+                # print("Comitted")
             await self.update()
-            print(self.resistance)
+            # print(self.resistance)
             return True
         except Exception:
             return False
@@ -866,9 +866,9 @@ async def calculate(ctx, engine, char_name, guild=None):
     else:
         PF2_tracker = await get_EPF_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    print(char_name)
+    # print(char_name)
     bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
-    print(bonuses)
+    # print(bonuses)
 
     async with async_session() as session:
         try:
@@ -992,7 +992,7 @@ async def calculate(ctx, engine, char_name, guild=None):
 
             macros = []
             for item in character.attacks.keys():
-                print(item)
+                # print(item)
                 macros.append(item)
             for item in character.spells:
                 macros.append(f"Spell Attack: {item['name']}")
@@ -1074,7 +1074,7 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
         mod += bonuses["item_pos"][skill]
     if skill in bonuses["item_neg"]:
         mod -= bonuses["item_neg"][skill]
-    print(f"{skill}, {stat_mod} {skill_prof} {level}: {mod}")
+    # print(f"{skill}, {stat_mod} {skill_prof} {level}: {mod}")
     return mod
 
 
@@ -1128,10 +1128,10 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         "status_neg": {},
         "item_neg": {},
     }
-    print("!!!!!!!!!!!!!!!!!!!111")
-    print(len(conditions))
+    # print("!!!!!!!!!!!!!!!!!!!111")
+    # print(len(conditions))
     for condition in conditions:
-        print(f"{condition.title}, {condition.number}, {condition.action}")
+        # print(f"{condition.title}, {condition.number}, {condition.action}")
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
@@ -1140,10 +1140,10 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                print(parsed)
-                print(parsed[0])
-                print(parsed[1][1:])
-                print(parsed[2])
+                # print(parsed)
+                # print(parsed[0])
+                # print(parsed[1][1:])
+                # print(parsed[2])
                 key = parsed[0]
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
@@ -1164,7 +1164,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             bonuses["status_neg"][key] = value
                     else:
                         bonuses["status_neg"][key] = value
-                        print(f"{key}: {bonuses['status_neg'][key]}")
+                        # print(f"{key}: {bonuses['status_neg'][key]}")
                 elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumastances Positive
                     if key in bonuses["circumstances_pos"]:
                         if value > bonuses["circumstances_pos"][key]:
@@ -1177,14 +1177,14 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             bonuses["circumstances_neg"][key] = value
                     else:
                         bonuses["circumstances_neg"][key] = value
-                        print(f"{key}: {bonuses['circumstances_neg'][key]}")
+                        # print(f"{key}: {bonuses['circumstances_neg'][key]}")
                 elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
                     if key in bonuses["item_pos"]:
                         if value > bonuses["item_pos"][key]:
                             bonuses["item_pos"][key] = value
                     else:
                         bonuses["item_pos"][key] = value
-                        print(f"{key}: {bonuses['item_pos'][key]}")
+                        # print(f"{key}: {bonuses['item_pos'][key]}")
                 elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
                     if key in bonuses["item_neg"]:
                         if value > bonuses["item_neg"][key]:
@@ -1193,7 +1193,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                         bonuses["item_neg"][key] = value
             except Exception:
                 pass
-    print(bonuses)
+    # print(bonuses)
     return bonuses
 
 
@@ -1229,8 +1229,8 @@ async def attack_lookup(attack, pathbuilder):
             data = result.scalars().one()
     await lookup_engine.dispose()
 
-    print(data.name)
-    print(data.traits)
+    # print(data.name)
+    # print(data.traits)
     for item in data.traits:
         if "deadly" in item:
             if "deadly" in item:
@@ -1246,7 +1246,7 @@ async def attack_lookup(attack, pathbuilder):
             item.strip().lower() == "finesse"
             and pathbuilder["build"]["abilities"]["dex"] > pathbuilder["build"]["abilities"]["str"]
         ):
-            print("Finesse")
+            # print("Finesse")
             attack["attk_stat"] = "dex"
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type

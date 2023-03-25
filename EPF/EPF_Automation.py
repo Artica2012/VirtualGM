@@ -169,7 +169,11 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     dmg = dmg_roll
     print(target.resistance)
     print(dmg_type)
-    # if dmg_type
+    if "physical" in target.resistance["resist"] or "physical" in target.resistance["weak"] or "physical" in target.resistance["immune"]:
+        print("Physical Resistance")
+        if dmg_type.lower() == "slashing" or dmg_type.lower() == "piercing" or dmg_type.lower() == "bludgeoning":
+            dmg_type = "physical"
+            print(dmg_type)
     if dmg_type.lower() in target.resistance["resist"]:
         dmg = dmg - target.resistance["resist"][dmg_type]
         if dmg < 0:
