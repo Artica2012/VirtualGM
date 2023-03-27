@@ -77,4 +77,38 @@ resistance= {
 attribute name (w, r, i) #;
   eg "cold r 1;"
 
+Lookup Data:
+Spells
 
+    name = Column(String(), unique=True)
+    level = Integer
+    type = ("save" or "attack")
+    save = {
+        basic: "basic"
+        value: ("reflex" or "will" or "fortitude")
+    }
+    traditions = []
+    school = ""
+    damage = {
+        mod: bool
+        value: roll (eg 3d8)
+        dmg_type: ""
+    }
+    heightening = {
+        type: (eg. interval)
+        interval: #
+        damage: (roll)
+    }
+
+Equipment
+    name = String
+    level = Integer
+    data = {
+        skill: {
+        bonus: effect (#)
+        mode: (type or mode)
+        }
+        {
+
+        }
+    }

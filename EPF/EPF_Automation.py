@@ -116,16 +116,16 @@ class EPF_Automation(Automation):
 
         # Attack
         roll_string = f"({await Character_Model.get_roll(attack)})"
-        print("roll string", roll_string)
+        # print("roll string", roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
 
         goal_value = Target_Model.ac_total
-        print("goal value", goal_value)
+        # print("goal value", goal_value)
         try:
             goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-            print("goal string ", goal_string)
+            # print("goal string ", goal_string)
             goal_result = d20.roll(goal_string)
-            print(goal_result)
+            # print(goal_result)
         except Exception as e:
             logging.warning(f"auto: {e}")
             return "Error"
@@ -133,9 +133,9 @@ class EPF_Automation(Automation):
         # Format output string
 
         success_string = PF2_eval_succss(dice_result, goal_result)
-        print(success_string)
+        # print(success_string)
         attk_output_string = f"{character} vs {target}:\n{dice_result}\n{success_string}"
-        print(attk_output_string)
+        # print(attk_output_string)
 
         # Damage
         if success_string == "Critical Success":
@@ -169,7 +169,11 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     dmg = dmg_roll
     print(target.resistance)
     print(dmg_type)
-    if "physical" in target.resistance["resist"] or "physical" in target.resistance["weak"] or "physical" in target.resistance["immune"]:
+    if (
+        "physical" in target.resistance["resist"]
+        or "physical" in target.resistance["weak"]
+        or "physical" in target.resistance["immune"]
+    ):
         print("Physical Resistance")
         if dmg_type.lower() == "slashing" or dmg_type.lower() == "piercing" or dmg_type.lower() == "bludgeoning":
             dmg_type = "physical"

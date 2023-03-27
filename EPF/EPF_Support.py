@@ -200,3 +200,27 @@ EPF_DMG_Types = [
     "Orichalcum",
     "Silver",
 ]
+
+EPF_SKills = [
+    "fortitude",
+    "reflex",
+    "will",
+    "perception",
+    "acrobatics",
+    "arcana",
+    "athletics",
+    "crafting",
+    "deception",
+    "diplomacy",
+    "intimidation",
+    "lore",
+    "medicine",
+    "nature",
+    "occultism",
+    "performance",
+    "religion",
+    "society",
+    "stealth",
+    "survival",
+    "thievery",
+]
