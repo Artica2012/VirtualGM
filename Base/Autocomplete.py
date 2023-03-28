@@ -188,3 +188,11 @@ class AutoComplete:
     async def npc_lookup(self):
         await self.engine.dispose()
         return []
+
+    async def spell_list(self):
+        await self.engine.dispose()
+        return []
+
+    async def spell_level(self):
+        await self.engine.dispose()
+        return []

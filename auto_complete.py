@@ -133,3 +133,13 @@ async def dmg_type(ctx: discord.AutocompleteContext):
 async def npc_search(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.npc_search()
+
+
+async def spell_list(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.spell_list()
+
+
+async def spell_level(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.spell_level()

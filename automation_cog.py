@@ -14,7 +14,7 @@ from auto_complete import (
     get_attributes,
     a_save_target_custom,
     save_select,
-    dmg_type,
+    dmg_type, spell_list, spell_level,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -144,6 +144,24 @@ class AutomationCog(commands.Cog):
         output_string = await Automation.auto(self.bot, character, target, attack, attack_modifer, target_modifier)
         await ctx.send_followup(output_string)
         await engine.dispose()
+
+    @att.command(description="Cast a Spell (EPF Only)")
+    @option("character", description="Character Attacking", autocomplete=character_select_gm)
+    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("spell", description="Roll or Macro Roll", autocomplete=spell_list)
+    @option("level", description="Spell Level", autocomplete=spell_level)
+    @option("attack_modifier", description="Attack Modifier", required=False)
+    @option("target_modifier", description="Target Modifier", required=False)
+    async def cast(
+            self,
+            ctx: discord.ApplicationContext,
+            character: str,
+            target: str,
+            spell: str,
+            level: int,
+            attack_modifer: str = "",
+            target_modifier: str = "",
+    ):
 
 
 def setup(bot):

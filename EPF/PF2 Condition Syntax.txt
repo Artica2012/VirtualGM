@@ -100,6 +100,18 @@ Spells
         damage: (roll)
     }
 
+spellName = {
+                        "level": spell_level["spellLevel"],
+                        "tradition": item["magicTradition"],
+                        "ability": item["ability"],
+                        "proficiency": item["proficiency"],
+                        "type": spell_data[1].type,
+                        "save": spell_data[1].save,
+                        "damage": spell_data[1].damage,
+                        "heightening": spell_data[1].heightening
+                    }
+                    spell_library[spell_name] = spell
+
 Equipment
     name = String
     level = Integer

@@ -52,9 +52,9 @@ class PF2Cog(commands.Cog):
             response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
             logging.info("Imported")
             if response:
-                logging.info("Calculating")
-                await calculate(ctx, engine, name, guild=guild)
-                logging.info("Calculated")
+                # logging.info("Calculating")
+                # await calculate(ctx, engine, name, guild=guild)
+                # logging.info("Calculated")
                 await Tracker_Model.update_pinned_tracker()
                 await ctx.send_followup("Success")
                 logging.info("Import Successful")

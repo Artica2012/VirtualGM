@@ -309,24 +309,24 @@ class EPF_Tracker(Tracker):
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
 
         async def callback(self, interaction: discord.Interaction):
-            try:
-                await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
-                init_list = await get_init_list(self.ctx, self.engine, self.guild)
-                for char in init_list:
-                    Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
-                    await Character_Model.update()
-                Tracker_model = EPF_Tracker(
-                    self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
-                    self.bot,
-                    guild=self.guild,
-                )
-                await Tracker_model.update_pinned_tracker()
-            except Exception as e:
-                print(f"Error: {e}")
-                logging.info(e)
+            # try:
+            await interaction.response.send_message("Refreshed", ephemeral=True)
+            print(interaction.message.id)
+            init_list = await get_init_list(self.ctx, self.engine, self.guild)
+            for char in init_list:
+                Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
+                await Character_Model.update()
+            Tracker_model = EPF_Tracker(
+                self.ctx,
+                self.engine,
+                await get_init_list(self.ctx, self.engine, self.guild),
+                self.bot,
+                guild=self.guild,
+            )
+            await Tracker_model.update_pinned_tracker()
+            # except Exception as e:
+            #     print(f"Error: {e}")
+            #     logging.info(e)
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):

@@ -105,3 +105,9 @@ class EPF_Autocmplete(AutoComplete):
             lookup_list = result.scalars().all()
         await lookup_engine.dispose()
         return lookup_list
+
+    async def spell_list(self):
+        pass
+
+    async def spell_level(self):
+        pass
