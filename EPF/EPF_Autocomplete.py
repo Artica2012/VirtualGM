@@ -1,4 +1,5 @@
 import logging
+from math import ceil
 
 import discord
 from sqlalchemy import select, func
@@ -107,7 +108,37 @@ class EPF_Autocmplete(AutoComplete):
         return lookup_list
 
     async def spell_list(self):
-        pass
+        Character = await get_EPF_Character(
+            self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
+        )
+        spell_list = Character.character_model.spells.keys()
+        if self.ctx.value != "":
+            val = self.ctx.value.lower()
+            return [option for option in spell_list if val in option.lower()]
+        else:
+            return spell_list
 
     async def spell_level(self):
-        pass
+        Character = await get_EPF_Character(
+            self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
+        )
+        spell_name = self.ctx.options["spell"]
+        spell = Character.character_model.spells[spell_name]
+        min_level = spell["level"]
+        if min_level == 0:
+            return [ceil(Character.character_model.level / 2)]
+        max_level = ceil(Character.character_model.level / 2)
+        if spell["heightening"]["type"] == "interval":
+            interval_level = spell["heightening"]["interval"]
+        elif spell["heightening"]["type"] == "fixed":
+            level_list = [min_level]
+            for key in spell["heightening"]["type"]["interval"]:
+                level_list.append(key)
+            return level_list
+        else:
+            interval_level = 1
+        print(min_level, max_level, interval_level)
+        level_list = []
+        for num in range(min_level, max_level + 1, interval_level):
+            level_list.append(num)
+        return level_list

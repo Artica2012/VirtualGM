@@ -163,6 +163,78 @@ class EPF_Automation(Automation):
         else:
             return attk_output_string
 
+    async def cast(self, bot, character, target, spell_name, level, attack_modifier, target_modifier):
+        logging.info("/a cast")
+        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
+        Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
+
+        spell = Character_Model.character_model.spells[spell_name]
+
+        # Attack
+        if spell["type"] == "attack":
+            attack_roll = d20.roll(
+                f"1d20+{await Character_Model.get_spell_mod(spell_name)}{ParseModifiers(attack_modifier)}"
+            )
+            goal_result = d20.roll(f"{Target_Model.ac_total}{ParseModifiers(target_modifier)}")
+
+            success_string = PF2_eval_succss(attack_roll, goal_result)
+            attk_output_string = f"{character} casts {spell_name} at {target}:\n{attack_roll}\n{success_string}"
+
+            if success_string == "Critical Success":
+                dmg_string, total_damage = await roll_spell_dmg_resist(
+                    Character_Model, Target_Model, spell_name, level, True
+                )
+            elif success_string == "Success":
+                dmg_string, total_damage = await roll_spell_dmg_resist(
+                    Character_Model, Target_Model, spell_name, level, False
+                )
+            else:
+                dmg_string = None
+
+        elif spell["type"] == "save":
+            save_type = spell["save"]["value"]
+            save_dc = d20.roll(f"10+{await Character_Model.get_spell_mod(spell_name)}{ParseModifiers(attack_modifier)}")
+            roll = d20.roll(f"{await Target_Model.get_roll(save_type.title())}{ParseModifiers(target_modifier)}")
+
+            success_string = PF2_eval_succss(roll, save_dc)
+            attk_output_string = (
+                f"{character} casts {spell_name}.\n"
+                f"{target} makes a {save_type.title()} save!\n{character} forced the save.\n{roll}\n{success_string}"
+            )
+            if success_string == "Critical Failure":
+                dmg_string, total_damage = await roll_spell_dmg_resist(
+                    Character_Model, Target_Model, spell_name, level, True
+                )
+            elif success_string == "Failure":
+                dmg_string, total_damage = await roll_spell_dmg_resist(
+                    Character_Model, Target_Model, spell_name, level, False
+                )
+            else:
+                dmg_string = None
+        else:
+            return False
+        print(attk_output_string)
+        # Damage
+
+        if dmg_string is not None:
+            dmg_type: str = await Character_Model.get_spell_dmg_type(spell_name)
+            dmg_output_string = f"{character} damages {target} for:\n{dmg_string} {dmg_type.title()}"
+            await Target_Model.change_hp(total_damage, heal=False, post=False)
+            await Tracker_Model.update_pinned_tracker()
+            if Target_Model.player:
+                return (
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
+                    f" {total_damage}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                )
+            else:
+                return (
+                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {total_damage}."
+                    f" {await Target_Model.calculate_hp()}"
+                )
+        else:
+            return attk_output_string
+
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character):
     logging.info("damage_calc_resist")
@@ -207,14 +279,44 @@ async def roll_dmg_resist(
     # Roll the critical damage and apply resistances
     damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit))
     weapon = await Character_Model.get_weapon(attack)
-    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"].title(), Target_Model)
+    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model)
     dmg_output_string = f"{damage_roll}"
     # Check for bonus damage
     if "bonus" in Character_Model.character_model.attacks[attack]:
         for item in Character_Model.character_model.attacks[attack]["bonus"]:
             bonus_roll = d20.roll(item["damage"])
-            bonus_damage = await damage_calc_resist(bonus_roll.total, item["dmg_type"])
+            bonus_damage = await damage_calc_resist(bonus_roll.total, item["dmg_type"], Target_Model)
             dmg_output_string = f"{dmg_output_string}+{bonus_roll}"
             total_damage += bonus_damage
+    print(dmg_output_string, total_damage)
+    return dmg_output_string, total_damage
+
+
+async def roll_spell_dmg_resist(
+    Character_Model: EPF.EPF_Character.EPF_Character,
+    Target_Model: EPF.EPF_Character.EPF_Character,
+    spell: str,
+    level: int,
+    crit: bool,
+):
+    """
+    Rolls damage and calculates resists
+    :param Character_Model:
+    :param Target_Model:
+    :param attack:
+    :param crit:
+    :return: Tuple of damage_output_string(string), total_damage(int)
+    """
+    logging.info("roll_dmg_spell_resist")
+    # Roll the critical damage and apply resistances
+    if crit:
+        damage_roll = d20.roll(f"({await Character_Model.get_spell_dmg(spell, level)})*2")
+    else:
+        damage_roll = d20.roll(f"{await Character_Model.get_spell_dmg(spell, level)}")
+    total_damage = await damage_calc_resist(
+        damage_roll.total, await Character_Model.get_spell_dmg_type(spell), Target_Model
+    )
+    dmg_output_string = f"{damage_roll}"
+
     print(dmg_output_string, total_damage)
     return dmg_output_string, total_damage

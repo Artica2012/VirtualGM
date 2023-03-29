@@ -370,6 +370,108 @@ class EPF_Character(Character):
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
 
+    async def get_spell_mod(self, spell):
+        """
+        Returns the spell modifier for the spell
+        :param spell str:
+        :return: Spell_Modifier integer
+        """
+        spell_data = self.character_model.spells[spell]
+        attk_stat = self.str_mod
+        match spell_data["ability"]:
+            case "dex":
+                attk_stat = self.dex_mod
+            case "con":
+                attk_stat = self.con_mod
+            case "int":
+                attk_stat = self.itl_mod
+            case "wis":
+                attk_stat = self.wis_mod
+            case "cha":
+                attk_stat = self.cha_mod
+            case "None":
+                attk_stat = 0
+
+        return attk_stat + self.character_model.level + spell_data["proficiency"]
+
+    async def get_spell_dmg(self, spell: str, level: int):
+        print(self.character_model.spells)
+        spell_data = self.character_model.spells[spell]
+        dmg_string = ""
+        for x, key in enumerate(spell_data["damage"]):
+            if x > 0:
+                dmg_string += "+"
+            if spell_data["damage"][key]["mod"]:
+                mod_stat = self.str_mod
+                match spell_data["ability"]:
+                    case "dex":
+                        mod_stat = self.dex_mod
+                    case "con":
+                        mod_stat = self.con_mod
+                    case "int":
+                        mod_stat = self.itl_mod
+                    case "wis":
+                        mod_stat = self.wis_mod
+                    case "cha":
+                        mod_stat = self.cha_mod
+                    case "None":
+                        mod_stat = 0
+
+                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}"
+            else:
+                dmg_string += f"{spell_data['damage'][key]['value']}"
+
+            # Heightening Calculations
+        if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
+            print(level)
+            print(spell_data["level"])
+            if spell_data["level"] == 0:
+                base_level = 1
+            else:
+                base_level = spell_data["level"]
+            differance = level - base_level
+            print(differance)
+            steps = floor(differance / spell_data["heightening"]["interval"])
+            print(steps)
+            for i in range(0, steps):
+                print(i)
+                print(spell_data["heightening"]["damage"])
+                for x, key in enumerate(spell_data["heightening"]["damage"]):
+                    print(x, key)
+                    if x > 0:
+                        dmg_string += "+"
+                    dmg_string = f"{dmg_string}+{spell_data['heightening']['damage'][key]}"
+        # Add fixed calcs
+        elif level > spell_data["level"] and spell_data["heightening"]["type"] == "fixed":
+            if level in spell_data["heightening"]["interval"].keys():
+                for item in spell_data["heightening"]["interval"]["value"].keys():
+                    if item["applyMod"]:
+                        mod_stat = self.str_mod
+                        match spell_data["ability"]:
+                            case "dex":
+                                mod_stat = self.dex_mod
+                            case "con":
+                                mod_stat = self.con_mod
+                            case "int":
+                                mod_stat = self.itl_mod
+                            case "wis":
+                                mod_stat = self.wis_mod
+                            case "cha":
+                                mod_stat = self.cha_mod
+                            case "None":
+                                mod_stat = 0
+                        extra_dmg = f"{item['value']}+{mod_stat}"
+                    else:
+                        extra_dmg = f"{item['value']}"
+                    dmg_string = f"{dmg_string}+{extra_dmg}"
+
+        return dmg_string
+
+    async def get_spell_dmg_type(self, spell):
+        spell_data = self.character_model.spells[spell]
+        for key in spell_data["damage"].keys():
+            return spell_data["damage"][key]["dmg_type"].lower()
+
     async def get_dc(self, item):
         if item == "AC":
             return self.ac_total

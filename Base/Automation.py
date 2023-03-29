@@ -50,3 +50,6 @@ class Automation:
 
     async def auto(self, bot, character, target, attack, attack_modifier, target_modifier):
         return "Auto Function not set up for current system"
+
+    async def cast(self, bot, character, target, spell_name, level, attack_modifier, target_modifier):
+        return "Cast Function not set up for current system"

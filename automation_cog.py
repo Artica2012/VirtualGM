@@ -14,7 +14,9 @@ from auto_complete import (
     get_attributes,
     a_save_target_custom,
     save_select,
-    dmg_type, spell_list, spell_level,
+    dmg_type,
+    spell_list,
+    spell_level,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -153,15 +155,25 @@ class AutomationCog(commands.Cog):
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
     async def cast(
-            self,
-            ctx: discord.ApplicationContext,
-            character: str,
-            target: str,
-            spell: str,
-            level: int,
-            attack_modifer: str = "",
-            target_modifier: str = "",
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        spell: str,
+        level: int,
+        attack_modifer: str = "",
+        target_modifier: str = "",
     ):
+        logging.info("attack_cog cast")
+
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        await ctx.response.defer()
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.cast(
+            self.bot, character, target, spell, level, attack_modifer, target_modifier
+        )
+        await ctx.send_followup(output_string)
+        await engine.dispose()
 
 
 def setup(bot):
