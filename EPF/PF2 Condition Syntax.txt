@@ -89,12 +89,12 @@ Spells
     }
     traditions = []
     school = ""
-    damage = {
+    damage[key] = {
         mod: bool
         value: roll (eg 3d8)
         dmg_type: ""
     }
-    heightening = {
+    heightening[key] = {
         type: (eg. interval)
         interval: #
         damage: (roll)
@@ -103,8 +103,9 @@ Spells
 spellName = {
                         "level": spell_level["spellLevel"],
                         "tradition": item["magicTradition"],
+                        "dc": dc - level - cha_mod
                         "ability": item["ability"],
-                        "proficiency": item["proficiency"],
+                        "proficiency": modifier - level - cha_mod
                         "type": spell_data[1].type,
                         "save": spell_data[1].save,
                         "damage": spell_data[1].damage,

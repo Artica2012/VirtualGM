@@ -174,7 +174,7 @@ class EPF_Automation(Automation):
         # Attack
         if spell["type"] == "attack":
             attack_roll = d20.roll(
-                f"1d20+{await Character_Model.get_spell_mod(spell_name)}{ParseModifiers(attack_modifier)}"
+                f"1d20+{await Character_Model.get_spell_mod(spell_name, True)}{ParseModifiers(attack_modifier)}"
             )
             goal_result = d20.roll(f"{Target_Model.ac_total}{ParseModifiers(target_modifier)}")
 
@@ -194,7 +194,9 @@ class EPF_Automation(Automation):
 
         elif spell["type"] == "save":
             save_type = spell["save"]["value"]
-            save_dc = d20.roll(f"10+{await Character_Model.get_spell_mod(spell_name)}{ParseModifiers(attack_modifier)}")
+            save_dc = d20.roll(
+                f"10+{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
+            )
             roll = d20.roll(f"{await Target_Model.get_roll(save_type.title())}{ParseModifiers(target_modifier)}")
 
             success_string = PF2_eval_succss(roll, save_dc)

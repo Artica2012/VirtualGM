@@ -370,13 +370,16 @@ class EPF_Character(Character):
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
 
-    async def get_spell_mod(self, spell):
+    async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
         :param spell str:
+        :param mod bool: True = Modifier, False = DC
         :return: Spell_Modifier integer
         """
+
         spell_data = self.character_model.spells[spell]
+
         attk_stat = self.str_mod
         match spell_data["ability"]:
             case "dex":
@@ -392,7 +395,16 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
 
-        return attk_stat + self.character_model.level + spell_data["proficiency"]
+        if spell_data["tradition"] == "NPC":
+            if mod:
+                return attk_stat + self.character_model.level + spell_data["proficiency"]
+            else:
+                return attk_stat + self.character_model.level + spell_data["dc"]
+        else:
+            if mod:
+                return attk_stat + self.character_model.level + spell_data["proficiency"]
+            else:
+                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
     async def get_spell_dmg(self, spell: str, level: int):
         print(self.character_model.spells)

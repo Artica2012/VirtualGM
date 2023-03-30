@@ -124,6 +124,9 @@ class EPF_Autocmplete(AutoComplete):
         )
         spell_name = self.ctx.options["spell"]
         spell = Character.character_model.spells[spell_name]
+        if spell["tradition"] == "NPC":
+            return [spell["cast_level"]]
+
         min_level = spell["level"]
         if min_level == 0:
             return [ceil(Character.character_model.level / 2)]
