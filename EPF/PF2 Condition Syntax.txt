@@ -77,6 +77,15 @@ resistance= {
 attribute name (w, r, i) #;
   eg "cold r 1;"
 
+
+Resistances
+
+['death-effects', 'disease', 'paralyzed', 'poison', 'unconscious', 'physical', 'good', 'fire', 'all-damage', 'precision', 'spell-deflection', 'slashing', 'cold', 'electricity', 'piercing', 'cold-iron', 'fear-effects', 'silver', 'acid', 'bleed', 'fatigued', 'sleep', 'positive', 'magic', 'bludgeoning', 'area-damage', 'splash-damage', 'swarm-mind', 'mental', 'critical-hits', 'visual', 'sonic', 'controlled', 'clumsy', 'drained', 'enfeebled', 'petrified', 'polymorph', 'stupefied', 'chaotic', 'evil', 'negative', 'sickened', 'lawful', 'orichalcum', 'energy', 'protean-anatomy', 'auditory', 'slowed', 'emotion', 'axe-vulnerability', 'vampire-weaknesses', 'force', 'ghost-touch', 'light', 'olfactory', 'water', 'prone', 'arrow-vulnerability', 'misfortune-effects', 'vulnerable-to-sunlight', 'blinded', 'deafened', 'air', 'trip', 'doomed', 'healing', 'necromancy', 'nonlethal-attacks', 'dazzled', 'curse', 'vorpal', 'confused', 'non-magical', 'metal', 'salt-water', 'salt', 'swarm-attacks', 'possession', 'flat-footed', 'stunned', 'earth', 'scrying', 'plant', 'evocation', 'grabbed', 'immobilized', 'object-immunities', 'frightened']
+Damage Types
+['piercing', 'slashing', 'evil', 'untyped', 'bludgeoning', 'fire', 'mental', 'negative', 'poison', 'cold', 'bleed', 'electricity', 'sonic', 'acid', 'chaotic', 'force', 'positive', '', 'good', 'bomb', 'lawful', 'energy']
+
+
+------------------------------------
 Lookup Data:
 Spells
 
