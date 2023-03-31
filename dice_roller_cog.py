@@ -1,6 +1,5 @@
 # dice_roller_cog.py
 import logging
-import os
 
 import d20
 
@@ -8,31 +7,11 @@ import d20
 import discord
 from discord import option
 from discord.ext import commands
-from dotenv import load_dotenv
 
 # import initiative
 from error_handling_reporting import ErrorReport
 from utils.parsing import opposed_roll
 from utils.utils import get_guild
-
-# define global variables
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 class DiceRollerCog(commands.Cog):
@@ -46,13 +25,13 @@ class DiceRollerCog(commands.Cog):
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         try:
             # print('Rolling')
-            guild = await get_guild(ctx, None)
             try:
                 roll_result = d20.roll(roll)
                 roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result
                 # print(f"{roll_result =} {roll_str =}")
 
                 if secret == "Secret":
+                    guild = await get_guild(ctx, None)
                     if guild.gm_tracker_channel is not None:
                         await ctx.respond("Secret Dice Rolled")
                         await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
