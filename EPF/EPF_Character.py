@@ -341,6 +341,8 @@ class EPF_Character(Character):
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
         dmg_mod = 0
         match weapon["stat"]:
+            case None:
+                dmg_mod = 0
             case "None":
                 dmg_mod = 0
             case "str":
@@ -361,6 +363,18 @@ class EPF_Character(Character):
         die = weapon["die"]
         if die[0] != "d":
             die = f"d{die}"
+
+        # Special Trait categories
+        for item in weapon["traits"]:
+            if item.strip().lower() == "propulsive":
+                if self.str_mod > 0:
+                    dmg_mod += floor(self.str_mod / 2)
+                else:
+                    dmg_mod += self.str_mod
+            if "fatal" in item.strip().lower():
+                parsed_string = item.split("-")
+                die = parsed_string[1]
+                weapon["crit"] = f"*2+{parsed_string[1]}"
 
         if crit:
             return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
@@ -1411,6 +1425,8 @@ async def attack_lookup(attack, pathbuilder):
             data = result.scalars().one()
     await lookup_engine.dispose()
 
+    if data.range is not None:
+        attack["stat"] = None
     # print(data.name)
     # print(data.traits)
     for item in data.traits:
@@ -1424,12 +1440,14 @@ async def attack_lookup(attack, pathbuilder):
                 else:
                     dd = 1
                 attack["crit"] = f"*2 + {dd}{string[1]}"
-        if (
+        elif (
             item.strip().lower() == "finesse"
             and pathbuilder["build"]["abilities"]["dex"] > pathbuilder["build"]["abilities"]["str"]
         ):
             # print("Finesse")
             attack["attk_stat"] = "dex"
+        elif item.strip().lower() == "brutal":
+            attack["attk_stat"] = "str"
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type
     return attack
