@@ -109,6 +109,8 @@ class PF2_Character_Model:
             db.Column("attacks", db.JSON()),
             db.Column("spells", db.JSON()),
             db.Column("bonuses", db.JSON()),
+            db.Column("eidolon", db.BOOLEAN(), default=False),
+            db.Column("partner", db.String(255)),
         )
 
         logging.info("pf2_character_model_table")

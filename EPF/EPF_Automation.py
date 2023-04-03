@@ -102,7 +102,7 @@ class EPF_Automation(Automation):
                     roll_result = d20.roll("0 [Error]")
         dmg = roll_result.total
         if not healing:
-            dmg = damage_calc_resist(dmg, damage_type, Target_Model)
+            dmg = await damage_calc_resist(dmg, damage_type, Target_Model)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await Target_Model.change_hp(dmg, healing)
         await Tracker_Model.update_pinned_tracker()

@@ -310,6 +310,8 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         attacks = Column(JSON())
         spells = Column(JSON())
         bonuses = Column(JSON())
+        eidolon = Column(Boolean(), default=False)
+        partner = Column(String())
 
     logging.info("get_tracker: returning tracker")
     return Tracker

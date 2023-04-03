@@ -97,6 +97,16 @@ class Character:
         except NoResultFound:
             return []
 
+    async def set_hp(self, amount: int):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+            character.current_hp = amount
+            await session.commit()
+            await self.update()
+
     async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:

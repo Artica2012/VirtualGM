@@ -718,6 +718,23 @@ class EPF_Character(Character):
         embeds.append(immune_embed)
         return embeds
 
+    async def change_hp(self, amount: int, heal: bool, post=True):
+        if self.character_model.eidolon:
+            Partner = await get_EPF_Character(
+                self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
+            )
+            await Partner.change_hp(amount, heal, post)
+            await self.set_hp(Partner.current_hp)
+            return True
+        else:
+            await super().change_hp(amount, heal, post)
+            if self.character_model.partner is not None:
+                Eidolon = await get_EPF_Character(
+                    self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
+                )
+                await Eidolon.set_hp(self.current_hp)
+            return True
+
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}
