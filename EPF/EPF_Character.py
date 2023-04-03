@@ -1478,43 +1478,46 @@ async def invest_items(item, character, ctx, guild, engine):
     lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     condition_string = ""
-    # try:
-    async with lookup_session() as lookup_session:
-        result = await lookup_session.execute(select(EPF_Equipment.data).where(EPF_Equipment.name == item))
-        data = result.scalars().all()
-        if len(data) > 0:
-            data = data[0]
-            print(data)
-            for key in data.keys():
-                if key in EPF_SKills:
-                    if data[key]["mode"] == "item":
-                        condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
-    await lookup_engine.dispose()
-    if condition_string != "":
-        print(condition_string)
-        EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async with write_session() as write_session:
-            char_result = await write_session.execute(select(EPF_Tracker.id).where(EPF_Tracker.name == character))
-            id = char_result.scalars().one()
+    try:
+        print(item)
+        async with lookup_session() as lookup_session:
+            result = await lookup_session.execute(select(EPF_Equipment.data).where(EPF_Equipment.name == item))
+            data = result.scalars().all()
+            if len(data) > 0:
+                data = data[0]
+                print(data)
+                for key in data.keys():
+                    if key in EPF_SKills:
+                        if data[key]["mode"] == "item":
+                            condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
+        await lookup_engine.dispose()
+        if condition_string != "":
+            print(condition_string)
+            EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+            Condition = await get_condition(ctx, engine, id=guild.id)
+            async with write_session() as write_session:
+                char_result = await write_session.execute(select(EPF_Tracker.id).where(EPF_Tracker.name == character))
+                id = char_result.scalars().one()
 
-        async with write_session.begin():
-            write_session.add(
-                Condition(
-                    character_id=id,
-                    title=f"{item}",
-                    number=0,
-                    counter=True,
-                    visible=False,
-                    action=(condition_string),
+            async with write_session.begin():
+                write_session.add(
+                    Condition(
+                        character_id=id,
+                        title=f"{item}",
+                        number=0,
+                        counter=True,
+                        visible=False,
+                        action=(condition_string),
+                    )
                 )
-            )
-            await write_session.commit()
-        return True
-    else:
+                await write_session.commit()
+                print("Committed")
+            return True
+        else:
+            return False
+    except Exception:
+        await engine.dispose()
         return False
-    # except:
-    #     return False
 
 
 async def spell_lookup(spell: str):

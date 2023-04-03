@@ -8,6 +8,7 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
+import EPF.EPF_GSHEET_Importer
 import initiative
 from EPF.EPF_Character import pb_import, calculate
 from EPF.EPF_NPC_Importer import epf_npc_lookup
@@ -72,6 +73,14 @@ class PF2Cog(commands.Cog):
         #     report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
         #     await report.report()
         #     await engine.dispose()
+
+    @pf2.command(description="Google Sheet Import")
+    @option("url", description="Public Google Sheet URL", required=True)
+    async def gsheet_import(self, ctx: discord.ApplicationContext, name: str, url: str):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        await ctx.response.defer(ephemeral=True)
+        response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+        await ctx.send_followup(response)
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
