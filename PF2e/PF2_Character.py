@@ -41,7 +41,13 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
             )
             stat_list = result.scalars().all()
             # print(len(stat_list))
-            stats = {}
+            stats = {
+                "AC": 0,
+                "Fort": 0,
+                "Reflex": 0,
+                "Will": 0,
+                "DC": 0
+            }
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
             # print(stats)
