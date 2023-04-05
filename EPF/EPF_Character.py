@@ -29,7 +29,7 @@ from Base.Character import Character
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
-from EPF.EPF_Support import EPF_Conditions, EPF_SKills
+from EPF.EPF_Support import EPF_Conditions, EPF_SKills, EPF_SKills_NO_SAVE
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 # define global variables
@@ -734,6 +734,38 @@ class EPF_Character(Character):
                 )
                 await Eidolon.set_hp(self.current_hp)
             return True
+
+    # Set the initiative
+    async def set_init(self, init):
+        logging.info(f"set_init {self.char_name} {init}")
+        if self.ctx is None and self.guild is None:
+            raise LookupError("No guild reference")
+
+        if type(init) == str:
+            if init.lower() in EPF_SKills_NO_SAVE:
+                init = await self.get_roll(init)
+            roll = d20.roll(init)
+            init = roll.total
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            if self.guild is None:
+                Tracker = await get_EPF_tracker(
+                    self.ctx,
+                    self.engine,
+                )
+            else:
+                Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = char_result.scalars().one()
+                character.init = init
+                await session.commit()
+            await self.update()
+            return f"Initiative set to {init} for {self.char_name}"
+        except Exception as e:
+            logging.error(f"set_init: {e}")
+            return f"Failed to set initiative: {e}"
 
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):

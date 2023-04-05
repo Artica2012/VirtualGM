@@ -196,3 +196,7 @@ class AutoComplete:
     async def spell_level(self):
         await self.engine.dispose()
         return []
+
+    async def init(self):
+        await self.engine.dispose()
+        return []

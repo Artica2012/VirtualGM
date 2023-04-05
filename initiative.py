@@ -4,32 +4,30 @@
 # imports
 import asyncio
 import logging
+import warnings
 
 import discord
-import d20
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
+from sqlalchemy import exc
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from initiative_functions import edit_cc_interface
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from utils.Char_Getter import get_character
 import auto_complete
+from auto_complete import character_select, character_select_gm, cc_select, npc_select, add_condition_select, initiative
 from database_models import Global
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
+from initiative_functions import edit_cc_interface
 from time_keeping_functions import check_timekeeper
-from auto_complete import character_select, character_select_gm, cc_select, npc_select, add_condition_select
-import warnings
-from sqlalchemy import exc
+from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
-from utils.utils import gm_check, get_guild
 from utils.Util_Getter import get_utilities
-
+from utils.utils import gm_check, get_guild
 
 warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
@@ -318,6 +316,7 @@ class InitiativeCog(commands.Cog):
         description="Character to select",
         autocomplete=character_select_gm,
     )
+    @option("initiative", autocomplete=initiative)
     async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
@@ -331,10 +330,10 @@ class InitiativeCog(commands.Cog):
             )
         else:
             try:
-                roll = d20.roll(initiative)
+                # roll = d20.roll(initiative)
                 model = await get_character(character, ctx, guild=guild, engine=engine)
-                await model.set_init(roll.total)
-                await ctx.respond(f"Initiative set to {roll.total} for {character}")
+                output = await model.set_init(initiative)
+                await ctx.respond(output)
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)

@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import initiative
+
 from database_models import get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -44,7 +44,7 @@ async def gm_check(ctx, engine):
     # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
     try:
-        guild = await initiative.get_guild(ctx, None)
+        guild = await get_guild(ctx, None)
         if int(guild.gm) != int(ctx.interaction.user.id):
             return False
         else:
@@ -143,3 +143,8 @@ async def spell_list(ctx: discord.AutocompleteContext):
 async def spell_level(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.spell_level()
+
+
+async def initiative(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.init()

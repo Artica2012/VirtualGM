@@ -80,6 +80,8 @@ class PF2Cog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
         await ctx.send_followup(response)
 
     @pf2.command(description="NPC Import")

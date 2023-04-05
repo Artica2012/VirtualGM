@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 
+import d20
 import discord
 from dotenv import load_dotenv
 from sqlalchemy import select, false, true
@@ -202,11 +203,13 @@ class Character:
             return False
 
     # Set the initiative
-    async def set_init(self, init: int):
+    async def set_init(self, init):
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
-
+        if type(init) == str:
+            roll = d20.roll(init)
+            init = roll.total
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:
@@ -223,8 +226,10 @@ class Character:
                 character.init = init
                 await session.commit()
             await self.update()
+            return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")
+            return f"Failed to set initiative: {e}"
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")

@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from Base.Autocomplete import AutoComplete
 from EPF.EPF_Character import PF2_attributes, PF2_skills, get_EPF_Character
 from EPF.EPF_NPC_Importer import EPF_NPC
-from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types
+from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types, EPF_SKills_NO_SAVE
 from PF2e.pf2_functions import PF2_saves
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, DATABASE
 from database_operations import get_asyncio_db_engine
@@ -145,3 +145,12 @@ class EPF_Autocmplete(AutoComplete):
         for num in range(min_level, max_level + 1, interval_level):
             level_list.append(num)
         return level_list
+
+    async def init(self):
+        await self.engine.dispose()
+        skills = EPF_SKills_NO_SAVE
+        if self.ctx.value != "":
+            val = self.ctx.value.lower()
+            return [option.title() for option in skills if val in option.lower()]
+        else:
+            return [option.title() for option in skills]
