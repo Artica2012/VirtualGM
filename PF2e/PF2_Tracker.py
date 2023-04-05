@@ -227,7 +227,7 @@ class PF2_Tracker(Tracker):
                             try:
                                 roll = d20.roll(char.init_string)
                                 await model.set_init(roll)
-                            except ValueError:
+                            except Exception:
                                 await model.set_init(0)
                 else:
                     init_pos = int(self.guild.initiative)
