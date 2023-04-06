@@ -3,12 +3,9 @@ import logging
 
 import d20
 import discord
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Base.Macro import Macro
 from EPF.EPF_Character import get_EPF_Character, EPF_Character
-from database_operations import get_asyncio_db_engine
 from utils.Char_Getter import get_character
 from utils.parsing import opposed_roll
 
@@ -19,13 +16,13 @@ class EPF_Macro(Macro):
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info("EPF roll_macro")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
-        logging.info("EPF")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
-        roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-        output_string = f"{character}:\n{macro_name}\n{roll_str}"
+        if dice_result == 0:
+            output_string = await super().roll_macro(character, macro_name, dc, modifier, guild)
+        else:
+            roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
+            output_string = f"{character}:\n{macro_name}\n{roll_str}"
 
         return output_string
 

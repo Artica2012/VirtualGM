@@ -23,6 +23,7 @@ from database_models import (
     get_condition,
     get_EPF_tracker,
     Base,
+    get_macro,
 )
 from database_operations import get_asyncio_db_engine, DATABASE
 from Base.Character import Character
@@ -545,7 +546,10 @@ class EPF_Character(Character):
             return 0
 
     async def roll_macro(self, macro, modifier):
-        roll_string = f"{await self.get_roll(macro)}{ParseModifiers(modifier)}"
+        macro_string = await self.get_roll(macro)
+        if macro_string == 0:
+            return 0
+        roll_string = f"{macro_string}{ParseModifiers(modifier)}"
         # print(roll_string)
         dice_result = d20.roll(roll_string)
         return dice_result
@@ -1219,6 +1223,13 @@ async def calculate(ctx, engine, char_name, guild=None):
         # for item in character.spells.keys():
         #     macros.append(f"Spell Attack: {item['name']}")
         macros.extend(PF2_skills)
+
+        Macro = await get_macro(ctx, engine, id=guild.id)
+        async with async_session() as macro_session:
+            result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
+            macro_list = result.scalars().all()
+        macros.extend(macro_list)
+
         macro_string = ""
         for item in macros:
             macro_string += f"{item},"
