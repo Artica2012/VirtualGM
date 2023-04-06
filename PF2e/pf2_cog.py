@@ -31,58 +31,68 @@ class PF2Cog(commands.Cog):
     pf2 = SlashCommandGroup("pf2", "Pathfinder 2nd Edition Specific Commands")
 
     @pf2.command(description="Pathbuilder Import")
-    @option("pathbuilder_id", description="Pathbuilder Export ID", required=True)
-    async def pb_import(self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int):
+    @option("name", description="Character Name", required=True)
+    @option("pathbuilder_id", description="Pathbuilder Export ID")
+    @option("url", description="Public Google Sheet URL")
+    async def import_character(self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int, url: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
+        if pathbuilder_id is None and url is None:
+            await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
+        elif pathbuilder_id is not None:
+            try:
+                guild = await initiative.get_guild(ctx, None)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
 
-        # try:
-        guild = await initiative.get_guild(ctx, None)
-        Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                if guild.system == "PF2":
+                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
+                    if response:
+                        await Tracker_Model.update_pinned_tracker()
+                    else:
+                        await ctx.send_followup("Import Failed")
+                elif guild.system == "EPF":
+                    logging.info("Beginning PF2-Enhanced import")
+                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
+                    logging.info("Imported")
+                    if response:
+                        await Tracker_Model.update_pinned_tracker()
+                        await ctx.send_followup("Success")
+                        logging.info("Import Successful")
+                    else:
+                        await ctx.send_followup("Import Failed")
+                else:
+                    await ctx.send_followup(
+                        "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table"
+                        " setup"
+                    )
+                await engine.dispose()
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
+                await report.report()
+                await engine.dispose()
 
-        if guild.system == "PF2":
-            response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
-            if response:
-                await Tracker_Model.update_pinned_tracker()
-                # await ctx.send_followup("Success")
-
-            else:
-                await ctx.send_followup("Import Failed")
-        elif guild.system == "EPF":
-            logging.info("Beginning PF2-Enhanced import")
-            response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
-            logging.info("Imported")
-            if response:
-                # logging.info("Calculating")
-                # await calculate(ctx, engine, name, guild=guild)
-                # logging.info("Calculated")
-                await Tracker_Model.update_pinned_tracker()
-                await ctx.send_followup("Success")
-                logging.info("Import Successful")
-
-            else:
-                await ctx.send_followup("Import Failed")
-        else:
-            await ctx.send_followup(
-                "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table setup"
-            )
-        await engine.dispose()
-        # except Exception as e:
-        #     await ctx.send_followup("Error importing character")
-        #     logging.info(f"pb_import: {e}")
-        #     report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
-        #     await report.report()
-        #     await engine.dispose()
-
-    @pf2.command(description="Google Sheet Import")
-    @option("url", description="Public Google Sheet URL", required=True)
-    async def gsheet_import(self, ctx: discord.ApplicationContext, name: str, url: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer(ephemeral=True)
-        response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
-        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-        await Tracker_Model.update_pinned_tracker()
-        await ctx.send_followup(response)
+        elif url is not None:
+            try:
+                guild = await get_guild(ctx, None)
+                if guild.system == "EPF":
+                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
+                    await engine.dispose()
+                else:
+                    response = False
+                if response:
+                    await ctx.send_followup(f"{name} successfully imported.")
+                else:
+                    await ctx.send_followup("Error importing character.")
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
+                await report.report()
+                await engine.dispose()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)

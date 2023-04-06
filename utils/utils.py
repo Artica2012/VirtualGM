@@ -51,7 +51,9 @@ async def get_guild(ctx, guild, refresh=False):
                     )
                 )
             )
-        return result.scalars().one()
+        guild_result = result.scalars().one()
+        await engine.dispose()
+        return guild_result
 
 
 async def gm_check(ctx, engine):

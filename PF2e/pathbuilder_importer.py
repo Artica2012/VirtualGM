@@ -10,7 +10,7 @@ from math import floor
 import aiohttp
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import select, false
+from sqlalchemy import select, false, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -223,7 +223,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
         else:
             # Check to see if the character already exists
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+                char_result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
                 character = char_result.scalars().all()
             if len(character) > 0:  # If character already exists, update the relevant parts and make overwrite = True
                 overwrite = True

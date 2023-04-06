@@ -85,7 +85,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
 
     if overwrite:
         async with async_session() as session:
-            query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+            query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character_data = query.scalars().one()
 
             character_data.max_hp = character["hp"]
