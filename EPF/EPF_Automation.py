@@ -181,7 +181,7 @@ class EPF_Automation(Automation):
             success_string = PF2_eval_succss(attack_roll, goal_result)
             attk_output_string = f"{character} casts {spell_name} at {target}:\n{attack_roll}\n{success_string}"
 
-            if success_string == "Critical Success":
+            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
                 dmg_string, total_damage = await roll_spell_dmg_resist(
                     Character_Model, Target_Model, spell_name, level, True
                 )
@@ -240,6 +240,8 @@ class EPF_Automation(Automation):
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character):
     logging.info("damage_calc_resist")
+    if target.resistance == {"resist": {}, "weak": {}, "immune": {}}:
+        return dmg_roll
     dmg = dmg_roll
     print(target.resistance)
     print(dmg_type)
@@ -249,7 +251,12 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         or "physical" in target.resistance["immune"]
     ):
         print("Physical Resistance")
-        if dmg_type.lower() == "slashing" or dmg_type.lower() == "piercing" or dmg_type.lower() == "bludgeoning":
+        if (
+            dmg_type.lower() == "slashing"
+            or dmg_type.lower() == "piercing"
+            or dmg_type.lower() == "bludgeoning"
+            or dmg_type.lower() == "precision"
+        ):
             dmg_type = "physical"
             print(dmg_type)
     if dmg_type.lower() in target.resistance["resist"]:
@@ -311,7 +318,7 @@ async def roll_spell_dmg_resist(
     """
     logging.info("roll_dmg_spell_resist")
     # Roll the critical damage and apply resistances
-    if crit:
+    if crit and "critical-hits" not in Target_Model.resistance["immune"]:
         damage_roll = d20.roll(f"({await Character_Model.get_spell_dmg(spell, level)})*2")
     else:
         damage_roll = d20.roll(f"{await Character_Model.get_spell_dmg(spell, level)}")
