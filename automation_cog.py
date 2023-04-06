@@ -20,6 +20,7 @@ from auto_complete import (
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport
 from utils.Automation_Getter import get_automation
 
 
@@ -58,14 +59,18 @@ class AutomationCog(commands.Cog):
         attack_modifier: str = "",
         target_modifier: str = "",
     ):
-        # bughunt code
         logging.info("attack_cog attack")
-
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer()
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
-        await ctx.send_followup(output_string)
+        try:
+            await ctx.response.defer()
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
+            await ctx.send_followup(output_string)
+        except Exception as e:
+            logging.warning(f"attack_cog attack {e}")
+            report = ErrorReport(ctx, "/a attack", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error.")
         await engine.dispose()
 
     @att.command(description="Saving Throw")
@@ -82,15 +87,18 @@ class AutomationCog(commands.Cog):
         dc: int = None,
         modifier: str = "",
     ):
-        # bughunt code
         logging.info("attack_cog save")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.save(character, target, save, dc, modifier)
-        await ctx.send_followup(output_string)
-
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.save(character, target, save, dc, modifier)
+            await ctx.send_followup(output_string)
+        except Exception as e:
+            logging.warning(f"attack_cog save {e}")
+            report = ErrorReport(ctx, "/a save", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error.")
         await engine.dispose()
 
     @att.command(description="Automatic Attack")
@@ -110,16 +118,20 @@ class AutomationCog(commands.Cog):
         healing: bool = False,
         damage_type: str = "",
     ):
-        # bughunt code
         logging.info("attack_cog damage")
-
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.damage(
-            self.bot, character, target, user_roll_str, modifier, healing, damage_type
-        )
-        await ctx.send_followup(output_string)
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.damage(
+                self.bot, character, target, user_roll_str, modifier, healing, damage_type
+            )
+            await ctx.send_followup(output_string)
+        except Exception as e:
+            logging.warning(f"attack_cog damage {e}")
+            report = ErrorReport(ctx, "/a damage", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error")
         await engine.dispose()
 
     @att.command(description="Automatic Attack")
@@ -137,14 +149,18 @@ class AutomationCog(commands.Cog):
         attack_modifer: str = "",
         target_modifier: str = "",
     ):
-        # bughunt code
         logging.info("attack_cog auto")
-
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.auto(self.bot, character, target, attack, attack_modifer, target_modifier)
-        await ctx.send_followup(output_string)
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.auto(self.bot, character, target, attack, attack_modifer, target_modifier)
+            await ctx.send_followup(output_string)
+        except Exception as e:
+            logging.warning(f"attack_cog auto {e}")
+            report = ErrorReport(ctx, "/a auto", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error")
         await engine.dispose()
 
     @att.command(description="Cast a Spell (EPF Only)")
@@ -165,14 +181,19 @@ class AutomationCog(commands.Cog):
         target_modifier: str = "",
     ):
         logging.info("attack_cog cast")
-
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.cast(
-            self.bot, character, target, spell, level, attack_modifer, target_modifier
-        )
-        await ctx.send_followup(output_string)
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.cast(
+                self.bot, character, target, spell, level, attack_modifer, target_modifier
+            )
+            await ctx.send_followup(output_string)
+        except Exception as e:
+            logging.warning(f"attack_cog cast {e}")
+            report = ErrorReport(ctx, "/a cast", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error")
         await engine.dispose()
 
 
