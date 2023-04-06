@@ -1,41 +1,19 @@
 # time_keeping_functions.py
 
-import datetime
-import logging
-import os
-from typing import Optional
 
 # imports
 import discord
-from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import sessionmaker
+import datetime
+import logging
+from typing import Optional
 from database_models import Global
 from error_handling_reporting import ErrorReport
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
+from utils.utils import get_guild
 
 
 async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
@@ -87,32 +65,18 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=No
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            if ctx is None:
-                result = await session.execute(select(Global).where(Global.id == guild.id))
-            else:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-            guild = result.scalars().one()
+        guild = await get_guild(ctx, guild)
 
-            time = datetime.datetime(
-                year=guild.time_year,
-                month=guild.time_month,
-                day=guild.time_day,
-                hour=guild.time_hour,
-                minute=guild.time_minute,
-                second=guild.time_second,
-            )
-            output_string = time.strftime("Month: %m Day: %d, Year: %y: %I:%M:%S %p")
-            # print(output_string)
-        await engine.dispose()
+        time = datetime.datetime(
+            year=guild.time_year,
+            month=guild.time_month,
+            day=guild.time_day,
+            hour=guild.time_hour,
+            minute=guild.time_minute,
+            second=guild.time_second,
+        )
+        output_string = time.strftime("Month: %m Day: %d, Year: %y: %I:%M:%S %p")
+        # print(output_string)
         return output_string
 
     except NoResultFound:
@@ -138,21 +102,7 @@ async def check_timekeeper(ctx, engine, guild=None):
         raise LookupError("No guild reference")
 
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            if ctx is None:
-                result = await session.execute(select(Global).where(Global.id == guild.id))
-            else:
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-            guild = result.scalars().one()
-        await engine.dispose()
+        guild = await get_guild(ctx, guild)
         return guild.timekeeping
     except Exception:
         return False
@@ -287,16 +237,19 @@ async def advance_time(
 
 
 async def time_left(ctx: discord.ApplicationContext, engine, bot, con_time):
-    time_stamp = datetime.datetime.fromtimestamp(con_time)
-    current_time = await get_time(ctx, engine)
-    time_left = time_stamp - current_time
-    days_left = time_left.days
-    processed_minutes_left = divmod(time_left.seconds, 60)[0]
-    processed_seconds_left = divmod(time_left.seconds, 60)[1]
-    if processed_seconds_left < 10:
-        processed_seconds_left = f"0{processed_seconds_left}"
-    if days_left != 0:
-        con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}"
-    else:
-        con_string = f"{processed_minutes_left}:{processed_seconds_left}"
-    return con_string
+    try:
+        time_stamp = datetime.datetime.fromtimestamp(con_time)
+        current_time = await get_time(ctx, engine)
+        time_left = time_stamp - current_time
+        days_left = time_left.days
+        processed_minutes_left = divmod(time_left.seconds, 60)[0]
+        processed_seconds_left = divmod(time_left.seconds, 60)[1]
+        if processed_seconds_left < 10:
+            processed_seconds_left = f"0{processed_seconds_left}"
+        if days_left != 0:
+            con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}"
+        else:
+            con_string = f"{processed_minutes_left}:{processed_seconds_left}"
+        return con_string
+    except Exception:
+        return ""

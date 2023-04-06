@@ -1,44 +1,23 @@
 # options_cog.py
 import asyncio
+import datetime as dt
 import logging
-import os
 
 # imports
 from datetime import datetime
 
 import discord
-import datetime as dt
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from database_models import Reminder
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
-
-# define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 class ReminderButton(discord.ui.Button):
@@ -83,11 +62,6 @@ class ReminderCog(commands.Cog):
                     f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
                     f"{item.message}"
                 )
-                # await self.bot.get_guild(item.guild_id).get_channel(item.channel).send(
-                #     "``` Reminder ```\n"
-                #     f"{self.bot.get_user(int(item.user)).mention}: This is your reminder:\n"
-                #     f"{item.message}"
-                # )
 
             except Exception:
                 logging.warning("Reminder Unable to Fire")
@@ -157,7 +131,7 @@ class ReminderCog(commands.Cog):
     #     for item in reminder_list[:24]:
     #         end_time = dt.datetime.fromtimestamp(item.timestamp)
     #         time_til = end_time - dt.datetime.now()
-    #         #TODO WORK ON THIS
+    #
     #         print(time_til)
     #         view.add_item(ReminderButton(ctx, self.bot, item, str(time_til)))
     #     await ctx.respond(view=view)
