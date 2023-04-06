@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Autocomplete import AutoComplete
-from EPF.EPF_Character import PF2_attributes, PF2_skills, get_EPF_Character
+from EPF.EPF_Character import get_EPF_Character
 from EPF.EPF_NPC_Importer import EPF_NPC
-from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types, EPF_SKills_NO_SAVE
+from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types, EPF_SKills, EPF_SKills_NO_SAVE, EPF_attributes
 from PF2e.pf2_functions import PF2_saves
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, DATABASE
 from database_operations import get_asyncio_db_engine
@@ -57,11 +57,11 @@ class EPF_Autocmplete(AutoComplete):
     async def get_attributes(self):
         await self.engine.dispose()
         if self.ctx.value != "":
-            option_list = PF2_attributes + PF2_skills
+            option_list = "AC" + EPF_SKills
             val = self.ctx.value.lower()
             return [option for option in option_list if val in option.lower()]
         else:
-            return PF2_attributes
+            return EPF_attributes
 
     async def attacks(self):
         Character_Model = await get_EPF_Character(

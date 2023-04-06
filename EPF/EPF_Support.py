@@ -246,3 +246,5 @@ EPF_SKills_NO_SAVE = [
     "survival",
     "thievery",
 ]
+
+EPF_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
