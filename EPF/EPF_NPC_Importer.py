@@ -4,7 +4,8 @@ from sqlalchemy import Column, Integer, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Base, get_tracker, get_condition
+from EPF.EPF_Character import get_EPF_Character
+from database_models import Base, get_tracker
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
@@ -192,33 +193,39 @@ async def epf_npc_lookup(
 
         print("Committed")
 
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = char_result.scalars().one()
+        Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
+        await Charater_Model.set_cc(
+            "stat_modification",
+            True,
+            0,
+            None,
+            False,
+            flex=False,
+            data=(
+                f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
+                f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
+                f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
+                f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
+                f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
+                f" thievery {stat_mod} i"
+            ),
+            visible=False,
+        )
 
-        async with session.begin():
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="stat_modification",
-                    number=0,
-                    counter=True,
-                    visible=False,
-                    action=(
-                        f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
-                        f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
-                        f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
-                        f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
-                        f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
-                        f" thievery {stat_mod} i"
-                    ),
-                )
-            )
-            await session.commit()
+        for key, value in data.resistance["resist"].items():
+            condition_string = f"{key} r {value};"
+            async with session.begin():
+                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+        for key, value in data.resistance["weak"].items():
+            condition_string = f"{key} w {value};"
+            async with session.begin():
+                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+        for key, value in data.resistance["immune"].items():
+            condition_string = f"{key} i {value};"
+            async with session.begin():
+                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
 
-        print("Condition Comitted")
-
+        await Charater_Model.update()
         Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
         await Tracker_Model.update_pinned_tracker()
         output_string = f"{data.name} added as {name}"

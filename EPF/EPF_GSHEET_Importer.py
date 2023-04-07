@@ -61,14 +61,16 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
     else:
         overwrite = False
     headers = list(df.columns.values)
-    # print(headers)
-    # print(headers[0])
-    # print(df)
+    print(headers)
+    print(headers[0])
+    print(df)
 
     if headers[0] == "Info:":
         character, spells, attacks, items = await epf_g_sheet_character_import(ctx, char_name, df, engine, guild)
     elif headers[0] == "Eidolon:":
         character, spells, attacks, items = await epf_g_sheet_eidolon_import(ctx, char_name, df, engine, guild)
+    elif headers[0] == "Companion:":
+        character, spells, attacks, items = await epf_g_sheet_companion_import(ctx, char_name, df, engine, guild)
     else:
         return False
 
@@ -348,7 +350,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 spells[name] = spell
 
     for i in range(31, (len(df.e) - 1)):
-        if df.e[i] == "Name" and df.f[i] != numpy.nan:
+        if df.e[i] == "Name" and df.f[i] is not numpy.nan:
             try:
                 print(df.f[i])
                 try:
@@ -364,7 +366,10 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     die_num = 3
                 elif Interpreter[df.f[i + 4]] == "majorStriking":
                     die_num = 4
-                parsed_traits = df.f[i + 8].split(",")
+                if df.f[i + 8] is not numpy.nan:
+                    parsed_traits = df.f[i + 8].split(",")
+                else:
+                    parsed_traits = []
 
                 attack_data = {
                     "display_name": df.f[i],
@@ -422,8 +427,6 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     guild = await get_guild(ctx, guild)
     if engine == None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
-    ##TODO Need to query the partner's characer model here
     try:
         EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -541,7 +544,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                 spells[name] = spell
 
     for i in range(12, (len(df.e) - 1)):
-        if df.e[i] == "Name" and df.f[i] != numpy.nan:
+        if df.e[i] == "Name" and df.f[i] is not numpy.nan:
             # try:
             print(df.f[i])
             try:
@@ -557,7 +560,10 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                 die_num = 3
             elif Interpreter[df.f[i + 4]] == "majorStriking":
                 die_num = 4
-            parsed_traits = df.f[i + 8].split(",")
+            if df.f[i + 8] is not numpy.nan:
+                parsed_traits = df.f[i + 8].split(",")
+            else:
+                parsed_traits = []
 
             attack_data = {
                 "display_name": df.f[i],
@@ -634,3 +640,151 @@ async def attack_lookup(attack, character: dict):
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type
     return attack
+
+
+async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+    logging.info("g-sheet-char")
+    # try:
+    df.rename(
+        columns={
+            "Companion:": "a",
+            "Unnamed: 1": "b",
+            "Unnamed: 2": "c",
+            "Unnamed: 3": "d",
+            "Unnamed: 4": "e",
+            "Unnamed: 5": "f",
+            "Unnamed: 6": "g",
+            "Unnamed: 7": "h",
+        },
+        inplace=True,
+    )
+
+    print(df)
+    # except Exception:
+    #     return False
+
+    character = {
+        "name": df.b[0],
+        "level": int(df.d[0]),
+        "active": False,
+        "class": df.b[1],
+        "hp": int(df.d[1]),
+        "str": int(df.b[2]),
+        "dex": int(df.b[3]),
+        "con": int(df.b[4]),
+        "itl": int(df.d[2]),
+        "wis": int(df.d[3]),
+        "cha": int(df.d[4]),
+        "class_dc": int(df.b[5]),
+        "ac_base": int(df.d[5]),
+        "key_ability": "str",
+        "fort": Interpreter[df.b[7]],
+        "reflex": Interpreter[df.b[8]],
+        "will": Interpreter[df.b[9]],
+        "perception": Interpreter[df.b[10]],
+        "acrobatics": Interpreter[df.b[11]],
+        "arcana": Interpreter[df.b[12]],
+        "athletics": Interpreter[df.b[13]],
+        "crafting": Interpreter[df.b[14]],
+        "deception": Interpreter[df.b[15]],
+        "diplomacy": Interpreter[df.b[16]],
+        "intimidation": Interpreter[df.b[17]],
+        "medicine": Interpreter[df.b[18]],
+        "nature": Interpreter[df.b[19]],
+        "occultism": Interpreter[df.b[20]],
+        "performance": Interpreter[df.b[21]],
+        "religion": Interpreter[df.b[22]],
+        "society": Interpreter[df.b[23]],
+        "stealth": Interpreter[df.b[24]],
+        "survival": Interpreter[df.b[25]],
+        "thievery": Interpreter[df.b[26]],
+        "UI": False,
+        "unarmored": Interpreter[df.e[7]],
+        "light": 0,
+        "medium": 0,
+        "heavy": 0,
+        "unarmed": Interpreter[df.e[11]],
+        "simple": 0,
+        "martial": 0,
+        "advanced": 0,
+        "arcane": 0,
+        "divine": 0,
+        "occult": 0,
+        "primal": 0,
+        "eidolon": False,
+        "partner": None,
+    }
+    character["class_prof"] = (
+        int(character["class_dc"])
+        - int(character["level"])
+        - (floor(int(character[character["key_ability"]]) - 10) / 2)
+    )
+    feats = ""
+    character["feats"] = feats
+    spells = {}
+    attacks = {}
+    items = []
+
+    for i in range(27, (len(df.e) - 1)):
+        print(i, df.a[i], df.b[i])
+        if df.a[i] == "Name" and df.b[i] is not numpy.nan:
+            # try:
+            print(df.b[i])
+            try:
+                potency = int(df.b[i + 3])
+            except Exception:
+                potency = 0
+            die_num = 1
+            print(type(df.b[i + 4]))
+            print(df.b[i + 4])
+            if Interpreter[df.b[i + 4]] == "striking":
+                die_num = 2
+            elif Interpreter[df.b[i + 4]] == "greaterStriking":
+                die_num = 3
+            elif Interpreter[df.b[i + 4]] == "majorStriking":
+                die_num = 4
+            if df.b[i + 8] is not numpy.nan:
+                parsed_traits = df.b[i + 8].split(",")
+            else:
+                parsed_traits = []
+            print(
+                f"{df.b[i]}\n"
+                f"{df.b[i+1]}\n"
+                f"{df.b[i + 2]}\n"
+                f"{df.b[i + 3]}\n"
+                f"{df.b[i + 4]}\n"
+                f"{df.b[i + 5]}\n"
+                f"{df.b[i + 6]}\n"
+                f"{df.b[i + 7]}\n"
+                f"{df.b[i + 8]}\n"
+            )
+            attack_data = {
+                "display_name": df.b[i],
+                "name": df.b[i + 1],
+                "prof": "" if type(df.b[i + 2]) != str else df.b[i + 2].lower(),
+                "pot": potency,
+                "str": Interpreter[df.b[i + 4]],
+                "runes": [],
+                "die_num": die_num,
+                "die": df.b[i + 5],
+                "crit": "*2",
+                "stat": Interpreter[df.b[i + 7]],
+                "dmg_type": "Bludgeoning",
+                "attk_stat": Interpreter[df.b[i + 6]],
+                "traits": parsed_traits,
+            }
+            edited_attack = await attack_lookup(attack_data, character)
+            attacks[edited_attack["display_name"]] = edited_attack
+            # except Exception:
+            #     pass
+    print(attacks)
+
+    print("Getting Items")
+    for i in range(27, (len(df.d) - 1)):
+        print(i)
+        print(df.d[i])
+        if df.d[i] != numpy.nan:
+            print(df.d[i])
+            items.append(df.d[i])
+
+    return character, spells, attacks, items

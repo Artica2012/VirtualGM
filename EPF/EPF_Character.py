@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 import d20
 
 import EPF.EPF_Support
+import time_keeping_functions
 from utils.utils import get_guild
 from database_models import (
     get_condition,
@@ -693,7 +694,7 @@ class EPF_Character(Character):
             return False
 
     async def show_resistance(self):
-        embeds = [discord.Embed(title=self.char_name)]
+        embeds = []
 
         resists = ""
         for key, value in self.resistance["resist"].items():
@@ -771,6 +772,71 @@ class EPF_Character(Character):
         except Exception as e:
             logging.error(f"set_init: {e}")
             return f"Failed to set initiative: {e}"
+
+    async def get_char_sheet(self, bot):
+        try:
+            if self.character_model.player:
+                status = "PC:"
+            else:
+                status = "NPC:"
+
+            condition_list = await self.conditions()
+            user_name = bot.get_user(self.user).name
+
+            embed = discord.Embed(
+                title=f"{self.char_name}",
+                fields=[
+                    discord.EmbedField(name="Name: ", value=self.char_name, inline=False),
+                    discord.EmbedField(name=status, value=user_name, inline=False),
+                    discord.EmbedField(
+                        name="HP: ",
+                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)",
+                        inline=False,
+                    ),
+                    discord.EmbedField(name="Class: ", value=self.character_model.char_class, inline=False),
+                ],
+                color=discord.Color.dark_gold(),
+            )
+            # if condition_list != None:
+            condition_embed = discord.Embed(
+                title="Conditions",
+                fields=[],
+                color=discord.Color.dark_teal(),
+            )
+            counter_embed = discord.Embed(
+                title="Counters",
+                fields=[],
+                color=discord.Color.dark_magenta(),
+            )
+            for item in condition_list:
+                await asyncio.sleep(0)
+                if not item.visible:
+                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
+                elif item.visible and not item.time:
+                    if not item.counter:
+                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                    elif item.counter:
+                        if item.number != 0:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                        else:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
+                elif item.visible and item.time and not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title,
+                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number),
+                        )
+                    )
+            output = [embed, counter_embed, condition_embed]
+            output.extend(await self.show_resistance())
+            return output
+        except NoResultFound:
+            await self.ctx.respond(error_not_initialized, ephemeral=True)
+            return False
+        except IndexError:
+            await self.ctx.respond("Ensure that you have added characters to the initiative list.")
+        except Exception:
+            await self.ctx.respond("Failed")
 
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
