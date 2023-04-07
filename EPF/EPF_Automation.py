@@ -267,6 +267,11 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         dmg = dmg + target.resistance["weak"][dmg_type]
     elif dmg_type.lower() in target.resistance["immune"]:
         dmg = 0
+    elif "all_damage" in target.resistance["resist"]:
+        dmg = dmg - target.resistance["resist"]["all-damage"]
+    elif "all-damage" in target.resistance["immune"]:
+        dmg = 0
+
     return dmg
 
 
