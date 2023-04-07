@@ -1,6 +1,5 @@
 # Update_and__Maintenance_Cog.py
-# For slash commands specific to oathfinder 2e
-# system specific module
+
 import logging
 
 # imports
@@ -55,7 +54,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     logging.info(f"{guild.system} - View Updated")
                 except Exception as e:
                     logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
-                    # TODO add in more robust error reporting for this to see if it becomes an issue
 
         await engine.dispose()
 

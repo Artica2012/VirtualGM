@@ -1,13 +1,11 @@
 # pf2_cog.py
-# For slash commands specific to pathfinder 2e
+# For slash commands specific to pathfinder 2e and EPF
 # system specific module
-import logging
 
-# imports
+import logging
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-
 import EPF.EPF_GSHEET_Importer
 import initiative
 from EPF.EPF_Character import pb_import, calculate
@@ -90,7 +88,7 @@ class PF2Cog(commands.Cog):
             except Exception as e:
                 await ctx.send_followup("Error importing character")
                 logging.info(f"pb_import: {e}")
-                report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
+                report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
                 await report.report()
                 await engine.dispose()
 
@@ -102,11 +100,18 @@ class PF2Cog(commands.Cog):
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
-        response = None
-        if guild.system == "PF2":
-            response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-        elif guild.system == "EPF":
-            response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        response = False
+        try:
+            if guild.system == "PF2":
+                response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+            elif guild.system == "EPF":
+                response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        except Exception as e:
+            await ctx.send_followup("Error importing character")
+            logging.info(f"pb_import: {e}")
+            report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
+            await report.report()
+
         if not response:
             await ctx.send_followup("Import Failed")
         await engine.dispose()
@@ -129,8 +134,15 @@ class PF2Cog(commands.Cog):
     ):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Utilities = await get_utilities(ctx, engine=engine)
-        response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg)
+        response = False
+        try:
+            Utilities = await get_utilities(ctx, engine=engine)
+            response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg)
+        except Exception as e:
+            await ctx.send_followup("Error importing character")
+            logging.info(f"pb_import: {e}")
+            report = ErrorReport(ctx, "edit attack", f"{e} - {character} {attack}", self.bot)
+            await report.report()
         if response:
             await ctx.send_followup("Success")
         else:
@@ -156,7 +168,14 @@ class PF2Cog(commands.Cog):
             case _:
                 table = ""
 
-        response = await Character.update_resistance(table, element, amount)
+        response = False
+        try:
+            response = await Character.update_resistance(table, element, amount)
+        except Exception as e:
+            await ctx.send_followup("Error importing character")
+            logging.info(f"pb_import: {e}")
+            report = ErrorReport(ctx, "edit resistances", f"{e} - {character} {element} {resist_weak}", self.bot)
+            await report.report()
         if response:
             await ctx.send_followup(embeds=await Character.show_resistance())
         else:
