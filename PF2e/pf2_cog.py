@@ -160,11 +160,11 @@ class PF2Cog(commands.Cog):
 
         match resist_weak:
             case "Resistance":
-                table = "resist"
+                table = "r"
             case "Weakness":
-                table = "weak"
+                table = "w"
             case "Immunity":
-                table = "immune"
+                table = "i"
             case _:
                 table = ""
 

@@ -11,13 +11,15 @@ from math import floor
 import aiohttp
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import true, Column, Integer, String, JSON, false
+from sqlalchemy import true, Column, Integer, String, JSON, false, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_session
 from sqlalchemy.orm import sessionmaker
 
 import d20
+
+import EPF.EPF_Support
 from utils.utils import get_guild
 from database_models import (
     get_condition,
@@ -580,6 +582,7 @@ class EPF_Character(Character):
         auto_decrement: bool,
         flex: bool = False,
         data: str = "",
+        visible: bool = True,
     ):
         logging.info("set_cc")
         # Get the Character's data
@@ -618,6 +621,7 @@ class EPF_Character(Character):
                         time=False,
                         flex=flex,
                         action=data,
+                        visible=visible,
                     )
                     session.add(condition)
                 await session.commit()
@@ -644,6 +648,7 @@ class EPF_Character(Character):
                         auto_increment=True,
                         time=True,
                         action=data,
+                        visible=visible,
                     )
                     session.add(condition)
                 await session.commit()
@@ -665,26 +670,22 @@ class EPF_Character(Character):
         return result
 
     async def update_resistance(self, weak, item, amount):
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         try:
-            item = item.lower()
             updated_resistance = self.resistance
             # print(updated_resistance)
             if amount == 0:
-                if item in updated_resistance[weak].keys():
-                    del updated_resistance[weak][item]
-                    # print(f"Deleting {item}")
-                return True
-            else:
-                updated_resistance[weak][item] = amount
-                # print(updated_resistance)
-                EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
-                    query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == self.char_name))
-                    character = query.scalars().one()
-                    character.resistance = updated_resistance
+                    query = await session.execute(select(Condition).where(func.lower(Condition.item) == item.lower()))
+                    condition_object = query.scalars().one()
+                    await session.delete(condition_object)
                     await session.commit()
-                # print("Comitted")
+                return True
+            else:
+                condition_string = f"{item} {weak} {amount};"
+                result = await self.set_cc(item, True, amount, "Round", False, data=condition_string, visible=False)
+
             await self.update()
             # print(self.resistance)
             return True
@@ -1093,7 +1094,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         PF2_tracker = await get_EPF_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     # print(char_name)
-    bonuses = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
     # print(bonuses)
 
     async with async_session() as session:
@@ -1215,6 +1216,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         )
         character.init_string = f"1d20+{character.perception_mod}"
         character.bonuses = bonuses
+        character.resistance = resistance
 
         macros = []
         for item in character.attacks.keys():
@@ -1361,6 +1363,8 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         "status_neg": {},
         "item_neg": {},
     }
+    resistances = {"resist": {}, "weak": {}, "immune": {}}
+
     # print("!!!!!!!!!!!!!!!!!!!111")
     # print(len(conditions))
     for condition in conditions:
@@ -1368,15 +1372,35 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
+        print(f"{condition.title}, {condition.action}")
+
         data: str = condition.action
         data_list = data.split(",")
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                # print(parsed)
-                # print(parsed[0])
-                # print(parsed[1][1:])
-                # print(parsed[2])
+                if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types:
+                    print(True)
+                    print("Condition")
+                    print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
+                    if parsed[2][-1] == ";":
+                        parsed[2] = parsed[2][:-1]
+                    parsed[0] = parsed[0].lower()
+                    match parsed[1]:
+                        case "r":
+                            resistances["resist"][parsed[0]] = int(parsed[2])
+                        case "w":
+                            resistances["weak"][parsed[0]] = int(parsed[2])
+                        case "i":
+                            resistances["immune"][parsed[0]] = 1
+                else:
+                    for item in EPF.EPF_Support.EPF_DMG_Types:
+                        print(parsed[0].title(), item)
+                        if item == parsed[0]:
+                            print("Match")
+                        else:
+                            print(type(parsed[0]), type(item))
+
                 key = parsed[0]
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
@@ -1385,6 +1409,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                         value = int(parsed[1][1:])
                     except ValueError:
                         value = int(parsed[1])
+
                 if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
                     if key in bonuses["status_pos"]:
                         if value > bonuses["status_pos"][key]:
@@ -1424,10 +1449,13 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             bonuses["item_neg"][key] = value
                     else:
                         bonuses["item_neg"][key] = value
+
             except Exception:
                 pass
+
     # print(bonuses)
-    return bonuses
+    print(resistances)
+    return bonuses, resistances
 
 
 class EPF_Weapon(Base):
