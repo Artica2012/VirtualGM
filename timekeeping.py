@@ -1,39 +1,19 @@
 # timekeeping.py
 
-import os
-from typing import Optional
 
 # imports
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from dotenv import load_dotenv
 from sqlalchemy.exc import NoResultFound
+from typing import Optional
 
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from time_keeping_functions import output_datetime, set_datetime, advance_time
 from utils.Tracker_Getter import get_tracker_model
-
-# define global variables
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 # Timekeeper Cog - For managing the time functions

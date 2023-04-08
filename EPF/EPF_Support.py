@@ -103,12 +103,14 @@ class PF2_Character_Model:
             db.Column("occult_mod", db.INTEGER()),
             db.Column("primal_mod", db.INTEGER()),
             db.Column("ac_total", db.INTEGER()),
-            db.Column("resistance", db.String()),
+            db.Column("resistance", db.JSON()),
             db.Column("perception_mod", db.INTEGER()),
             db.Column("macros", db.String()),
             db.Column("attacks", db.JSON()),
             db.Column("spells", db.JSON()),
             db.Column("bonuses", db.JSON()),
+            db.Column("eidolon", db.BOOLEAN(), default=False),
+            db.Column("partner", db.String(255)),
         )
 
         logging.info("pf2_character_model_table")
@@ -156,7 +158,12 @@ EPF_Conditions = {
     ),
     "Fatigued": "ac -1 s, fort -1 s, reflex -1 s, will -1 s",
     "Flat-Footed": "ac -2 c",
-    "Frightened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
+    "Frightened": (
+        "perception -X s, acrobatics -X s, arcana -X s, athletics -X s, crafting -X s, deception -X s, "
+        "diplomacy -X s, intimidation -X s, medicine -X s, nature -X s, occultism -X s, perception -X s, "
+        "performance -X s, religion -X s, society -X s, stealth -X s, survival -X s, thievery -X s, ac -X s,"
+        "fort -X s, reflex -X s, will -X s, attack -X s"
+    ),
     "Paralyzed": "ac -2 c",
     "Prone": "ac -2 c, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
@@ -168,3 +175,104 @@ EPF_Conditions = {
     "Inspire Courage": "attack +1 s, dmg +1 s",
     "Inspire Defense": "ac +1 s, fort +1 s, reflex +1 s, will +1 s",
 }
+
+EPF_Stats = ["str", "dex", "con", "itl", "wis", "cha", "None"]
+
+EPF_DMG_Types = [
+    "Bludgeoning",
+    "Piercing",
+    "Slashing",
+    "Acid",
+    "Cold",
+    "Electricity",
+    "Fire",
+    "Sonic",
+    "Positive",
+    "Negative",
+    "Force",
+    "Chaotic",
+    "Evil",
+    "Good",
+    "Lawful",
+    "Mental",
+    "Poison",
+    "Bleed",
+    "Precision",
+    "Cold Iron",
+    "Orichalcum",
+    "Silver",
+    "All-Damage",
+]
+
+EPF_DMG_Types_Inclusive = [
+    "Bludgeoning",
+    "Piercing",
+    "Slashing",
+    "Acid",
+    "Cold",
+    "Electricity",
+    "Fire",
+    "Sonic",
+    "Positive",
+    "Negative",
+    "Force",
+    "Chaotic",
+    "Evil",
+    "Good",
+    "Lawful",
+    "Mental",
+    "Poison",
+    "Bleed",
+    "Precision",
+    "Cold Iron",
+    "Orichalcum",
+    "Silver",
+    "All-Damage",
+    "Critical-Hits",
+]
+
+EPF_SKills = [
+    "fortitude",
+    "reflex",
+    "will",
+    "perception",
+    "acrobatics",
+    "arcana",
+    "athletics",
+    "crafting",
+    "deception",
+    "diplomacy",
+    "intimidation",
+    "lore",
+    "medicine",
+    "nature",
+    "occultism",
+    "performance",
+    "religion",
+    "society",
+    "stealth",
+    "survival",
+    "thievery",
+]
+
+EPF_SKills_NO_SAVE = [
+    "perception",
+    "acrobatics",
+    "arcana",
+    "athletics",
+    "crafting",
+    "deception",
+    "diplomacy",
+    "intimidation",
+    "medicine",
+    "nature",
+    "occultism",
+    "performance",
+    "religion",
+    "society",
+    "stealth",
+    "survival",
+    "thievery",
+]
+
+EPF_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]

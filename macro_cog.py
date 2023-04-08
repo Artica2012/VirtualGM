@@ -33,7 +33,14 @@ class MacroCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Macro_Model = await get_macro_object(ctx, engine=engine)
-        result = await Macro_Model.create_macro(character, macro_name, macro)
+        result = False
+        try:
+            result = await Macro_Model.create_macro(character, macro_name, macro)
+        except Exception as e:
+            logging.warning(f"macro create {e}")
+            report = ErrorReport(ctx, "/macro create", e, self.bot)
+            await report.report()
+
         if result:
             await ctx.send_followup(f"Macro Created:\n{character}:{macro_name}: {macro}", ephemeral=True)
         else:
@@ -55,7 +62,13 @@ class MacroCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Macro_Model = await get_macro_object(ctx, engine=engine)
-        result = await Macro_Model.delete_macro(character, macro)
+        result = False
+        try:
+            result = await Macro_Model.delete_macro(character, macro)
+        except Exception as e:
+            logging.warning(f"macro remove {e}")
+            report = ErrorReport(ctx, "/macro remove", e, self.bot)
+            await report.report()
         if result:
             await ctx.send_followup("Macro Deleted Successfully")
         else:
@@ -72,7 +85,13 @@ class MacroCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Macro_Model = await get_macro_object(ctx, engine=engine)
-        result = await Macro_Model.delete_macro_all(character)
+        result = False
+        try:
+            result = await Macro_Model.delete_macro_all(character)
+        except Exception as e:
+            logging.warning(f"macro remove_all {e}")
+            report = ErrorReport(ctx, "/macro remove_all", e, self.bot)
+            await report.report()
         if result:
             await ctx.send_followup("Macro Deleted Successfully")
         else:
@@ -90,7 +109,13 @@ class MacroCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Macro_Model = await get_macro_object(ctx, engine=engine)
-        result = await Macro_Model.mass_add(character, data)
+        result = False
+        try:
+            result = await Macro_Model.mass_add(character, data)
+        except Exception as e:
+            logging.warning(f"macro bulk_create {e}")
+            report = ErrorReport(ctx, "/macro bulk_create", e, self.bot)
+            await report.report()
         if result:
             await ctx.send_followup("Macros Created Successfully")
         else:
@@ -107,7 +132,14 @@ class MacroCog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Macro_Model = await get_macro_object(ctx, engine=engine)
-        await ctx.send_followup(f"{character}: Macros", view=await Macro_Model.show(character), ephemeral=True)
+        try:
+            await ctx.send_followup(f"{character}: Macros", view=await Macro_Model.show(character), ephemeral=True)
+        except Exception as e:
+            logging.warning(f"macro show {e}")
+            report = ErrorReport(ctx, "/macro show", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error Displaying Character Sheet")
+
         await engine.dispose()
 
     @commands.slash_command(name="m", description="Roll Macro")

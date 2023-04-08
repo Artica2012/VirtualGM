@@ -30,9 +30,317 @@ Status Bonus = s
 Item Bonus = i
 
 Condition Data Syntax:
-    modifier (+/-)# (type);
+    modifier (+/-)# (type),
 
 Example:
- +1 Intelligence Status Bonus:  "int +1 c;"
- +1 to Crafting Item: "crafting +1 i;"
- Flat Footed: "ac -2 c;"
+ +1 Intelligence Status Bonus:  "int +1 c,"
+ +1 to Crafting Item: "crafting +1 i,"
+ Flat Footed: "ac -2 c,"
+
+
+ ----------------------------------
+ Attack Data Structure
+ Display Name = {
+                "display": item["display"], # Display Name
+                "prof": item["prof"],  # Proficiency (Unarmed, Simple, Martial, Advanced)
+                "die": item["die"],  # Damage Die Size
+                "pot": item["pot"], # Potency Rune (1,2,3)
+                "str": item["str"], # "", striking, greaterStriking, majorStriking (Pathbuilder Legacy Purposes)
+                "name": item["name"],  # Weapon Name (For lookup)
+                "runes": item["runes"], # List of runes (For future use)
+                "die_num": die_num, # Number of damage die
+                "crit": "*2", # Crit string, defaults to *2, but could be *2+1d6 or something of the sort
+                "stat": "str",  # What stat to use for damage
+                "dmg_type": "Bludgeoning",  # Damage Type
+                "attk_stat": "str",  # What stat to use for the attack (probably str or dex)
+                "bonus": [
+                    {
+                        "damage": # Damage String
+                        "dmg_type": # Damage Type
+                    }
+                ]
+                "traits": []
+ }
+
+
+----------------------------------
+Resistances / Weakness / Immunities
+resistance= {
+                        "resist": {
+                            "cold": 1
+                        },
+                        "weak": {},
+                        "immune": {}
+                    }
+
+
+attribute name (w, r, i) #;
+  eg "cold r 1;"
+
+
+Resistances
+
+['death-effects', 'disease', 'paralyzed', 'poison', 'unconscious', 'physical', 'good', 'fire', 'all-damage', 'precision', 'spell-deflection', 'slashing', 'cold', 'electricity', 'piercing', 'cold-iron', 'fear-effects', 'silver', 'acid', 'bleed', 'fatigued', 'sleep', 'positive', 'magic', 'bludgeoning', 'area-damage', 'splash-damage', 'swarm-mind', 'mental', 'critical-hits', 'visual', 'sonic', 'controlled', 'clumsy', 'drained', 'enfeebled', 'petrified', 'polymorph', 'stupefied', 'chaotic', 'evil', 'negative', 'sickened', 'lawful', 'orichalcum', 'energy', 'protean-anatomy', 'auditory', 'slowed', 'emotion', 'axe-vulnerability', 'vampire-weaknesses', 'force', 'ghost-touch', 'light', 'olfactory', 'water', 'prone', 'arrow-vulnerability', 'misfortune-effects', 'vulnerable-to-sunlight', 'blinded', 'deafened', 'air', 'trip', 'doomed', 'healing', 'necromancy', 'nonlethal-attacks', 'dazzled', 'curse', 'vorpal', 'confused', 'non-magical', 'metal', 'salt-water', 'salt', 'swarm-attacks', 'possession', 'flat-footed', 'stunned', 'earth', 'scrying', 'plant', 'evocation', 'grabbed', 'immobilized', 'object-immunities', 'frightened']
+Damage Types
+['piercing', 'slashing', 'evil', 'untyped', 'bludgeoning', 'fire', 'mental', 'negative', 'poison', 'cold', 'bleed', 'electricity', 'sonic', 'acid', 'chaotic', 'force', 'positive', '', 'good', 'bomb', 'lawful', 'energy']
+
+
+------------------------------------
+Lookup Data:
+Spells
+
+    name = Column(String(), unique=True)
+    level = Integer
+    type = ("save" or "attack")
+    save = {
+        basic: "basic"
+        value: ("reflex" or "will" or "fortitude")
+    }
+    traditions = []
+    school = ""
+    damage[key] = {
+        mod: bool
+        value: roll (eg 3d8)
+        dmg_type: ""
+    }
+    heightening[key] = {
+        type: (eg. interval)
+        interval: #
+        damage: (roll)
+    }
+
+spellName = {
+                        "level": spell_level["spellLevel"],
+                        "tradition": item["magicTradition"],
+                        "dc": dc - level - cha_mod
+                        "ability": item["ability"],
+                        "proficiency": modifier - level - cha_mod
+                        "type": spell_data[1].type,
+                        "save": spell_data[1].save,
+                        "damage": spell_data[1].damage,
+                        "heightening": spell_data[1].heightening
+                    }
+                    spell_library[spell_name] = spell
+
+Equipment
+    name = String
+    level = Integer
+    data = {
+        skill: {
+        bonus: effect (#)
+        mode: (type or mode)
+        }
+        {
+
+        }
+    }
+
+           NPC:            NPC:  ... Unnamed: 11 Unnamed: 12
+0            Name  Test Creature  ...         NaN         NaN
+1            Type          Beast  ...         NaN         NaN
+2             Str             +4  ...         NaN         NaN
+3             Dex             +3  ...         NaN         NaN
+4             Con             +3  ...         NaN         NaN
+5              AC             15  ...         NaN         NaN
+6          Saves:            NaN  ...         NaN         NaN
+7       Fortitude            NaN  ...         NaN         NaN
+8          Reflex            NaN  ...         NaN         NaN
+9            Will            NaN  ...         NaN         NaN
+10            NaN            NaN  ...         NaN         NaN
+11     Perception            NaN  ...         NaN         NaN
+12            NaN            NaN  ...         NaN         NaN
+13            NaN            NaN  ...         NaN         NaN
+14   Spell Attack             +5  ...         NaN         NaN
+15       Spell DC             13  ...         NaN         NaN
+16            NaN            NaN  ...         NaN         NaN
+17            NaN            NaN  ...         NaN         NaN
+18            NaN            NaN  ...         NaN         NaN
+19            NaN            NaN  ...         NaN         NaN
+20            NaN            NaN  ...         NaN         NaN
+21            NaN            NaN  ...         NaN         NaN
+22            NaN            NaN  ...         NaN         NaN
+23        Spells:            NaN  ...         NaN    Immunity
+24           Name          Level  ...         NaN     Element
+25  Produce Flame              0  ...         2.0   Precision
+26   Ray of Frost              0  ...         NaN         NaN
+27            NaN            NaN  ...         NaN         NaN
+28            NaN            NaN  ...         NaN         NaN
+29            NaN            NaN  ...         NaN         NaN
+30            NaN            NaN  ...         NaN         NaN
+31            NaN            NaN  ...         NaN         NaN
+32            NaN            NaN  ...         NaN         NaN
+33            NaN            NaN  ...         NaN         NaN
+34            NaN            NaN  ...         NaN         NaN
+35            NaN            NaN  ...         NaN         NaN
+36            NaN            NaN  ...         NaN         NaN
+37            NaN            NaN  ...         NaN         NaN
+38            NaN            NaN  ...         NaN         NaN
+39            NaN            NaN  ...         NaN         NaN
+
+[40 rows x 13 columns]
+
+
+async def EPF_import_spells(file: str, async_session):
+    try:
+        with open(f"{file}", encoding='utf8') as f:
+            # logging.info(f'{file}')
+            data = json.load(f)
+            if "type" in data.keys() and data['type'] == 'spell':
+                # print(data['name'])
+                if data["system"]["spellType"]["value"] == "attack" or data["system"]["spellType"]["value"] == "save":
+                    # print(data['system']['spellType']["value"])
+                    if len(data["system"]["damage"]["value"].keys()) == 0:
+                        return 3
+                    else:
+                        damage = {}
+                        try:
+                            for key in data["system"]["damage"]["value"].keys():
+                                damage[key] = {
+                                    "mod": data["system"]["damage"]["value"][key]["applyMod"],
+                                    "value": data["system"]["damage"]["value"][key]["value"],
+                                    "dmg_type": data["system"]["damage"]["value"][key]["type"]["value"]
+                                }
+                        except Exception:
+                            try:
+                                damage["value"] = {
+                                    "mod": data["system"]["damage"]["value"]["applyMod"],
+                                    "value": data["system"]["damage"]["value"]["value"],
+                                    "dmg_type": data["system"]["damage"]["value"]["type"]["value"]
+                                }
+                            except Exception:
+                                for key in data['system']['damage']['value'].keys():
+                                    damage[key] = {
+                                        "mod": False,
+                                        "value": data["system"]["damage"]["value"][key]["value"],
+                                        "dmg_type": data["system"]["damage"]["value"][key]["type"]["value"]
+                                    }
+                        if "heightening" in data["system"].keys():
+                            try:
+                                if data["system"]["heightening"]["type"] == "fixed":
+                                    heightening = {
+                                        "type": data["system"]["heightening"]["type"],
+                                        "interval": data["system"]["heightening"]["levels"],
+                                    }
+                                else:
+                                    heightening = {
+                                        "type": data["system"]["heightening"]["type"],
+                                        "interval": data["system"]["heightening"]["interval"],
+                                        "damage": data["system"]["heightening"]["damage"]
+                                    }
+                            except KeyError:
+                                heightening = {
+                                    "type": "",
+                                    "interval": 0,
+                                    "damage": ""
+                                }
+                        else:
+                            heightening = {
+                                "type": "",
+                                "interval": 0,
+                                "damage": ""
+                            }
+
+                        try:
+                            async with async_session() as session:
+                                async with session.begin():
+                                    new_entry = EPF_Spells(
+                                        name=data["name"],
+                                        level=data["system"]["level"]["value"],
+                                        type=data["system"]["spellType"]["value"],
+                                        save=data["system"]["save"],
+                                        traditions=data["system"]["traditions"]["value"],
+                                        school=data["system"]["school"]["value"],
+                                        damage=damage,
+                                        heightening=heightening
+
+                                    )
+                                    session.add(new_entry)
+                                    await session.commit()
+                                    logging.info(f"{data['name']} written")
+                                    return 1
+                        except IntegrityError as e:
+                            if os.environ['Overwrite'] == "True":
+                                # print("Overwrite")
+                                async with async_session() as session:
+                                    item_result = await session.execute(
+                                        select(EPF_Spells).where(EPF_Spells.name == data['name']))
+                                    item = item_result.scalars().one()
+
+                                    item.name = data["name"]
+                                    item.level = data["system"]["level"]["value"]
+                                    item.type = data["system"]["spellType"]["value"]
+                                    item.save = data["system"]["save"]
+                                    item.traditions = data["system"]["traditions"]["value"]
+                                    item.school = data["system"]["school"]["value"]
+                                    item.damage = damage
+                                    item.heightening = heightening
+
+                                    await session.commit()
+
+                                logging.info(f"{data['name']} overwritten")
+
+                                return 2
+                            else:
+                                logging.info(f"Excepted {data['name']}")
+                                return 3
+        return None
+    except Exception:
+        logging.warning(e)
+        return 4
+
+                    elif index['type'] == "melee":
+                        # print(index["name"])
+                        attack_data = {}
+                        attack_data["bonus"] = []
+                        attack_data["runes"] = []
+                        attack_data["display"] = index["name"]
+                        attack_data["prof"] = "NPC"
+                        attack_data["name"] = None
+                        if index["system"]["weaponType"]["value"] == "ranged":
+                            attack_data["attk_stat"] = "dex"
+                        else:
+                            attack_data["attk_stat"] = "str"
+                        attack_data["pot"] = index["system"]["bonus"]["value"] - level - str_mod
+                        attack_data["traits"] = index["system"]["traits"]["value"]
+                        attack_data["crit"] = "*2"
+
+                        for item in index["system"]["traits"]["value"]:
+                            if "deadly" in item:
+                                string = item.split("-")
+                                attack_data["crit"] = f"*2 + {string[1]}"
+                            if "agile" in item and dex_mod > str_mod:
+                                # print("Agile")
+                                attack_data["attk_stat"] = "dex"
+                                attack_data["pot"] = index["system"]["bonus"]["value"] - level - dex_mod
+
+                        dmg_list = []
+                        for key, value in index["system"]["damageRolls"].items():
+                            dmg_list.append(value)
+                        for x, item in enumerate(dmg_list):
+                            try:
+                                if x == 0:
+                                    dmg_split = re.split("d|\+|-", item["damage"])
+                                    # print(data)
+                                    try:
+                                        attack_data["die"] = dmg_split[1]
+                                    except IndexError:
+                                        attack_data["die"] = 1
+                                    attack_data["die_num"] = dmg_split[0]
+                                    try:
+                                        attack_data["stat"] = dmg_split[2]
+                                    except IndexError:
+                                        attack_data["stat"] = 0
+                                    attack_data["dmg_type"] = item["damageType"]
+                                    if item["damageType"] not in damages:
+                                        damages.append(item["damageType"])
+                                else:
+                                    bns_dmg = {
+                                        "damage": item["damage"],
+                                        "dmg_type": item["damageType"]
+                                    }
+                                    if item["damageType"] not in damages:
+                                        damages.append(item["damageType"])
+                                    attack_data["bonus"].append(bns_dmg)
+                            except Exception:
+                                pass
+                        attacks[index["name"]] = attack_data

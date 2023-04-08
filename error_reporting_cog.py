@@ -33,9 +33,12 @@ class ErrorReportingCog(commands.Cog):
     @option("action", description="What were you doing?")
     @option("bug", description="Please describe the bug")
     async def bug(self, ctx: discord.ApplicationContext, action, bug: str):
-        report = ErrorReport(ctx, action, bug, self.bot)
-        await report.report()
-        await ctx.respond("Bug Reported", ephemeral=True)
+        try:
+            report = ErrorReport(ctx, action, bug, self.bot)
+            await report.report()
+            await ctx.respond("Bug Reported", ephemeral=True)
+        except Exception:
+            await ctx.respond("Error", ephemeral=True)
 
 
 def setup(bot):

@@ -172,3 +172,31 @@ class AutoComplete:
             logging.warning(f"get_attributes, {e}")
             await self.engine.dispose()
             return []
+
+    async def attacks(self):
+        await self.engine.dispose()
+        return []
+
+    async def stats(self):
+        await self.engine.dispose()
+        return []
+
+    async def dmg_types(self):
+        await self.engine.dispose()
+        return []
+
+    async def npc_lookup(self):
+        await self.engine.dispose()
+        return []
+
+    async def spell_list(self):
+        await self.engine.dispose()
+        return []
+
+    async def spell_level(self):
+        await self.engine.dispose()
+        return []
+
+    async def init(self):
+        await self.engine.dispose()
+        return []

@@ -40,6 +40,7 @@ class Macro:
                 new_macro = Macro(character_id=Character_Model.id, name=macro_name, macro=macro_string)
                 session.add(new_macro)
             await session.commit()
+            await Character_Model.update()
             await self.engine.dispose()
             return True
         except Exception as e:
@@ -75,6 +76,7 @@ class Macro:
                         )
                         session.add(new_macro)
             await session.commit()
+            await Character_Model.update()
             await self.engine.dispose()
             if len(error_list) > 0:
                 await self.ctx.channel.send(f"Unable to add following macros due to duplicate names:\n{error_list}")
@@ -100,7 +102,7 @@ class Macro:
                 con = result.scalars().one()
                 await session.delete(con)
                 await session.commit()
-
+            await Character_Model.update()
             await self.engine.dispose()
             return True
         except Exception as e:
@@ -122,6 +124,7 @@ class Macro:
                 async with async_session() as session:
                     await session.delete(row)
                     await session.commit()
+            await Character_Model.update()
             await self.engine.dispose()
             return True
         except Exception as e:

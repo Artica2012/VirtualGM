@@ -2,16 +2,13 @@
 import asyncio
 import os
 
+import d20
 import discord
-from discord.ui import View
 from dotenv import load_dotenv
-from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import d20
-import initiative
 from database_models import (
     get_macro,
     get_condition,
@@ -19,10 +16,11 @@ from database_models import (
     NPC,
 )
 
-# imports
-
 # define global variables
 from utils.Tracker_Getter import get_tracker_model
+from utils.utils import get_guild
+
+# imports
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -46,206 +44,181 @@ DATABASE = os.getenv("DATABASE")
 async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        result = await session.execute(select(NPC).where(func.lower(NPC.name).contains(lookup.lower())))
-        lookup_list = result.scalars().all()
-    view = View()
-    if len(lookup_list) == 0:
-        await ctx.send_followup("Nothing Found, Try Again.")
-        return False
-    for item in lookup_list[:20:]:
-        await asyncio.sleep(0)
-        button = PF2NpcSelectButton(ctx, engine, bot, item, name, elite)
-        view.add_item(button)
-    await ctx.send_followup(view=view)
-    # print(ctx.message.id)
-    return True
+        result = await session.execute(select(NPC).where(NPC.name == lookup))
+        data = result.scalars().one()
+    await lookup_engine.dispose()
 
+    # Add the character
 
-class PF2NpcSelectButton(discord.ui.Button):
-    def __init__(self, ctx: discord.ApplicationContext, engine, bot: discord.Bot, data, name, elite: str):
-        self.ctx = ctx
-        self.engine = engine
-        self.bot = bot
-        self.data = data
-        self.name = name
-        self.elite = elite
-        super().__init__(
-            label=data.name,
-            style=discord.ButtonStyle.primary,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        # Add the character
-        print(interaction.message.id)
-        message = interaction.message
-        await message.delete()
-
-        # elite/weak adjustments
-        hp_mod = 0
-        stat_mod = 0
-        if self.elite == "elite":
-            if self.data.level <= 1:
-                hp_mod = 10
-            elif self.data.level <= 4:
-                hp_mod = 15
-            elif self.data.level <= 19:
-                hp_mod = 20
-            else:
-                hp_mod = 30
-            stat_mod = 2
-        if self.elite == "weak":
-            if self.data.level <= 1:
-                hp_mod = -10
-            elif self.data.level <= 4:
-                hp_mod = -15
-            elif self.data.level <= 19:
-                hp_mod = -20
-            else:
-                hp_mod = -30
-            stat_mod = -2
-
-        if self.elite == "weak":
-            init_string = f"{self.data.init}{stat_mod}"
+    # elite/weak adjustments
+    hp_mod = 0
+    stat_mod = 0
+    if elite == "elite":
+        if data.level <= 1:
+            hp_mod = 10
+        elif data.level <= 4:
+            hp_mod = 15
+        elif data.level <= 19:
+            hp_mod = 20
         else:
-            init_string = f"{self.data.init}+{stat_mod}"
+            hp_mod = 30
+        stat_mod = 2
+    if elite == "weak":
+        if data.level <= 1:
+            hp_mod = -10
+        elif data.level <= 4:
+            hp_mod = -15
+        elif data.level <= 19:
+            hp_mod = -20
+        else:
+            hp_mod = -30
+        stat_mod = -2
 
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            guild = await initiative.get_guild(self.ctx, None)
-            # print(guild.initiative)
-            # print(int(self.data.init)+stat_mod)
-            initiative_num = 0
-            if guild.initiative is not None:
+    if elite == "weak":
+        init_string = f"{data.init}{stat_mod}"
+    else:
+        init_string = f"{data.init}+{stat_mod}"
+
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        guild = await get_guild(ctx, None)
+        # print(guild.initiative)
+        # print(int(self.data.init)+stat_mod)
+        initiative_num = 0
+        if guild.initiative is not None:
+            try:
+                # print(f"Init: {init}")
+                initiative_num = int(data.init) + stat_mod
+                print(initiative_num)
+            except Exception:
                 try:
-                    # print(f"Init: {init}")
-                    initiative_num = int(self.data.init) + stat_mod
+                    roll = d20.roll(init_string)
+                    initiative_num = roll.total
                     print(initiative_num)
                 except Exception:
-                    try:
-                        roll = d20.roll(init_string)
-                        initiative_num = roll.total
-                        print(initiative_num)
-                    except Exception:
-                        initiative_num = 0
+                    initiative_num = 0
 
-            async with async_session() as session:
-                Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
-                async with session.begin():
-                    tracker = Tracker(
-                        name=self.name,
-                        init_string=init_string,
-                        init=initiative_num,
-                        player=False,
-                        user=self.ctx.user.id,
-                        current_hp=self.data.hp + hp_mod,
-                        max_hp=self.data.hp + hp_mod,
-                        temp_hp=0,
-                    )
-                    session.add(tracker)
-                await session.commit()
-
-            Condition = await get_condition(self.ctx, self.engine, id=guild.id)
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
-                character = char_result.scalars().one()
-
+        async with async_session() as session:
+            Tracker = await get_tracker(ctx, engine, id=guild.id)
             async with session.begin():
-                session.add(
-                    Condition(
-                        character_id=character.id,
-                        title="AC",
-                        number=self.data.ac + stat_mod,
-                        counter=True,
-                        visible=False,
-                    )
+                tracker = Tracker(
+                    name=name,
+                    init_string=init_string,
+                    init=initiative_num,
+                    player=False,
+                    user=ctx.user.id,
+                    current_hp=data.hp + hp_mod,
+                    max_hp=data.hp + hp_mod,
+                    temp_hp=0,
                 )
-                session.add(
-                    Condition(
-                        character_id=character.id,
-                        title="Fort",
-                        number=self.data.fort + stat_mod,
-                        counter=True,
-                        visible=False,
-                    )
-                )
-                session.add(
-                    Condition(
-                        character_id=character.id,
-                        title="Reflex",
-                        number=self.data.reflex + stat_mod,
-                        counter=True,
-                        visible=False,
-                    )
-                )
-                session.add(
-                    Condition(
-                        character_id=character.id,
-                        title="Will",
-                        number=self.data.will + stat_mod,
-                        counter=True,
-                        visible=False,
-                    )
-                )
-                session.add(
-                    Condition(
-                        character_id=character.id,
-                        title="DC",
-                        number=self.data.dc + stat_mod,
-                        counter=True,
-                        visible=False,
-                    )
-                )
-                await session.commit()
+                session.add(tracker)
+            await session.commit()
 
-            # Parse Macros
-            attack_list = self.data.macros.split("::")
-            Macro = await get_macro(self.ctx, self.engine, id=guild.id)
-            async with session.begin():
-                for x, attack in enumerate(attack_list[:-1]):
-                    await asyncio.sleep(0)
-                    # split the attack
-                    print(attack)
-                    split_string = attack.split(";")
-                    print(split_string)
-                    base_name = split_string[0].strip()
-                    attack_string = split_string[1].strip()
-                    damage_string = split_string[2].strip()
-                    if self.elite == "weak":
-                        attack_macro = Macro(
-                            character_id=character.id,
-                            name=f"{x+1}. {base_name} - Attack",
-                            macro=f"{attack_string}{stat_mod}",
-                        )
-                    else:
-                        attack_macro = Macro(
-                            character_id=character.id,
-                            name=f"{x+1}. {base_name} - Attack",
-                            macro=f"{attack_string}+{stat_mod}",
-                        )
-                    session.add(attack_macro)
-                    print("Attack Added")
-                    if self.elite == "weak":
-                        damage_macro = Macro(
-                            character_id=character.id,
-                            name=f"{x+1}. {base_name} - Damage",
-                            macro=f"{damage_string}{stat_mod}",
-                        )
-                    else:
-                        damage_macro = Macro(
-                            character_id=character.id,
-                            name=f"{x+1}. {base_name} - Damage",
-                            macro=f"{damage_string}+{stat_mod}",
-                        )
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character = char_result.scalars().one()
 
-                    session.add(damage_macro)
-                    print("Damage Added")
-                await session.commit()
-            print("Committed")
+        async with session.begin():
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="AC",
+                    number=data.ac + stat_mod,
+                    counter=True,
+                    visible=False,
+                )
+            )
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="Fort",
+                    number=data.fort + stat_mod,
+                    counter=True,
+                    visible=False,
+                )
+            )
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="Reflex",
+                    number=data.reflex + stat_mod,
+                    counter=True,
+                    visible=False,
+                )
+            )
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="Will",
+                    number=data.will + stat_mod,
+                    counter=True,
+                    visible=False,
+                )
+            )
+            session.add(
+                Condition(
+                    character_id=character.id,
+                    title="DC",
+                    number=data.dc + stat_mod,
+                    counter=True,
+                    visible=False,
+                )
+            )
+            await session.commit()
 
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, engine=self.engine, guild=guild)
-            await Tracker_Model.update_pinned_tracker()
-            output_string = f"{self.data.name} added as {self.name}"
+        # Parse Macros
+        attack_list = data.macros.split("::")
+        Macro = await get_macro(ctx, engine, id=guild.id)
+        async with session.begin():
+            for x, attack in enumerate(attack_list[:-1]):
+                await asyncio.sleep(0)
+                # split the attack
+                print(attack)
+                split_string = attack.split(";")
+                print(split_string)
+                base_name = split_string[0].strip()
+                attack_string = split_string[1].strip()
+                damage_string = split_string[2].strip()
+                if elite == "weak":
+                    attack_macro = Macro(
+                        character_id=character.id,
+                        name=f"{x + 1}. {base_name} - Attack",
+                        macro=f"{attack_string}{stat_mod}",
+                    )
+                else:
+                    attack_macro = Macro(
+                        character_id=character.id,
+                        name=f"{x + 1}. {base_name} - Attack",
+                        macro=f"{attack_string}+{stat_mod}",
+                    )
+                session.add(attack_macro)
+                print("Attack Added")
+                if elite == "weak":
+                    damage_macro = Macro(
+                        character_id=character.id,
+                        name=f"{x + 1}. {base_name} - Damage",
+                        macro=f"{damage_string}{stat_mod}",
+                    )
+                else:
+                    damage_macro = Macro(
+                        character_id=character.id,
+                        name=f"{x + 1}. {base_name} - Damage",
+                        macro=f"{damage_string}+{stat_mod}",
+                    )
 
-            await self.ctx.channel.send(output_string)
-        except Exception:
-            await self.ctx.channel.send("Action Failed, please try again", delete_after=60)
+                session.add(damage_macro)
+                print("Damage Added")
+            await session.commit()
+        print("Committed")
+
+        Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
+        await Tracker_Model.update_pinned_tracker()
+        output_string = f"{data.name} added as {name}"
+
+        await ctx.send_followup(output_string)
+    except Exception:
+        await ctx.send_followup("Action Failed, please try again", delete_after=60)
+
+    # print(ctx.message.id)
+    return True
