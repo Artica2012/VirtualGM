@@ -201,6 +201,34 @@ EPF_DMG_Types = [
     "Cold Iron",
     "Orichalcum",
     "Silver",
+    "All-Damage",
+]
+
+EPF_DMG_Types_Inclusive = [
+    "Bludgeoning",
+    "Piercing",
+    "Slashing",
+    "Acid",
+    "Cold",
+    "Electricity",
+    "Fire",
+    "Sonic",
+    "Positive",
+    "Negative",
+    "Force",
+    "Chaotic",
+    "Evil",
+    "Good",
+    "Lawful",
+    "Mental",
+    "Poison",
+    "Bleed",
+    "Precision",
+    "Cold Iron",
+    "Orichalcum",
+    "Silver",
+    "All-Damage",
+    "Critical-Hits",
 ]
 
 EPF_SKills = [

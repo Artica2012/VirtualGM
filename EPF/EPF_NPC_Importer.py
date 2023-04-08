@@ -4,7 +4,8 @@ from sqlalchemy import Column, Integer, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from EPF.EPF_Character import get_EPF_Character
+import EPF.EPF_Character
+from EPF.EPF_Character import get_EPF_Character, delete_intested_items
 from database_models import Base, get_tracker
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
@@ -212,18 +213,7 @@ async def epf_npc_lookup(
             visible=False,
         )
 
-        for key, value in data.resistance["resist"].items():
-            condition_string = f"{key} r {value};"
-            async with session.begin():
-                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
-        for key, value in data.resistance["weak"].items():
-            condition_string = f"{key} w {value};"
-            async with session.begin():
-                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
-        for key, value in data.resistance["immune"].items():
-            condition_string = f"{key} i {value};"
-            async with session.begin():
-                await Charater_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+        await write_resitances(data.resistance, Charater_Model, ctx, guild, engine)
 
         await Charater_Model.update()
         Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
@@ -234,4 +224,29 @@ async def epf_npc_lookup(
         return True
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)
+        return False
+
+
+async def write_resitances(resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine):
+    # First delete out all the old resistances
+    await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
+
+    # Then write the new ones
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            for key, value in resistance["resist"].items():
+                condition_string = f"{key} r {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+            for key, value in resistance["weak"].items():
+                condition_string = f"{key} w {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+            for key, value in resistance["immune"].items():
+                condition_string = f"{key} i {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+        return True
+    except Exception:
         return False

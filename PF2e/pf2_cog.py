@@ -74,25 +74,25 @@ class PF2Cog(commands.Cog):
                 await engine.dispose()
 
         elif url is not None:
-            # try:
-            guild = await get_guild(ctx, None)
-            if guild.system == "EPF":
-                response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
+            try:
+                guild = await get_guild(ctx, None)
+                if guild.system == "EPF":
+                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
+                    await engine.dispose()
+                else:
+                    response = False
+                if response:
+                    await ctx.send_followup(f"{name} successfully imported.")
+                else:
+                    await ctx.send_followup("Error importing character.")
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
+                await report.report()
                 await engine.dispose()
-            else:
-                response = False
-            if response:
-                await ctx.send_followup(f"{name} successfully imported.")
-            else:
-                await ctx.send_followup("Error importing character.")
-            # except Exception as e:
-            #     await ctx.send_followup("Error importing character")
-            #     logging.info(f"pb_import: {e}")
-            #     report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
-            #     await report.report()
-            #     await engine.dispose()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
