@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from database_models import disease_table, feat_table, power_table, monster_table, ritual_table
 from database_operations import get_asyncio_db_engine
+from error_handling_reporting import ErrorReport
 from ui_components import QuerySelectButton
 
 load_dotenv(verbose=True)
@@ -49,43 +50,43 @@ class QueryCog(commands.Cog):
     async def q(self, ctx: discord.ApplicationContext, category: str, query: str):
         await ctx.response.defer()
         metadata = db.MetaData()
-        # try:
-        if category == "Power":
-            emp = power_table(metadata)
-        elif category == "Disease":
-            emp = disease_table(metadata)
-        elif category == "Feat":
-            emp = feat_table(metadata)
-        elif category == "Monster":
-            emp = monster_table(metadata)
-        elif category == "Ritual":
-            emp = ritual_table(metadata)
-        else:
-            ctx.send_followup("Error, Invalid")
-            return
-        stmt = emp.select().where(emp.c.Title.ilike(f"%{query}%"))
+        try:
+            if category == "Power":
+                emp = power_table(metadata)
+            elif category == "Disease":
+                emp = disease_table(metadata)
+            elif category == "Feat":
+                emp = feat_table(metadata)
+            elif category == "Monster":
+                emp = monster_table(metadata)
+            elif category == "Ritual":
+                emp = ritual_table(metadata)
+            else:
+                ctx.send_followup("Error, Invalid")
+                return
+            stmt = emp.select().where(emp.c.Title.ilike(f"%{query}%"))
 
-        async with self.engine.begin() as conn:
-            results = []
-            for row in await conn.execute(stmt):
+            async with self.engine.begin() as conn:
+                results = []
+                for row in await conn.execute(stmt):
+                    await asyncio.sleep(0)
+                    results.append(row)
+
+            # Create the view
+            view = discord.ui.View(timeout=None)  # Keep it persistent
+            if not results:
+                await ctx.respond("No Results Found")
+                return
+            # Add a button to the view for each of the first 10 results
+            for result in results[0:10]:
                 await asyncio.sleep(0)
-                results.append(row)
-
-        # Create the view
-        view = discord.ui.View(timeout=None)  # Keep it persistent
-        if not results:
-            await ctx.respond("No Results Found")
-            return
-        # Add a button to the view for each of the first 10 results
-        for result in results[0:10]:
-            await asyncio.sleep(0)
-            name = f"{result[2]}"
-            link = result[3]
-            view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
-        await ctx.send_followup(f"Query Results: {category} - {query}", view=view)
-        # except Exception as e:
-        #     report = ErrorReport(ctx, "query", e, self.bot)
-        #     await report.report()
+                name = f"{result[2]}"
+                link = result[3]
+                view.add_item((QuerySelectButton(name, f"{name}{ctx.user}", link=link)))
+            await ctx.send_followup(f"Query Results: {category} - {query}", view=view)
+        except Exception as e:
+            report = ErrorReport(ctx, "query", e, self.bot)
+            await report.report()
 
     # @query.command(description="Monster Query")
     # async def item(self, ctx: discord.ApplicationContext, query: str):

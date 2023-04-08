@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+# from EPF import EPF_Support
 from EPF import EPF_Support
 
 Base = declarative_base()
@@ -303,12 +304,14 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         primal_mod = Column(Integer())
 
         ac_total = Column(Integer())
-        resistance = Column(String())
+        resistance = Column(JSON())
         perception_mod = Column(Integer())
         macros = Column(String())
         attacks = Column(JSON())
         spells = Column(JSON())
         bonuses = Column(JSON())
+        eidolon = Column(Boolean(), default=False)
+        partner = Column(String())
 
     logging.info("get_tracker: returning tracker")
     return Tracker

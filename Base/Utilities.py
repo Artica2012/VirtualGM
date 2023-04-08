@@ -186,3 +186,11 @@ class Utilities:
         except Exception as e:
             logging.warning(f"delete_character: {e}")
             return False
+
+    async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg):
+        await self.ctx.channel.send("Command Disabled for current system")
+        return False
+
+    async def edit_resistances(self, character, element, resist_weak, ammount):
+        await self.ctx.channel.send("Command Disabled for current system")
+        return False

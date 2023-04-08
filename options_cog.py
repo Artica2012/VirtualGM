@@ -1,13 +1,11 @@
 # options_cog.py
 import logging
-import os
 
 import discord
 import sqlalchemy as db
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from dotenv import load_dotenv
 from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,33 +13,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, get_tracker_table, get_condition_table, get_macro_table
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import set_datetime
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import gm_check, get_guild
 
+
 # imports
 
 # define global variables
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
 
 
 class OptionsCog(commands.Cog):
@@ -65,7 +47,7 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e"], required=False)
+    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2"], required=False)
     async def start(
         self,
         ctx: discord.ApplicationContext,

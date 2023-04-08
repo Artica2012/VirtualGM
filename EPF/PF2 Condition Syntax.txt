@@ -30,9 +30,107 @@ Status Bonus = s
 Item Bonus = i
 
 Condition Data Syntax:
-    modifier (+/-)# (type);
+    modifier (+/-)# (type),
 
 Example:
- +1 Intelligence Status Bonus:  "int +1 c;"
- +1 to Crafting Item: "crafting +1 i;"
- Flat Footed: "ac -2 c;"
+ +1 Intelligence Status Bonus:  "int +1 c,"
+ +1 to Crafting Item: "crafting +1 i,"
+ Flat Footed: "ac -2 c,"
+
+
+ ----------------------------------
+ Attack Data Structure
+ Display Name = {
+                "display": item["display"], # Display Name
+                "prof": item["prof"],  # Proficiency (Unarmed, Simple, Martial, Advanced)
+                "die": item["die"],  # Damage Die Size
+                "pot": item["pot"], # Potency Rune (1,2,3)
+                "str": item["str"], # "", striking, greaterStriking, majorStriking (Pathbuilder Legacy Purposes)
+                "name": item["name"],  # Weapon Name (For lookup)
+                "runes": item["runes"], # List of runes (For future use)
+                "die_num": die_num, # Number of damage die
+                "crit": "*2", # Crit string, defaults to *2, but could be *2+1d6 or something of the sort
+                "stat": "str",  # What stat to use for damage
+                "dmg_type": "Bludgeoning",  # Damage Type
+                "attk_stat": "str",  # What stat to use for the attack (probably str or dex)
+                "bonus": [
+                    {
+                        "damage": # Damage String
+                        "dmg_type": # Damage Type
+                    }
+                ]
+                "traits": []
+ }
+
+
+----------------------------------
+Resistances / Weakness / Immunities
+resistance= {
+                        "resist": {
+                            "cold": 1
+                        },
+                        "weak": {},
+                        "immune": {}
+                    }
+
+
+attribute name (w, r, i) #;
+  eg "cold r 1;"
+
+
+Resistances
+
+['death-effects', 'disease', 'paralyzed', 'poison', 'unconscious', 'physical', 'good', 'fire', 'all-damage', 'precision', 'spell-deflection', 'slashing', 'cold', 'electricity', 'piercing', 'cold-iron', 'fear-effects', 'silver', 'acid', 'bleed', 'fatigued', 'sleep', 'positive', 'magic', 'bludgeoning', 'area-damage', 'splash-damage', 'swarm-mind', 'mental', 'critical-hits', 'visual', 'sonic', 'controlled', 'clumsy', 'drained', 'enfeebled', 'petrified', 'polymorph', 'stupefied', 'chaotic', 'evil', 'negative', 'sickened', 'lawful', 'orichalcum', 'energy', 'protean-anatomy', 'auditory', 'slowed', 'emotion', 'axe-vulnerability', 'vampire-weaknesses', 'force', 'ghost-touch', 'light', 'olfactory', 'water', 'prone', 'arrow-vulnerability', 'misfortune-effects', 'vulnerable-to-sunlight', 'blinded', 'deafened', 'air', 'trip', 'doomed', 'healing', 'necromancy', 'nonlethal-attacks', 'dazzled', 'curse', 'vorpal', 'confused', 'non-magical', 'metal', 'salt-water', 'salt', 'swarm-attacks', 'possession', 'flat-footed', 'stunned', 'earth', 'scrying', 'plant', 'evocation', 'grabbed', 'immobilized', 'object-immunities', 'frightened']
+Damage Types
+['piercing', 'slashing', 'evil', 'untyped', 'bludgeoning', 'fire', 'mental', 'negative', 'poison', 'cold', 'bleed', 'electricity', 'sonic', 'acid', 'chaotic', 'force', 'positive', '', 'good', 'bomb', 'lawful', 'energy']
+
+
+------------------------------------
+Lookup Data:
+Spells
+
+    name = Column(String(), unique=True)
+    level = Integer
+    type = ("save" or "attack")
+    save = {
+        basic: "basic"
+        value: ("reflex" or "will" or "fortitude")
+    }
+    traditions = []
+    school = ""
+    damage[key] = {
+        mod: bool
+        value: roll (eg 3d8)
+        dmg_type: ""
+    }
+    heightening[key] = {
+        type: (eg. interval)
+        interval: #
+        damage: (roll)
+    }
+
+spellName = {
+                        "level": spell_level["spellLevel"],
+                        "tradition": item["magicTradition"],
+                        "dc": dc - level - cha_mod
+                        "ability": item["ability"],
+                        "proficiency": modifier - level - cha_mod
+                        "type": spell_data[1].type,
+                        "save": spell_data[1].save,
+                        "damage": spell_data[1].damage,
+                        "heightening": spell_data[1].heightening
+                    }
+                    spell_library[spell_name] = spell
+
+Equipment
+    name = String
+    level = Integer
+    data = {
+        skill: {
+        bonus: effect (#)
+        mode: (type or mode)
+        }
+        {
+
+        }
+    }

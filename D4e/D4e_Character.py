@@ -102,7 +102,7 @@ class D4e_Character(Character):
         except NoResultFound:
             return []
 
-    async def change_hp(self, amount: int, heal: bool):
+    async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

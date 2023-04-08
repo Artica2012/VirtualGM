@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 
+import d20
 import discord
 from dotenv import load_dotenv
 from sqlalchemy import select, false, true
@@ -97,7 +98,17 @@ class Character:
         except NoResultFound:
             return []
 
-    async def change_hp(self, amount: int, heal: bool):
+    async def set_hp(self, amount: int):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+            character.current_hp = amount
+            await session.commit()
+            await self.update()
+
+    async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -137,21 +148,21 @@ class Character:
                 character.temp_hp = new_thp
                 await session.commit()
                 await self.update()
-
-            if character.player:  # Show the HP it its a player
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
-                    )
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
-                    )
-            else:  # Obscure the HP if its an NPC
-                if heal:
-                    await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
-                else:
-                    await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
+            if post:
+                if character.player:  # Show the HP it its a player
+                    if heal:
+                        await self.ctx.send_followup(
+                            f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
+                else:  # Obscure the HP if its an NPC
+                    if heal:
+                        await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                    else:
+                        await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
             await self.update()
             return True
         except Exception as e:
@@ -176,27 +187,29 @@ class Character:
 
     async def add_thp(self, amount: int):
         logging.info(f"add_thp {amount}")
-        # try:
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
-            character = char_result.scalars().one()
-            character.temp_hp = character.temp_hp + amount
-            await session.commit()
-        await self.update()
-        return True
-        # except Exception as e:
-        #     logging.warning(f"add_thp: {e}")
-        #     return False
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = char_result.scalars().one()
+                character.temp_hp = character.temp_hp + amount
+                await session.commit()
+            await self.update()
+            return True
+        except Exception as e:
+            logging.warning(f"add_thp: {e}")
+            return False
 
     # Set the initiative
-    async def set_init(self, init: int):
+    async def set_init(self, init):
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
-
+        if type(init) == str:
+            roll = d20.roll(init)
+            init = roll.total
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:
@@ -213,8 +226,10 @@ class Character:
                 character.init = init
                 await session.commit()
             await self.update()
+            return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")
+            return f"Failed to set initiative: {e}"
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
