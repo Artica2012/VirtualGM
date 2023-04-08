@@ -4,7 +4,9 @@ from sqlalchemy import Column, Integer, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Base, get_tracker, get_condition
+import EPF.EPF_Character
+from EPF.EPF_Character import get_EPF_Character, delete_intested_items
+from database_models import Base, get_tracker
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
@@ -192,33 +194,28 @@ async def epf_npc_lookup(
 
         print("Committed")
 
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == name))
-            character = char_result.scalars().one()
+        Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
+        await Charater_Model.set_cc(
+            "stat_modification",
+            True,
+            0,
+            None,
+            False,
+            flex=False,
+            data=(
+                f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
+                f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
+                f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
+                f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
+                f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
+                f" thievery {stat_mod} i"
+            ),
+            visible=False,
+        )
 
-        async with session.begin():
-            session.add(
-                Condition(
-                    character_id=character.id,
-                    title="stat_modification",
-                    number=0,
-                    counter=True,
-                    visible=False,
-                    action=(
-                        f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
-                        f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
-                        f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
-                        f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
-                        f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
-                        f" thievery {stat_mod} i"
-                    ),
-                )
-            )
-            await session.commit()
+        await write_resitances(data.resistance, Charater_Model, ctx, guild, engine)
 
-        print("Condition Comitted")
-
+        await Charater_Model.update()
         Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
         await Tracker_Model.update_pinned_tracker()
         output_string = f"{data.name} added as {name}"
@@ -227,4 +224,29 @@ async def epf_npc_lookup(
         return True
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)
+        return False
+
+
+async def write_resitances(resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine):
+    # First delete out all the old resistances
+    await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
+
+    # Then write the new ones
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            for key, value in resistance["resist"].items():
+                condition_string = f"{key} r {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+            for key, value in resistance["weak"].items():
+                condition_string = f"{key} w {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+            for key, value in resistance["immune"].items():
+                condition_string = f"{key} i {value};"
+                async with session.begin():
+                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+        return True
+    except Exception:
         return False

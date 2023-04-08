@@ -32,7 +32,9 @@ class PF2Cog(commands.Cog):
     @option("name", description="Character Name", required=True)
     @option("pathbuilder_id", description="Pathbuilder Export ID")
     @option("url", description="Public Google Sheet URL")
-    async def import_character(self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int, url: str):
+    async def import_character(
+        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         if pathbuilder_id is None and url is None:

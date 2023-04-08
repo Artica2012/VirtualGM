@@ -10,14 +10,14 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_tracker, Global, get_condition
+from Base.Tracker import Tracker, get_init_list
+from database_models import get_tracker, Global
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
-from utils.utils import get_guild
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Base.Tracker import Tracker, get_init_list
 from utils.Char_Getter import get_character
+from utils.utils import get_guild
 
 
 async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -150,7 +150,6 @@ class EPF_Tracker(Tracker):
         # print("PF2 Get Tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         logging.info(f"BGT1: Guild: {self.guild.id}")
         if self.guild.block and self.guild.initiative is not None:
@@ -171,7 +170,7 @@ class EPF_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n__________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -184,8 +183,6 @@ class EPF_Tracker(Tracker):
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-
             if self.guild.round != 0:
                 round_string = f"Round: {self.guild.round}"
             else:
@@ -309,24 +306,24 @@ class EPF_Tracker(Tracker):
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
 
         async def callback(self, interaction: discord.Interaction):
-            # try:
-            await interaction.response.send_message("Refreshed", ephemeral=True)
-            print(interaction.message.id)
-            init_list = await get_init_list(self.ctx, self.engine, self.guild)
-            for char in init_list:
-                Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
-                await Character_Model.update()
-            Tracker_model = EPF_Tracker(
-                self.ctx,
-                self.engine,
-                await get_init_list(self.ctx, self.engine, self.guild),
-                self.bot,
-                guild=self.guild,
-            )
-            await Tracker_model.update_pinned_tracker()
-            # except Exception as e:
-            #     print(f"Error: {e}")
-            #     logging.info(e)
+            try:
+                await interaction.response.send_message("Refreshed", ephemeral=True)
+                print(interaction.message.id)
+                init_list = await get_init_list(self.ctx, self.engine, self.guild)
+                for char in init_list:
+                    Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
+                    await Character_Model.update()
+                Tracker_model = EPF_Tracker(
+                    self.ctx,
+                    self.engine,
+                    await get_init_list(self.ctx, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
+                await Tracker_model.update_pinned_tracker()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):

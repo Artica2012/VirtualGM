@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 import d20
 
 import EPF.EPF_Support
+import time_keeping_functions
 from utils.utils import get_guild
 from database_models import (
     get_condition,
@@ -693,7 +694,7 @@ class EPF_Character(Character):
             return False
 
     async def show_resistance(self):
-        embeds = [discord.Embed(title=self.char_name)]
+        embeds = []
 
         resists = ""
         for key, value in self.resistance["resist"].items():
@@ -772,6 +773,71 @@ class EPF_Character(Character):
             logging.error(f"set_init: {e}")
             return f"Failed to set initiative: {e}"
 
+    async def get_char_sheet(self, bot):
+        try:
+            if self.character_model.player:
+                status = "PC:"
+            else:
+                status = "NPC:"
+
+            condition_list = await self.conditions()
+            user_name = bot.get_user(self.user).name
+
+            embed = discord.Embed(
+                title=f"{self.char_name}",
+                fields=[
+                    discord.EmbedField(name="Name: ", value=self.char_name, inline=False),
+                    discord.EmbedField(name=status, value=user_name, inline=False),
+                    discord.EmbedField(
+                        name="HP: ",
+                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)",
+                        inline=False,
+                    ),
+                    discord.EmbedField(name="Class: ", value=self.character_model.char_class, inline=False),
+                ],
+                color=discord.Color.dark_gold(),
+            )
+            # if condition_list != None:
+            condition_embed = discord.Embed(
+                title="Conditions",
+                fields=[],
+                color=discord.Color.dark_teal(),
+            )
+            counter_embed = discord.Embed(
+                title="Counters",
+                fields=[],
+                color=discord.Color.dark_magenta(),
+            )
+            for item in condition_list:
+                await asyncio.sleep(0)
+                if not item.visible:
+                    embed.fields.append(discord.EmbedField(name=item.title, value=item.number, inline=True))
+                elif item.visible and not item.time:
+                    if not item.counter:
+                        condition_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                    elif item.counter:
+                        if item.number != 0:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value=item.number))
+                        else:
+                            counter_embed.fields.append(discord.EmbedField(name=item.title, value="_"))
+                elif item.visible and item.time and not item.counter:
+                    condition_embed.fields.append(
+                        discord.EmbedField(
+                            name=item.title,
+                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number),
+                        )
+                    )
+            output = [embed, counter_embed, condition_embed]
+            output.extend(await self.show_resistance())
+            return output
+        except NoResultFound:
+            await self.ctx.respond(error_not_initialized, ephemeral=True)
+            return False
+        except IndexError:
+            await self.ctx.respond("Ensure that you have added characters to the initiative list.")
+        except Exception:
+            await self.ctx.respond("Failed")
+
 
 async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     paramaters = {"id": pb_char_code}
@@ -786,302 +852,302 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
     if pb["success"] is False:
         return False
 
-    # try:
-    guild = await get_guild(ctx, guild)
-    EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        guild = await get_guild(ctx, guild)
+        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    initiative_num = 0
-    if guild.initiative is not None:
-        print("In initiative")
-        try:
-            perception = (
-                int(pb["build"]["proficiencies"]["perception"])
-                + pb["build"]["level"]
-                + floor((pb["build"]["abilities"]["wis"] - 10) / 2)
-            )
-            roll = d20.roll(f"1d20+{perception}")
-            initiative_num = roll.total
-        except Exception:
-            initiative_num = 0
+        initiative_num = 0
+        if guild.initiative is not None:
+            print("In initiative")
+            try:
+                perception = (
+                    int(pb["build"]["proficiencies"]["perception"])
+                    + pb["build"]["level"]
+                    + floor((pb["build"]["abilities"]["wis"] - 10) / 2)
+                )
+                roll = d20.roll(f"1d20+{perception}")
+                initiative_num = roll.total
+            except Exception:
+                initiative_num = 0
 
-    print(initiative_num)
-    # Check to see if character already exists, if it does, update instead of creating
+        print(initiative_num)
+        # Check to see if character already exists, if it does, update instead of creating
 
-    async with async_session() as session:
-        query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
-        character = query.scalars().all()
-    if len(character) > 0:
-        overwrite = True
-        character = character[0]
-
-    lores = ""
-    for item, value in pb["build"]["lores"]:
-        output = f"{item}, {value}; "
-        lores += output
-
-    feats = ""
-    for item in pb["build"]["feats"]:
-        feats += f"{item[0]}, "
-
-    if overwrite:
-        attacks = character.attacks
-        name_list = []
-        for item in pb["build"]["weapons"]:
-            name_list.append(item["display"])
-        for key in attacks:
-            if key not in name_list:
-                del attacks[key]
-        for item in pb["build"]["weapons"]:
-            die_num = 0
-            match item["str"]:
-                case "":
-                    die_num = 1
-                case "striking":
-                    die_num = 2
-                case "greaterStriking":
-                    die_num = 3
-                case "majorStriking":
-                    die_num = 4
-
-            attacks[item["display"]] = {
-                "display": item["display"],
-                "prof": item["prof"],
-                "die": item["die"],
-                "pot": item["pot"],
-                "str": item["str"],
-                "die_num": die_num,
-                "name": item["name"],
-                "runes": item["runes"],
-            }
-    else:
-        attacks = {}
-        for item in pb["build"]["weapons"]:
-            die_num = 0
-            match item["str"]:
-                case "":
-                    die_num = 1
-                case "striking":
-                    die_num = 2
-                case "greaterStriking":
-                    die_num = 3
-                case "majorStriking":
-                    die_num = 4
-            attacks[item["display"]] = {
-                "display": item["display"],
-                "prof": item["prof"],
-                "die": item["die"],
-                "pot": item["pot"],
-                "str": item["str"],
-                "name": item["name"],
-                "runes": item["runes"],
-                "die_num": die_num,
-                "crit": "*2",
-                "stat": "str",
-                "dmg_type": "Bludgeoning",
-                "attk_stat": "str",
-            }
-            edited_attack = await attack_lookup(attacks[item["display"]], pb)
-            attacks[item["display"]] = edited_attack
-
-    # Spells
-    spells_raw = pb["build"]["spellCasters"]
-    spell_library = {}
-    for item in spells_raw:
-        for spell_level in item["spells"]:
-            for spell_name in spell_level["list"]:
-                spell_data = await spell_lookup(spell_name)
-                if spell_data[0] is True:
-                    spell = {
-                        "level": spell_level["spellLevel"],
-                        "tradition": item["magicTradition"],
-                        "ability": item["ability"],
-                        "proficiency": item["proficiency"],
-                        "type": spell_data[1].type,
-                        "save": spell_data[1].save,
-                        "damage": spell_data[1].damage,
-                        "heightening": spell_data[1].heightening,
-                    }
-                    spell_library[spell_name] = spell
-
-    if overwrite:
         async with async_session() as session:
             query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
-            character = query.scalars().one()
+            character = query.scalars().all()
+        if len(character) > 0:
+            overwrite = True
+            character = character[0]
 
-            # Write the data from the JSON
-            character.max_hp = (
-                pb["build"]["attributes"]["ancestryhp"]
-                + pb["build"]["attributes"]["classhp"]
-                + pb["build"]["attributes"]["bonushp"]
-                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                + (
-                    (pb["build"]["level"] - 1)
-                    * (
-                        pb["build"]["attributes"]["classhp"]
-                        + pb["build"]["attributes"]["bonushpPerLevel"]
-                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+        lores = ""
+        for item, value in pb["build"]["lores"]:
+            output = f"{item}, {value}; "
+            lores += output
+
+        feats = ""
+        for item in pb["build"]["feats"]:
+            feats += f"{item[0]}, "
+
+        if overwrite:
+            attacks = character.attacks
+            name_list = []
+            for item in pb["build"]["weapons"]:
+                name_list.append(item["display"])
+            for key in attacks:
+                if key not in name_list:
+                    del attacks[key]
+            for item in pb["build"]["weapons"]:
+                die_num = 0
+                match item["str"]:
+                    case "":
+                        die_num = 1
+                    case "striking":
+                        die_num = 2
+                    case "greaterStriking":
+                        die_num = 3
+                    case "majorStriking":
+                        die_num = 4
+
+                attacks[item["display"]] = {
+                    "display": item["display"],
+                    "prof": item["prof"],
+                    "die": item["die"],
+                    "pot": item["pot"],
+                    "str": item["str"],
+                    "die_num": die_num,
+                    "name": item["name"],
+                    "runes": item["runes"],
+                }
+        else:
+            attacks = {}
+            for item in pb["build"]["weapons"]:
+                die_num = 0
+                match item["str"]:
+                    case "":
+                        die_num = 1
+                    case "striking":
+                        die_num = 2
+                    case "greaterStriking":
+                        die_num = 3
+                    case "majorStriking":
+                        die_num = 4
+                attacks[item["display"]] = {
+                    "display": item["display"],
+                    "prof": item["prof"],
+                    "die": item["die"],
+                    "pot": item["pot"],
+                    "str": item["str"],
+                    "name": item["name"],
+                    "runes": item["runes"],
+                    "die_num": die_num,
+                    "crit": "*2",
+                    "stat": "str",
+                    "dmg_type": "Bludgeoning",
+                    "attk_stat": "str",
+                }
+                edited_attack = await attack_lookup(attacks[item["display"]], pb)
+                attacks[item["display"]] = edited_attack
+
+        # Spells
+        spells_raw = pb["build"]["spellCasters"]
+        spell_library = {}
+        for item in spells_raw:
+            for spell_level in item["spells"]:
+                for spell_name in spell_level["list"]:
+                    spell_data = await spell_lookup(spell_name)
+                    if spell_data[0] is True:
+                        spell = {
+                            "level": spell_level["spellLevel"],
+                            "tradition": item["magicTradition"],
+                            "ability": item["ability"],
+                            "proficiency": item["proficiency"],
+                            "type": spell_data[1].type,
+                            "save": spell_data[1].save,
+                            "damage": spell_data[1].damage,
+                            "heightening": spell_data[1].heightening,
+                        }
+                        spell_library[spell_name] = spell
+
+        if overwrite:
+            async with async_session() as session:
+                query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+                character = query.scalars().one()
+
+                # Write the data from the JSON
+                character.max_hp = (
+                    pb["build"]["attributes"]["ancestryhp"]
+                    + pb["build"]["attributes"]["classhp"]
+                    + pb["build"]["attributes"]["bonushp"]
+                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                    + (
+                        (pb["build"]["level"] - 1)
+                        * (
+                            pb["build"]["attributes"]["classhp"]
+                            + pb["build"]["attributes"]["bonushpPerLevel"]
+                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        )
                     )
                 )
-            )
-            character.char_class = pb["build"]["class"]
-            character.level = pb["build"]["level"]
-            character.ac_base = pb["build"]["acTotal"]["acTotal"]
-            character.class_prof = pb["build"]["proficiencies"]["classDC"]
-            character.class_dc = 0
-            character.key_ability = pb["build"]["keyability"]
+                character.char_class = pb["build"]["class"]
+                character.level = pb["build"]["level"]
+                character.ac_base = pb["build"]["acTotal"]["acTotal"]
+                character.class_prof = pb["build"]["proficiencies"]["classDC"]
+                character.class_dc = 0
+                character.key_ability = pb["build"]["keyability"]
 
-            character.str = pb["build"]["abilities"]["str"]
-            character.dex = pb["build"]["abilities"]["dex"]
-            character.con = pb["build"]["abilities"]["con"]
-            character.itl = pb["build"]["abilities"]["int"]
-            character.wis = pb["build"]["abilities"]["wis"]
-            character.cha = pb["build"]["abilities"]["cha"]
+                character.str = pb["build"]["abilities"]["str"]
+                character.dex = pb["build"]["abilities"]["dex"]
+                character.con = pb["build"]["abilities"]["con"]
+                character.itl = pb["build"]["abilities"]["int"]
+                character.wis = pb["build"]["abilities"]["wis"]
+                character.cha = pb["build"]["abilities"]["cha"]
 
-            character.fort_prof = pb["build"]["proficiencies"]["fortitude"]
-            character.reflex_prof = pb["build"]["proficiencies"]["reflex"]
-            character.will_prof = pb["build"]["proficiencies"]["will"]
+                character.fort_prof = pb["build"]["proficiencies"]["fortitude"]
+                character.reflex_prof = pb["build"]["proficiencies"]["reflex"]
+                character.will_prof = pb["build"]["proficiencies"]["will"]
 
-            character.unarmored_prof = pb["build"]["proficiencies"]["unarmored"]
-            character.light_armor_prof = pb["build"]["proficiencies"]["light"]
-            character.medium_armor_prof = pb["build"]["proficiencies"]["medium"]
-            character.heavy_armor_prof = pb["build"]["proficiencies"]["heavy"]
+                character.unarmored_prof = pb["build"]["proficiencies"]["unarmored"]
+                character.light_armor_prof = pb["build"]["proficiencies"]["light"]
+                character.medium_armor_prof = pb["build"]["proficiencies"]["medium"]
+                character.heavy_armor_prof = pb["build"]["proficiencies"]["heavy"]
 
-            character.unarmed_prof = pb["build"]["proficiencies"]["unarmed"]
-            character.simple_prof = pb["build"]["proficiencies"]["simple"]
-            character.martial_prof = pb["build"]["proficiencies"]["martial"]
-            character.advanced_prof = pb["build"]["proficiencies"]["advanced"]
+                character.unarmed_prof = pb["build"]["proficiencies"]["unarmed"]
+                character.simple_prof = pb["build"]["proficiencies"]["simple"]
+                character.martial_prof = pb["build"]["proficiencies"]["martial"]
+                character.advanced_prof = pb["build"]["proficiencies"]["advanced"]
 
-            character.arcane_prof = pb["build"]["proficiencies"]["castingArcane"]
-            character.divine_prof = pb["build"]["proficiencies"]["castingDivine"]
-            character.occult_prof = pb["build"]["proficiencies"]["castingOccult"]
-            character.primal_prof = pb["build"]["proficiencies"]["castingPrimal"]
+                character.arcane_prof = pb["build"]["proficiencies"]["castingArcane"]
+                character.divine_prof = pb["build"]["proficiencies"]["castingDivine"]
+                character.occult_prof = pb["build"]["proficiencies"]["castingOccult"]
+                character.primal_prof = pb["build"]["proficiencies"]["castingPrimal"]
 
-            character.acrobatics_prof = pb["build"]["proficiencies"]["acrobatics"]
-            character.arcana_prof = pb["build"]["proficiencies"]["arcana"]
-            character.athletics_prof = pb["build"]["proficiencies"]["athletics"]
-            character.crafting_prof = pb["build"]["proficiencies"]["crafting"]
-            character.deception_prof = pb["build"]["proficiencies"]["deception"]
-            character.diplomacy_prof = pb["build"]["proficiencies"]["diplomacy"]
-            character.intimidation_prof = pb["build"]["proficiencies"]["intimidation"]
-            character.medicine_prof = pb["build"]["proficiencies"]["medicine"]
-            character.nature_prof = pb["build"]["proficiencies"]["nature"]
-            character.occultism_prof = pb["build"]["proficiencies"]["occultism"]
-            character.perception_prof = pb["build"]["proficiencies"]["perception"]
-            character.performance_prof = pb["build"]["proficiencies"]["performance"]
-            character.religion_prof = pb["build"]["proficiencies"]["religion"]
-            character.society_prof = pb["build"]["proficiencies"]["society"]
-            character.stealth_prof = pb["build"]["proficiencies"]["stealth"]
-            character.survival_prof = pb["build"]["proficiencies"]["survival"]
-            character.thievery_prof = pb["build"]["proficiencies"]["thievery"]
+                character.acrobatics_prof = pb["build"]["proficiencies"]["acrobatics"]
+                character.arcana_prof = pb["build"]["proficiencies"]["arcana"]
+                character.athletics_prof = pb["build"]["proficiencies"]["athletics"]
+                character.crafting_prof = pb["build"]["proficiencies"]["crafting"]
+                character.deception_prof = pb["build"]["proficiencies"]["deception"]
+                character.diplomacy_prof = pb["build"]["proficiencies"]["diplomacy"]
+                character.intimidation_prof = pb["build"]["proficiencies"]["intimidation"]
+                character.medicine_prof = pb["build"]["proficiencies"]["medicine"]
+                character.nature_prof = pb["build"]["proficiencies"]["nature"]
+                character.occultism_prof = pb["build"]["proficiencies"]["occultism"]
+                character.perception_prof = pb["build"]["proficiencies"]["perception"]
+                character.performance_prof = pb["build"]["proficiencies"]["performance"]
+                character.religion_prof = pb["build"]["proficiencies"]["religion"]
+                character.society_prof = pb["build"]["proficiencies"]["society"]
+                character.stealth_prof = pb["build"]["proficiencies"]["stealth"]
+                character.survival_prof = pb["build"]["proficiencies"]["survival"]
+                character.thievery_prof = pb["build"]["proficiencies"]["thievery"]
 
-            character.lores = lores
-            character.feats = feats
-            character.attacks = attacks
-            character.spells = spell_library
-            await session.commit()
+                character.lores = lores
+                character.feats = feats
+                character.attacks = attacks
+                character.spells = spell_library
+                await session.commit()
 
-    else:  # Create a new character
-        async with async_session() as session:
-            async with session.begin():
-                new_char = EPF_tracker(
-                    name=char_name,
-                    player=True,
-                    user=ctx.user.id,
-                    current_hp=(
-                        pb["build"]["attributes"]["ancestryhp"]
-                        + pb["build"]["attributes"]["classhp"]
-                        + pb["build"]["attributes"]["bonushp"]
-                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                        + (
-                            (pb["build"]["level"] - 1)
-                            * (
-                                pb["build"]["attributes"]["classhp"]
-                                + pb["build"]["attributes"]["bonushpPerLevel"]
-                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+        else:  # Create a new character
+            async with async_session() as session:
+                async with session.begin():
+                    new_char = EPF_tracker(
+                        name=char_name,
+                        player=True,
+                        user=ctx.user.id,
+                        current_hp=(
+                            pb["build"]["attributes"]["ancestryhp"]
+                            + pb["build"]["attributes"]["classhp"]
+                            + pb["build"]["attributes"]["bonushp"]
+                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                            + (
+                                (pb["build"]["level"] - 1)
+                                * (
+                                    pb["build"]["attributes"]["classhp"]
+                                    + pb["build"]["attributes"]["bonushpPerLevel"]
+                                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                                )
                             )
-                        )
-                    ),
-                    max_hp=(
-                        pb["build"]["attributes"]["ancestryhp"]
-                        + pb["build"]["attributes"]["classhp"]
-                        + pb["build"]["attributes"]["bonushp"]
-                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                        + (
-                            (pb["build"]["level"] - 1)
-                            * (
-                                pb["build"]["attributes"]["classhp"]
-                                + pb["build"]["attributes"]["bonushpPerLevel"]
-                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        ),
+                        max_hp=(
+                            pb["build"]["attributes"]["ancestryhp"]
+                            + pb["build"]["attributes"]["classhp"]
+                            + pb["build"]["attributes"]["bonushp"]
+                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                            + (
+                                (pb["build"]["level"] - 1)
+                                * (
+                                    pb["build"]["attributes"]["classhp"]
+                                    + pb["build"]["attributes"]["bonushpPerLevel"]
+                                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                                )
                             )
-                        )
-                    ),
-                    temp_hp=0,
-                    char_class=pb["build"]["class"],
-                    level=pb["build"]["level"],
-                    ac_base=pb["build"]["acTotal"]["acTotal"],
-                    init=initiative_num,
-                    class_prof=pb["build"]["proficiencies"]["classDC"],
-                    class_dc=0,
-                    str=pb["build"]["abilities"]["str"],
-                    dex=pb["build"]["abilities"]["dex"],
-                    con=pb["build"]["abilities"]["con"],
-                    itl=pb["build"]["abilities"]["int"],
-                    wis=pb["build"]["abilities"]["wis"],
-                    cha=pb["build"]["abilities"]["cha"],
-                    fort_prof=pb["build"]["proficiencies"]["fortitude"],
-                    reflex_prof=pb["build"]["proficiencies"]["reflex"],
-                    will_prof=pb["build"]["proficiencies"]["will"],
-                    unarmored_prof=pb["build"]["proficiencies"]["unarmored"],
-                    light_armor_prof=pb["build"]["proficiencies"]["light"],
-                    medium_armor_prof=pb["build"]["proficiencies"]["medium"],
-                    heavy_armor_prof=pb["build"]["proficiencies"]["heavy"],
-                    unarmed_prof=pb["build"]["proficiencies"]["unarmed"],
-                    simple_prof=pb["build"]["proficiencies"]["simple"],
-                    martial_prof=pb["build"]["proficiencies"]["martial"],
-                    advanced_prof=pb["build"]["proficiencies"]["advanced"],
-                    arcane_prof=pb["build"]["proficiencies"]["castingArcane"],
-                    divine_prof=pb["build"]["proficiencies"]["castingDivine"],
-                    occult_prof=pb["build"]["proficiencies"]["castingOccult"],
-                    primal_prof=pb["build"]["proficiencies"]["castingPrimal"],
-                    acrobatics_prof=pb["build"]["proficiencies"]["acrobatics"],
-                    arcana_prof=pb["build"]["proficiencies"]["arcana"],
-                    athletics_prof=pb["build"]["proficiencies"]["athletics"],
-                    crafting_prof=pb["build"]["proficiencies"]["crafting"],
-                    deception_prof=pb["build"]["proficiencies"]["deception"],
-                    diplomacy_prof=pb["build"]["proficiencies"]["diplomacy"],
-                    intimidation_prof=pb["build"]["proficiencies"]["intimidation"],
-                    medicine_prof=pb["build"]["proficiencies"]["medicine"],
-                    nature_prof=pb["build"]["proficiencies"]["nature"],
-                    occultism_prof=pb["build"]["proficiencies"]["occultism"],
-                    perception_prof=pb["build"]["proficiencies"]["perception"],
-                    performance_prof=pb["build"]["proficiencies"]["performance"],
-                    religion_prof=pb["build"]["proficiencies"]["religion"],
-                    society_prof=pb["build"]["proficiencies"]["society"],
-                    stealth_prof=pb["build"]["proficiencies"]["stealth"],
-                    survival_prof=pb["build"]["proficiencies"]["survival"],
-                    thievery_prof=pb["build"]["proficiencies"]["thievery"],
-                    lores=lores,
-                    feats=feats,
-                    key_ability=pb["build"]["keyability"],
-                    attacks=attacks,
-                    spells=spell_library,
-                    resistance={"resist": {}, "weak": {}, "immune": {}},
-                )
-                session.add(new_char)
-            await session.commit()
+                        ),
+                        temp_hp=0,
+                        char_class=pb["build"]["class"],
+                        level=pb["build"]["level"],
+                        ac_base=pb["build"]["acTotal"]["acTotal"],
+                        init=initiative_num,
+                        class_prof=pb["build"]["proficiencies"]["classDC"],
+                        class_dc=0,
+                        str=pb["build"]["abilities"]["str"],
+                        dex=pb["build"]["abilities"]["dex"],
+                        con=pb["build"]["abilities"]["con"],
+                        itl=pb["build"]["abilities"]["int"],
+                        wis=pb["build"]["abilities"]["wis"],
+                        cha=pb["build"]["abilities"]["cha"],
+                        fort_prof=pb["build"]["proficiencies"]["fortitude"],
+                        reflex_prof=pb["build"]["proficiencies"]["reflex"],
+                        will_prof=pb["build"]["proficiencies"]["will"],
+                        unarmored_prof=pb["build"]["proficiencies"]["unarmored"],
+                        light_armor_prof=pb["build"]["proficiencies"]["light"],
+                        medium_armor_prof=pb["build"]["proficiencies"]["medium"],
+                        heavy_armor_prof=pb["build"]["proficiencies"]["heavy"],
+                        unarmed_prof=pb["build"]["proficiencies"]["unarmed"],
+                        simple_prof=pb["build"]["proficiencies"]["simple"],
+                        martial_prof=pb["build"]["proficiencies"]["martial"],
+                        advanced_prof=pb["build"]["proficiencies"]["advanced"],
+                        arcane_prof=pb["build"]["proficiencies"]["castingArcane"],
+                        divine_prof=pb["build"]["proficiencies"]["castingDivine"],
+                        occult_prof=pb["build"]["proficiencies"]["castingOccult"],
+                        primal_prof=pb["build"]["proficiencies"]["castingPrimal"],
+                        acrobatics_prof=pb["build"]["proficiencies"]["acrobatics"],
+                        arcana_prof=pb["build"]["proficiencies"]["arcana"],
+                        athletics_prof=pb["build"]["proficiencies"]["athletics"],
+                        crafting_prof=pb["build"]["proficiencies"]["crafting"],
+                        deception_prof=pb["build"]["proficiencies"]["deception"],
+                        diplomacy_prof=pb["build"]["proficiencies"]["diplomacy"],
+                        intimidation_prof=pb["build"]["proficiencies"]["intimidation"],
+                        medicine_prof=pb["build"]["proficiencies"]["medicine"],
+                        nature_prof=pb["build"]["proficiencies"]["nature"],
+                        occultism_prof=pb["build"]["proficiencies"]["occultism"],
+                        perception_prof=pb["build"]["proficiencies"]["perception"],
+                        performance_prof=pb["build"]["proficiencies"]["performance"],
+                        religion_prof=pb["build"]["proficiencies"]["religion"],
+                        society_prof=pb["build"]["proficiencies"]["society"],
+                        stealth_prof=pb["build"]["proficiencies"]["stealth"],
+                        survival_prof=pb["build"]["proficiencies"]["survival"],
+                        thievery_prof=pb["build"]["proficiencies"]["thievery"],
+                        lores=lores,
+                        feats=feats,
+                        key_ability=pb["build"]["keyability"],
+                        attacks=attacks,
+                        spells=spell_library,
+                        resistance={"resist": {}, "weak": {}, "immune": {}},
+                    )
+                    session.add(new_char)
+                await session.commit()
 
-    await delete_intested_items(char_name, ctx, guild, engine)
-    for item in pb["build"]["equipment"]:
-        print(item)
-        result = await invest_items(item[0], char_name, ctx, guild, engine)
-        print(result)
+        await delete_intested_items(char_name, ctx, guild, engine)
+        for item in pb["build"]["equipment"]:
+            print(item)
+            result = await invest_items(item[0], char_name, ctx, guild, engine)
+            print(result)
 
-    Character = await get_EPF_Character(char_name, ctx, guild, engine)
-    await Character.update()
-    return True
-    # except Exception:
-    #     return False
+        Character = await get_EPF_Character(char_name, ctx, guild, engine)
+        await Character.update()
+        return True
+    except Exception:
+        return False
 
 
 async def calculate(ctx, engine, char_name, guild=None):
@@ -1098,149 +1164,149 @@ async def calculate(ctx, engine, char_name, guild=None):
     # print(bonuses)
 
     async with async_session() as session:
-        # try:
-        query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
-        character = query.scalars().one()
-        if "Untrained Improvisation" in character.feats:
-            ui = True
-        else:
-            ui = False
+        try:
+            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+            character = query.scalars().one()
+            if "Untrained Improvisation" in character.feats:
+                ui = True
+            else:
+                ui = False
 
-        # Go through each of the items.
+            # Go through each of the items.
 
-        # Stat Mods - Do this first, because they are used in later calculations
-        character.str_mod = await ability_mod_calc(character.str, "str", bonuses)
-        character.dex_mod = await ability_mod_calc(character.dex, "dex", bonuses)
-        character.con_mod = await ability_mod_calc(character.con, "con", bonuses)
-        character.itl_mod = await ability_mod_calc(character.itl, "itl", bonuses)
-        character.wis_mod = await ability_mod_calc(character.wis, "wis", bonuses)
-        character.cha_mod = await ability_mod_calc(character.cha, "cha", bonuses)
+            # Stat Mods - Do this first, because they are used in later calculations
+            character.str_mod = await ability_mod_calc(character.str, "str", bonuses)
+            character.dex_mod = await ability_mod_calc(character.dex, "dex", bonuses)
+            character.con_mod = await ability_mod_calc(character.con, "con", bonuses)
+            character.itl_mod = await ability_mod_calc(character.itl, "itl", bonuses)
+            character.wis_mod = await ability_mod_calc(character.wis, "wis", bonuses)
+            character.cha_mod = await ability_mod_calc(character.cha, "cha", bonuses)
 
-        # Saves
-        character.fort_mod = await save_mod_calc(
-            character.con_mod, "fort", character.fort_prof, character.level, bonuses
-        )
-        character.reflex_mod = await save_mod_calc(
-            character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
-        )
-        character.will_mod = await save_mod_calc(
-            character.wis_mod, "wis", character.will_prof, character.level, bonuses
-        )
+            # Saves
+            character.fort_mod = await save_mod_calc(
+                character.con_mod, "fort", character.fort_prof, character.level, bonuses
+            )
+            character.reflex_mod = await save_mod_calc(
+                character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
+            )
+            character.will_mod = await save_mod_calc(
+                character.wis_mod, "wis", character.will_prof, character.level, bonuses
+            )
 
-        # Skills
-        character.athletics_mod = await skill_mod_calc(
-            character.str_mod, "athletics", character.athletics_prof, character.level, bonuses, ui
-        )
-        character.acrobatics_mod = await skill_mod_calc(
-            character.dex_mod, "acrobatics", character.acrobatics_prof, character.level, bonuses, ui
-        )
-        character.arcana_mod = await skill_mod_calc(
-            character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
-        )
-        character.crafting_mod = await skill_mod_calc(
-            character.itl_mod, "crafting", character.acrobatics_prof, character.level, bonuses, ui
-        )
-        character.deception_mod = await skill_mod_calc(
-            character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
-        )
-        character.diplomacy_mod = await skill_mod_calc(
-            character.cha_mod, "diplomacy", character.diplomacy_prof, character.level, bonuses, ui
-        )
-        character.intimidation_mod = await skill_mod_calc(
-            character.cha_mod, "intimidation", character.intimidation_prof, character.level, bonuses, ui
-        )
-        character.medicine_mod = await skill_mod_calc(
-            character.wis_mod, "medicine", character.medicine_prof, character.level, bonuses, ui
-        )
-        character.nature_mod = await skill_mod_calc(
-            character.wis_mod, "nature", character.nature_prof, character.level, bonuses, ui
-        )
-        character.occultism_mod = await skill_mod_calc(
-            character.itl_mod, "occultism", character.occultism_prof, character.level, bonuses, ui
-        )
-        character.perception_mod = await skill_mod_calc(
-            character.wis_mod, "perception", character.perception_prof, character.level, bonuses, ui
-        )
-        character.performance_mod = await skill_mod_calc(
-            character.cha_mod, "performance", character.performance_prof, character.level, bonuses, ui
-        )
-        character.religion_mod = await skill_mod_calc(
-            character.wis_mod, "religion", character.religion_prof, character.level, bonuses, ui
-        )
-        character.society_mod = await skill_mod_calc(
-            character.itl_mod, "society", character.society_prof, character.level, bonuses, ui
-        )
-        character.stealth_mod = await skill_mod_calc(
-            character.dex_mod, "stealth", character.stealth_prof, character.level, bonuses, ui
-        )
-        character.survival_mod = await skill_mod_calc(
-            character.wis_mod, "survival", character.survival_prof, character.level, bonuses, ui
-        )
-        character.thievery_mod = await skill_mod_calc(
-            character.dex_mod, "thievery", character.thievery_prof, character.level, bonuses, ui
-        )
+            # Skills
+            character.athletics_mod = await skill_mod_calc(
+                character.str_mod, "athletics", character.athletics_prof, character.level, bonuses, ui
+            )
+            character.acrobatics_mod = await skill_mod_calc(
+                character.dex_mod, "acrobatics", character.acrobatics_prof, character.level, bonuses, ui
+            )
+            character.arcana_mod = await skill_mod_calc(
+                character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
+            )
+            character.crafting_mod = await skill_mod_calc(
+                character.itl_mod, "crafting", character.acrobatics_prof, character.level, bonuses, ui
+            )
+            character.deception_mod = await skill_mod_calc(
+                character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
+            )
+            character.diplomacy_mod = await skill_mod_calc(
+                character.cha_mod, "diplomacy", character.diplomacy_prof, character.level, bonuses, ui
+            )
+            character.intimidation_mod = await skill_mod_calc(
+                character.cha_mod, "intimidation", character.intimidation_prof, character.level, bonuses, ui
+            )
+            character.medicine_mod = await skill_mod_calc(
+                character.wis_mod, "medicine", character.medicine_prof, character.level, bonuses, ui
+            )
+            character.nature_mod = await skill_mod_calc(
+                character.wis_mod, "nature", character.nature_prof, character.level, bonuses, ui
+            )
+            character.occultism_mod = await skill_mod_calc(
+                character.itl_mod, "occultism", character.occultism_prof, character.level, bonuses, ui
+            )
+            character.perception_mod = await skill_mod_calc(
+                character.wis_mod, "perception", character.perception_prof, character.level, bonuses, ui
+            )
+            character.performance_mod = await skill_mod_calc(
+                character.cha_mod, "performance", character.performance_prof, character.level, bonuses, ui
+            )
+            character.religion_mod = await skill_mod_calc(
+                character.wis_mod, "religion", character.religion_prof, character.level, bonuses, ui
+            )
+            character.society_mod = await skill_mod_calc(
+                character.itl_mod, "society", character.society_prof, character.level, bonuses, ui
+            )
+            character.stealth_mod = await skill_mod_calc(
+                character.dex_mod, "stealth", character.stealth_prof, character.level, bonuses, ui
+            )
+            character.survival_mod = await skill_mod_calc(
+                character.wis_mod, "survival", character.survival_prof, character.level, bonuses, ui
+            )
+            character.thievery_mod = await skill_mod_calc(
+                character.dex_mod, "thievery", character.thievery_prof, character.level, bonuses, ui
+            )
 
-        # Casting, Armor and Attacks
-        key_ability = 0
+            # Casting, Armor and Attacks
+            key_ability = 0
 
-        match character.key_ability:
-            case "str":
-                key_ability = character.str_mod
-            case "dex":
-                key_ability = character.dex_mod
-            case "con":
-                key_ability = character.con_mod
-            case "int":
-                key_ability = character.itl_mod
-            case "wis":
-                key_ability = character.wis_mod
-            case "cha":
-                key_ability = character.cha_mod
+            match character.key_ability:
+                case "str":
+                    key_ability = character.str_mod
+                case "dex":
+                    key_ability = character.dex_mod
+                case "con":
+                    key_ability = character.con_mod
+                case "int":
+                    key_ability = character.itl_mod
+                case "wis":
+                    key_ability = character.wis_mod
+                case "cha":
+                    key_ability = character.cha_mod
 
-        character.arcane_mod = await skill_mod_calc(
-            key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
-        )
-        character.divine_mod = await skill_mod_calc(
-            key_ability, "divine", character.divine_prof, character.level, bonuses, False
-        )
-        character.occult_mod = await skill_mod_calc(
-            key_ability, "occult", character.arcane_prof, character.level, bonuses, False
-        )
-        character.primal_mod = await skill_mod_calc(
-            key_ability, "primal", character.arcane_prof, character.level, bonuses, False
-        )
+            character.arcane_mod = await skill_mod_calc(
+                key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
+            )
+            character.divine_mod = await skill_mod_calc(
+                key_ability, "divine", character.divine_prof, character.level, bonuses, False
+            )
+            character.occult_mod = await skill_mod_calc(
+                key_ability, "occult", character.arcane_prof, character.level, bonuses, False
+            )
+            character.primal_mod = await skill_mod_calc(
+                key_ability, "primal", character.arcane_prof, character.level, bonuses, False
+            )
 
-        character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
-        character.class_dc = await skill_mod_calc(
-            key_ability, "class_dc", character.class_prof, character.level, bonuses, False
-        )
-        character.init_string = f"1d20+{character.perception_mod}"
-        character.bonuses = bonuses
-        character.resistance = resistance
+            character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
+            character.class_dc = await skill_mod_calc(
+                key_ability, "class_dc", character.class_prof, character.level, bonuses, False
+            )
+            character.init_string = f"1d20+{character.perception_mod}"
+            character.bonuses = bonuses
+            character.resistance = resistance
 
-        macros = []
-        for item in character.attacks.keys():
-            # print(item)
-            macros.append(item)
-        # for item in character.spells.keys():
-        #     macros.append(f"Spell Attack: {item['name']}")
-        macros.extend(PF2_skills)
+            macros = []
+            for item in character.attacks.keys():
+                # print(item)
+                macros.append(item)
+            # for item in character.spells.keys():
+            #     macros.append(f"Spell Attack: {item['name']}")
+            macros.extend(PF2_skills)
 
-        Macro = await get_macro(ctx, engine, id=guild.id)
-        async with async_session() as macro_session:
-            result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
-            macro_list = result.scalars().all()
-        macros.extend(macro_list)
+            Macro = await get_macro(ctx, engine, id=guild.id)
+            async with async_session() as macro_session:
+                result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
+                macro_list = result.scalars().all()
+            macros.extend(macro_list)
 
-        macro_string = ""
-        for item in macros:
-            macro_string += f"{item},"
-        character.macros = macro_string
+            macro_string = ""
+            for item in macros:
+                macro_string += f"{item},"
+            character.macros = macro_string
 
-        await session.commit()
+            await session.commit()
 
-        # except Exception as e:
-        #     logging.warning(f"pf2 - enchanced character importer: {e}")
+        except Exception as e:
+            logging.warning(f"pf2 - enchanced character importer: {e}")
 
 
 async def ability_mod_calc(base: int, item: str, bonuses):
@@ -1379,7 +1445,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types:
+                if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
                     print(True)
                     print("Condition")
                     print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
