@@ -94,10 +94,10 @@ class EPF_Automation(Automation):
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
         except Exception:
             try:
-                roll_result = d20.roll(f"({Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
+                roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
             except Exception:
                 try:
-                    roll_result = d20.roll(f"{Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
+                    roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
                 except Exception:
                     roll_result = d20.roll("0 [Error]")
         dmg = roll_result.total

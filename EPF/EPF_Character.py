@@ -1460,12 +1460,12 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                         case "i":
                             resistances["immune"][parsed[0]] = 1
                 else:
-                    for item in EPF.EPF_Support.EPF_DMG_Types:
-                        print(parsed[0].title(), item)
-                        if item == parsed[0]:
+                    for dmg in EPF.EPF_Support.EPF_DMG_Types:
+                        print(parsed[0].title(), dmg)
+                        if dmg == parsed[0]:
                             print("Match")
                         else:
-                            print(type(parsed[0]), type(item))
+                            print(type(parsed[0]), type(dmg))
 
                 key = parsed[0]
                 if parsed[1][1:] == "X":
