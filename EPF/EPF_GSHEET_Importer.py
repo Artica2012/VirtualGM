@@ -251,6 +251,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         df.rename(
             columns={
                 "Info:": "a",
+                "Info: ": "a",
                 "Unnamed: 1": "b",
                 "Unnamed: 2": "c",
                 "Unnamed: 3": "d",
@@ -262,7 +263,6 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             inplace=True,
         )
 
-        # print(df)
     except Exception:
         return False
 
@@ -428,6 +428,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
         df.rename(
             columns={
                 "Eidolon:": "a",
+                "Eidolon: ": "a",
                 "Unnamed: 1": "b",
                 "Unnamed: 2": "c",
                 "Unnamed: 3": "d",
@@ -668,6 +669,7 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
         df.rename(
             columns={
                 "Companion:": "a",
+                "Companion: ": "a",
                 "Unnamed: 1": "b",
                 "Unnamed: 2": "c",
                 "Unnamed: 3": "d",
@@ -817,6 +819,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
         df.rename(
             columns={
                 "NPC:": "a",
+                "NPC: ": "a",
                 "Unnamed: 1": "b",
                 "Unnamed: 2": "c",
                 "Unnamed: 3": "d",
