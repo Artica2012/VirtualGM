@@ -384,7 +384,7 @@ class Character:
         logging.info("Clean CC")
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, self.guild)
+        Condition = await get_condition(self.ctx, self.engine, self.guild.id)
 
         async with async_session() as session:
             result = await session.execute(
@@ -403,7 +403,7 @@ class Character:
                     await self.ctx.channel.send(f"{row.title} removed from {self.char_name}")
                 elif bot is not None:
                     tracker_channel = bot.get_channel(self.guild.tracker_channel)
-                    tracker_channel.send(f"{row.title} removed from {self.char_name}")
+                    await tracker_channel.send(f"{row.title} removed from {self.char_name}")
 
     async def get_char_sheet(self, bot):
         try:
