@@ -354,7 +354,6 @@ class Tracker:
 
         try:
             Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-            # con = await get_condition_table(ctx, metadata, engine)
             async with async_session() as session:
                 if before is not None:
                     char_result = await session.execute(
