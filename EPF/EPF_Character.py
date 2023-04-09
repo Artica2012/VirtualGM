@@ -1489,13 +1489,13 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     else:
                         bonuses["status_neg"][key] = value
                         # print(f"{key}: {bonuses['status_neg'][key]}")
-                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumastances Positive
+                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
                     if key in bonuses["circumstances_pos"]:
                         if value > bonuses["circumstances_pos"][key]:
                             bonuses["circumstances_pos"][key] = value
                     else:
                         bonuses["circumstances_pos"][key] = value
-                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumastances Positive
+                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
                     if key in bonuses["circumstances_neg"]:
                         if value > bonuses["circumstances_neg"][key]:
                             bonuses["circumstances_neg"][key] = value
@@ -1570,12 +1570,16 @@ async def attack_lookup(attack, pathbuilder):
     lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     try:
+        display_name = attack["display"].strip()
         async with async_session() as session:
-            result = await session.execute(select(EPF_Weapon).where(EPF_Weapon.name == attack["display"]))
+            result = await session.execute(
+                select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == display_name.lower())
+            )
             data = result.scalars().one()
     except Exception:
+        item_name = attack["name"].strip()
         async with async_session() as session:
-            result = await session.execute(select(EPF_Weapon).where(EPF_Weapon.name == attack["name"]))
+            result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
             data = result.scalars().one()
     await lookup_engine.dispose()
 
@@ -1633,9 +1637,11 @@ async def invest_items(item, character, ctx, guild, engine):
     write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     condition_string = ""
     try:
-        print(item)
+        item = item.strip()
         async with lookup_session() as lookup_session:
-            result = await lookup_session.execute(select(EPF_Equipment.data).where(EPF_Equipment.name == item))
+            result = await lookup_session.execute(
+                select(EPF_Equipment.data).where(func.lower(EPF_Equipment.name) == item.lower())
+            )
             data = result.scalars().all()
             if len(data) > 0:
                 data = data[0]
@@ -1682,8 +1688,11 @@ async def spell_lookup(spell: str):
     lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     try:
+        spell = spell.strip()
         async with lookup_session() as lookup_session:
-            result = await lookup_session.execute(select(EPF_Spells).where(EPF_Spells.name == spell))
+            result = await lookup_session.execute(
+                select(EPF_Spells).where(func.lower(EPF_Spells.name) == spell.lower())
+            )
             spell_data = result.scalars().one()
         return True, spell_data
     except Exception:
