@@ -21,7 +21,7 @@ class EPF_Utilities(Utilities):
         await self.ctx.channel.send("Please use `/pf2 pb_import` or `/pf2 add_npc` to add a character")
         return False
 
-    async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg):
+    async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg, prof):
         Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
             attack_dict = Character_Model.character_model.attacks
@@ -34,6 +34,8 @@ class EPF_Utilities(Utilities):
                 attack_dict[attack]["crit"] = crit
             if dmg is not None:
                 attack_dict[attack]["dmg_type"] = dmg
+            if prof is not None:
+                attack_dict[attack]["override_prof"] = prof
             print(attack_dict)
         except Exception as e:
             logging.error(f"EPF utilities edit attack (edit): {e}")

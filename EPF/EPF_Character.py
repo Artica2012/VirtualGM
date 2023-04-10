@@ -316,15 +316,18 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
         proficiency = 0
-        match weapon["prof"]:
-            case "unarmed":
-                proficiency = self.character_model.unarmed_prof
-            case "simple":
-                proficiency = self.character_model.simple_prof
-            case "martial":
-                proficiency = self.character_model.martial_prof
-            case "advanced":
-                proficiency = self.character_model.advanced_prof
+        if "override_prof" in weapon.keys():
+            proficiency = weapon["override_prof"]
+        else:
+            match weapon["prof"]:
+                case "unarmed":
+                    proficiency = self.character_model.unarmed_prof
+                case "simple":
+                    proficiency = self.character_model.simple_prof
+                case "martial":
+                    proficiency = self.character_model.martial_prof
+                case "advanced":
+                    proficiency = self.character_model.advanced_prof
         # print(f"proficiency: {proficiency}")
         # print(f"attack stat: {attk_stat}")
         # print(self.character_model.level)
@@ -950,6 +953,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 edited_attack = await attack_lookup(attacks[item["display"]], pb)
                 attacks[item["display"]] = edited_attack
 
+        print(attacks)
+
         # Spells
         spells_raw = pb["build"]["spellCasters"]
         spell_library = {}
@@ -1569,6 +1574,7 @@ class EPF_Spells(Base):
 async def attack_lookup(attack, pathbuilder):
     lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+    print(attack["display"])
     try:
         display_name = attack["display"].strip()
         async with async_session() as session:
@@ -1581,10 +1587,12 @@ async def attack_lookup(attack, pathbuilder):
         async with async_session() as session:
             result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
             data = result.scalars().one()
+    print(data.name, data.range, data.traits)
     await lookup_engine.dispose()
 
     if data.range is not None:
         attack["stat"] = None
+        attack["attk_stat"] = "dex"
     # print(data.name)
     # print(data.traits)
     for item in data.traits:
@@ -1608,6 +1616,7 @@ async def attack_lookup(attack, pathbuilder):
             attack["attk_stat"] = "str"
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type
+    print(attack)
     return attack
 
 
