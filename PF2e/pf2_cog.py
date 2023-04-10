@@ -124,6 +124,7 @@ class PF2Cog(commands.Cog):
     @option("dmg_stat", description="Stat to use for damage", autocomplete=stats)
     @option("attk_stat", description="Stat to use for attack roll", autocomplete=stats)
     @option("dmg", description="Damage Type", autocomplete=dmg_type)
+    @option("proficiency", description="Override the proficiency value for this weapon. 2 = Trained, 4 = Expert etc")
     async def edit_attack(
         self,
         ctx: discord.ApplicationContext,
@@ -133,13 +134,14 @@ class PF2Cog(commands.Cog):
         attk_stat=None,
         crit: str = None,
         dmg=None,
+        proficiency: int = None,
     ):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         try:
             Utilities = await get_utilities(ctx, engine=engine)
-            response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg)
+            response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg, int(proficiency))
         except Exception as e:
             await ctx.send_followup("Error importing character")
             logging.info(f"pb_import: {e}")

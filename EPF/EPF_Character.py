@@ -316,15 +316,18 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
         proficiency = 0
-        match weapon["prof"]:
-            case "unarmed":
-                proficiency = self.character_model.unarmed_prof
-            case "simple":
-                proficiency = self.character_model.simple_prof
-            case "martial":
-                proficiency = self.character_model.martial_prof
-            case "advanced":
-                proficiency = self.character_model.advanced_prof
+        if "override_prof" in weapon.keys():
+            proficiency = weapon["override_prof"]
+        else:
+            match weapon["prof"]:
+                case "unarmed":
+                    proficiency = self.character_model.unarmed_prof
+                case "simple":
+                    proficiency = self.character_model.simple_prof
+                case "martial":
+                    proficiency = self.character_model.martial_prof
+                case "advanced":
+                    proficiency = self.character_model.advanced_prof
         # print(f"proficiency: {proficiency}")
         # print(f"attack stat: {attk_stat}")
         # print(self.character_model.level)
@@ -375,12 +378,13 @@ class EPF_Character(Character):
                     dmg_mod += floor(self.str_mod / 2)
                 else:
                     dmg_mod += self.str_mod
-            if "fatal" in item.strip().lower():
-                parsed_string = item.split("-")
-                die = parsed_string[1]
-                weapon["crit"] = f"*2+{parsed_string[1]}"
 
         if crit:
+            for item in weapon["traits"]:
+                if "fatal" in item.strip().lower():
+                    parsed_string = item.split("-")
+                    die = parsed_string[1]
+                    weapon["crit"] = f"*2+{parsed_string[1]}"
             return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
         else:
             return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
@@ -626,6 +630,7 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
+                await self.update()
                 # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
@@ -947,8 +952,20 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     "dmg_type": "Bludgeoning",
                     "attk_stat": "str",
                 }
+
+                if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
+                    attacks[item["display"]]["override_prof"] = 2
+                elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
+                    attacks[item["display"]]["override_prof"] = 4
+                elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
+                    attacks[item["display"]]["override_prof"] = 6
+                elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
+                    attacks[item["display"]]["override_prof"] = 8
+
                 edited_attack = await attack_lookup(attacks[item["display"]], pb)
                 attacks[item["display"]] = edited_attack
+
+        print(attacks)
 
         # Spells
         spells_raw = pb["build"]["spellCasters"]
@@ -1569,6 +1586,7 @@ class EPF_Spells(Base):
 async def attack_lookup(attack, pathbuilder):
     lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+    print(attack["display"])
     try:
         display_name = attack["display"].strip()
         async with async_session() as session:
@@ -1581,10 +1599,12 @@ async def attack_lookup(attack, pathbuilder):
         async with async_session() as session:
             result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
             data = result.scalars().one()
+    print(data.name, data.range, data.traits)
     await lookup_engine.dispose()
 
     if data.range is not None:
         attack["stat"] = None
+        attack["attk_stat"] = "dex"
     # print(data.name)
     # print(data.traits)
     for item in data.traits:
@@ -1608,6 +1628,7 @@ async def attack_lookup(attack, pathbuilder):
             attack["attk_stat"] = "str"
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type
+    print(attack)
     return attack
 
 
