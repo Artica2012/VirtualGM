@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from EPF import EPF_Support
 
 Base = declarative_base()
+LookupBase = declarative_base()
 
 
 # Database Models
@@ -549,6 +550,16 @@ class MacroTable:
         return macro
 
 
+class Character_Vault(Base):
+    __tablename__ = "character_vault"
+    # ID Columns
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    guild_id = Column(BigInteger(), nullable=False)
+    system = Column(String(), default=None, nullable=True)
+    name = Column(String(), nullable=False)
+    user = Column(BigInteger(), nullable=False)
+
+
 def disease_table(metadata):
     tablename = "disease"
     emp = db.Table(
@@ -654,7 +665,7 @@ def reminder_table(metadata):
     return emp
 
 
-class NPC(Base):
+class NPC(LookupBase):
     __tablename__ = "npc_data"
     # Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)

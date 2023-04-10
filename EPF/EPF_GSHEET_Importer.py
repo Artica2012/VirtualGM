@@ -41,7 +41,7 @@ Interpreter = {
 async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None):
     try:
         parsed_url = base_url.split("/")
-        print(parsed_url)
+        # print(parsed_url)
         sheet_id = parsed_url[5]
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
         df = pd.read_csv(url, header=[0])
@@ -60,9 +60,9 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
         else:
             overwrite = False
         headers = list(df.columns.values)
-        print(headers)
-        print(headers[0])
-        print(df)
+        # print(headers)
+        # print(headers[0])
+        # print(df)
 
         decision_header = headers[0].strip()
 
@@ -79,7 +79,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 ctx, char_name, df, engine, guild
             )
         elif decision_header == "NPC:":
-            print("Its an NPC")
+            # print("Its an NPC")
             character, spells, attacks, items, resistance = await epf_g_sheet_npc_import(
                 ctx, char_name, df, engine, guild
             )
@@ -89,7 +89,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
         initiative_num = 0
         if not overwrite:
             if guild.initiative is not None:
-                print("In initiative")
+                # print("In initiative")
                 try:
                     perception_mod = character["level"] + character["perception"] + floor((character["wis"] - 10) / 2)
                     roll = d20.roll(f"1d20+{perception_mod}")
@@ -228,11 +228,11 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
         # This deletes both items and conditions
         await delete_intested_items(char_name, ctx, guild, engine)
         # Rewrite the items
-        print(f"Items: {items}")
+        # print(f"Items: {items}")
         for item in items:
-            print(item)
+            # print(item)
             result = await invest_items(item, char_name, ctx, guild, engine)
-            print(result)
+            # print(result)
 
         Character = await get_EPF_Character(char_name, ctx, guild, engine)
         # Write the conditions
@@ -333,13 +333,13 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
 
     for i in range(31, (len(df.a) - 1)):
         name = df.a[i]
-        print(name)
+        # print(name)
         if name != numpy.nan:
             lookup_data = await spell_lookup(name)
             if lookup_data[0] is True:
                 tradition = df.c[i]
-                print(tradition)
-                match tradition:
+                # print(tradition)
+                match tradition:  # noqa
                     case "Arcane":
                         ability = Interpreter[df.f[19]]
                         proficiency = Interpreter[df.e[19]]
@@ -371,14 +371,14 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     for i in range(31, (len(df.e) - 1)):
         if df.e[i] == "Name" and df.f[i] is not numpy.nan:
             try:
-                print(df.f[i])
+                # print(df.f[i])
                 try:
                     potency = int(df.f[i + 3])
                 except Exception:
                     potency = 0
                 die_num = 1
-                print(type(df.f[i + 4]))
-                print(df.f[i + 4])
+                # print(type(df.f[i + 4]))
+                # print(df.f[i + 4])
                 if Interpreter[df.f[i + 4]] == "striking":
                     die_num = 2
                 elif Interpreter[df.f[i + 4]] == "greaterStriking":
@@ -409,14 +409,14 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 attacks[edited_attack["display_name"]] = edited_attack
             except Exception:
                 pass
-    print(attacks)
+    # print(attacks)
 
-    print("Getting Items")
+    # print("Getting Items")
     for i in range(31, (len(df.h) - 1)):
-        print(i)
-        print(df.h[i])
+        # print(i)
+        # print(df.h[i])
         if df.h[i] != numpy.nan:
-            print(df.h[i])
+            # print(df.h[i])
             items.append(df.h[i])
 
     return character, spells, attacks, items, resistances
@@ -463,10 +463,10 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
         logging.warning("Import Error")
         raise
 
-    for i in range(0, len(df.a) - 1):
-        print(df.iloc[[i]])
+    # for i in range(0, len(df.a) - 1):
+    # print(df.iloc[[i]])
 
-    print(df.d[1])
+    # print(df.d[1])
 
     character = {
         "name": df.b[0],
@@ -567,14 +567,14 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     for i in range(12, (len(df.e) - 1)):
         if df.e[i] == "Name" and df.f[i] is not numpy.nan:
             try:
-                print(df.f[i])
+                # print(df.f[i])
                 try:
                     potency = int(df.f[i + 3])
                 except Exception:
                     potency = 0
                 die_num = 1
-                print(type(df.f[i + 4]))
-                print(df.f[i + 4])
+                # print(type(df.f[i + 4]))
+                # print(df.f[i + 4])
                 if Interpreter[df.f[i + 4]] == "striking":
                     die_num = 2
                 elif Interpreter[df.f[i + 4]] == "greaterStriking":
@@ -605,7 +605,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                 attacks[edited_attack["display_name"]] = edited_attack
             except Exception:
                 pass
-    print(attacks)
+    # print(attacks)
 
     # print("Getting Items")
     for i in range(12, (len(df.h) - 1)):
@@ -917,7 +917,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
 
     for i in range(25, (len(df.a) - 1)):
         name = df.a[i]
-        print(name)
+        # print(name)
         if name != numpy.nan:
             lookup_data = await spell_lookup(name)
             if lookup_data[0] is True:
@@ -936,10 +936,10 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 spells[name] = spell
 
     for i in range(24, (len(df.d) - 1)):
-        print(df.d[i], df.e[i])
+        # print(df.d[i], df.e[i])
         if df.d[i] == "Name" and df.e[i] is not numpy.nan:
             try:
-                print(df.e[i])
+                # print(df.e[i])
                 try:
                     potency = int(df.g[i + 2])
                 except Exception:
@@ -953,7 +953,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 attk_stat = "str"
                 crit = "*2"
                 dmg_stat = "str"
-                print(df.g[i], type(df.g[i]))
+                # print(df.g[i], type(df.g[i]))
                 if type(df.g[i]) is str:
                     dmg_type = df.g[i]
                 else:
@@ -998,26 +998,26 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 attacks[attack_data["display_name"]] = attack_data
             except Exception:
                 pass
-    print(attacks)
-    print(len(df.i) - 1)
+    # print(attacks)
+    # print(len(df.i) - 1)
     for i in range(25, (len(df.i) - 1)):
-        print(i)
+        # print(i)
         if df.i[i] is not numpy.nan and df.j[i] is not numpy.nan:
-            print(df.i[i], df.j[i])
+            # print(df.i[i], df.j[i])
             resistances["resist"][df.i[i]] = int(df.j[i])
 
     for i in range(25, (len(df.k) - 1)):
-        print(i)
+        # print(i)
         if df.k[i] is not numpy.nan and df.l[i] is not numpy.nan:
             print(df.k[i], df.l[i])
             resistances["weak"][df.k[i]] = int(df.l[i])
 
     for i in range(25, (len(df.m) - 1)):
-        print(i)
+        # print(i)
         if df.m[i] is not numpy.nan:
             print(df.m[i])
             resistances["immune"][df.m[i]] = 1
-    print(resistances)
+    # print(resistances)
 
     return character, spells, attacks, items, resistances
 
