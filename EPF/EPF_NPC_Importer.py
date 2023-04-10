@@ -6,12 +6,12 @@ from sqlalchemy.orm import sessionmaker
 
 import EPF.EPF_Character
 from EPF.EPF_Character import get_EPF_Character, delete_intested_items
-from database_models import Base, get_tracker
+from database_models import get_tracker, LookupBase
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
 
-class EPF_NPC(Base):
+class EPF_NPC(LookupBase):
     __tablename__ = "EPF_npcs"
 
     # The original tracker table

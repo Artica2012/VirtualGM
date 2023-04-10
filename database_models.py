@@ -554,7 +554,8 @@ class Character_Vault(Base):
     __tablename__ = "character_vault"
     # ID Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
-    guild_id = Column(BigInteger(), nullable=False)
+    guild_id = Column(Integer(), nullable=False)
+    disc_guild_id = Column(BigInteger())
     system = Column(String(), default=None, nullable=True)
     name = Column(String(), nullable=False)
     user = Column(BigInteger(), nullable=False)
