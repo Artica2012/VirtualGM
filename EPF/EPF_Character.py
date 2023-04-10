@@ -891,75 +891,75 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         for item in pb["build"]["feats"]:
             feats += f"{item[0]}, "
 
-        if overwrite:
-            attacks = character.attacks
-            name_list = []
-            for item in pb["build"]["weapons"]:
-                name_list.append(item["display"])
-            for key in attacks:
-                if key not in name_list:
-                    del attacks[key]
-            for item in pb["build"]["weapons"]:
-                die_num = 0
-                match item["str"]:
-                    case "":
-                        die_num = 1
-                    case "striking":
-                        die_num = 2
-                    case "greaterStriking":
-                        die_num = 3
-                    case "majorStriking":
-                        die_num = 4
+        # if overwrite:
+        #     attacks = character.attacks
+        #     name_list = []
+        #     for item in pb["build"]["weapons"]:
+        #         name_list.append(item["display"])
+        #     for key in attacks:
+        #         if key not in name_list:
+        #             del attacks[key]
+        #     for item in pb["build"]["weapons"]:
+        #         die_num = 0
+        #         match item["str"]:
+        #             case "":
+        #                 die_num = 1
+        #             case "striking":
+        #                 die_num = 2
+        #             case "greaterStriking":
+        #                 die_num = 3
+        #             case "majorStriking":
+        #                 die_num = 4
+        #
+        #         attacks[item["display"]] = {
+        #             "display": item["display"],
+        #             "prof": item["prof"],
+        #             "die": item["die"],
+        #             "pot": item["pot"],
+        #             "str": item["str"],
+        #             "die_num": die_num,
+        #             "name": item["name"],
+        #             "runes": item["runes"],
+        #         }
+        # else
+        attacks = {}
+        for item in pb["build"]["weapons"]:
+            die_num = 0
+            match item["str"]:
+                case "":
+                    die_num = 1
+                case "striking":
+                    die_num = 2
+                case "greaterStriking":
+                    die_num = 3
+                case "majorStriking":
+                    die_num = 4
+            attacks[item["display"]] = {
+                "display": item["display"],
+                "prof": item["prof"],
+                "die": item["die"],
+                "pot": item["pot"],
+                "str": item["str"],
+                "name": item["name"],
+                "runes": item["runes"],
+                "die_num": die_num,
+                "crit": "*2",
+                "stat": "str",
+                "dmg_type": "Bludgeoning",
+                "attk_stat": "str",
+            }
 
-                attacks[item["display"]] = {
-                    "display": item["display"],
-                    "prof": item["prof"],
-                    "die": item["die"],
-                    "pot": item["pot"],
-                    "str": item["str"],
-                    "die_num": die_num,
-                    "name": item["name"],
-                    "runes": item["runes"],
-                }
-        else:
-            attacks = {}
-            for item in pb["build"]["weapons"]:
-                die_num = 0
-                match item["str"]:
-                    case "":
-                        die_num = 1
-                    case "striking":
-                        die_num = 2
-                    case "greaterStriking":
-                        die_num = 3
-                    case "majorStriking":
-                        die_num = 4
-                attacks[item["display"]] = {
-                    "display": item["display"],
-                    "prof": item["prof"],
-                    "die": item["die"],
-                    "pot": item["pot"],
-                    "str": item["str"],
-                    "name": item["name"],
-                    "runes": item["runes"],
-                    "die_num": die_num,
-                    "crit": "*2",
-                    "stat": "str",
-                    "dmg_type": "Bludgeoning",
-                    "attk_stat": "str",
-                }
+            if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
+                attacks[item["display"]]["override_prof"] = 2
+            elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
+                attacks[item["display"]]["override_prof"] = 4
+            elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
+                attacks[item["display"]]["override_prof"] = 6
+            elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
+                attacks[item["display"]]["override_prof"] = 8
 
-                if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
-                    attacks[item["display"]]["override_prof"] = 2
-                elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
-                    attacks[item["display"]]["override_prof"] = 4
-                elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
-                    attacks[item["display"]]["override_prof"] = 6
-                elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
-                    attacks[item["display"]]["override_prof"] = 8
-
-                edited_attack = await attack_lookup(attacks[item["display"]], pb)
-                attacks[item["display"]] = edited_attack
+            edited_attack = await attack_lookup(attacks[item["display"]], pb)
+            attacks[item["display"]] = edited_attack
 
         # print(attacks)
 
