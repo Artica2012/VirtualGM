@@ -378,12 +378,13 @@ class EPF_Character(Character):
                     dmg_mod += floor(self.str_mod / 2)
                 else:
                     dmg_mod += self.str_mod
-            if "fatal" in item.strip().lower():
-                parsed_string = item.split("-")
-                die = parsed_string[1]
-                weapon["crit"] = f"*2+{parsed_string[1]}"
 
         if crit:
+            for item in weapon["traits"]:
+                if "fatal" in item.strip().lower():
+                    parsed_string = item.split("-")
+                    die = parsed_string[1]
+                    weapon["crit"] = f"*2+{parsed_string[1]}"
             return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
         else:
             return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
