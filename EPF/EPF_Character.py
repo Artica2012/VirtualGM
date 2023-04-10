@@ -950,6 +950,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     "dmg_type": "Bludgeoning",
                     "attk_stat": "str",
                 }
+
+                if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
+                    attacks[item["display"]]["override_prof"] = 2
+                elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
+                    attacks[item["display"]]["override_prof"] = 4
+                elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
+                    attacks[item["display"]]["override_prof"] = 6
+                elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
+                    attacks[item["display"]]["override_prof"] = 8
+
                 edited_attack = await attack_lookup(attacks[item["display"]], pb)
                 attacks[item["display"]] = edited_attack
 
