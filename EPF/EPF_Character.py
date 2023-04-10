@@ -198,77 +198,77 @@ class EPF_Character(Character):
 
     async def get_roll(self, item):
         logging.info(f"Returning roll: {item}")
-        print(item)
+        # print(item)
         if item == "Fortitude" or item == "Fort":
             print("a")
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex":
-            print("b")
+            # print("b")
             return f"1d20+{self.reflex_mod}"
         elif item == "Will":
-            print("c")
+            # print("c")
             return f"1d20+{self.will_mod}"
         elif item == "Acrobatics":
-            print("d")
+            # print("d")
             return f"1d20+{self.acrobatics_mod}"
         elif item == "Arcana":
-            print("e")
+            # print("e")
             return f"1d20+{self.arcana_mod}"
         elif item == "Athletics":
-            print("f")
+            # print("f")
             return f"1d20+{self.athletics_mod}"
         elif item == "Crafting":
-            print("g")
+            # print("g")
             return f"1d20+{self.crafting_mod}"
         elif item == "Deception":
-            print("h")
+            # print("h")
             return f"1d20+{self.deception_mod}"
         elif item == "Diplomacy":
-            print("i")
+            # print("i")
             return f"1d20+{self.diplomacy_mod}"
         elif item == "Intimidation":
-            print("j")
+            # print("j")
             return f"1d20+{self.intimidation_mod}"
         elif item == "Medicine":
-            print("k")
+            # print("k")
             return f"1d20+{self.medicine_mod}"
         elif item == "Nature":
-            print("l")
+            # print("l")
             return f"1d20+{self.nature_mod}"
         elif item == "Occultism":
-            print("m")
+            # print("m")
             return f"1d20+{self.occult_mod}"
         elif item == "Perception":
-            print("n")
+            # print("n")
             return f"1d20+{self.perception_mod}"
         elif item == "Performance":
-            print("o")
+            # print("o")
             return f"1d20+{self.performance_mod}"
         elif item == "Religion":
-            print("p")
+            # print("p")
             return f"1d20+{self.religion_mod}"
         elif item == "Society":
-            print("q")
+            # print("q")
             return f"1d20+{self.society_mod}"
         elif item == "Stealth":
-            print("r")
+            # print("r")
             return f"1d20+{self.stealth_mod}"
         elif item == "Survival":
-            print("s")
+            # print("s")
             return f"1d20+{self.survival_mod}"
         elif item == "Thievery":
-            print("t")
+            # print("t")
             return f"1d20+{self.thievery_mod}"
         else:
-            print("Not a check")
+            # print("Not a check")
             try:
-                print(f"{item} - attk")
+                # print(f"{item} - attk")
                 return await self.weapon_attack(item)
             except KeyError:
                 pass
 
             for attack in self.character_model.spells:
-                print(f"{item} - spell")
+                # print(f"{item} - spell")
                 # print(attack["name"])
                 if attack["name"] in item:
                     stat_mod = 0
@@ -425,7 +425,7 @@ class EPF_Character(Character):
                 return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
     async def get_spell_dmg(self, spell: str, level: int):
-        print(self.character_model.spells)
+        # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
         dmg_string = ""
         for x, key in enumerate(spell_data["damage"]):
@@ -453,21 +453,21 @@ class EPF_Character(Character):
 
             # Heightening Calculations
         if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
-            print(level)
-            print(spell_data["level"])
+            # print(level)
+            # print(spell_data["level"])
             if spell_data["level"] == 0:
                 base_level = 1
             else:
                 base_level = spell_data["level"]
             differance = level - base_level
-            print(differance)
+            # print(differance)
             steps = floor(differance / spell_data["heightening"]["interval"])
-            print(steps)
+            # print(steps)
             for i in range(0, steps):
-                print(i)
-                print(spell_data["heightening"]["damage"])
+                # print(i)
+                # print(spell_data["heightening"]["damage"])
                 for x, key in enumerate(spell_data["heightening"]["damage"]):
-                    print(x, key)
+                    # print(x, key)
                     if x > 0:
                         dmg_string += "+"
                     dmg_string = f"{dmg_string}+{spell_data['heightening']['damage'][key]}"
@@ -860,7 +860,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
         initiative_num = 0
         if guild.initiative is not None:
-            print("In initiative")
+            # print("In initiative")
             try:
                 perception = (
                     int(pb["build"]["proficiencies"]["perception"])
@@ -872,7 +872,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
             except Exception:
                 initiative_num = 0
 
-        print(initiative_num)
+        # print(initiative_num)
         # Check to see if character already exists, if it does, update instead of creating
 
         async with async_session() as session:
@@ -961,7 +961,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 edited_attack = await attack_lookup(attacks[item["display"]], pb)
                 attacks[item["display"]] = edited_attack
 
-        print(attacks)
+        # print(attacks)
 
         # Spells
         spells_raw = pb["build"]["spellCasters"]
@@ -1152,9 +1152,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
         await delete_intested_items(char_name, ctx, guild, engine)
         for item in pb["build"]["equipment"]:
-            print(item)
+            # print(item)
             result = await invest_items(item[0], char_name, ctx, guild, engine)
-            print(result)
+            # print(result)
 
         Character = await get_EPF_Character(char_name, ctx, guild, engine)
         await Character.update()
@@ -1451,7 +1451,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
-        print(f"{condition.title}, {condition.action}")
+        # print(f"{condition.title}, {condition.action}")
 
         data: str = condition.action
         data_list = data.split(",")
@@ -1459,9 +1459,9 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
             try:
                 parsed = item.strip().split(" ")
                 if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                    print(True)
-                    print("Condition")
-                    print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
+                    # print(True)
+                    # print("Condition")
+                    # print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
                     if parsed[2][-1] == ";":
                         parsed[2] = parsed[2][:-1]
                     parsed[0] = parsed[0].lower()
@@ -1472,13 +1472,6 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
                             resistances["immune"][parsed[0]] = 1
-                else:
-                    for dmg in EPF.EPF_Support.EPF_DMG_Types:
-                        print(parsed[0].title(), dmg)
-                        if dmg == parsed[0]:
-                            print("Match")
-                        else:
-                            print(type(parsed[0]), type(dmg))
 
                 key = parsed[0]
                 if parsed[1][1:] == "X":
@@ -1582,7 +1575,7 @@ class EPF_Spells(LookupBase):
 async def attack_lookup(attack, pathbuilder):
     lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-    print(attack["display"])
+    # print(attack["display"])
     try:
         display_name = attack["display"].strip()
         async with async_session() as session:
@@ -1595,7 +1588,7 @@ async def attack_lookup(attack, pathbuilder):
         async with async_session() as session:
             result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
             data = result.scalars().one()
-    print(data.name, data.range, data.traits)
+    # print(data.name, data.range, data.traits)
     await lookup_engine.dispose()
 
     if data.range is not None:
@@ -1624,7 +1617,7 @@ async def attack_lookup(attack, pathbuilder):
             attack["attk_stat"] = "str"
     attack["traits"] = data.traits
     attack["dmg_type"] = data.damage_type
-    print(attack)
+    # print(attack)
     return attack
 
 
@@ -1662,14 +1655,14 @@ async def invest_items(item, character, ctx, guild, engine):
             data = result.scalars().all()
             if len(data) > 0:
                 data = data[0]
-                print(data)
+                # print(data)
                 for key in data.keys():
                     if key in EPF_SKills:
                         if data[key]["mode"] == "item":
                             condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
         await lookup_engine.dispose()
         if condition_string != "":
-            print(condition_string)
+            # print(condition_string)
             EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
             Condition = await get_condition(ctx, engine, id=guild.id)
             async with write_session() as write_session:
@@ -1688,7 +1681,7 @@ async def invest_items(item, character, ctx, guild, engine):
                     )
                 )
                 await write_session.commit()
-                print("Committed")
+                # print("Committed")
             return True
         else:
             return False
