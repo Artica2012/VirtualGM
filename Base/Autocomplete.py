@@ -78,6 +78,10 @@ class AutoComplete:
 
     async def macro_select(self, attk=False):
         character = self.ctx.options["character"]
+        char_split = character.split(",")
+        if len(char_split) > 1:
+            character = char_split[0]
+
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

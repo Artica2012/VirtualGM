@@ -25,7 +25,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        logging.info("U&M Cog Loaded")
+        logging.warning("U&M Cog Loaded")
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
@@ -71,17 +71,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     character_list = result.scalars().all()
 
                 for character in character_list:
+                    # print(character.name)
                     try:
-                        async with tracker_session.begin():
-                            new_char = Character_Vault(
-                                guild_id=guild.id,
-                                system=guild.system,
-                                name=character.name,
-                                user=character.user,
-                            )
-                            tracker_session.add(new_char)
-                        await tracker_session.commit()
-                    except Exception:
                         async with async_session() as write_session:
                             query = await write_session.execute(
                                 select(Character_Vault)
@@ -91,12 +82,26 @@ class Update_and_Maintenance_Cog(commands.Cog):
                             character_data = query.scalars().one()
 
                             character_data.guild_id = guild.id
+                            character_data.disc_guild_id = guild.guild_id
                             character_data.system = guild.system
                             character_data.name = character.name
                             character_data.user = character.user
 
                             await write_session.commit()
 
+                    except Exception:
+                        async with write_session.begin():
+                            new_char = Character_Vault(
+                                guild_id=guild.id,
+                                system=guild.system,
+                                name=character.name,
+                                user=character.user,
+                                disc_guild_id=guild.guild_id,
+                            )
+                            write_session.add(new_char)
+                        await write_session.commit()
+
+        logging.warning("U&M Complete")
         await engine.dispose()
 
 

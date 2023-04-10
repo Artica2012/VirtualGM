@@ -9,11 +9,11 @@ import logging
 
 import discord
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-
-from database_models import get_tracker
+from database_models import get_tracker, Character_Vault
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.Auto_Complete_Getter import get_autocomplete
@@ -66,6 +66,32 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
     return await AutoComplete.character_select(gm=True)
 
 
+async def character_select_player(ctx: discord.AutocompleteContext):
+    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    try:
+        guild = await get_guild(ctx, None)
+        AutoComplete = await get_autocomplete(ctx, guild=guild)
+        return await AutoComplete.character_select(gm=True)
+    except NoResultFound:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            logging.info("Searching Character Vault")
+            print(ctx.interaction.user.id)
+            print(ctx.interaction.guild.id)
+            result = await session.execute(
+                select(Character_Vault)
+                .where(Character_Vault.user == ctx.interaction.user.id)
+                .where(Character_Vault.disc_guild_id == ctx.interaction.guild.id)
+                # .order_by(Character_Vault.name.desc()) # This is causing duplicates - BUG
+            )
+            charcter_list = result.scalars().all()
+            if ctx.value != "":
+                val = ctx.value.lower()
+                return [f"{char.name}, {char.guild_id}" for char in charcter_list if val in char.name.lower()]
+            else:
+                return [f"{char.name}, {char.guild_id}" for char in charcter_list]
+
+
 async def a_save_target_custom(ctx: discord.AutocompleteContext):
     guild = await get_guild(ctx, None)
     AutoComplete = await get_autocomplete(ctx, guild=guild)
@@ -86,8 +112,17 @@ async def add_condition_select(ctx: discord.AutocompleteContext):
 
 
 async def macro_select(ctx: discord.AutocompleteContext):
-    AutoComplete = await get_autocomplete(ctx)
-    return await AutoComplete.macro_select()
+    try:
+        guild = await get_guild(ctx, None)
+        AutoComplete = await get_autocomplete(ctx, guild=guild)
+        return await AutoComplete.macro_select()
+    except NoResultFound:
+        character = ctx.options["character"]
+        char_split = character.split(",")
+        if len(char_split) > 1:
+            guild_id = int(char_split[1].strip())
+            AutoComplete = await get_autocomplete(ctx, id=guild_id)
+            return await AutoComplete.macro_select()
 
 
 async def a_macro_select(ctx: discord.AutocompleteContext):

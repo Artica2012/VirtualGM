@@ -5,12 +5,17 @@ from PF2e.PF2_Autocomplete import PF2_Autocmplete
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
+from sqlalchemy.exc import NoResultFound
 
 
-async def get_autocomplete(ctx, guild=None, engine=None):
+async def get_autocomplete(ctx, guild=None, engine=None, id=id):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    guild = await get_guild(ctx, guild)
+    try:
+        guild = await get_guild(ctx, guild)
+    except NoResultFound:
+        print(id)
+        guild = await get_guild(ctx, guild, id=id)
 
     if guild.system == "EPF":
         return EPF_Autocmplete(ctx, engine, guild)

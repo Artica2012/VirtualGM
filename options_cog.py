@@ -10,7 +10,6 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.ddl import DropTable
 
 from database_models import Global, get_tracker_table, get_condition_table, get_macro_table
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -330,25 +329,25 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
     logging.info("delete_tracker")
     try:
         # Everything in the opposite order of creation
-        metadata = db.MetaData()
-        # delete each table
-        emp = await get_tracker_table(ctx, metadata, engine, guild=guild)
-        con = await get_condition_table(ctx, metadata, engine, guild=guild)
-        macro = await get_macro_table(ctx, metadata, engine, guild=guild)
+        # metadata = db.MetaData()
+        # # delete each table
+        # emp = await get_tracker_table(ctx, metadata, engine, guild=guild)
+        # con = await get_condition_table(ctx, metadata, engine, guild=guild)
+        # macro = await get_macro_table(ctx, metadata, engine, guild=guild)
 
-        async with engine.begin() as conn:
-            try:
-                await conn.execute(DropTable(macro, if_exists=True))
-            except Exception:
-                logging.warning("Unable to delete Macro Table")
-            try:
-                await conn.execute(DropTable(con, if_exists=True))
-            except Exception:
-                logging.warning("Unable to drop Con Table")
-            try:
-                await conn.execute(DropTable(emp, if_exists=True))
-            except Exception:
-                logging.warning("Unable to Drop Tracker Table")
+        # async with engine.begin() as conn:
+        #     try:
+        #         await conn.execute(DropTable(macro, if_exists=True))
+        #     except Exception:
+        #         logging.warning("Unable to delete Macro Table")
+        #     try:
+        #         await conn.execute(DropTable(con, if_exists=True))
+        #     except Exception:
+        #         logging.warning("Unable to drop Con Table")
+        #     try:
+        #         await conn.execute(DropTable(emp, if_exists=True))
+        #     except Exception:
+        #         logging.warning("Unable to Drop Tracker Table")
 
         try:
             # delete the row from Global

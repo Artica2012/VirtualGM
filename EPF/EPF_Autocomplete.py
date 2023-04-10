@@ -33,6 +33,9 @@ class EPF_Autocmplete(AutoComplete):
 
     async def macro_select(self, attk=False):
         character = self.ctx.options["character"]
+        char_split = character.split(",")
+        if len(char_split) > 1:
+            character = char_split[0]
 
         try:
             EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)

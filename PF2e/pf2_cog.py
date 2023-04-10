@@ -37,6 +37,7 @@ class PF2Cog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
+        response = False
         if pathbuilder_id is None and url is None:
             await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
         elif pathbuilder_id is not None:
@@ -65,7 +66,6 @@ class PF2Cog(commands.Cog):
                         "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table"
                         " setup"
                     )
-                await engine.dispose()
             except Exception as e:
                 await ctx.send_followup("Error importing character")
                 logging.info(f"pb_import: {e}")
@@ -92,7 +92,18 @@ class PF2Cog(commands.Cog):
                 logging.info(f"pb_import: {e}")
                 report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
                 await report.report()
-                await engine.dispose()
+        try:
+            logging.info("Writing to Vault")
+            guild = await get_guild(ctx, None)
+            Character = await get_character(name, ctx, guild=guild, engine=engine)
+            if Character.player == True:
+                Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                await Utilities.add_to_vault(name)
+        except Exception:
+            logging.warning(f"pb_import: {e}")
+            report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
+            await report.report()
+        await engine.dispose()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
@@ -162,7 +173,7 @@ class PF2Cog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Character = await get_character(character, ctx, engine=engine)
 
-        match resist_weak:
+        match resist_weak:  # noqa
             case "Resistance":
                 table = "r"
             case "Weakness":
