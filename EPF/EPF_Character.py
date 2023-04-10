@@ -1,40 +1,36 @@
 # pf2_functions.py
 import asyncio
+import datetime
 import logging
 import math
-import os
-
-# imports
-import datetime
 from math import floor
 
 import aiohttp
+import d20
 import discord
-from dotenv import load_dotenv
+from sqlalchemy import select
 from sqlalchemy import true, Column, Integer, String, JSON, false, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-
-import d20
 
 import EPF.EPF_Support
 import time_keeping_functions
-from utils.utils import get_guild
+from Base.Character import Character
+from EPF.EPF_Support import EPF_Conditions, EPF_SKills, EPF_SKills_NO_SAVE
 from database_models import (
     get_condition,
     get_EPF_tracker,
     Base,
+    LookupBase,
     get_macro,
 )
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine, DATABASE
-from Base.Character import Character
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
-from EPF.EPF_Support import EPF_Conditions, EPF_SKills, EPF_SKills_NO_SAVE
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from utils.utils import get_guild
 
 # define global variables
 
@@ -1541,7 +1537,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     return bonuses, resistances
 
 
-class EPF_Weapon(Base):
+class EPF_Weapon(LookupBase):
     __tablename__ = "EPF_item_data"
     # Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
@@ -1560,7 +1556,7 @@ class EPF_Weapon(Base):
     traits = Column(JSON())
 
 
-class EPF_Equipment(Base):
+class EPF_Equipment(LookupBase):
     __tablename__ = "EPF_equipment_data"
     # Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
@@ -1569,7 +1565,7 @@ class EPF_Equipment(Base):
     data = Column(JSON())
 
 
-class EPF_Spells(Base):
+class EPF_Spells(LookupBase):
     __tablename__ = "EPF_spell_data"
     # Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)

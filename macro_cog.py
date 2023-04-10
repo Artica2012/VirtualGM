@@ -7,7 +7,7 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
-from auto_complete import character_select, macro_select, character_select_gm
+from auto_complete import character_select, macro_select, character_select_gm, character_select_player
 
 # define global variables
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -146,7 +146,7 @@ class MacroCog(commands.Cog):
     @option(
         "character",
         description="Character",
-        autocomplete=character_select_gm,
+        autocomplete=character_select_player,
     )
     @option(
         "macro",
@@ -167,7 +167,12 @@ class MacroCog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        guild = await get_guild(ctx, None)
+        char_split = character.split(",")
+        if len(char_split) > 1:
+            character = char_split[0]
+            guild = await get_guild(ctx, None, id=int(char_split[1]))
+        else:
+            guild = await get_guild(ctx, None)
         Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
         try:
             if secret == "Open":
