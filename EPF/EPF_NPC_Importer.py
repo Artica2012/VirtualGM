@@ -243,10 +243,10 @@ async def write_resitances(resistance: dict, Character_Model: EPF.EPF_Character.
                 condition_string = f"{key} w {value};"
                 async with session.begin():
                     await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
-            for key, value in resistance["immune"].items():
-                condition_string = f"{key} i {value};"
+            for key in resistance["immune"].keys():
+                condition_string = f"{key} i ;"
                 async with session.begin():
-                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+                    await Character_Model.set_cc(key, True, 1, "Round", False, data=condition_string, visible=False)
         return True
     except Exception:
         return False

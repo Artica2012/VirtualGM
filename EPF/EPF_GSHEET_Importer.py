@@ -43,6 +43,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
         parsed_url = base_url.split("/")
         # print(parsed_url)
         sheet_id = parsed_url[5]
+        logging.warning(f"G-sheet import: ID - {sheet_id}")
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
         df = pd.read_csv(url, header=[0])
 
