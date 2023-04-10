@@ -466,6 +466,7 @@ class InitiativeCog(commands.Cog):
             await ctx.send_followup(f"Condition {title} added on {character}")
             Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
             await Tracker_Object.update_pinned_tracker()
+            # print("Tracker Updated")
         else:
             await ctx.send_followup("Add Condition/Counter Failed")
         await engine.dispose()

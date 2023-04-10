@@ -630,6 +630,7 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
+                await self.update()
                 # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
