@@ -7,7 +7,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_tracker, get_condition, get_macro
+from database_models import get_tracker, get_condition, get_macro, Character_Vault
 from error_handling_reporting import error_not_initialized, ErrorReport
 
 
@@ -194,3 +194,62 @@ class Utilities:
     async def edit_resistances(self, character, element, resist_weak, ammount):
         await self.ctx.channel.send("Command Disabled for current system")
         return False
+
+    async def add_to_vault(self, char_name):
+        try:
+            logging.info(f"Writing {char_name} to Vault")
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as tracker_session:
+                result = await tracker_session.execute(select(Tracker).where(Tracker.name == char_name))
+                character = result.scalars().one()
+                try:
+                    async with async_session() as write_session:
+                        query = await write_session.execute(
+                            select(Character_Vault)
+                            .where(Character_Vault.name == character.name)
+                            .where(Character_Vault.guild_id == self.guild.id)
+                        )
+                        character_data = query.scalars().one()
+
+                        character_data.guild_id = self.guild.id
+                        character_data.disc_guild_id = self.guild.guild_id
+                        character_data.system = self.guild.system
+                        character_data.name = character.name
+                        character_data.user = character.user
+
+                        await write_session.commit()
+                except Exception:
+                    async with write_session.begin():
+                        new_char = Character_Vault(
+                            guild_id=self.guild.id,
+                            system=self.guild.system,
+                            name=character.name,
+                            user=character.user,
+                            disc_guild_id=self.guild.guild_id,
+                        )
+                        write_session.add(new_char)
+                    await write_session.commit()
+            return True
+        except Exception:
+            return False
+
+    async def delete_from_vault(self, char_name):
+        try:
+            logging.info(f"Deleting {char_name} from Vault")
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Character_Vault)
+                    .where(Character_Vault.name == char_name)
+                    .where(Character_Vault.guild_id == self.guild.id)
+                )
+                character = result.scalars().one()
+
+            async with async_session() as session:
+                await session.delete(character)
+                await session.commit()
+            return True
+        except Exception:
+            return False

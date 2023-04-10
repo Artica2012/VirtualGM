@@ -122,6 +122,8 @@ class InitiativeCog(commands.Cog):
             await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
+            if player_bool:
+                await Utilities.add_to_vault(name)
         else:
             await ctx.respond("Error Adding Character", ephemeral=True)
         await engine.dispose()
@@ -179,9 +181,8 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         response = False
-
+        Utilites = await get_utilities(ctx, engine=engine)
         try:
-            Utilites = await get_utilities(ctx, engine=engine)
             response = await Utilites.copy_character(name, new_name)
         except Exception as e:
             logging.warning(f"char copy {e}")
@@ -191,6 +192,9 @@ class InitiativeCog(commands.Cog):
             await ctx.send_followup(f"{new_name} Created", ephemeral=True)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
+            Copy_Model = await get_character(new_name, ctx, engine=engine)
+            if Copy_Model.player:
+                await Utilites.add_to_vault(new_name)
         else:
             await ctx.send_followup("Error Copying Character", ephemeral=True)
 
@@ -309,6 +313,10 @@ class InitiativeCog(commands.Cog):
                             await ctx.send_followup(f"{character} deleted", ephemeral=True)
                             await Tracker_Model.update()
                             await Tracker_Model.update_pinned_tracker()
+                            try:
+                                await Utilities.delete_from_vault(character)
+                            except Exception:
+                                pass
                         else:
                             await ctx.send_followup("Delete Operation Failed", ephemeral=True)
         except NoResultFound:
