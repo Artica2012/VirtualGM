@@ -134,7 +134,7 @@ class EPF_Automation(Automation):
 
         success_string = PF2_eval_succss(dice_result, goal_result)
         # print(success_string)
-        attk_output_string = f"{character} vs {target}:\n{dice_result}\n{success_string}"
+        attk_output_string = f"{character} attacks {target} with their {attack}:\n{dice_result}\n{success_string}"
         # print(attk_output_string)
 
         # Damage
