@@ -335,16 +335,16 @@ class EPF_Character(Character):
         else:
             attack_mod = attk_stat
 
-        bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses)
-        bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses, item_name=item)
+        # bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
         # print(attack_mod)
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         weapon = self.character_model.attacks[item]
 
-        bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
-        bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
+        # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
 
         dmg_mod = 0
         match weapon["stat"]:
@@ -1368,7 +1368,6 @@ async def save_mod_calc(stat_mod, save: str, save_prof, level, bonuses):
 
 
 async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
-    # TODO Throw in code for Untrained improvisation
     if skill_prof == 0 and not ui:
         mod = stat_mod
     elif skill_prof == 0 and ui:
@@ -1397,22 +1396,93 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
     return mod
 
 
-async def bonus_calc(base, skill, bonuses):
+async def bonus_calc(base, skill, bonuses, item_name=""):
     mod = base
-    if skill in bonuses["circumstances_pos"]:
-        mod += bonuses["circumstances_pos"][skill]
-    if skill in bonuses["circumstances_neg"]:
-        mod -= bonuses["circumstances_neg"][skill]
 
-    if skill in bonuses["status_pos"]:
-        mod += bonuses["status_pos"][skill]
-    if skill in bonuses["status_neg"]:
-        mod -= bonuses["status_neg"][skill]
+    if item_name != "":
+        specific_skill = f"{item_name},{skill}"
 
-    if skill in bonuses["item_pos"]:
-        mod += bonuses["item_pos"][skill]
-    if skill in bonuses["item_neg"]:
-        mod -= bonuses["item_neg"][skill]
+        c_pos = 0
+        s_c_pos = 0
+        if skill in bonuses["circumstances_pos"]:
+            c_pos = bonuses["circumstances_pos"][skill]
+        if specific_skill in bonuses["circumstances_pos"]:
+            s_c_pos = bonuses["circumstances_pos"][specific_skill]
+        if c_pos > s_c_pos:
+            mod += c_pos
+        else:
+            mod += s_c_pos
+
+        c_neg = 0
+        s_c_neg = 0
+        if skill in bonuses["circumstances_neg"]:
+            c_neg = bonuses["circumstances_neg"][skill]
+        if specific_skill in bonuses["circumstances_neg"]:
+            s_c_neg = bonuses["circumstances_neg"][specific_skill]
+        if c_neg > s_c_neg:
+            mod -= c_neg
+        else:
+            mod -= s_c_neg
+
+        s_pos = 0
+        s_s_pos = 0
+        if skill in bonuses["status_pos"]:
+            s_pos = bonuses["status_pos"][skill]
+        if specific_skill in bonuses["status_pos"]:
+            s_s_pos = bonuses["status_pos"][specific_skill]
+        if s_pos > s_s_pos:
+            mod += s_pos
+        else:
+            mod += s_s_pos
+
+        s_neg = 0
+        s_s_neg = 0
+        if skill in bonuses["status_neg"]:
+            s_neg = bonuses["status_neg"][skill]
+        if specific_skill in bonuses["status_neg"]:
+            s_s_neg = bonuses["status_neg"][specific_skill]
+        if s_neg > s_s_neg:
+            mod -= s_neg
+        else:
+            mod -= s_s_neg
+
+        i_pos = 0
+        s_i_pos = 0
+        if skill in bonuses["item_pos"]:
+            i_pos = bonuses["item_pos"][skill]
+        if specific_skill in bonuses["item_pos"]:
+            s_i_pos = bonuses["item_pos"][specific_skill]
+        if i_pos > s_i_pos:
+            mod += i_pos
+        else:
+            mod += s_i_pos
+
+        i_neg = 0
+        s_i_neg = 0
+        if skill in bonuses["item_neg"]:
+            i_neg = bonuses["item_neg"][skill]
+        if specific_skill in bonuses["item_neg"]:
+            s_i_neg = bonuses["item_neg"][specific_skill]
+        if i_neg > s_i_neg:
+            mod -= i_neg
+        else:
+            mod -= s_i_neg
+
+    else:
+        if skill in bonuses["circumstances_pos"]:
+            mod += bonuses["circumstances_pos"][skill]
+        if skill in bonuses["circumstances_neg"]:
+            mod -= bonuses["circumstances_neg"][skill]
+
+        if skill in bonuses["status_pos"]:
+            mod += bonuses["status_pos"][skill]
+        if skill in bonuses["status_neg"]:
+            mod -= bonuses["status_neg"][skill]
+
+        if skill in bonuses["item_pos"]:
+            mod += bonuses["item_pos"][skill]
+        if skill in bonuses["item_neg"]:
+            mod -= bonuses["item_neg"][skill]
 
     return mod
 
