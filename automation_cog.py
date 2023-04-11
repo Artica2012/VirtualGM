@@ -140,6 +140,7 @@ class AutomationCog(commands.Cog):
     @option("attack", description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
+    @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
     async def auto(
         self,
         ctx: discord.ApplicationContext,
@@ -148,13 +149,16 @@ class AutomationCog(commands.Cog):
         attack: str,
         attack_modifer: str = "",
         target_modifier: str = "",
+        damage_modifier: str = "",
     ):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.auto(self.bot, character, target, attack, attack_modifer, target_modifier)
+            output_string = await Automation.auto(
+                self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+            )
             await ctx.send_followup(output_string)
         except Exception as e:
             logging.warning(f"attack_cog auto {e}")
@@ -170,6 +174,7 @@ class AutomationCog(commands.Cog):
     @option("level", description="Spell Level", autocomplete=spell_level)
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
+    @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
     async def cast(
         self,
         ctx: discord.ApplicationContext,
@@ -179,6 +184,7 @@ class AutomationCog(commands.Cog):
         level: int,
         attack_modifer: str = "",
         target_modifier: str = "",
+        damage_modifier: str = "",
     ):
         logging.info("attack_cog cast")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -186,7 +192,7 @@ class AutomationCog(commands.Cog):
         try:
             Automation = await get_automation(ctx, engine=engine)
             output_string = await Automation.cast(
-                self.bot, character, target, spell, level, attack_modifer, target_modifier
+                self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
             )
             await ctx.send_followup(output_string)
         except Exception as e:

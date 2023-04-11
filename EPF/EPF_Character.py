@@ -336,12 +336,16 @@ class EPF_Character(Character):
             attack_mod = attk_stat
 
         bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
         # print(attack_mod)
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
-    async def weapon_dmg(self, item, crit: bool = False):
+    async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         weapon = self.character_model.attacks[item]
+
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
+
         dmg_mod = 0
         match weapon["stat"]:
             case None:
@@ -381,9 +385,9 @@ class EPF_Character(Character):
                     parsed_string = item.split("-")
                     die = parsed_string[1]
                     weapon["crit"] = f"*2+{parsed_string[1]}"
-            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
+            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
@@ -391,8 +395,8 @@ class EPF_Character(Character):
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
-        :param spell str:
-        :param mod bool: True = Modifier, False = DC
+        :param spell: (string)
+        :param mod: (bool) True = Modifier, False = DC
         :return: Spell_Modifier integer
         """
 
@@ -424,7 +428,8 @@ class EPF_Character(Character):
             else:
                 return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
-    async def get_spell_dmg(self, spell: str, level: int):
+    async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
+        print(f"Flat Bonus: {flat_bonus}!")
         # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
         dmg_string = ""
@@ -447,9 +452,9 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}"
+                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}"
             else:
-                dmg_string += f"{spell_data['damage'][key]['value']}"
+                dmg_string += f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
 
             # Heightening Calculations
         if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
@@ -891,75 +896,75 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         for item in pb["build"]["feats"]:
             feats += f"{item[0]}, "
 
-        if overwrite:
-            attacks = character.attacks
-            name_list = []
-            for item in pb["build"]["weapons"]:
-                name_list.append(item["display"])
-            for key in attacks:
-                if key not in name_list:
-                    del attacks[key]
-            for item in pb["build"]["weapons"]:
-                die_num = 0
-                match item["str"]:
-                    case "":
-                        die_num = 1
-                    case "striking":
-                        die_num = 2
-                    case "greaterStriking":
-                        die_num = 3
-                    case "majorStriking":
-                        die_num = 4
+        # if overwrite:
+        #     attacks = character.attacks
+        #     name_list = []
+        #     for item in pb["build"]["weapons"]:
+        #         name_list.append(item["display"])
+        #     for key in attacks:
+        #         if key not in name_list:
+        #             del attacks[key]
+        #     for item in pb["build"]["weapons"]:
+        #         die_num = 0
+        #         match item["str"]:
+        #             case "":
+        #                 die_num = 1
+        #             case "striking":
+        #                 die_num = 2
+        #             case "greaterStriking":
+        #                 die_num = 3
+        #             case "majorStriking":
+        #                 die_num = 4
+        #
+        #         attacks[item["display"]] = {
+        #             "display": item["display"],
+        #             "prof": item["prof"],
+        #             "die": item["die"],
+        #             "pot": item["pot"],
+        #             "str": item["str"],
+        #             "die_num": die_num,
+        #             "name": item["name"],
+        #             "runes": item["runes"],
+        #         }
+        # else
+        attacks = {}
+        for item in pb["build"]["weapons"]:
+            die_num = 0
+            match item["str"]:
+                case "":
+                    die_num = 1
+                case "striking":
+                    die_num = 2
+                case "greaterStriking":
+                    die_num = 3
+                case "majorStriking":
+                    die_num = 4
+            attacks[item["display"]] = {
+                "display": item["display"],
+                "prof": item["prof"],
+                "die": item["die"],
+                "pot": item["pot"],
+                "str": item["str"],
+                "name": item["name"],
+                "runes": item["runes"],
+                "die_num": die_num,
+                "crit": "*2",
+                "stat": "str",
+                "dmg_type": "Bludgeoning",
+                "attk_stat": "str",
+            }
 
-                attacks[item["display"]] = {
-                    "display": item["display"],
-                    "prof": item["prof"],
-                    "die": item["die"],
-                    "pot": item["pot"],
-                    "str": item["str"],
-                    "die_num": die_num,
-                    "name": item["name"],
-                    "runes": item["runes"],
-                }
-        else:
-            attacks = {}
-            for item in pb["build"]["weapons"]:
-                die_num = 0
-                match item["str"]:
-                    case "":
-                        die_num = 1
-                    case "striking":
-                        die_num = 2
-                    case "greaterStriking":
-                        die_num = 3
-                    case "majorStriking":
-                        die_num = 4
-                attacks[item["display"]] = {
-                    "display": item["display"],
-                    "prof": item["prof"],
-                    "die": item["die"],
-                    "pot": item["pot"],
-                    "str": item["str"],
-                    "name": item["name"],
-                    "runes": item["runes"],
-                    "die_num": die_num,
-                    "crit": "*2",
-                    "stat": "str",
-                    "dmg_type": "Bludgeoning",
-                    "attk_stat": "str",
-                }
+            if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
+                attacks[item["display"]]["override_prof"] = 2
+            elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
+                attacks[item["display"]]["override_prof"] = 4
+            elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
+                attacks[item["display"]]["override_prof"] = 6
+            elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
+                attacks[item["display"]]["override_prof"] = 8
 
-                if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
-                    attacks[item["display"]]["override_prof"] = 2
-                elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
-                    attacks[item["display"]]["override_prof"] = 4
-                elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
-                    attacks[item["display"]]["override_prof"] = 6
-                elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
-                    attacks[item["display"]]["override_prof"] = 8
-
-                edited_attack = await attack_lookup(attacks[item["display"]], pb)
-                attacks[item["display"]] = edited_attack
+            edited_attack = await attack_lookup(attacks[item["display"]], pb)
+            attacks[item["display"]] = edited_attack
 
         # print(attacks)
 
@@ -1414,6 +1419,7 @@ async def bonus_calc(base, skill, bonuses):
 
 async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
+    Characte_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
     # Database boilerplate
     if guild is not None:
         PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
@@ -1451,7 +1457,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
-        # print(f"{condition.title}, {condition.action}")
+        print(f"{condition.title}, {condition.action}")
 
         data: str = condition.action
         data_list = data.split(",")
@@ -1472,8 +1478,30 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
                             resistances["immune"][parsed[0]] = 1
+                item_name = ""
+                specific_weapon = ""
 
-                key = parsed[0]
+                print(parsed[0], parsed[0][0])
+                if parsed[0][0] == '"':
+                    print("Opening Quote")
+                    for x, item in enumerate(parsed):
+                        print(x, item)
+                        print(item[-1])
+                        if item[-1] == '"':
+                            item_name = " ".join(parsed[0 : x + 1])
+                            item_name = item_name.strip('"')
+                            parsed = parsed[x + 1 :]
+                            break
+                print(item_name)
+                print(parsed)
+                if item_name != "":
+                    if item_name.title() in await Characte_Model.attack_list():
+                        specific_weapon = f"{item_name},"
+                    else:
+                        parsed = []
+                print(specific_weapon)
+
+                key = f"{specific_weapon}{parsed[0]}"
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
                 else:
