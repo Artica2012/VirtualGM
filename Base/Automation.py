@@ -48,8 +48,8 @@ class Automation:
         await Tracker_Model.update_pinned_tracker()
         return output_string
 
-    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier):
+    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier, dmg_modifier):
         return "Auto Function not set up for current system"
 
-    async def cast(self, bot, character, target, spell_name, level, attack_modifier, target_modifier):
+    async def cast(self, bot, character, target, spell_name, level, attack_modifier, target_modifier, dmg_modifier):
         return "Cast Function not set up for current system"

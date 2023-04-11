@@ -340,7 +340,7 @@ class EPF_Character(Character):
         # print(attack_mod)
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
-    async def weapon_dmg(self, item, crit: bool = False):
+    async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         weapon = self.character_model.attacks[item]
 
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
@@ -385,9 +385,9 @@ class EPF_Character(Character):
                     parsed_string = item.split("-")
                     die = parsed_string[1]
                     weapon["crit"] = f"*2+{parsed_string[1]}"
-            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}){weapon['crit']}"
+            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}"
+            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
@@ -428,7 +428,8 @@ class EPF_Character(Character):
             else:
                 return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
-    async def get_spell_dmg(self, spell: str, level: int):
+    async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
+        print(f"Flat Bonus: {flat_bonus}!")
         # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
         dmg_string = ""
@@ -451,9 +452,9 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}"
+                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}"
             else:
-                dmg_string += f"{spell_data['damage'][key]['value']}"
+                dmg_string += f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
 
             # Heightening Calculations
         if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
