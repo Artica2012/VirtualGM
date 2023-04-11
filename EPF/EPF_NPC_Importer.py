@@ -195,6 +195,7 @@ async def epf_npc_lookup(
         print("Committed")
 
         Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
+        await Charater_Model.update()
         await Charater_Model.set_cc(
             "stat_modification",
             True,
