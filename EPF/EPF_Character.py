@@ -336,12 +336,16 @@ class EPF_Character(Character):
             attack_mod = attk_stat
 
         bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
         # print(attack_mod)
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def weapon_dmg(self, item, crit: bool = False):
         weapon = self.character_model.attacks[item]
+
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses)
+        bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
+
         dmg_mod = 0
         match weapon["stat"]:
             case None:
@@ -391,8 +395,8 @@ class EPF_Character(Character):
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
-        :param spell str:
-        :param mod bool: True = Modifier, False = DC
+        :param spell: (string)
+        :param mod: (bool) True = Modifier, False = DC
         :return: Spell_Modifier integer
         """
 
@@ -1414,6 +1418,7 @@ async def bonus_calc(base, skill, bonuses):
 
 async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
+    Characte_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
     # Database boilerplate
     if guild is not None:
         PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
@@ -1451,7 +1456,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
-        # print(f"{condition.title}, {condition.action}")
+        print(f"{condition.title}, {condition.action}")
 
         data: str = condition.action
         data_list = data.split(",")
@@ -1472,8 +1477,30 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
                             resistances["immune"][parsed[0]] = 1
+                item_name = ""
+                specific_weapon = ""
 
-                key = parsed[0]
+                print(parsed[0], parsed[0][0])
+                if parsed[0][0] == '"':
+                    print("Opening Quote")
+                    for x, item in enumerate(parsed):
+                        print(x, item)
+                        print(item[-1])
+                        if item[-1] == '"':
+                            item_name = " ".join(parsed[0 : x + 1])
+                            item_name = item_name.strip('"')
+                            parsed = parsed[x + 1 :]
+                            break
+                print(item_name)
+                print(parsed)
+                if item_name != "":
+                    if item_name.title() in await Characte_Model.attack_list():
+                        specific_weapon = f"{item_name},"
+                    else:
+                        parsed = []
+                print(specific_weapon)
+
+                key = f"{specific_weapon}{parsed[0]}"
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
                 else:
