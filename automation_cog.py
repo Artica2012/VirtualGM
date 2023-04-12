@@ -70,7 +70,11 @@ class AutomationCog(commands.Cog):
             logging.warning(f"attack_cog attack {e}")
             report = ErrorReport(ctx, "/a attack", e, self.bot)
             await report.report()
-            await ctx.send_followup("Error.")
+            await ctx.send_followup(
+                "Error. Ensure that you selected valid targets and attack rolls.  Ensure that if "
+                "you used a non-macro roll that it conforms tothe XdY+Z format without any "
+                "labels."
+            )
         await engine.dispose()
 
     @att.command(description="Saving Throw")
@@ -98,7 +102,7 @@ class AutomationCog(commands.Cog):
             logging.warning(f"attack_cog save {e}")
             report = ErrorReport(ctx, "/a save", e, self.bot)
             await report.report()
-            await ctx.send_followup("Error.")
+            await ctx.send_followup("Error. Ensure that you selected valid targets and saves.")
         await engine.dispose()
 
     @att.command(description="Automatic Attack")
@@ -131,7 +135,7 @@ class AutomationCog(commands.Cog):
             logging.warning(f"attack_cog damage {e}")
             report = ErrorReport(ctx, "/a damage", e, self.bot)
             await report.report()
-            await ctx.send_followup("Error")
+            await ctx.send_followup("Error. Ensure that your input was a valid dice roll or value.")
         await engine.dispose()
 
     @att.command(description="Automatic Attack")
@@ -164,7 +168,7 @@ class AutomationCog(commands.Cog):
             logging.warning(f"attack_cog auto {e}")
             report = ErrorReport(ctx, "/a auto", e, self.bot)
             await report.report()
-            await ctx.send_followup("Error")
+            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
         await engine.dispose()
 
     @att.command(description="Cast a Spell (EPF Only)")
@@ -199,7 +203,7 @@ class AutomationCog(commands.Cog):
             logging.warning(f"attack_cog cast {e}")
             report = ErrorReport(ctx, "/a cast", e, self.bot)
             await report.report()
-            await ctx.send_followup("Error")
+            await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
         await engine.dispose()
 
 
