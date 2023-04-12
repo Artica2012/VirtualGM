@@ -33,8 +33,13 @@ class EPF_Macro(Macro):
 
         view = discord.ui.View(timeout=None)
         for macro in macro_list:
+            roll_string = await Character_Model.get_roll(macro)
+            if roll_string == 0:
+                roll_string = await super().get_macro(character, macro, Character_Model=Character_Model)
             await asyncio.sleep(0)
-            button = self.MacroButton(self.ctx, self.engine, Character_Model, macro)
+            button = self.MacroButton(
+                self.ctx, self.engine, self.guild, Character_Model, macro, f"{macro}: {roll_string}"
+            )
             if len(view.children) == 24:
                 await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
                 view.clear_items()
@@ -42,19 +47,21 @@ class EPF_Macro(Macro):
         return view
 
     class MacroButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, engine, character, macro):
+        def __init__(self, ctx: discord.ApplicationContext, engine, guild, character, macro, title):
             self.ctx = ctx
             self.engine = engine
             self.character: EPF_Character = character
             self.macro = macro
+            self.guild = guild
+            self.title = title
             super().__init__(
-                label=f"{macro}",
+                label=f"{title}",
                 style=discord.ButtonStyle.primary,
                 custom_id=str(f"{character.id}_{macro}"),
             )
 
         async def callback(self, interaction: discord.Interaction):
-            dice_result = await self.character.roll_macro(self.macro, "")
-            output_string = f"{self.character.char_name}:\n{self.macro}\n{dice_result}"
+            Macro = EPF_Macro(self.ctx, self.engine, self.guild)
+            output_string = await Macro.roll_macro(self.character.char_name, self.macro, None, "", guild=self.guild)
 
             await interaction.response.send_message(output_string)

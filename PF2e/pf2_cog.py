@@ -36,7 +36,7 @@ class PF2Cog(commands.Cog):
         self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer(ephemeral=True)
+        await ctx.response.defer()
         response = False
         if pathbuilder_id is None and url is None:
             await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
@@ -57,7 +57,7 @@ class PF2Cog(commands.Cog):
                     logging.info("Imported")
                     if response:
                         await Tracker_Model.update_pinned_tracker()
-                        await ctx.send_followup("Success")
+                        await ctx.send_followup(f"{name} successfully imported")
                         logging.info("Import Successful")
                     else:
                         await ctx.send_followup("Import Failed")
