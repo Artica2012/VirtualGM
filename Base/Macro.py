@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import Base.Character
 from database_models import get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers, opposed_roll
@@ -166,10 +167,11 @@ class Macro:
 
         return output_string
 
-    async def get_macro(self, character: str, macro_name: str):
+    async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
         logging.info(f"get_macro {character}, {macro_name}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        if Character_Model is None:
+            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
         async with async_session() as session:
