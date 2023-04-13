@@ -33,17 +33,20 @@ class EPF_Macro(Macro):
 
         view = discord.ui.View(timeout=None)
         for macro in macro_list:
-            roll_string = await Character_Model.get_roll(macro)
-            if roll_string == 0:
-                roll_string = await super().get_macro(character, macro, Character_Model=Character_Model)
-            await asyncio.sleep(0)
-            button = self.MacroButton(
-                self.ctx, self.engine, self.guild, Character_Model, macro, f"{macro}: {roll_string}"
-            )
-            if len(view.children) == 24:
-                await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
-                view.clear_items()
-            view.add_item(button)
+            try:
+                roll_string = await Character_Model.get_roll(macro)
+                if roll_string == 0:
+                    roll_string = await super().get_macro(character, macro, Character_Model=Character_Model)
+                await asyncio.sleep(0)
+                button = self.MacroButton(
+                    self.ctx, self.engine, self.guild, Character_Model, macro, f"{macro}: {roll_string}"
+                )
+                if len(view.children) == 24:
+                    await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
+                    view.clear_items()
+                view.add_item(button)
+            except Exception as e:
+                logging.error(f"{e} {macro}")
         return view
 
     class MacroButton(discord.ui.Button):
