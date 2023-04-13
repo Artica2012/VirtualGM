@@ -89,6 +89,7 @@ bot.load_extension("PF2e.pf2_cog")
 bot.load_extension("automation_cog")
 bot.load_extension("Update_and__Maintenance_Cog")
 bot.load_extension("reminder_cog")
+bot.load_extension("stf_cog")
 
 # run the bot
 bot.run(TOKEN)

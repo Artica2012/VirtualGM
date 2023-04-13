@@ -28,18 +28,16 @@ class STF_Character_Model:
             db.Column("temp_hp", db.INTEGER(), default=0),
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
-
             db.Column("level", db.INTEGER(), nullable=False),
             db.Column("base_eac", db.INTEGER(), nullable=False),
             db.Column("base_kac", db.INTEGER(), nullable=False),
-
+            db.Column("bab", db.INTEGER(), nullable=False),
             db.Column("str", db.INTEGER(), nullable=False),
             db.Column("dex", db.INTEGER(), nullable=False),
             db.Column("con", db.INTEGER(), nullable=False),
             db.Column("itl", db.INTEGER(), nullable=False),
             db.Column("wis", db.INTEGER(), nullable=False),
             db.Column("cha", db.INTEGER(), nullable=False),
-
             db.Column("fort", db.INTEGER(), nullable=False),
             db.Column("will", db.INTEGER(), nullable=False),
             db.Column("reflex", db.INTEGER(), nullable=False),
@@ -62,14 +60,12 @@ class STF_Character_Model:
             db.Column("sleight_of_hand", db.INTEGER(), nullable=False),
             db.Column("stealth", db.INTEGER(), nullable=False),
             db.Column("survival", db.INTEGER(), nullable=False),
-
             db.Column("str_mod", db.INTEGER()),
             db.Column("dex_mod", db.INTEGER()),
             db.Column("con_mod", db.INTEGER()),
             db.Column("itl_mod", db.INTEGER()),
             db.Column("wis_mod", db.INTEGER()),
             db.Column("cha_mod", db.INTEGER()),
-
             db.Column("will_mod", db.INTEGER()),
             db.Column("reflex_mod", db.INTEGER()),
             db.Column("acrobatics_mod", db.INTEGER()),
@@ -91,15 +87,12 @@ class STF_Character_Model:
             db.Column("sleight_of_hand_mod", db.INTEGER()),
             db.Column("stealth_mod", db.INTEGER()),
             db.Column("survival_mod", db.INTEGER()),
-
             db.Column("eac", db.INTEGER()),
             db.Column("kac", db.INTEGER()),
-
             db.Column("macros", db.JSON()),
             db.Column("attacks", db.JSON()),
             db.Column("spells", db.JSON()),
             db.Column("bonuses", db.JSON()),
-
         )
 
         logging.info("stf_character_model_table")

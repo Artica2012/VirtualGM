@@ -366,6 +366,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         level = Column(Integer(), nullable=False)
         base_eac = Column(Integer(), nullable=False)
         base_kac = Column(Integer(), nullable=False)
+        bab = Column(Integer(), nullable=False)
 
         str = Column(Integer(), nullable=False)
         dex = Column(Integer(), nullable=False)
