@@ -10,15 +10,23 @@ import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from sqlalchemy import exc
+from sqlalchemy import exc, true, false
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import auto_complete
-from auto_complete import character_select, character_select_gm, cc_select, npc_select, add_condition_select, initiative
-from database_models import Global
+from auto_complete import (
+    character_select,
+    character_select_gm,
+    cc_select,
+    npc_select,
+    add_condition_select,
+    initiative,
+    character_select_con,
+)
+from database_models import Global, get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
@@ -425,7 +433,7 @@ class InitiativeCog(commands.Cog):
     @cc.command(
         description="Add conditions and counters",
     )
-    @option("character", description="Character to select", autocomplete=character_select)
+    @option("character", description="Character to select", autocomplete=character_select_con)
     @option("title", autocomplete=add_condition_select)
     @option("type", choices=["Condition", "Counter"])
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
@@ -461,22 +469,37 @@ class InitiativeCog(commands.Cog):
             auto_bool = False
         response = False
 
-        try:
-            model = await get_character(character, ctx, guild=guild, engine=engine)
-            response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
-        except Exception as e:
-            await ctx.respond("Error", ephemeral=True)
-            logging.warning(f"/cc new: {e}")
-            report = ErrorReport(ctx, "slash command /cc new", e, self.bot)
-            await report.report()
-
-        if response:
-            await ctx.send_followup(f"Condition {title} added on {character}")
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
-            await Tracker_Object.update_pinned_tracker()
-            # print("Tracker Updated")
+        success_string = f"Condition {title} added on:"
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        if character == "All PCs":
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker.name).where(Tracker.player == true()))
+                char_list = char_result.scalars().all()
+        elif character == "All NPCs":
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker.name).where(Tracker.player == false()))
+                char_list = char_result.scalars().all()
         else:
-            await ctx.send_followup("Add Condition/Counter Failed")
+            char_list = [character]
+
+        for char in char_list:
+            try:
+                model = await get_character(char, ctx, guild=guild, engine=engine)
+                response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
+                if response:
+                    success_string += f"\n{char}"
+
+            except Exception as e:
+                await ctx.channel.send(f"Error /cc placing condition/counter on {char}")
+                logging.warning(f"/cc new: {e}")
+                report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
+                await report.report()
+
+        await ctx.send_followup(success_string)
+        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        await Tracker_Object.update_pinned_tracker()
+        # print("Tracker Updated")
         await engine.dispose()
 
     @cc.command(

@@ -92,6 +92,15 @@ async def character_select_player(ctx: discord.AutocompleteContext):
                 return [f"{char.name}, {char.guild_id}" for char in charcter_list]
 
 
+async def character_select_con(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    char_list: list = await AutoComplete.character_select()
+    print(char_list)
+    char_list.extend(["All PCs", "All NPCs"])
+    print(char_list)
+    return char_list
+
+
 async def a_save_target_custom(ctx: discord.AutocompleteContext):
     guild = await get_guild(ctx, None)
     AutoComplete = await get_autocomplete(ctx, guild=guild)

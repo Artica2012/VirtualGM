@@ -1729,7 +1729,10 @@ async def delete_intested_items(character, ctx, guild, engine):
         id = char_result.scalars().one()
     async with async_session() as session:
         results = await session.execute(
-            select(Condition).where(Condition.visible == false()).where(Condition.counter == true())
+            select(Condition)
+            .where(Condition.character_id == id)
+            .where(Condition.visible == false())
+            .where(Condition.counter == true())
         )
         condition_list = results.scalars().all()
 
