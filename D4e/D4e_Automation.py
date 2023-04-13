@@ -34,7 +34,7 @@ class D4e_Automation(Automation):
 
         Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
         con_vs = 0
-        match vs:
+        match vs:  # noqa
             case "AC":
                 con_vs = Target_Model.ac
             case "Fort":
@@ -53,11 +53,10 @@ class D4e_Automation(Automation):
 
         # Format output string
         success_string = D4e_eval_success(dice_result, goal_result)
-        output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+        output_string = f"{character} rolls {roll}vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
         return output_string
 
     async def save(self, character, target, save, dc, modifier):
-
         try:
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
             roll_string = f"1d20{ParseModifiers(modifier)}"
@@ -78,7 +77,3 @@ class D4e_Automation(Automation):
         except Exception as e:
             logging.warning(f"save: {e}")
             return "Error"
-
-
-
-
