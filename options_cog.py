@@ -46,7 +46,7 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2"], required=False)
+    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Starfinder"], required=False)
     async def start(
         self,
         ctx: discord.ApplicationContext,
@@ -242,6 +242,8 @@ async def setup_tracker(
         g_system = "D4e"
     elif system == "Enhanced PF2":
         g_system = "EPF"
+    elif system == "Starfinder":
+        g_system = "STF"
     else:
         g_system = None
 

@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 # from EPF import EPF_Support
 from EPF import EPF_Support
+from STF import STF_Support
 
 Base = declarative_base()
 LookupBase = declarative_base()
@@ -89,6 +90,8 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
     if guild.system == "EPF":
         return await get_EPF_tracker(ctx, engine, id=id)
+    elif guild.system == "STF":
+        return await get_STF_tracker(ctx, engine, id=id)
     else:
         tablename = f"Tracker_{id}"
         logging.info(f"get_tracker: Guild: {id}")
@@ -137,7 +140,8 @@ async def get_tracker_table(ctx, metadata, engine, guild=None):
 
     if guild.system == "EPF":
         table = EPF_Support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
-
+    elif guild.system == "STF":
+        table = STF_Support.STF_Character_Model(ctx, metadata, guild.id).stf_character_model_table()
     else:
         table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table
@@ -313,6 +317,51 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         bonuses = Column(JSON())
         eidolon = Column(Boolean(), default=False)
         partner = Column(String())
+
+    logging.info("get_tracker: returning tracker")
+    return Tracker
+
+
+async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx is None and id is None:
+        raise Exception
+    if id is None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global.id).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
+            guild = result.scalars().one()
+            tablename = f"Tracker_{guild}"
+            logging.info(f"get_tracker: Guild: {guild}")
+
+    else:
+        tablename = f"Tracker_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Tracker(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {"extend_existing": True}
+
+        # The original tracker table
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        name = Column(String(), nullable=False, unique=True)
+        init = Column(Integer(), default=0)
+        player = Column(Boolean(), nullable=False)
+        user = Column(BigInteger(), nullable=False)
+        current_hp = Column(Integer(), default=0)
+        current_stamina = Column(Integer(), default=0)
+        max_stamina = Column(Integer(), default=1)
+        max_hp = Column(Integer(), default=1)
+        temp_hp = Column(Integer(), default=0)
+        init_string = Column(String(), nullable=True)
+        active = Column(Boolean(), default=True)
 
     logging.info("get_tracker: returning tracker")
     return Tracker

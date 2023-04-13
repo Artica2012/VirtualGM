@@ -2,30 +2,16 @@
 import logging
 
 import discord
-import d20
-import sqlalchemy as db
-from discord import option, Interaction
-from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
-from dotenv import load_dotenv
-from sqlalchemy import or_, select, false, true
+from discord import Interaction
+from sqlalchemy import select, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.ddl import DropTable
 
-import time_keeping_functions
-import ui_components
+from Base.Character import Character
 
 # from utils.Tracker_Getter import get_tracker_model
-from utils.utils import get_guild
-from database_models import Global
-from database_models import get_tracker, get_condition, get_macro
-from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from Base.Character import Character
+from database_models import get_tracker, get_condition
 
 # from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -57,13 +43,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
             )
             stat_list = result.scalars().all()
             # print(len(stat_list))
-            stats = {
-                "AC": 0,
-                "Fort": 0,
-                "Reflex": 0,
-                "Will": 0,
-                "DC": 0
-            }
+            stats = {"AC": 0, "Fort": 0, "Reflex": 0, "Will": 0, "DC": 0}
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
             # print(stats)
