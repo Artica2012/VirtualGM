@@ -27,16 +27,14 @@ class STFCog(commands.Cog):
     @stf.command(description="Starfinder Import")
     @option("name", description="Character Name", required=True)
     @option("url", description="Public Google Sheet URL")
-    async def import_character(
-        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None
-    ):
+    async def import_character(self, ctx: discord.ApplicationContext, name: str, url: str = None):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
 
         try:
             guild = await get_guild(ctx, None)
-            if guild.system == "EPF":
+            if guild.system == "STF":
                 response = await stf_g_sheet_import(ctx, name, url)
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 await Tracker_Model.update_pinned_tracker()
@@ -54,12 +52,13 @@ class STFCog(commands.Cog):
             await report.report()
 
         try:
-            logging.info("Writing to Vault")
-            guild = await get_guild(ctx, None)
-            Character = await get_character(name, ctx, guild=guild, engine=engine)
-            if Character.player:
-                Utilities = await get_utilities(ctx, guild=guild, engine=engine)
-                await Utilities.add_to_vault(name)
+            if response:
+                logging.info("Writing to Vault")
+                guild = await get_guild(ctx, None)
+                Character = await get_character(name, ctx, guild=guild, engine=engine)
+                if Character.player:
+                    Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                    await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"stf_import: {e}")
             report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)

@@ -66,6 +66,7 @@ class STF_Character_Model:
             db.Column("itl_mod", db.INTEGER()),
             db.Column("wis_mod", db.INTEGER()),
             db.Column("cha_mod", db.INTEGER()),
+            db.Column("fort_mod", db.INTEGER()),
             db.Column("will_mod", db.INTEGER()),
             db.Column("reflex_mod", db.INTEGER()),
             db.Column("acrobatics_mod", db.INTEGER()),
