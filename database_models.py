@@ -363,6 +363,12 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         init_string = Column(String(), nullable=True)
         active = Column(Boolean(), default=True)
 
+        level = Column(Integer(), nullable=False)
+        base_eac = Column(Integer(), nullable=False)
+        base_kac = Column(Integer(), nullable=False)
+
+
+
     logging.info("get_tracker: returning tracker")
     return Tracker
 
