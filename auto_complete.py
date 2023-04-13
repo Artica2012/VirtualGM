@@ -95,9 +95,9 @@ async def character_select_player(ctx: discord.AutocompleteContext):
 async def character_select_con(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     char_list: list = await AutoComplete.character_select()
-    print(char_list)
+    # print(char_list)
     char_list.extend(["All PCs", "All NPCs"])
-    print(char_list)
+    # print(char_list)
     return char_list
 
 

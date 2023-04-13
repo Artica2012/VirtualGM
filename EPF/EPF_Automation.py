@@ -40,7 +40,7 @@ class EPF_Automation(Automation):
 
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
-        output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
         return output_string
 
     async def save(self, character, target, save, dc, modifier):
