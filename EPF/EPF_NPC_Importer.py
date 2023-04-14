@@ -8,6 +8,7 @@ import EPF.EPF_Character
 from EPF.EPF_Character import get_EPF_Character, delete_intested_items
 from database_models import get_tracker, LookupBase
 from utils.Tracker_Getter import get_tracker_model
+from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
 
@@ -192,29 +193,33 @@ async def epf_npc_lookup(
             await session.commit()
         await engine.dispose()
 
-        print("Committed")
-
+        # print("Committed")
+        # print(f"Stat_Mod: {stat_mod}")
         Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
-        await Charater_Model.update()
-        await Charater_Model.set_cc(
-            "stat_modification",
-            True,
-            0,
-            None,
-            False,
-            flex=False,
-            data=(
-                f"attack {stat_mod} i, dmg {stat_mod} i, perception {stat_mod} i, acrobatics {stat_mod} i,"
-                f" arcana {stat_mod} i, athletics {stat_mod} i, crafting {stat_mod} i, deception {stat_mod} i,"
-                f" diplomacy {stat_mod} i, intimidation {stat_mod} i, medicine {stat_mod} i, nature"
-                f" {stat_mod} i, occultism {stat_mod} i, perception {stat_mod} i, performance {stat_mod} i,"
-                f" religion {stat_mod} i, society {stat_mod} i, stealth {stat_mod} i, survival {stat_mod} i,"
-                f" thievery {stat_mod} i"
-            ),
-            visible=False,
-        )
+        if stat_mod != 0:
+            print("Write the elite/weak modifiers")
+            stat_mod = ParseModifiers(f"{stat_mod}")
+            await Charater_Model.update()
+            result = await Charater_Model.set_cc(
+                elite,
+                True,
+                0,
+                "Round",
+                False,
+                data=(
+                    f"attack {stat_mod} i, dmg {stat_mod} i, fort {stat_mod} i, reflex {stat_mod} i, will {stat_mod} i,"
+                    f" perception {stat_mod} i, acrobatics {stat_mod} i,  arcana {stat_mod} i, athletics {stat_mod} i,"
+                    f" crafting {stat_mod} i, deception {stat_mod} i, diplomacy {stat_mod} i, intimidation"
+                    f" {stat_mod} i, medicine {stat_mod} i, nature {stat_mod} i, occultism {stat_mod} i, perception"
+                    f" {stat_mod} i, performance {stat_mod} i, religion {stat_mod} i, society {stat_mod} i, stealth"
+                    f" {stat_mod} i, survival {stat_mod} i, thievery {stat_mod} i"
+                ),
+                visible=False,
+                update=False,
+            )
+        # print(f"Elite/Weak Result: {result}")
 
-        await write_resitances(data.resistance, Charater_Model, ctx, guild, engine)
+        await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
         await Charater_Model.update()
         Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
@@ -228,9 +233,12 @@ async def epf_npc_lookup(
         return False
 
 
-async def write_resitances(resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine):
+async def write_resitances(
+    resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine, overwrite=True
+):
     # First delete out all the old resistances
-    await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
+    if overwrite:
+        await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
 
     # Then write the new ones
     try:
@@ -239,15 +247,21 @@ async def write_resitances(resistance: dict, Character_Model: EPF.EPF_Character.
             for key, value in resistance["resist"].items():
                 condition_string = f"{key} r {value};"
                 async with session.begin():
-                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+                    await Character_Model.set_cc(
+                        key, True, value, "Round", False, data=condition_string, visible=False, update=False
+                    )
             for key, value in resistance["weak"].items():
                 condition_string = f"{key} w {value};"
                 async with session.begin():
-                    await Character_Model.set_cc(key, True, value, "Round", False, data=condition_string, visible=False)
+                    await Character_Model.set_cc(
+                        key, True, value, "Round", False, data=condition_string, visible=False, update=False
+                    )
             for key in resistance["immune"].keys():
                 condition_string = f"{key} i ;"
                 async with session.begin():
-                    await Character_Model.set_cc(key, True, 1, "Round", False, data=condition_string, visible=False)
+                    await Character_Model.set_cc(
+                        key, True, 1, "Round", False, data=condition_string, visible=False, update=False
+                    )
         return True
     except Exception:
         return False
