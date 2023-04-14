@@ -589,6 +589,7 @@ class EPF_Character(Character):
         flex: bool = False,
         data: str = "",
         visible: bool = True,
+        update: bool = True,
     ):
         logging.info("set_cc")
         # Get the Character's data
@@ -617,6 +618,7 @@ class EPF_Character(Character):
         # Write the condition to the table
         try:
             if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                # print(f"Writing Condition: {title}")
                 async with session.begin():
                     condition = Condition(
                         character_id=self.id,
@@ -631,8 +633,8 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
-                await self.update()
-                # await update_pinned_tracker(ctx, engine, bot)
+                if update:
+                    await self.update()
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
@@ -659,9 +661,9 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
-            await self.update()
-            return True
+                if update:
+                    await self.update()
+                return True
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
