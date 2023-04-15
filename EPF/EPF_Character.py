@@ -954,6 +954,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "stat": "str",
                 "dmg_type": "Bludgeoning",
                 "attk_stat": "str",
+                "traits": [],
             }
 
             if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
