@@ -237,7 +237,7 @@ class EPF_Character(Character):
             return f"1d20+{self.nature_mod}"
         elif item == "Occultism":
             # print("m")
-            return f"1d20+{self.occult_mod}"
+            return f"1d20+{self.occultism_mod}"
         elif item == "Perception":
             # print("n")
             return f"1d20+{self.perception_mod}"
@@ -966,7 +966,49 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 attacks[item["display"]]["override_prof"] = 8
 
             edited_attack = await attack_lookup(attacks[item["display"]], pb)
-            attacks[item["display"]] = edited_attack
+
+            double_attacks = False
+            # Check for two handed and fatal
+            if "traits" in edited_attack.keys():
+                for trait in edited_attack["traits"]:
+                    if "fatal-aim" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        fatal_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        trait_list = attack_one["traits"]
+                        trait_copy = trait_list.copy()
+                        for x, i in enumerate(trait_list):
+                            if i == trait:
+                                trait_copy[x] = f"fatal-{fatal_die}"
+
+                        attack_one["traits"] = trait_copy
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+
+                        trait_copy = []
+                        for i in trait_list:
+                            if i != trait:
+                                trait_copy.append(i)
+
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+                        attack_two["traits"] = trait_copy
+                    if "two-hand" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        attk_2_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+                        attack_one["die"] = attk_2_die
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+
+            if double_attacks:
+                del attacks[item["display"]]
+                attacks[attack_one["display"]] = attack_one
+                attacks[attack_two["display"]] = attack_two
+            else:
+                attacks[item["display"]] = edited_attack
 
         # print(attacks)
 
@@ -1225,7 +1267,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
             )
             character.crafting_mod = await skill_mod_calc(
-                character.itl_mod, "crafting", character.acrobatics_prof, character.level, bonuses, ui
+                character.itl_mod, "crafting", character.crafting_prof, character.level, bonuses, ui
             )
             character.deception_mod = await skill_mod_calc(
                 character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
@@ -1685,11 +1727,18 @@ async def attack_lookup(attack, pathbuilder):
             )
             data = result.scalars().one()
     except Exception:
-        item_name = attack["name"].strip()
-        async with async_session() as session:
-            result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
-            data = result.scalars().one()
+        try:
+            print(attack["name"])
+            item_name = attack["name"].strip()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower())
+                )
+                data = result.scalars().one()
+        except Exception as e:
+            return attack
     # print(data.name, data.range, data.traits)
+
     await lookup_engine.dispose()
 
     if data.range is not None:

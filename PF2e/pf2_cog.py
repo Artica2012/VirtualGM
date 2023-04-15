@@ -99,7 +99,7 @@ class PF2Cog(commands.Cog):
             if Character.player == True:
                 Utilities = await get_utilities(ctx, guild=guild, engine=engine)
                 await Utilities.add_to_vault(name)
-        except Exception:
+        except Exception as e:
             logging.warning(f"pb_import: {e}")
             report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
             await report.report()
