@@ -60,7 +60,10 @@ class EPF_Autocmplete(AutoComplete):
     async def get_attributes(self):
         await self.engine.dispose()
         if self.ctx.value != "":
-            option_list = "AC" + EPF_SKills
+            # print(EPF_SKills)
+            option_list = ["AC"]
+            option_list.extend(EPF_SKills)
+            # print(option_list)
             val = self.ctx.value.lower()
             return [option for option in option_list if val in option.lower()]
         else:
