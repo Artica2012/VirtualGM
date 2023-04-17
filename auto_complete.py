@@ -139,6 +139,11 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
     return await AutoComplete.macro_select(attk=True)
 
 
+async def a_d_macro_select(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.macro_select(attk=True, dmg=True)
+
+
 async def cc_select(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.cc_select()
@@ -172,6 +177,11 @@ async def stats(ctx: discord.AutocompleteContext):
 async def dmg_type(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.dmg_types()
+
+
+async def var_dmg_type(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.dmg_types(var=True)
 
 
 async def npc_search(ctx: discord.AutocompleteContext):

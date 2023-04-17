@@ -372,12 +372,14 @@ class EPF_Character(Character):
             die = f"d{die}"
 
         # Special Trait categories
-        for item in weapon["traits"]:
-            if item.strip().lower() == "propulsive":
-                if self.str_mod > 0:
-                    dmg_mod += floor(self.str_mod / 2)
-                else:
-                    dmg_mod += self.str_mod
+        if weapon["prof"] != "NPC":
+            for item in weapon["traits"]:
+                if item.strip().lower() == "propulsive":
+                    dmg_mod = int(dmg_mod)
+                    if self.str_mod > 0:
+                        dmg_mod += floor(self.str_mod / 2)
+                    else:
+                        dmg_mod += self.str_mod
 
         if crit:
             for item in weapon["traits"]:
@@ -898,37 +900,6 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         for item in pb["build"]["feats"]:
             feats += f"{item[0]}, "
 
-        # if overwrite:
-        #     attacks = character.attacks
-        #     name_list = []
-        #     for item in pb["build"]["weapons"]:
-        #         name_list.append(item["display"])
-        #     for key in attacks:
-        #         if key not in name_list:
-        #             del attacks[key]
-        #     for item in pb["build"]["weapons"]:
-        #         die_num = 0
-        #         match item["str"]:
-        #             case "":
-        #                 die_num = 1
-        #             case "striking":
-        #                 die_num = 2
-        #             case "greaterStriking":
-        #                 die_num = 3
-        #             case "majorStriking":
-        #                 die_num = 4
-        #
-        #         attacks[item["display"]] = {
-        #             "display": item["display"],
-        #             "prof": item["prof"],
-        #             "die": item["die"],
-        #             "pot": item["pot"],
-        #             "str": item["str"],
-        #             "die_num": die_num,
-        #             "name": item["name"],
-        #             "runes": item["runes"],
-        #         }
-        # else
         attacks = {}
         for item in pb["build"]["weapons"]:
             die_num = 0
@@ -1743,8 +1714,12 @@ async def attack_lookup(attack, pathbuilder):
     await lookup_engine.dispose()
 
     if data.range is not None:
-        attack["stat"] = None
-        attack["attk_stat"] = "dex"
+        if "thrown" in data.traits:
+            attack["stat"] = "str"
+            attack["attk_stat"] = "dex"
+        else:
+            attack["stat"] = None
+            attack["attk_stat"] = "dex"
     # print(data.name)
     # print(data.traits)
     for item in data.traits:

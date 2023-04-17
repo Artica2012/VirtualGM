@@ -31,7 +31,7 @@ class EPF_Autocmplete(AutoComplete):
             await self.engine.dispose()
             return key_list
 
-    async def macro_select(self, attk=False):
+    async def macro_select(self, attk=False, dmg=False):
         character = self.ctx.options["character"]
         char_split = character.split(",")
         if len(char_split) > 1:
@@ -40,13 +40,21 @@ class EPF_Autocmplete(AutoComplete):
         try:
             EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             macro_list = await EPF_Char.macro_list()
+            if EPF_Char.character_model.medicine_prof > 0 and dmg:
+                # print("Trained in Med")
+                macro_list.append("Treat Wounds")
+
             await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
             else:
                 if attk:
-                    return await EPF_Char.attack_list()
+                    attk_list = await EPF_Char.attack_list()
+                    if EPF_Char.character_model.medicine_prof > 0 and dmg:
+                        # print("Trained in Med")
+                        attk_list.append("Treat Wounds")
+                    return attk_list
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
@@ -90,8 +98,11 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_Stats
 
-    async def dmg_types(self):
+    async def dmg_types(self, var=False):
         await self.engine.dispose()
+        if var:
+            if self.ctx.options["user_roll_str"] == "Treat Wounds":
+                return ["15", "20", "30", "40"]
         if self.ctx.value != "":
             option_list = EPF_DMG_Types
             val = self.ctx.value.lower()
