@@ -437,5 +437,9 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
         )
     # print(guild.timekeeping)
     if guild.timekeeping:
-        await Character_Model.set_cc("Wounds Treated", False, 60, "Minute", True)
+        if "continual recovery" in Character_Model.character_model.feats.lower():
+            time = 10
+        else:
+            time = 60
+        await Character_Model.set_cc("Wounds Treated", False, time, "Minute", True)
     return output_string
