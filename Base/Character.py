@@ -385,7 +385,7 @@ class Character:
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, self.guild.id)
-
+        del_result = False
         async with async_session() as session:
             result = await session.execute(
                 select(Condition).where(Condition.character_id == self.id).where(Condition.time == true())
@@ -397,8 +397,8 @@ class Character:
             time_stamp = datetime.datetime.fromtimestamp(row.number)
             time_left = time_stamp - current_time
             if time_left.total_seconds() <= 0:
-                result = await self.delete_cc(row.title)
-            if result:
+                del_result = await self.delete_cc(row.title)
+            if del_result:
                 if self.ctx is not None:
                     await self.ctx.channel.send(f"{row.title} removed from {self.char_name}")
                 elif bot is not None:
