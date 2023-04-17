@@ -11,12 +11,13 @@ from auto_complete import (
     character_select,
     character_select_gm,
     a_macro_select,
+    a_d_macro_select,
     get_attributes,
     a_save_target_custom,
     save_select,
-    dmg_type,
     spell_list,
     spell_level,
+    var_dmg_type,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -108,10 +109,10 @@ class AutomationCog(commands.Cog):
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
-    @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_d_macro_select)
     @option("modifier", description="Roll Modifer", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
-    @option("damage_type", description="Damage Type", autocomplete=dmg_type, required=False)
+    @option("damage_type", description="Damage Type", autocomplete=var_dmg_type, required=False)
     async def damage(
         self,
         ctx: discord.ApplicationContext,
