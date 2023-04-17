@@ -174,6 +174,9 @@ EPF_Conditions = {
     "Shield Raised +3": "ac +3 c",
     "Inspire Courage": "attack +1 s, dmg +1 s",
     "Inspire Defense": "ac +1 s, fort +1 s, reflex +1 s, will +1 s",
+    "Lesser Cover": "ac +1 c",
+    "Standard Cover": "ac +2 c, reflex +2 c, stealth +2 c",
+    "Full Cover": "ac +4 c, reflex +4 c, stealth +4 c",
 }
 
 EPF_Stats = ["str", "dex", "con", "itl", "wis", "cha", "None"]
