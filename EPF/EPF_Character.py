@@ -372,12 +372,14 @@ class EPF_Character(Character):
             die = f"d{die}"
 
         # Special Trait categories
-        for item in weapon["traits"]:
-            if item.strip().lower() == "propulsive":
-                if self.str_mod > 0:
-                    dmg_mod += floor(self.str_mod / 2)
-                else:
-                    dmg_mod += self.str_mod
+        if weapon["prof"] != "NPC":
+            for item in weapon["traits"]:
+                if item.strip().lower() == "propulsive":
+                    dmg_mod = int(dmg_mod)
+                    if self.str_mod > 0:
+                        dmg_mod += floor(self.str_mod / 2)
+                    else:
+                        dmg_mod += self.str_mod
 
         if crit:
             for item in weapon["traits"]:

@@ -159,17 +159,17 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        try:
-            Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.auto(
-                self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
-            )
-            await ctx.send_followup(output_string)
-        except Exception as e:
-            logging.warning(f"attack_cog auto {e}")
-            report = ErrorReport(ctx, "/a auto", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.auto(
+            self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+        )
+        await ctx.send_followup(output_string)
+        # except Exception as e:
+        #     logging.warning(f"attack_cog auto {e}")
+        #     report = ErrorReport(ctx, "/a auto", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
         await engine.dispose()
 
     @att.command(description="Cast a Spell (EPF Only)")
