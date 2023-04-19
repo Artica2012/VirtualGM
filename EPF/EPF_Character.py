@@ -350,6 +350,8 @@ class EPF_Character(Character):
         match weapon["stat"]:
             case None:
                 dmg_mod = 0
+            case "":
+                dmg_mod = 0
             case "None":
                 dmg_mod = 0
             case "str":
