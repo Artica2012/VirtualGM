@@ -274,7 +274,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                         dmg_type = "piercing"
                 elif "piercing" in target.resistance["resist"]:
                     dmg_type = "bludgeoning"
-                elif "bludgeoning" in target.resistance["resit"]:
+                elif "bludgeoning" in target.resistance["resist"]:
                     dmg_type = "piercing"
 
     if (
