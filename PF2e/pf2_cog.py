@@ -152,7 +152,7 @@ class PF2Cog(commands.Cog):
         response = False
         try:
             Utilities = await get_utilities(ctx, engine=engine)
-            response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg, int(proficiency))
+            response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg, proficiency)
         except Exception as e:
             await ctx.send_followup("Error importing character")
             logging.info(f"pb_import: {e}")
