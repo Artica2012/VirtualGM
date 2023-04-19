@@ -22,10 +22,11 @@ class EPF_Utilities(Utilities):
         return False
 
     async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg, prof):
+        # print("editing attack")
         Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
             attack_dict = Character_Model.character_model.attacks
-            print(attack_dict)
+            # print(attack_dict)
             if dmg_stat is not None:
                 attack_dict[attack]["stat"] = dmg_stat
             if attk_stat is not None:
@@ -35,8 +36,12 @@ class EPF_Utilities(Utilities):
             if dmg is not None:
                 attack_dict[attack]["dmg_type"] = dmg
             if prof is not None:
-                attack_dict[attack]["override_prof"] = prof
-            print(attack_dict)
+                try:
+                    prof = int(prof)
+                    attack_dict[attack]["override_prof"] = prof
+                except Exception:
+                    pass
+            # print(attack_dict)
         except Exception as e:
             logging.error(f"EPF utilities edit attack (edit): {e}")
             return False

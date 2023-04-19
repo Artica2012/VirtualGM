@@ -403,7 +403,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     "die": df.f[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.f[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": df.f[i + 9],
                     "attk_stat": Interpreter[df.f[i + 6]],
                     "traits": parsed_traits,
                 }
@@ -641,7 +641,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                     "die": df.f[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.f[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": df.f[i + 9],
                     "attk_stat": Interpreter[df.f[i + 6]],
                     "traits": parsed_traits,
                 }
@@ -836,7 +836,7 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                     "die": df.b[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.b[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": df.b[i + 9],
                     "attk_stat": Interpreter[df.b[i + 6]],
                     "traits": parsed_traits,
                 }
