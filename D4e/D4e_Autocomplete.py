@@ -12,7 +12,17 @@ class D4e_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def cc_select(self, no_time=False, flex=False):
+    async def cc_select(self, **kwargs):
+        if "no_time" in kwargs.keys():
+            no_time = kwargs["no_time"]
+        else:
+            no_time = False
+
+        if "flex" in kwargs.keys():
+            flex = kwargs["flex"]
+        else:
+            flex = False
+
         character = self.ctx.options["character"]
 
         try:

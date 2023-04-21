@@ -31,7 +31,17 @@ class EPF_Autocmplete(AutoComplete):
             await self.engine.dispose()
             return key_list
 
-    async def macro_select(self, attk=False, dmg=False):
+    async def macro_select(self, **kwargs):
+        if "attk" in kwargs.keys():
+            attk = kwargs["attk"]
+        else:
+            attk = False
+
+        if "dmg" in kwargs.keys():
+            dmg = kwargs["dmg"]
+        else:
+            dmg = False
+
         character = self.ctx.options["character"]
         char_split = character.split(",")
         if len(char_split) > 1:
@@ -98,7 +108,12 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_Stats
 
-    async def dmg_types(self, var=False):
+    async def dmg_types(self, **kwargs):
+        if "var" in kwargs.keys():
+            var = kwargs["var"]
+        else:
+            var = False
+
         await self.engine.dispose()
         if var:
             if self.ctx.options["user_roll_str"] == "Treat Wounds":

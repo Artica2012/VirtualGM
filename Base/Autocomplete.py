@@ -16,7 +16,12 @@ class AutoComplete:
         self.engine = engine
         self.guild = guild
 
-    async def character_select(self, gm=False):
+    async def character_select(self, **kwargs):
+        if "gm" in kwargs.keys():
+            gm = kwargs["gm"]
+        else:
+            gm = False
+
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -76,7 +81,12 @@ class AutoComplete:
         await self.engine.dispose()
         return []
 
-    async def macro_select(self, attk=False):
+    async def macro_select(self, **kwargs):
+        if "attk" in kwargs.keys():
+            attk = kwargs["attk"]
+        else:
+            attk = False
+
         character = self.ctx.options["character"]
         char_split = character.split(",")
         if len(char_split) > 1:
@@ -115,7 +125,7 @@ class AutoComplete:
             self.engine.dispose()
             return []
 
-    async def cc_select(self, no_time=False, flex=False):
+    async def cc_select(self, **kwargs):
         character = self.ctx.options["character"]
 
         try:
@@ -185,7 +195,7 @@ class AutoComplete:
         await self.engine.dispose()
         return []
 
-    async def dmg_types(self):
+    async def dmg_types(self, **kwargs):
         await self.engine.dispose()
         return []
 
