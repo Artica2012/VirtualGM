@@ -438,7 +438,7 @@ class InitiativeCog(commands.Cog):
     @option("type", choices=["Condition", "Counter"])
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
     @option("unit", autocomplete=time_check_ac)
-    @option("flex", autocomplete=discord.utils.basic_autocomplete(["True", "False"]))
+    @option("flex", autocomplete=auto_complete.flex_ac)
     async def new(
         self,
         ctx: discord.ApplicationContext,
@@ -454,10 +454,21 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
-        if flex == "False":
-            flex_bool = False
-        else:
-            flex_bool = True
+        match flex:  # noqa
+            case "Decrement at beginning of the Turn":
+                flex_bool = True
+            case "Decrement at end of the Turn":
+                flex_bool = False
+            case "True":
+                flex_bool = True
+            case "False":
+                flex_bool = False
+            case "Ends with Save":
+                flex_bool = True
+            case "Ends after set time":
+                flex_bool = False
+            case _:
+                flex_bool = False
 
         if type == "Condition":
             counter_bool = False

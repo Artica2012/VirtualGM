@@ -202,3 +202,8 @@ async def spell_level(ctx: discord.AutocompleteContext):
 async def initiative(ctx: discord.AutocompleteContext):
     AutoComplete = await get_autocomplete(ctx)
     return await AutoComplete.init()
+
+
+async def flex_ac(ctx: discord.AutocompleteContext):
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.flex()

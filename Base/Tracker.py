@@ -56,6 +56,7 @@ class Tracker:
         self.bot = bot
 
     async def next(self):
+        print("next")
         await self.advance_initiative()
         await self.block_post_init()
 

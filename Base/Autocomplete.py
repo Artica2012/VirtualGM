@@ -54,7 +54,7 @@ class AutoComplete:
             await self.engine.dispose()
             return []
 
-    async def npc_select(self):
+    async def npc_select(self, **kwargs):
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -77,7 +77,7 @@ class AutoComplete:
             await self.engine.dispose()
             return []
 
-    async def add_condition_select(self):
+    async def add_condition_select(self, **kwargs):
         await self.engine.dispose()
         return []
 
@@ -154,11 +154,11 @@ class AutoComplete:
             await self.engine.dispose()
             return []
 
-    async def save_select(self):
+    async def save_select(self, **kwargs):
         await self.engine.dispose()
         return []
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         logging.info("get_attributes")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -187,11 +187,11 @@ class AutoComplete:
             await self.engine.dispose()
             return []
 
-    async def attacks(self):
+    async def attacks(self, **kwargs):
         await self.engine.dispose()
         return []
 
-    async def stats(self):
+    async def stats(self, **kwargs):
         await self.engine.dispose()
         return []
 
@@ -199,18 +199,22 @@ class AutoComplete:
         await self.engine.dispose()
         return []
 
-    async def npc_lookup(self):
+    async def npc_lookup(self, **kwargs):
         await self.engine.dispose()
         return []
 
-    async def spell_list(self):
+    async def spell_list(self, **kwargs):
         await self.engine.dispose()
         return []
 
-    async def spell_level(self):
+    async def spell_level(self, **kwargs):
         await self.engine.dispose()
         return []
 
-    async def init(self):
+    async def init(self, **kwargs):
         await self.engine.dispose()
         return []
+
+    async def flex(self, **kwargs):
+        await self.engine.dispose()
+        return ["Decrement at beginning of the Turn", "Decrement at end of the Turn"]
