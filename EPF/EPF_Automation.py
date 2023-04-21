@@ -403,7 +403,8 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
         await Target_Model.change_hp(healing.total, heal=True, post=False)
         output_string = (
             f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
-            f"{success_string}. {healing}\n"
+            f"{medicine_roll} {success_string}.\n"
+            f"{healing}\n"
             f"{Target_Model.char_name} healed for {healing.total}."
         )
     elif success_string == "Critical Success":
@@ -419,7 +420,8 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
         await Target_Model.change_hp(healing.total, heal=True, post=False)
         output_string = (
             f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
-            f"{success_string}. {healing}\n"
+            f"{medicine_roll} {success_string}.\n"
+            f"{healing}\n"
             f"{Target_Model.char_name} healed for {healing.total}."
         )
 
@@ -428,12 +430,14 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
         await Target_Model.change_hp(dmg.total, heal=False, post=False)
         output_string = (
             f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
-            f"{success_string}. {dmg}\n"
+            f"{medicine_roll} {success_string}.\n {dmg}\n"
             f"{Target_Model.char_name} damaged for {dmg.total}."
         )
     else:
         output_string = (
-            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n{success_string}.\n"
+            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
+            f"{medicine_roll}\n"
+            f"{success_string}.\n"
         )
     # print(guild.timekeeping)
     if guild.timekeeping:
