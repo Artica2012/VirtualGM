@@ -47,3 +47,6 @@ class D4e_Autocmplete(AutoComplete):
 
     async def save_select(self, **kwargs):
         return ["Empty Intentionally"]
+
+    async def flex(self, **kwargs):
+        return ["Ends with Save", "Ends after set time"]

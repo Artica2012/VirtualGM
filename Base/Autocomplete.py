@@ -214,3 +214,7 @@ class AutoComplete:
     async def init(self, **kwargs):
         await self.engine.dispose()
         return []
+
+    async def flex(self, **kwargs):
+        await self.engine.dispose()
+        return ["Decrement at beginning of the Turn", "Decrement at end of the Turn"]
