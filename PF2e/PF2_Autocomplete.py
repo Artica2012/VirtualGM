@@ -14,14 +14,14 @@ class PF2_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def save_select(self):
+    async def save_select(self, **kwargs):
         await self.engine.dispose()
         return PF2_saves
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         return PF2_attributes
 
-    async def npc_search(self):
+    async def npc_search(self, **kwargs):
         await self.engine.dispose()
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)

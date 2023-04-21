@@ -20,7 +20,7 @@ class EPF_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def add_condition_select(self):
+    async def add_condition_select(self, **kwargs):
         key_list = list(EPF_Conditions.keys())
         key_list.sort()
         val = self.ctx.value.lower()
@@ -71,11 +71,11 @@ class EPF_Autocmplete(AutoComplete):
             await self.engine.dispose()
             return []
 
-    async def save_select(self):
+    async def save_select(self, **kwargs):
         await self.engine.dispose()
         return PF2_saves
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         await self.engine.dispose()
         if self.ctx.value != "":
             # print(EPF_SKills)
@@ -87,7 +87,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_attributes
 
-    async def attacks(self):
+    async def attacks(self, **kwargs):
         Character_Model = await get_EPF_Character(
             self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
         )
@@ -99,7 +99,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return await Character_Model.attack_list()
 
-    async def stats(self):
+    async def stats(self, **kwargs):
         await self.engine.dispose()
         if self.ctx.value != "":
             option_list = EPF_Stats
@@ -125,7 +125,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_DMG_Types
 
-    async def npc_search(self):
+    async def npc_search(self, **kwargs):
         await self.engine.dispose()
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
@@ -139,7 +139,7 @@ class EPF_Autocmplete(AutoComplete):
         await lookup_engine.dispose()
         return lookup_list
 
-    async def spell_list(self):
+    async def spell_list(self, **kwargs):
         Character = await get_EPF_Character(
             self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
         )
@@ -150,7 +150,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return spell_list
 
-    async def spell_level(self):
+    async def spell_level(self, **kwargs):
         Character = await get_EPF_Character(
             self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
         )
@@ -178,7 +178,7 @@ class EPF_Autocmplete(AutoComplete):
             level_list.append(num)
         return level_list
 
-    async def init(self):
+    async def init(self, **kwargs):
         await self.engine.dispose()
         skills = EPF_SKills_NO_SAVE
         if self.ctx.value != "":

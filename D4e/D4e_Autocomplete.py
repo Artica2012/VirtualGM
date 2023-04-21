@@ -42,8 +42,8 @@ class D4e_Autocmplete(AutoComplete):
             await self.engine.dispose()
             return []
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         return D4e_attributes
 
-    async def save_select(self):
+    async def save_select(self, **kwargs):
         return ["Empty Intentionally"]
