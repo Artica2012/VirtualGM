@@ -59,7 +59,7 @@ async def get_guild(ctx, guild, refresh=False, id=None):
             return guild_result
     except Exception:
         if id is not None:
-            print(id)
+            # print(id)
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild_result = result.scalars().one()

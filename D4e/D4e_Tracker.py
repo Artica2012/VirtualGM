@@ -393,6 +393,7 @@ class D4e_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
@@ -416,6 +417,7 @@ class D4e_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            await self.engine.dispose()
 
 
 async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
@@ -498,5 +500,7 @@ class D4eConditionButton(discord.ui.Button):
         else:
             output_string = "Roll your own save!"
             await interaction.edit_original_response(content=output_string)
+
+        await self.engine.dispose()
 
         # await self.ctx.channel.send(output_string)

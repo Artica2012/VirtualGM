@@ -145,6 +145,7 @@ class EPF_Character(Character):
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
+        print("UPDATING!!!!!!!!!!!")
 
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
@@ -770,7 +771,12 @@ class EPF_Character(Character):
             return True
 
     # Set the initiative
-    async def set_init(self, init):
+    async def set_init(self, init, **kwargs):
+        if "update" in kwargs.keys():
+            update = kwargs["update"]
+        else:
+            update = True
+
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
@@ -795,7 +801,8 @@ class EPF_Character(Character):
                 character = char_result.scalars().one()
                 character.init = init
                 await session.commit()
-            await self.update()
+            if update:
+                await self.update()
             return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")
