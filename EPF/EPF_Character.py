@@ -1016,6 +1016,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     pb["build"]["attributes"]["ancestryhp"]
                     + pb["build"]["attributes"]["classhp"]
                     + pb["build"]["attributes"]["bonushp"]
+                    + pb["build"]["attributes"]["bonushpPerLevel"]
                     + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                     + (
                         (pb["build"]["level"] - 1)
@@ -1094,6 +1095,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             pb["build"]["attributes"]["ancestryhp"]
                             + pb["build"]["attributes"]["classhp"]
                             + pb["build"]["attributes"]["bonushp"]
+                            + pb["build"]["attributes"]["bonushpPerLevel"]
                             + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             + (
                                 (pb["build"]["level"] - 1)
@@ -1108,6 +1110,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             pb["build"]["attributes"]["ancestryhp"]
                             + pb["build"]["attributes"]["classhp"]
                             + pb["build"]["attributes"]["bonushp"]
+                            + pb["build"]["attributes"]["bonushpPerLevel"]
                             + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             + (
                                 (pb["build"]["level"] - 1)
