@@ -77,6 +77,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             pb["build"]["attributes"]["ancestryhp"]
             + pb["build"]["attributes"]["classhp"]
             + pb["build"]["attributes"]["bonushp"]
+            + pb["build"]["attributes"]["bonushpPerLevel"]
             + stats["con_mod"]
             + (
                 (stats["level"] - 1)

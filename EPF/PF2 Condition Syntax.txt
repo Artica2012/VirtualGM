@@ -35,6 +35,9 @@ Condition Data Syntax:
 Specific weapon:
     Add the weapon name in "" before the string to apply it only to a single weapon
 
+Temporary Hit Points
+ thp #,
+
 Example:
  +1 Intelligence Status Bonus:  "int +1 c,"
  +1 to Crafting Item: "crafting +1 i,"
