@@ -92,17 +92,17 @@ class PF2Cog(commands.Cog):
                 logging.info(f"pb_import: {e}")
                 report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
                 await report.report()
-        # try:
-        logging.info("Writing to Vault")
-        guild = await get_guild(ctx, None)
-        Character = await get_character(name, ctx, guild=guild, engine=engine)
-        if Character.player == True:
-            Utilities = await get_utilities(ctx, guild=guild, engine=engine)
-            await Utilities.add_to_vault(name)
-        # except Exception as e:
-        #     logging.warning(f"pb_import: {e}")
-        #     report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
-        #     await report.report()
+        try:
+            logging.info("Writing to Vault")
+            guild = await get_guild(ctx, None)
+            Character = await get_character(name, ctx, guild=guild, engine=engine)
+            if Character.player == True:
+                Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                await Utilities.add_to_vault(name)
+        except Exception as e:
+            logging.warning(f"pb_import: {e}")
+            report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
+            await report.report()
         await engine.dispose()
 
     @pf2.command(description="NPC Import")
