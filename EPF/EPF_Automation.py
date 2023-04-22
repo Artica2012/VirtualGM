@@ -209,8 +209,10 @@ class EPF_Automation(Automation):
         elif spell["type"] == "save":
             save_type = spell["save"]["value"]
             save_dc = d20.roll(
-                f"10+{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
+                f"{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
             )
+            # print(save_dc)
+            # print(save_dc.total)
             roll = d20.roll(f"{await Target_Model.get_roll(save_type.title())}{ParseModifiers(target_modifier)}")
 
             success_string = PF2_eval_succss(roll, save_dc)
