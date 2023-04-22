@@ -618,6 +618,22 @@ class EPF_Character(Character):
             if title in EPF_Conditions:
                 data = EPF_Conditions[title]
                 # print(data)
+        print(data)
+        if "thp" in data:
+            data_list = data.split(",")
+            final_list = data_list.copy()
+            for x, item in enumerate(data_list):
+                parsed = item.strip().split(" ")
+                if parsed[0].lower() == "thp":
+                    try:
+                        thp_num = int(parsed[1])
+                        await self.add_thp(thp_num)
+                        final_list.pop(x)
+                    except Exception:
+                        pass
+            print(final_list)
+            data = ", ".join(final_list)
+            print(data)
 
         # Write the condition to the table
         try:
