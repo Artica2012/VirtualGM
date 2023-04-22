@@ -203,7 +203,12 @@ class Character:
             return False
 
     # Set the initiative
-    async def set_init(self, init):
+    async def set_init(self, init, **kwargs):
+        if "update" in kwargs.keys():
+            update = kwargs["update"]
+        else:
+            update = True
+
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
@@ -225,7 +230,8 @@ class Character:
                 character = char_result.scalars().one()
                 character.init = init
                 await session.commit()
-            await self.update()
+            if update:
+                await self.update()
             return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")

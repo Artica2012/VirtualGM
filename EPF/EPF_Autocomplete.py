@@ -41,11 +41,14 @@ class EPF_Autocmplete(AutoComplete):
             dmg = kwargs["dmg"]
         else:
             dmg = False
-
-        character = self.ctx.options["character"]
-        char_split = character.split(",")
-        if len(char_split) > 1:
-            character = char_split[0]
+        try:
+            character = self.ctx.options["character"]
+            char_split = character.split(",")
+            if len(char_split) > 1:
+                character = char_split[0]
+        except Exception:
+            await self.engine.dispose()
+            return []
 
         try:
             EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
@@ -88,10 +91,14 @@ class EPF_Autocmplete(AutoComplete):
             return EPF_attributes
 
     async def attacks(self, **kwargs):
-        Character_Model = await get_EPF_Character(
-            self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
-        )
-        await self.engine.dispose()
+        try:
+            Character_Model = await get_EPF_Character(
+                self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
+            )
+            await self.engine.dispose()
+        except Exception:
+            await self.engine.dispose()
+            return []
         if self.ctx.value != "":
             option_list = await Character_Model.attack_list()
             val = self.ctx.value.lower()
@@ -115,9 +122,13 @@ class EPF_Autocmplete(AutoComplete):
             var = False
 
         await self.engine.dispose()
-        if var:
-            if self.ctx.options["user_roll_str"] == "Treat Wounds":
-                return ["15", "20", "30", "40"]
+        try:
+            if var:
+                if self.ctx.options["user_roll_str"] == "Treat Wounds":
+                    return ["15", "20", "30", "40"]
+        except Exception:
+            await self.engine.dispose()
+            return []
         if self.ctx.value != "":
             option_list = EPF_DMG_Types
             val = self.ctx.value.lower()
@@ -127,23 +138,34 @@ class EPF_Autocmplete(AutoComplete):
 
     async def npc_search(self, **kwargs):
         await self.engine.dispose()
-        lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-        async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(
-                select(EPF_NPC.name)
-                .where(func.lower(EPF_NPC.name).contains(self.ctx.value.lower()))
-                .order_by(EPF_NPC.name.asc())
+        try:
+            lookup_engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE
             )
-            lookup_list = result.scalars().all()
-        await lookup_engine.dispose()
-        return lookup_list
+            async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(
+                    select(EPF_NPC.name)
+                    .where(func.lower(EPF_NPC.name).contains(self.ctx.value.lower()))
+                    .order_by(EPF_NPC.name.asc())
+                )
+                lookup_list = result.scalars().all()
+            await lookup_engine.dispose()
+            return lookup_list
+        except Exception:
+            await lookup_engine.dispose()
+            return []
 
     async def spell_list(self, **kwargs):
-        Character = await get_EPF_Character(
-            self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
-        )
-        spell_list = Character.character_model.spells.keys()
+        try:
+            Character = await get_EPF_Character(
+                self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
+            )
+            spell_list = Character.character_model.spells.keys()
+            await self.engine.dispose()
+        except Exception:
+            await self.engine.dispose()
+            return []
         if self.ctx.value != "":
             val = self.ctx.value.lower()
             return [option for option in spell_list if val in option.lower()]
@@ -151,32 +173,42 @@ class EPF_Autocmplete(AutoComplete):
             return spell_list
 
     async def spell_level(self, **kwargs):
-        Character = await get_EPF_Character(
-            self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
-        )
-        spell_name = self.ctx.options["spell"]
-        spell = Character.character_model.spells[spell_name]
-        if spell["tradition"] == "NPC":
-            return [spell["cast_level"]]
+        try:
+            Character = await get_EPF_Character(
+                self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
+            )
+            spell_name = self.ctx.options["spell"]
+            spell = Character.character_model.spells[spell_name]
+        except Exception:
+            await self.engine.dispose()
+            return []
 
-        min_level = spell["level"]
-        if min_level == 0:
-            return [ceil(Character.character_model.level / 2)]
-        max_level = ceil(Character.character_model.level / 2)
-        if spell["heightening"]["type"] == "interval":
-            interval_level = spell["heightening"]["interval"]
-        elif spell["heightening"]["type"] == "fixed":
-            level_list = [min_level]
-            for key in spell["heightening"]["type"]["interval"]:
-                level_list.append(key)
+        try:
+            await self.engine.dispose()
+            if spell["tradition"] == "NPC":
+                return [spell["cast_level"]]
+
+            min_level = spell["level"]
+            if min_level == 0:
+                return [ceil(Character.character_model.level / 2)]
+            max_level = ceil(Character.character_model.level / 2)
+            if spell["heightening"]["type"] == "interval":
+                interval_level = spell["heightening"]["interval"]
+            elif spell["heightening"]["type"] == "fixed":
+                level_list = [min_level]
+                for key in spell["heightening"]["type"]["interval"]:
+                    level_list.append(key)
+                return level_list
+            else:
+                interval_level = 1
+
+            level_list = []
+            for num in range(min_level, max_level + 1, interval_level):
+                level_list.append(num)
             return level_list
-        else:
-            interval_level = 1
-        print(min_level, max_level, interval_level)
-        level_list = []
-        for num in range(min_level, max_level + 1, interval_level):
-            level_list.append(num)
-        return level_list
+        except Exception:
+            await self.engine.dispose()
+            return []
 
     async def init(self, **kwargs):
         await self.engine.dispose()
