@@ -114,16 +114,16 @@ class PF2Cog(commands.Cog):
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         response = False
-        try:
-            if guild.system == "PF2":
-                response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-            elif guild.system == "EPF":
-                response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-        except Exception as e:
-            await ctx.send_followup("Error importing character")
-            logging.info(f"pb_import: {e}")
-            report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
-            await report.report()
+        # try:
+        if guild.system == "PF2":
+            response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        elif guild.system == "EPF":
+            response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
+        # except Exception as e:
+        #     await ctx.send_followup("Error importing character")
+        #     logging.info(f"pb_import: {e}")
+        #     report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
+        #     await report.report()
 
         if not response:
             await ctx.send_followup("Import Failed")

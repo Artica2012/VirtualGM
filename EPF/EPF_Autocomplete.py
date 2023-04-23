@@ -6,13 +6,12 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import database_operations
 from Base.Autocomplete import AutoComplete
 from EPF.EPF_Character import get_EPF_Character
 from EPF.EPF_NPC_Importer import EPF_NPC
 from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types, EPF_SKills, EPF_SKills_NO_SAVE, EPF_attributes
 from PF2e.pf2_functions import PF2_saves
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, DATABASE
-from database_operations import get_asyncio_db_engine
 from utils.Char_Getter import get_character
 
 
@@ -137,11 +136,11 @@ class EPF_Autocmplete(AutoComplete):
             return EPF_DMG_Types
 
     async def npc_search(self, **kwargs):
+        print("NPC Search")
         # await self.engine.dispose()
         try:
-            lookup_engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE
-            )
+            lookup_engine = database_operations.look_up_engine
+            print(lookup_engine)
             async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
@@ -149,7 +148,9 @@ class EPF_Autocmplete(AutoComplete):
                     .where(func.lower(EPF_NPC.name).contains(self.ctx.value.lower()))
                     .order_by(EPF_NPC.name.asc())
                 )
+
                 lookup_list = result.scalars().all()
+            # print(f"Result {lookup_list}")
             # await lookup_engine.dispose()
             return lookup_list
         except Exception:

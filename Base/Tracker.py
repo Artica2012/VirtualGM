@@ -55,8 +55,8 @@ class Tracker:
         self.guild = guild
         self.bot = bot
 
-    def __del__(self):
-        print("Destroying Tracker")
+    # def __del__(self):
+    #     print("Destroying Tracker")
 
     async def next(self):
         print("next")

@@ -76,7 +76,7 @@ async def on_error():
 # lookup_parser.parser()
 
 # Load the bot
-bot.load_extension("Query.query_results")
+# bot.load_extension("Query.query_results")
 bot.load_extension("dice_roller_cog")
 bot.load_extension("initiative")
 bot.load_extension("error_reporting_cog")

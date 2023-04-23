@@ -32,22 +32,26 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{SERVER_DATA}"
-engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, isloation_level="READ UNCOMMITTED")
+print(f"Engine URL: {url}")
+engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, query_cache_size=150)
 lookup_url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
-look_up_engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, isloation_level="READ UNCOMMITTED")
+print(f"Lookup URL: {lookup_url}")
+look_up_engine = create_async_engine(lookup_url, echo=False, pool_size=5, max_overflow=-1, query_cache_size=150)
 
 
 # Get the engine
 def get_asyncio_db_engine(user, password, host, port, db):
     # url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
-    # print(url)
-    # if not database_exists(url):
-    #     create_database(url)
+    # # print(url)
+    # # if not database_exists(url):
+    # #     create_database(url)
     # engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, query_cache_size=80)
-
+    # return engine
     if db == SERVER_DATA:
+        # print("engine")
         return engine
     elif db == DATABASE:
+        # print("lookup")
         return look_up_engine
     else:
         return None
