@@ -2,7 +2,8 @@
 import asyncio
 import logging
 import gc
-from main import tracemalloc
+
+# from main import tracemalloc
 
 # imports
 import discord
@@ -26,12 +27,12 @@ class Update_and_Maintenance_Cog(commands.Cog):
         self.bot = bot
         self.lock = asyncio.Lock()
         self.garbage_collect.start()
-        self.resource_monitor.start()
+        # self.resource_monitor.start()
 
-    @tasks.loop(seconds=30)
-    async def resource_monitor(self):
-        mem_usage = tracemalloc.get_traced_memory()
-        print(f"Memory Usage:\n Current: {mem_usage[0]/(1024*1024)}, Max: {mem_usage[1]/(1024*1024)}")
+    # @tasks.loop(seconds=30)
+    # async def resource_monitor(self):
+    #     mem_usage = tracemalloc.get_traced_memory()
+    #     print(f"Memory Usage:\n Current: {mem_usage[0]/(1024*1024)}, Max: {mem_usage[1]/(1024*1024)}")
 
     #
     #     snapshot = tracemalloc.take_snapshot()

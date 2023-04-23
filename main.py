@@ -7,7 +7,8 @@ import logging
 # imports
 import os
 import sys
-import tracemalloc
+
+# import tracemalloc
 
 import discord
 from dotenv import load_dotenv
@@ -35,7 +36,7 @@ TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
 
-tracemalloc.start()
+# tracemalloc.start()
 
 # set up the bot/intents
 intents = discord.Intents.default()
