@@ -31,15 +31,26 @@ GUILD = os.getenv("GUILD")
 SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
+url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{SERVER_DATA}"
+engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, isloation_level="READ UNCOMMITTED")
+lookup_url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
+look_up_engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, isloation_level="READ UNCOMMITTED")
+
 
 # Get the engine
 def get_asyncio_db_engine(user, password, host, port, db):
-    url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
+    # url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
     # print(url)
     # if not database_exists(url):
     #     create_database(url)
-    engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1)
-    return engine
+    # engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, query_cache_size=80)
+
+    if db == SERVER_DATA:
+        return engine
+    elif db == DATABASE:
+        return look_up_engine
+    else:
+        return None
 
 
 def get_db_engine(user, password, host, port, db):

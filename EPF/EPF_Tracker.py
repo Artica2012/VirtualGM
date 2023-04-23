@@ -325,7 +325,7 @@ class EPF_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
-            await self.engine.dispose()
+            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
@@ -347,4 +347,4 @@ class EPF_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
-            await self.engine.dispose()
+            # await self.engine.dispose()

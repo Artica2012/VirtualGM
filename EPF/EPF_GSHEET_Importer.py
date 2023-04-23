@@ -692,7 +692,7 @@ async def attack_lookup(attack, character: dict):
                 data = result.scalars().one()
         except:
             return attack
-    await lookup_engine.dispose()
+    # await lookup_engine.dispose()
 
     if data.range is not None:
         attack["stat"] = None

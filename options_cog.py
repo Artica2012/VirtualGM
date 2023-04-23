@@ -69,7 +69,7 @@ class OptionsCog(commands.Cog):
             await ctx.send_followup("Server Setup Failed", ephemeral=True)
             report = ErrorReport(ctx, "start", e, self.bot)
             await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
     @setup.command(
         description="Administrative Commands",
@@ -128,7 +128,7 @@ class OptionsCog(commands.Cog):
                 print(f"/admin tracker: {e}")
                 report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
                 await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
     @setup.command(description="Optional Modules")
     @option(
@@ -202,7 +202,7 @@ class OptionsCog(commands.Cog):
                     timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str
                 )
                 await ctx.send_followup(embed=embed)
-            await engine.dispose()
+            # await engine.dispose()
         except NoResultFound:
             await ctx.channel.send(error_not_initialized, delete_after=30)
             return False
@@ -211,7 +211,7 @@ class OptionsCog(commands.Cog):
             report = ErrorReport(ctx, "/admin options", e, self.bot)
             await report.report()
             return False
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):
@@ -277,17 +277,17 @@ async def setup_tracker(
         except Exception:
             await ctx.respond("Please check permissions and try again")
             await delete_tracker(ctx, engine, bot)
-            await engine.dispose()
+            # await engine.dispose()
             return False
 
         guild = await get_guild(ctx, None, refresh=True)
         if guild.tracker is None or guild.gm_tracker is None:
             await delete_tracker(ctx, engine, bot, guild=guild)
             await ctx.respond("Please check permissions and try again")
-            await engine.dispose()
+            # await engine.dispose()
             return False
 
-        await engine.dispose()
+        # await engine.dispose()
         return True
 
     except Exception as e:
@@ -315,7 +315,7 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
             guild.gm = str(new_gm.id)  # I accidentally stored the GM as a string instead of an int initially
             # if I ever have to wipe the database, this should be changed
             await session.commit()
-        await engine.dispose()
+        # await engine.dispose()
 
         return True
     except Exception as e:

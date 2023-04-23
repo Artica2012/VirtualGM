@@ -71,7 +71,7 @@ class PF2Cog(commands.Cog):
                 logging.info(f"pb_import: {e}")
                 report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
                 await report.report()
-                await engine.dispose()
+                # await engine.dispose()
 
         elif url is not None:
             try:
@@ -80,7 +80,7 @@ class PF2Cog(commands.Cog):
                     response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
                     Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                     await Tracker_Model.update_pinned_tracker()
-                    await engine.dispose()
+                    # await engine.dispose()
                 else:
                     response = False
                 if response:
@@ -103,7 +103,7 @@ class PF2Cog(commands.Cog):
             logging.warning(f"pb_import: {e}")
             report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
             await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
@@ -127,7 +127,7 @@ class PF2Cog(commands.Cog):
 
         if not response:
             await ctx.send_followup("Import Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @pf2.command(description="Edit Attack")
     @option("character", description="Character to select", autocomplete=character_select_gm)
@@ -162,7 +162,7 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Success")
         else:
             await ctx.send_followup("Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @pf2.command(description="Edit Character Resistances")
     @option("character", description="Character to select", autocomplete=character_select_gm)
@@ -195,7 +195,7 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup(embeds=await Character.show_resistance())
         else:
             await ctx.send_followup("Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):
