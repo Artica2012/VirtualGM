@@ -46,7 +46,7 @@ async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot
     async with async_session() as session:
         result = await session.execute(select(NPC).where(NPC.name == lookup))
         data = result.scalars().one()
-    await lookup_engine.dispose()
+    # await lookup_engine.dispose()
 
     # Add the character
 

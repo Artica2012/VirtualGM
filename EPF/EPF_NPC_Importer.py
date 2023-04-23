@@ -79,7 +79,7 @@ async def epf_npc_lookup(
     async with async_session() as session:
         result = await session.execute(select(EPF_NPC).where(EPF_NPC.name == lookup))
         data = result.scalars().one()
-    await lookup_engine.dispose()
+    # await lookup_engine.dispose()
 
     # elite/weak adjustments
     hp_mod = 0
@@ -191,7 +191,7 @@ async def epf_npc_lookup(
                 )
                 session.add(tracker)
             await session.commit()
-        await engine.dispose()
+        # await engine.dispose()
 
         # print("Committed")
         # print(f"Stat_Mod: {stat_mod}")

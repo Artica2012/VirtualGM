@@ -69,7 +69,7 @@ class ReminderCog(commands.Cog):
                 await session.delete(item)
                 await session.commit()
 
-        await engine.dispose()
+        # await engine.dispose()
 
     # Don't start the loop unti the bot is ready
     @reminder_check.before_loop
@@ -115,7 +115,7 @@ class ReminderCog(commands.Cog):
             report = ErrorReport(ctx, "remind_me", e, self.bot)
             await report.report()
             await ctx.send_followup("Reminder Failed", ephemeral=True)
-        await engine.dispose()
+        # await engine.dispose()
 
     # @remind.command(description="Show Reminders")
     # async def show(self, ctx:discord.ApplicationContext):

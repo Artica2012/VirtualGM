@@ -1739,7 +1739,7 @@ async def attack_lookup(attack, pathbuilder):
             return attack
     # print(data.name, data.range, data.traits)
 
-    await lookup_engine.dispose()
+    # await lookup_engine.dispose()
 
     if data.range is not None:
         if "thrown" in data.traits:
@@ -1817,7 +1817,7 @@ async def invest_items(item, character, ctx, guild, engine):
                     if key in EPF_SKills:
                         if data[key]["mode"] == "item":
                             condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
-        await lookup_engine.dispose()
+        # await lookup_engine.dispose()
         if condition_string != "":
             # print(condition_string)
             EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
@@ -1843,7 +1843,7 @@ async def invest_items(item, character, ctx, guild, engine):
         else:
             return False
     except Exception:
-        await engine.dispose()
+        # await engine.dispose()
         return False
 
 

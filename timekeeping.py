@@ -57,7 +57,7 @@ class TimekeeperCog(commands.Cog):
             report = ErrorReport(ctx, "/set_time", e, self.bot)
             await report.report()
             await ctx.respond("Setup Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @timekeeper.command(description="Advance Time")
     @option("amount", description="Amount to advance")
@@ -86,7 +86,7 @@ class TimekeeperCog(commands.Cog):
                 await ctx.respond("Failed to advance time.")
         except Exception:
             await ctx.respond("Error", ephemeral=True)
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):

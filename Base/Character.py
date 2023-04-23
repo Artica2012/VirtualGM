@@ -54,6 +54,9 @@ class Character:
         self.active = character.active
         self.character_model = character
 
+    # def __del__(self):
+    #     print(f"Destroying {self.char_name}")
+
     async def character(self):
         logging.info("Loading Character")
         if self.guild is not None:
