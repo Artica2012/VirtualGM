@@ -78,7 +78,7 @@ async def character_select_player(ctx: discord.AutocompleteContext):
         try:
             guild = await get_guild(ctx, None)
             AutoComplete = await get_autocomplete(ctx, guild=guild)
-            await engine.dispose()
+            # await engine.dispose()
             return await AutoComplete.character_select(gm=True)
         except NoResultFound:
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -93,7 +93,7 @@ async def character_select_player(ctx: discord.AutocompleteContext):
                     # .order_by(Character_Vault.name.desc()) # This is causing duplicates - BUG
                 )
                 charcter_list = result.scalars().all()
-                await engine.dispose()
+                # await engine.dispose()
                 if ctx.value != "":
                     val = ctx.value.lower()
                     return [f"{char.name}, {char.guild_id}" for char in charcter_list if val in char.name.lower()]

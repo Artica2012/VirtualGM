@@ -556,7 +556,7 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/cc modify: {e}")
             report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
             await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):
