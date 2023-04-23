@@ -28,18 +28,18 @@ class D4e_Autocmplete(AutoComplete):
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             condition = await Character_Model.conditions(no_time=no_time, flex=flex)
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in condition if val in option.lower()]
             else:
                 return condition
         except NoResultFound:
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"cc_select: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
     async def get_attributes(self, **kwargs):

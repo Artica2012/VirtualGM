@@ -42,11 +42,11 @@ class Macro:
                 session.add(new_macro)
             await session.commit()
             await Character_Model.update()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"create_macro: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return False
 
     async def mass_add(self, character: str, data: str):
@@ -78,13 +78,13 @@ class Macro:
                         session.add(new_macro)
             await session.commit()
             await Character_Model.update()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if len(error_list) > 0:
                 await self.ctx.channel.send(f"Unable to add following macros due to duplicate names:\n{error_list}")
             return True
         except Exception as e:
             logging.error(f"mass_add: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return False
 
     async def delete_macro(self, character: str, macro_name: str):
@@ -104,11 +104,11 @@ class Macro:
                 await session.delete(con)
                 await session.commit()
             await Character_Model.update()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"delete_macro: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return False
 
     async def delete_macro_all(self, character: str):
@@ -126,11 +126,11 @@ class Macro:
                     await session.delete(row)
                     await session.commit()
             await Character_Model.update()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"delete_macro: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return False
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):

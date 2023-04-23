@@ -7,16 +7,13 @@ import logging
 # imports
 import os
 import sys
-import warnings
+import tracemalloc
 
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import exc
-
-from Query import lookup_parser
 
 # Set up logging
-warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
+# warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
 
 # environmental variables - if Production - use the token and database of the production model, if Production is False,
@@ -37,6 +34,8 @@ else:
 TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
+
+tracemalloc.start()
 
 # set up the bot/intents
 intents = discord.Intents.default()
@@ -74,10 +73,10 @@ async def on_error():
 
 
 # Initialize the database for the 4e lookup
-lookup_parser.parser()
+# lookup_parser.parser()
 
 # Load the bot
-bot.load_extension("Query.query_results")
+# bot.load_extension("Query.query_results")
 bot.load_extension("dice_roller_cog")
 bot.load_extension("initiative")
 bot.load_extension("error_reporting_cog")

@@ -106,7 +106,7 @@ async def increment_cc(
                     condition.number = current_value - 1
                 await session.commit()
         # await update_pinned_tracker(ctx, engine, bot)
-        await engine.dispose()
+        # await engine.dispose()
         return True
     except NoResultFound:
         await ctx.channel.send(error_not_initialized, delete_after=30)

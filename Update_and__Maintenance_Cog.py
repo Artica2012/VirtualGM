@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import gc
+from main import tracemalloc
 
 # imports
 import discord
@@ -25,6 +26,19 @@ class Update_and_Maintenance_Cog(commands.Cog):
         self.bot = bot
         self.lock = asyncio.Lock()
         self.garbage_collect.start()
+        self.resource_monitor.start()
+
+    @tasks.loop(seconds=30)
+    async def resource_monitor(self):
+        mem_usage = tracemalloc.get_traced_memory()
+        print(f"Memory Usage:\n Current: {mem_usage[0]/(1024*1024)}, Max: {mem_usage[1]/(1024*1024)}")
+
+    #
+    #     snapshot = tracemalloc.take_snapshot()
+    #     top_stats = snapshot.statistics('lineno')
+    #     print("[ Top 10 ]")
+    #     for stat in top_stats[:10]:
+    #         print(stat)
 
     @tasks.loop(minutes=30)
     async def garbage_collect(self):
@@ -112,7 +126,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                         await write_session.commit()
 
         logging.warning("U&M Complete")
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):
