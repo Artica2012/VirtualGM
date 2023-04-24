@@ -32,6 +32,84 @@ class D4e_Tracker(Tracker):
     def __init__(self, ctx, init_list, bot, engine=None, guild=None):
         super().__init__(ctx, init_list, bot, engine, guild)
 
+    # Updates the active initiative tracker (not the pinned tracker)
+    async def update_pinned_tracker(self):
+        logging.info("update_pinned_tracker")
+
+        # Query the initiative position for the tracker and post it
+        try:
+            logging.info(f"BPI1: guild: {self.guild.id}")
+
+            if self.guild.block:
+                # print(guild.id)
+                turn_list = await self.get_turn_list()
+                block = True
+                # print(f"block_post_init: \n {turn_list}")
+            else:
+                block = False
+                turn_list = []
+
+            # Fix the Tracker if needed, then refresh the guild
+            await self.init_integrity()
+            await self.update()
+
+            tracker_string = await self.block_get_tracker(self.guild.initiative)
+            try:
+                logging.info("BPI2")
+                ping_string = ""
+                if block:
+                    for character in turn_list:
+                        await asyncio.sleep(0)
+                        user = self.bot.get_user(character.user)
+                        ping_string += f"{user.mention}, it's your turn.\n"
+                else:
+                    user = self.bot.get_user(self.init_list[self.guild.initiative].user)
+                    ping_string += f"{user.mention}, it's your turn.\n"
+            except Exception:
+                # print(f'post_init: {e}')
+                ping_string = ""
+            view = await D4eTrackerButtons(self.ctx, self.bot, guild=self.guild)
+            # Check for systems:
+            if self.guild.last_tracker is not None:
+                self.Refresh_Button = self.InitRefreshButton(self.ctx, self.bot, guild=self.guild)
+                self.Next_Button = self.NextButton(self.bot, guild=self.guild)
+                view.add_item(self.Refresh_Button)
+                view.add_item(self.Next_Button)
+                if self.guild.last_tracker is not None:
+                    tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+                    edit_message = await tracker_channel.fetch_message(self.guild.last_tracker)
+                    await edit_message.edit(
+                        content=f"{tracker_string}\n{ping_string}",
+                        view=view,
+                    )
+            if self.guild.tracker is not None:
+                try:
+                    channel = self.bot.get_channel(self.guild.tracker_channel)
+                    message = await channel.fetch_message(self.guild.tracker)
+                    await message.edit(content=tracker_string)
+                except Exception:
+                    logging.warning(f"Invalid Tracker: {self.guild.id}")
+                    channel = self.bot.get_channel(self.guild.tracker_channel)
+                    await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
+
+            if self.guild.gm_tracker is not None:
+                try:
+                    gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
+                    gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+                    gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
+                    await gm_message.edit(content=gm_tracker_display_string)
+                except Exception:
+                    logging.warning(f"Invalid GMTracker: {self.guild.id}")
+                    channel = self.bot.get_channel(self.guild.gm_tracker_channel)
+                    await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        except Exception as e:
+            logging.error(f"update_pinned_tracker: {e}")
+            report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
+            await report.report()
+
     async def block_post_init(self):
         logging.info("D4e block_post_init")
         # Query the initiative position for the tracker and post it
@@ -290,6 +368,57 @@ class D4e_Tracker(Tracker):
                 await report.report()
             logging.info(f"d4e_get_tracker: {e}")
 
+    class InitRefreshButton(discord.ui.Button):
+        def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
+            self.ctx = ctx
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
+
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Refreshed", ephemeral=True)
+                print(interaction.message.id)
+                Tracker_model = D4e_Tracker(
+                    self.ctx,
+                    self.engine,
+                    await get_init_list(self.ctx, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
+                await Tracker_model.update_pinned_tracker()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
+            # await self.engine.dispose()
+
+    class NextButton(discord.ui.Button):
+        def __init__(self, bot, guild=None):
+            self.engine = get_asyncio_db_engine(
+                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
+            )
+            self.bot = bot
+            self.guild = guild
+            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+
+        async def callback(self, interaction: discord.Interaction):
+            try:
+                await interaction.response.send_message("Initiative Advanced", ephemeral=True)
+                # Tracker_Model = D4e_Tracker(
+                #     None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
+                # )
+                Tracker_Model = await get_D4e_Tracker(
+                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
+                )
+                await Tracker_Model.next()
+            except Exception as e:
+                print(f"Error: {e}")
+                logging.info(e)
+            # await self.engine.dispose()
+
 
 async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     print("D4e Tracker Buttons")
@@ -372,51 +501,6 @@ class D4eConditionButton(discord.ui.Button):
             output_string = "Roll your own save!"
             await interaction.edit_original_response(content=output_string)
 
+        # await self.engine.dispose()
+
         # await self.ctx.channel.send(output_string)
-
-    class InitRefreshButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
-            self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
-            self.bot = bot
-            self.guild = guild
-            super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
-
-        async def callback(self, interaction: discord.Interaction):
-            try:
-                await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
-                Tracker_model = D4e_Tracker(
-                    self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
-                    self.bot,
-                    guild=self.guild,
-                )
-                await Tracker_model.update_pinned_tracker()
-            except Exception as e:
-                print(f"Error: {e}")
-                logging.info(e)
-
-    class NextButton(discord.ui.Button):
-        def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
-            self.bot = bot
-            self.guild = guild
-            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
-
-        async def callback(self, interaction: discord.Interaction):
-            try:
-                await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
-                Tracker_Model = D4e_Tracker(
-                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
-                )
-                await Tracker_Model.advance_initiative()
-                await Tracker_Model.block_post_init()
-            except Exception as e:
-                print(f"Error: {e}")
-                logging.info(e)

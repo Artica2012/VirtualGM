@@ -55,15 +55,15 @@ async def get_guild(ctx, guild, refresh=False, id=None):
                 )
 
             guild_result = result.scalars().one()
-            await engine.dispose()
+            # await engine.dispose()
             return guild_result
     except Exception:
         if id is not None:
-            print(id)
+            # print(id)
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild_result = result.scalars().one()
-                await engine.dispose()
+                # await engine.dispose()
                 return guild_result
         else:
             raise NoResultFound("No guild referenced")

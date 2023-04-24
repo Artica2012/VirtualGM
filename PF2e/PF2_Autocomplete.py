@@ -14,15 +14,15 @@ class PF2_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def save_select(self):
-        await self.engine.dispose()
+    async def save_select(self, **kwargs):
+        # await self.engine.dispose()
         return PF2_saves
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         return PF2_attributes
 
-    async def npc_search(self):
-        await self.engine.dispose()
+    async def npc_search(self, **kwargs):
+        # await self.engine.dispose()
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -30,5 +30,5 @@ class PF2_Autocmplete(AutoComplete):
                 select(NPC.name).where(func.lower(NPC.name).contains(self.ctx.value.lower())).order_by(NPC.name.asc())
             )
             lookup_list = result.scalars().all()
-        await lookup_engine.dispose()
+        # await lookup_engine.dispose()
         return lookup_list

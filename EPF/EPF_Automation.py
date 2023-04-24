@@ -11,6 +11,7 @@ from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
+from utils.utils import get_guild
 
 
 class EPF_Automation(Automation):
@@ -40,7 +41,7 @@ class EPF_Automation(Automation):
 
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
-        output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
         return output_string
 
     async def save(self, character, target, save, dc, modifier):
@@ -90,11 +91,19 @@ class EPF_Automation(Automation):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        weapon = None
+        # print(roll)
+        if roll == "Treat Wounds":
+            return await treat_wounds(
+                self.ctx, character, target, damage_type, modifier, engine=self.engine, guild=self.guild
+            )
+
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
         except Exception:
             try:
                 roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
+                weapon = await Character_Model.get_weapon(roll)
             except Exception:
                 try:
                     roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
@@ -102,7 +111,7 @@ class EPF_Automation(Automation):
                     roll_result = d20.roll("0 [Error]")
         dmg = roll_result.total
         if not healing:
-            dmg = await damage_calc_resist(dmg, damage_type, Target_Model)
+            dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         await Target_Model.change_hp(dmg, healing)
         await Tracker_Model.update_pinned_tracker()
@@ -148,6 +157,7 @@ class EPF_Automation(Automation):
             )
         else:
             dmg_string = None
+            total_damage = 0
 
         weapon = await Character_Model.get_weapon(attack)
         if dmg_string is not None:
@@ -199,8 +209,10 @@ class EPF_Automation(Automation):
         elif spell["type"] == "save":
             save_type = spell["save"]["value"]
             save_dc = d20.roll(
-                f"10+{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
+                f"{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
             )
+            # print(save_dc)
+            # print(save_dc.total)
             roll = d20.roll(f"{await Target_Model.get_roll(save_type.title())}{ParseModifiers(target_modifier)}")
 
             success_string = PF2_eval_succss(roll, save_dc)
@@ -242,13 +254,31 @@ class EPF_Automation(Automation):
             return attk_output_string
 
 
-async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character):
+async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_Character, weapon=None):
     logging.info("damage_calc_resist")
     if target.resistance == {"resist": {}, "weak": {}, "immune": {}}:
         return dmg_roll
     dmg = dmg_roll
     print(target.resistance)
     print(dmg_type)
+
+    if weapon is not None:
+        if "traits" in weapon.keys():
+            if "concussive" in weapon["traits"]:
+                if "piercing" in target.resistance["immune"]:
+                    dmg_type = "bludgeoning"
+                elif "bludgeoning" in target.resistance["immune"]:
+                    dmg_type = "piercing"
+                elif "piercing" in target.resistance["resist"] and "bludgeoning" in target.resistance["resist"]:
+                    if target.resistance["resist"]["piercing"] > target.resistance["resist"]["bludgeoning"]:
+                        dmg_type = "bludgeoning"
+                    elif target.resistance["resist"]["piercing"] < target.resistance["resist"]["bludgeoning"]:
+                        dmg_type = "piercing"
+                elif "piercing" in target.resistance["resist"]:
+                    dmg_type = "bludgeoning"
+                elif "bludgeoning" in target.resistance["resist"]:
+                    dmg_type = "piercing"
+
     if (
         "physical" in target.resistance["resist"]
         or "physical" in target.resistance["weak"]
@@ -298,7 +328,7 @@ async def roll_dmg_resist(
     # Roll the critical damage and apply resistances
     damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit, flat_bonus=flat_bonus))
     weapon = await Character_Model.get_weapon(attack)
-    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model)
+    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model, weapon=weapon)
     dmg_output_string = f"{damage_roll}"
     # Check for bonus damage
     if "bonus" in Character_Model.character_model.attacks[attack]:
@@ -338,5 +368,84 @@ async def roll_spell_dmg_resist(
     )
     dmg_output_string = f"{damage_roll}"
 
-    print(dmg_output_string, total_damage)
+    # print(dmg_output_string, total_damage)
     return dmg_output_string, total_damage
+
+
+async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None):
+    Character_Model = await get_EPF_Character(character, ctx, engine=engine, guild=guild)
+    Target_Model = await get_EPF_Character(target, ctx, engine=engine, guild=guild)
+    # print("treat wounds")
+    guild = await get_guild(ctx, guild)
+    roll_string = f"{await Character_Model.get_roll('Medicine')}{ParseModifiers(modifier)}"
+    # print(roll_string)
+    medicine_roll = d20.roll(roll_string)
+    if dc == "":
+        dc = "15"
+    goal = d20.roll(dc)
+    output_string = "ERROR."
+
+    # print(medicine_roll)
+
+    success_string = PF2_eval_succss(medicine_roll, goal)
+
+    # print(success_string)
+
+    if success_string == "Success":
+        if dc == "40":
+            healing = d20.roll("2d8+50")
+        elif dc == "30":
+            healing = d20.roll("2d8+30")
+        elif dc == "20":
+            healing = d20.roll("2d8+10")
+        else:
+            healing = d20.roll("2d8")
+        # print(healing.total)
+        # print(type(healing.total))
+        await Target_Model.change_hp(healing.total, heal=True, post=False)
+        output_string = (
+            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
+            f"{medicine_roll} {success_string}.\n"
+            f"{healing}\n"
+            f"{Target_Model.char_name} healed for {healing.total}."
+        )
+    elif success_string == "Critical Success":
+        if dc == "40":
+            healing = d20.roll("4d8+50")
+        elif dc == "30":
+            healing = d20.roll("4d8+30")
+        elif dc == "20":
+            healing = d20.roll("4d8+10")
+        else:
+            healing = d20.roll("4d8")
+
+        await Target_Model.change_hp(healing.total, heal=True, post=False)
+        output_string = (
+            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
+            f"{medicine_roll} {success_string}.\n"
+            f"{healing}\n"
+            f"{Target_Model.char_name} healed for {healing.total}."
+        )
+
+    elif success_string == "Critical Failure":
+        dmg = d20.roll("1d8")
+        await Target_Model.change_hp(dmg.total, heal=False, post=False)
+        output_string = (
+            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
+            f"{medicine_roll} {success_string}.\n {dmg}\n"
+            f"{Target_Model.char_name} damaged for {dmg.total}."
+        )
+    else:
+        output_string = (
+            f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
+            f"{medicine_roll}\n"
+            f"{success_string}.\n"
+        )
+    # print(guild.timekeeping)
+    if guild.timekeeping:
+        if "continual recovery" in Character_Model.character_model.feats.lower():
+            time = 10
+        else:
+            time = 60
+        await Character_Model.set_cc("Wounds Treated", False, time, "Minute", True)
+    return output_string

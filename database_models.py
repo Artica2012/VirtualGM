@@ -79,14 +79,14 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            print(f"From CTX:{guild.id}")
+            # print(f"From CTX:{guild.id}")
         id = guild.id
     else:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.id == id))
             guild = result.scalars().one()
-            print(f"From ID:{guild.id}")
+            # print(f"From ID:{guild.id}")
 
     if guild.system == "EPF":
         return await get_EPF_tracker(ctx, engine, id=id)
@@ -465,14 +465,14 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            print(f"From CTX:{guild.id}")
+            # print(f"From CTX:{guild.id}")
         id = guild.id
     else:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.id == id))
             guild = result.scalars().one()
-            print(f"From ID:{guild.id}")
+            # print(f"From ID:{guild.id}")
 
     if guild.system == "EPF":
         return await get_EPF_condition(ctx, engine, id=id)

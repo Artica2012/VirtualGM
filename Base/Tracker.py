@@ -55,7 +55,11 @@ class Tracker:
         self.guild = guild
         self.bot = bot
 
+    # def __del__(self):
+    #     print("Destroying Tracker")
+
     async def next(self):
+        print("next")
         await self.advance_initiative()
         await self.block_post_init()
 
@@ -904,6 +908,7 @@ class Tracker:
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
@@ -925,3 +930,4 @@ class Tracker:
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            # await self.engine.dispose()

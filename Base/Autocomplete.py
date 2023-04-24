@@ -16,7 +16,12 @@ class AutoComplete:
         self.engine = engine
         self.guild = guild
 
-    async def character_select(self, gm=False):
+    async def character_select(self, **kwargs):
+        if "gm" in kwargs.keys():
+            gm = kwargs["gm"]
+        else:
+            gm = False
+
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -36,20 +41,20 @@ class AutoComplete:
                     )
                 character = char_result.scalars().all()
                 print(len(character))
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in character if val in option.lower()]
             return character
         except NoResultFound:
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"character_select: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def npc_select(self):
+    async def npc_select(self, **kwargs):
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -59,24 +64,29 @@ class AutoComplete:
                     select(Tracker.name).where(Tracker.player == false()).order_by(Tracker.name.asc())
                 )
                 character = char_result.scalars().all()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in character if val in option.lower()]
             return character
         except NoResultFound:
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"character_select: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def add_condition_select(self):
-        await self.engine.dispose()
+    async def add_condition_select(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def macro_select(self, attk=False):
+    async def macro_select(self, **kwargs):
+        if "attk" in kwargs.keys():
+            attk = kwargs["attk"]
+        else:
+            attk = False
+
         character = self.ctx.options["character"]
         char_split = character.split(",")
         if len(char_split) > 1:
@@ -104,7 +114,7 @@ class AutoComplete:
                         .order_by(Macro.name.asc())
                     )
                 macro_list = macro_result.scalars().all()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
@@ -112,10 +122,10 @@ class AutoComplete:
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
-            self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def cc_select(self, no_time=False, flex=False):
+    async def cc_select(self, **kwargs):
         character = self.ctx.options["character"]
 
         try:
@@ -130,25 +140,25 @@ class AutoComplete:
                     .order_by(Condition.title.asc())
                 )
                 condition = result.scalars().all()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in condition if val in option.lower()]
             else:
                 return condition
         except NoResultFound:
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"cc_select: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def save_select(self):
-        await self.engine.dispose()
+    async def save_select(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         logging.info("get_attributes")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -165,7 +175,7 @@ class AutoComplete:
                     .where(Condition.visible == false())
                 )
                 invisible_conditions = result.scalars().all()
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in invisible_conditions if val in option.lower()]
@@ -174,33 +184,37 @@ class AutoComplete:
 
         except Exception as e:
             logging.warning(f"get_attributes, {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def attacks(self):
-        await self.engine.dispose()
+    async def attacks(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def stats(self):
-        await self.engine.dispose()
+    async def stats(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def dmg_types(self):
-        await self.engine.dispose()
+    async def dmg_types(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def npc_lookup(self):
-        await self.engine.dispose()
+    async def npc_lookup(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def spell_list(self):
-        await self.engine.dispose()
+    async def spell_list(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def spell_level(self):
-        await self.engine.dispose()
+    async def spell_level(self, **kwargs):
+        # await self.engine.dispose()
         return []
 
-    async def init(self):
-        await self.engine.dispose()
+    async def init(self, **kwargs):
+        # await self.engine.dispose()
         return []
+
+    async def flex(self, **kwargs):
+        # await self.engine.dispose()
+        return ["Decrement at beginning of the Turn", "Decrement at end of the Turn"]

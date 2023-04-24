@@ -43,7 +43,7 @@ async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
                 minute=guild.time_minute,
                 second=guild.time_second,
             )
-        await engine.dispose()
+        # await engine.dispose()
         return time
 
     except NoResultFound:
@@ -155,7 +155,7 @@ async def set_datetime(
                 # print(year)
                 guild.time_year = year
             await session.commit()
-            await engine.dispose()
+            # await engine.dispose()
         return True
     except NoResultFound:
         await ctx.channel.send(
@@ -218,7 +218,7 @@ async def advance_time(
             guild.time_year = new_time.year
             await session.commit()
 
-        await engine.dispose()
+        # await engine.dispose()
         return True
 
     except NoResultFound:

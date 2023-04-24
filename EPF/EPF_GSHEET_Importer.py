@@ -371,6 +371,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
 
     for i in range(31, (len(df.e) - 1)):
         if df.e[i] == "Name" and df.f[i] is not numpy.nan:
+            print(df.e[i])
             try:
                 # print(df.f[i])
                 try:
@@ -390,9 +391,13 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     parsed_traits = df.f[i + 8].split(",")
                 else:
                     parsed_traits = []
+                if type(df.f[i + 9]) != str:
+                    dmg_type = df.f[1 + 9]
+                else:
+                    dmg_type = "Bludgeoning"
 
                 attack_data = {
-                    "display_name": df.f[i],
+                    "display": df.f[i],
                     "name": df.f[i + 1],
                     "prof": df.f[i + 2].lower(),
                     "pot": potency,
@@ -402,12 +407,54 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     "die": df.f[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.f[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": dmg_type,
                     "attk_stat": Interpreter[df.f[i + 6]],
                     "traits": parsed_traits,
                 }
                 edited_attack = await attack_lookup(attack_data, character)
-                attacks[edited_attack["display_name"]] = edited_attack
+
+                double_attacks = False
+                # Check for two handed and fatal
+                for trait in edited_attack["traits"]:
+                    print(trait)
+                    if "fatal-aim" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        fatal_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        trait_list = attack_one["traits"]
+                        trait_copy = trait_list.copy()
+                        for x, i in enumerate(trait_list):
+                            if i == trait:
+                                trait_copy[x] = f"fatal-{fatal_die}"
+
+                        attack_one["traits"] = trait_copy
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+
+                        trait_copy = []
+                        for i in trait_list:
+                            if i != trait:
+                                trait_copy.append(i)
+
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+                        attack_two["traits"] = trait_copy
+                    if "two-hand" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        attk_2_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+                        attack_one["die"] = attk_2_die
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+
+                if double_attacks:
+                    attacks[attack_one["display"]] = attack_one
+                    attacks[attack_two["display"]] = attack_two
+                else:
+                    attacks[edited_attack["display"]] = edited_attack
+
             except Exception:
                 pass
     # print(attacks)
@@ -451,15 +498,18 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     try:
         EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
+        print(df.b[1])
+        partner_name: str = df.b[1]
+        partner_name = partner_name.strip()
         async with async_session() as session:
             query = await session.execute(
-                select(EPF_tracker).where(func.lower(EPF_tracker.name) == str(df.b[1]).lower())
+                select(EPF_tracker).where(func.lower(EPF_tracker.name) == partner_name.lower())
             )
             partner_query = query.scalars().one()
             partner_query.partner = char_name
             await session.commit()
-        Partner = await get_EPF_Character(str(df.b[1]), ctx, engine=engine, guild=guild)
+        Partner = await get_EPF_Character(partner_name, ctx, engine=engine, guild=guild)
+        print(Partner.char_name)
     except:
         logging.warning("Import Error")
         raise
@@ -586,6 +636,11 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                     parsed_traits = df.f[i + 8].split(",")
                 else:
                     parsed_traits = []
+                print(df.f[i + 9])
+                if type(df.f[i + 9]) != str:
+                    dmg_type = df.f[1 + 9]
+                else:
+                    dmg_type = "Bludgeoning"
 
                 attack_data = {
                     "display_name": df.f[i],
@@ -598,7 +653,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                     "die": df.f[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.f[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": dmg_type,
                     "attk_stat": Interpreter[df.f[i + 6]],
                     "traits": parsed_traits,
                 }
@@ -637,7 +692,7 @@ async def attack_lookup(attack, character: dict):
                 data = result.scalars().one()
         except:
             return attack
-    await lookup_engine.dispose()
+    # await lookup_engine.dispose()
 
     if data.range is not None:
         attack["stat"] = None
@@ -771,6 +826,12 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                     parsed_traits = df.b[i + 8].split(",")
                 else:
                     parsed_traits = []
+
+                if type(df.f[i + 9]) != str:
+                    dmg_type = df.f[1 + 9]
+                else:
+                    dmg_type = "Bludgeoning"
+
                 # print(
                 #     f"{df.b[i]}\n"
                 #     f"{df.b[i+1]}\n"
@@ -793,7 +854,7 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                     "die": df.b[i + 5],
                     "crit": "*2",
                     "stat": Interpreter[df.b[i + 7]],
-                    "dmg_type": "Bludgeoning",
+                    "dmg_type": dmg_type,
                     "attk_stat": Interpreter[df.b[i + 6]],
                     "traits": parsed_traits,
                 }

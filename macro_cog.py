@@ -45,7 +45,7 @@ class MacroCog(commands.Cog):
             await ctx.send_followup(f"Macro Created:\n{character}:{macro_name}: {macro}", ephemeral=True)
         else:
             await ctx.send_followup("Macro Creation Failed", ephemeral=True)
-        await engine.dispose()
+        # await engine.dispose()
 
     @macro.command(description="Delete Macro")
     @option(
@@ -73,7 +73,7 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macro Deleted Successfully")
         else:
             await ctx.send_followup("Delete Action Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @macro.command(description="Delete All Macros")
     @option(
@@ -96,7 +96,7 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macro Deleted Successfully")
         else:
             await ctx.send_followup("Delete Action Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @macro.command(description="Mass Import")
     @option(
@@ -120,7 +120,7 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macros Created Successfully")
         else:
             await ctx.send_followup("Action Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
     @macro.command(description="Display Macros")
     @option(
@@ -140,7 +140,7 @@ class MacroCog(commands.Cog):
             await report.report()
             await ctx.send_followup("Error Displaying Character Sheet")
 
-        await engine.dispose()
+        # await engine.dispose()
 
     @commands.slash_command(name="m", description="Roll Macro")
     @option(
@@ -191,7 +191,7 @@ class MacroCog(commands.Cog):
             report = ErrorReport(ctx, "roll_macro", e, self.bot)
             await report.report()
             await ctx.send_followup("Macro Roll Failed")
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):

@@ -54,6 +54,9 @@ class Character:
         self.active = character.active
         self.character_model = character
 
+    # def __del__(self):
+    #     print(f"Destroying {self.char_name}")
+
     async def character(self):
         logging.info("Loading Character")
         if self.guild is not None:
@@ -203,7 +206,12 @@ class Character:
             return False
 
     # Set the initiative
-    async def set_init(self, init):
+    async def set_init(self, init, **kwargs):
+        if "update" in kwargs.keys():
+            update = kwargs["update"]
+        else:
+            update = True
+
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
@@ -225,7 +233,8 @@ class Character:
                 character = char_result.scalars().one()
                 character.init = init
                 await session.commit()
-            await self.update()
+            if update:
+                await self.update()
             return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")
@@ -385,7 +394,7 @@ class Character:
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, self.guild.id)
-
+        del_result = False
         async with async_session() as session:
             result = await session.execute(
                 select(Condition).where(Condition.character_id == self.id).where(Condition.time == true())
@@ -397,8 +406,8 @@ class Character:
             time_stamp = datetime.datetime.fromtimestamp(row.number)
             time_left = time_stamp - current_time
             if time_left.total_seconds() <= 0:
-                result = await self.delete_cc(row.title)
-            if result:
+                del_result = await self.delete_cc(row.title)
+            if del_result:
                 if self.ctx is not None:
                     await self.ctx.channel.send(f"{row.title} removed from {self.char_name}")
                 elif bot is not None:

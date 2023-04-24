@@ -267,7 +267,8 @@ class EPF_Tracker(Tracker):
                                     if processed_hours_left != 0:
                                         con_string = (
                                             f"       {con_row.title}:"
-                                            f" {processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                            f" {processed_hours_left}:{processed_minutes_left}:"
+                                            f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
@@ -324,6 +325,7 @@ class EPF_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
@@ -345,3 +347,4 @@ class EPF_Tracker(Tracker):
             except Exception as e:
                 print(f"Error: {e}")
                 logging.info(e)
+            # await self.engine.dispose()

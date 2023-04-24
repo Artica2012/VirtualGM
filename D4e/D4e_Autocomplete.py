@@ -12,28 +12,41 @@ class D4e_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def cc_select(self, no_time=False, flex=False):
+    async def cc_select(self, **kwargs):
+        if "no_time" in kwargs.keys():
+            no_time = kwargs["no_time"]
+        else:
+            no_time = False
+
+        if "flex" in kwargs.keys():
+            flex = kwargs["flex"]
+        else:
+            flex = False
+
         character = self.ctx.options["character"]
 
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             condition = await Character_Model.conditions(no_time=no_time, flex=flex)
-            await self.engine.dispose()
+            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in condition if val in option.lower()]
             else:
                 return condition
         except NoResultFound:
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"cc_select: {e}")
-            await self.engine.dispose()
+            # await self.engine.dispose()
             return []
 
-    async def get_attributes(self):
+    async def get_attributes(self, **kwargs):
         return D4e_attributes
 
-    async def save_select(self):
+    async def save_select(self, **kwargs):
         return ["Empty Intentionally"]
+
+    async def flex(self, **kwargs):
+        return ["Ends with Save", "Ends after set time"]

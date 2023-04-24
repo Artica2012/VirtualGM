@@ -38,7 +38,7 @@ class PF2_Automation(Automation):
 
         Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
         con_vs = 0
-        match vs:
+        match vs:  # noqa
             case "AC":
                 con_vs = Target_Model.ac
             case "Fort":
@@ -61,7 +61,7 @@ class PF2_Automation(Automation):
 
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
-        output_string = f"{character} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
         return output_string
 
     async def save(self, character, target, save, dc, modifier):
@@ -108,7 +108,8 @@ class PF2_Automation(Automation):
                 output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
             elif Character_Model.player == True:
                 output_string = (
-                    f"{target} makes a DC{dc} {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
+                    f"{target} makes a DC{dc} {save} save!\n{character} forced the"
+                    f" save.\n{dice_result}\n{success_string}"
                 )
             else:
                 output_string = (

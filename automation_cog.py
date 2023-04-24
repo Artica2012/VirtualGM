@@ -11,12 +11,13 @@ from auto_complete import (
     character_select,
     character_select_gm,
     a_macro_select,
+    a_d_macro_select,
     get_attributes,
     a_save_target_custom,
     save_select,
-    dmg_type,
     spell_list,
     spell_level,
+    var_dmg_type,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -75,7 +76,7 @@ class AutomationCog(commands.Cog):
                 "you used a non-macro roll that it conforms tothe XdY+Z format without any "
                 "labels."
             )
-        await engine.dispose()
+        # await engine.dispose()
 
     @att.command(description="Saving Throw")
     @option("character", description="Character forcing the save", autocomplete=character_select_gm)
@@ -103,15 +104,15 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a save", e, self.bot)
             await report.report()
             await ctx.send_followup("Error. Ensure that you selected valid targets and saves.")
-        await engine.dispose()
+        # await engine.dispose()
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
-    @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_d_macro_select)
     @option("modifier", description="Roll Modifer", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
-    @option("damage_type", description="Damage Type", autocomplete=dmg_type, required=False)
+    @option("damage_type", description="Damage Type", autocomplete=var_dmg_type, required=False)
     async def damage(
         self,
         ctx: discord.ApplicationContext,
@@ -136,7 +137,7 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a damage", e, self.bot)
             await report.report()
             await ctx.send_followup("Error. Ensure that your input was a valid dice roll or value.")
-        await engine.dispose()
+        # await engine.dispose()
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -158,18 +159,18 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        try:
-            Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.auto(
-                self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
-            )
-            await ctx.send_followup(output_string)
-        except Exception as e:
-            logging.warning(f"attack_cog auto {e}")
-            report = ErrorReport(ctx, "/a auto", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
-        await engine.dispose()
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.auto(
+            self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+        )
+        await ctx.send_followup(output_string)
+        # except Exception as e:
+        #     logging.warning(f"attack_cog auto {e}")
+        #     report = ErrorReport(ctx, "/a auto", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
+        # await engine.dispose()
 
     @att.command(description="Cast a Spell (EPF Only)")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -204,7 +205,7 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a cast", e, self.bot)
             await report.report()
             await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):

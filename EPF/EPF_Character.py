@@ -145,6 +145,7 @@ class EPF_Character(Character):
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
+        print("UPDATING!!!!!!!!!!!")
 
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
@@ -237,7 +238,7 @@ class EPF_Character(Character):
             return f"1d20+{self.nature_mod}"
         elif item == "Occultism":
             # print("m")
-            return f"1d20+{self.occult_mod}"
+            return f"1d20+{self.occultism_mod}"
         elif item == "Perception":
             # print("n")
             return f"1d20+{self.perception_mod}"
@@ -350,6 +351,8 @@ class EPF_Character(Character):
         match weapon["stat"]:
             case None:
                 dmg_mod = 0
+            case "":
+                dmg_mod = 0
             case "None":
                 dmg_mod = 0
             case "str":
@@ -372,12 +375,14 @@ class EPF_Character(Character):
             die = f"d{die}"
 
         # Special Trait categories
-        for item in weapon["traits"]:
-            if item.strip().lower() == "propulsive":
-                if self.str_mod > 0:
-                    dmg_mod += floor(self.str_mod / 2)
-                else:
-                    dmg_mod += self.str_mod
+        if weapon["prof"] != "NPC":
+            for item in weapon["traits"]:
+                if item.strip().lower() == "propulsive":
+                    dmg_mod = int(dmg_mod)
+                    if self.str_mod > 0:
+                        dmg_mod += floor(self.str_mod / 2)
+                    else:
+                        dmg_mod += self.str_mod
 
         if crit:
             for item in weapon["traits"]:
@@ -589,6 +594,7 @@ class EPF_Character(Character):
         flex: bool = False,
         data: str = "",
         visible: bool = True,
+        update: bool = True,
     ):
         logging.info("set_cc")
         # Get the Character's data
@@ -613,10 +619,27 @@ class EPF_Character(Character):
             if title in EPF_Conditions:
                 data = EPF_Conditions[title]
                 # print(data)
+        print(data)
+        if "thp" in data:
+            data_list = data.split(",")
+            final_list = data_list.copy()
+            for x, item in enumerate(data_list):
+                parsed = item.strip().split(" ")
+                if parsed[0].lower() == "thp":
+                    try:
+                        thp_num = int(parsed[1])
+                        await self.add_thp(thp_num)
+                        final_list.pop(x)
+                    except Exception:
+                        pass
+            print(final_list)
+            data = ", ".join(final_list)
+            print(data)
 
         # Write the condition to the table
         try:
             if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                # print(f"Writing Condition: {title}")
                 async with session.begin():
                     condition = Condition(
                         character_id=self.id,
@@ -631,8 +654,8 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
-                await self.update()
-                # await update_pinned_tracker(ctx, engine, bot)
+                if update:
+                    await self.update()
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
@@ -659,9 +682,9 @@ class EPF_Character(Character):
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
-            await self.update()
-            return True
+                if update:
+                    await self.update()
+                return True
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -748,7 +771,12 @@ class EPF_Character(Character):
             return True
 
     # Set the initiative
-    async def set_init(self, init):
+    async def set_init(self, init, **kwargs):
+        if "update" in kwargs.keys():
+            update = kwargs["update"]
+        else:
+            update = True
+
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
@@ -773,7 +801,8 @@ class EPF_Character(Character):
                 character = char_result.scalars().one()
                 character.init = init
                 await session.commit()
-            await self.update()
+            if update:
+                await self.update()
             return f"Initiative set to {init} for {self.char_name}"
         except Exception as e:
             logging.error(f"set_init: {e}")
@@ -896,37 +925,6 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
         for item in pb["build"]["feats"]:
             feats += f"{item[0]}, "
 
-        # if overwrite:
-        #     attacks = character.attacks
-        #     name_list = []
-        #     for item in pb["build"]["weapons"]:
-        #         name_list.append(item["display"])
-        #     for key in attacks:
-        #         if key not in name_list:
-        #             del attacks[key]
-        #     for item in pb["build"]["weapons"]:
-        #         die_num = 0
-        #         match item["str"]:
-        #             case "":
-        #                 die_num = 1
-        #             case "striking":
-        #                 die_num = 2
-        #             case "greaterStriking":
-        #                 die_num = 3
-        #             case "majorStriking":
-        #                 die_num = 4
-        #
-        #         attacks[item["display"]] = {
-        #             "display": item["display"],
-        #             "prof": item["prof"],
-        #             "die": item["die"],
-        #             "pot": item["pot"],
-        #             "str": item["str"],
-        #             "die_num": die_num,
-        #             "name": item["name"],
-        #             "runes": item["runes"],
-        #         }
-        # else
         attacks = {}
         for item in pb["build"]["weapons"]:
             die_num = 0
@@ -952,6 +950,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 "stat": "str",
                 "dmg_type": "Bludgeoning",
                 "attk_stat": "str",
+                "traits": [],
             }
 
             if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
@@ -964,7 +963,49 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 attacks[item["display"]]["override_prof"] = 8
 
             edited_attack = await attack_lookup(attacks[item["display"]], pb)
-            attacks[item["display"]] = edited_attack
+
+            double_attacks = False
+            # Check for two handed and fatal
+            if "traits" in edited_attack.keys():
+                for trait in edited_attack["traits"]:
+                    if "fatal-aim" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        fatal_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        trait_list = attack_one["traits"]
+                        trait_copy = trait_list.copy()
+                        for x, i in enumerate(trait_list):
+                            if i == trait:
+                                trait_copy[x] = f"fatal-{fatal_die}"
+
+                        attack_one["traits"] = trait_copy
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+
+                        trait_copy = []
+                        for i in trait_list:
+                            if i != trait:
+                                trait_copy.append(i)
+
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+                        attack_two["traits"] = trait_copy
+                    if "two-hand" in trait:
+                        double_attacks = True
+                        parsed_trait = trait.split("-")
+                        attk_2_die = parsed_trait[2]
+                        attack_one = edited_attack.copy()
+                        attack_two = edited_attack.copy()
+                        attack_one["display"] = f"{edited_attack['display']} (2H)"
+                        attack_one["die"] = attk_2_die
+                        attack_two["display"] = f"{edited_attack['display']} (1H)"
+
+            if double_attacks:
+                del attacks[item["display"]]
+                attacks[attack_one["display"]] = attack_one
+                attacks[attack_two["display"]] = attack_two
+            else:
+                attacks[item["display"]] = edited_attack
 
         # print(attacks)
 
@@ -998,6 +1039,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                     pb["build"]["attributes"]["ancestryhp"]
                     + pb["build"]["attributes"]["classhp"]
                     + pb["build"]["attributes"]["bonushp"]
+                    + pb["build"]["attributes"]["bonushpPerLevel"]
                     + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                     + (
                         (pb["build"]["level"] - 1)
@@ -1076,6 +1118,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             pb["build"]["attributes"]["ancestryhp"]
                             + pb["build"]["attributes"]["classhp"]
                             + pb["build"]["attributes"]["bonushp"]
+                            + pb["build"]["attributes"]["bonushpPerLevel"]
                             + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             + (
                                 (pb["build"]["level"] - 1)
@@ -1090,6 +1133,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             pb["build"]["attributes"]["ancestryhp"]
                             + pb["build"]["attributes"]["classhp"]
                             + pb["build"]["attributes"]["bonushp"]
+                            + pb["build"]["attributes"]["bonushpPerLevel"]
                             + floor((pb["build"]["abilities"]["con"] - 10) / 2)
                             + (
                                 (pb["build"]["level"] - 1)
@@ -1223,7 +1267,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
             )
             character.crafting_mod = await skill_mod_calc(
-                character.itl_mod, "crafting", character.acrobatics_prof, character.level, bonuses, ui
+                character.itl_mod, "crafting", character.crafting_prof, character.level, bonuses, ui
             )
             character.deception_mod = await skill_mod_calc(
                 character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
@@ -1683,16 +1727,27 @@ async def attack_lookup(attack, pathbuilder):
             )
             data = result.scalars().one()
     except Exception:
-        item_name = attack["name"].strip()
-        async with async_session() as session:
-            result = await session.execute(select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower()))
-            data = result.scalars().one()
+        try:
+            print(attack["name"])
+            item_name = attack["name"].strip()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower())
+                )
+                data = result.scalars().one()
+        except Exception as e:
+            return attack
     # print(data.name, data.range, data.traits)
-    await lookup_engine.dispose()
+
+    # await lookup_engine.dispose()
 
     if data.range is not None:
-        attack["stat"] = None
-        attack["attk_stat"] = "dex"
+        if "thrown" in data.traits:
+            attack["stat"] = "str"
+            attack["attk_stat"] = "dex"
+        else:
+            attack["stat"] = None
+            attack["attk_stat"] = "dex"
     # print(data.name)
     # print(data.traits)
     for item in data.traits:
@@ -1762,7 +1817,7 @@ async def invest_items(item, character, ctx, guild, engine):
                     if key in EPF_SKills:
                         if data[key]["mode"] == "item":
                             condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
-        await lookup_engine.dispose()
+        # await lookup_engine.dispose()
         if condition_string != "":
             # print(condition_string)
             EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
@@ -1788,7 +1843,7 @@ async def invest_items(item, character, ctx, guild, engine):
         else:
             return False
     except Exception:
-        await engine.dispose()
+        # await engine.dispose()
         return False
 
 

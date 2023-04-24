@@ -77,6 +77,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
             pb["build"]["attributes"]["ancestryhp"]
             + pb["build"]["attributes"]["classhp"]
             + pb["build"]["attributes"]["bonushp"]
+            + pb["build"]["attributes"]["bonushpPerLevel"]
             + stats["con_mod"]
             + (
                 (stats["level"] - 1)
@@ -321,7 +322,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                         new_macro = Macro(character_id=character.id, name=key.title(), macro=f"1d20{macro[key]}")
                     session.add(new_macro)
             await session.commit()
-        await engine.dispose()
+        # await engine.dispose()
         if overwrite:
             await ctx.send_followup(f"Successfully updated {name}.")
         else:

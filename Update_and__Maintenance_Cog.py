@@ -1,10 +1,13 @@
 # Update_and__Maintenance_Cog.py
-
+import asyncio
 import logging
+import gc
+
+# from main import tracemalloc
 
 # imports
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -22,6 +25,28 @@ from utils.Tracker_Getter import get_tracker_model
 class Update_and_Maintenance_Cog(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
+        self.lock = asyncio.Lock()
+        self.garbage_collect.start()
+        # self.resource_monitor.start()
+
+    # @tasks.loop(seconds=30)
+    # async def resource_monitor(self):
+    #     mem_usage = tracemalloc.get_traced_memory()
+    #     print(f"Memory Usage:\n Current: {mem_usage[0]/(1024*1024)}, Max: {mem_usage[1]/(1024*1024)}")
+
+    #
+    #     snapshot = tracemalloc.take_snapshot()
+    #     top_stats = snapshot.statistics('lineno')
+    #     print("[ Top 10 ]")
+    #     for stat in top_stats[:10]:
+    #         print(stat)
+
+    @tasks.loop(minutes=30)
+    async def garbage_collect(self):
+        collected = gc.collect()
+        uncollected = gc.garbage
+
+        logging.warning(f"Garbage Collection.... \nCollected: {collected}  \nUncollected: {len(uncollected)}")
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -102,7 +127,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                         await write_session.commit()
 
         logging.warning("U&M Complete")
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):

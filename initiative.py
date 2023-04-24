@@ -37,7 +37,7 @@ from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import gm_check, get_guild
 
-warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
+# warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
 
 #############################################################################
@@ -77,7 +77,7 @@ class InitiativeCog(commands.Cog):
                 )
         except Exception as e:
             logging.error(f"Initiative Cog = Update Status: {e}")
-        await engine.dispose()
+        # await engine.dispose()
 
     # Don't start the loop unti the bot is ready
     @update_status.before_loop
@@ -87,10 +87,10 @@ class InitiativeCog(commands.Cog):
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await check_timekeeper(ctx, engine):
-            await engine.dispose()
+            # await engine.dispose()
             return ["Round", "Minute", "Hour", "Day"]
         else:
-            await engine.dispose()
+            # await engine.dispose()
             return ["Round"]
 
     # ---------------------------------------------------
@@ -134,7 +134,7 @@ class InitiativeCog(commands.Cog):
                 await Utilities.add_to_vault(name)
         else:
             await ctx.respond("Error Adding Character", ephemeral=True)
-        await engine.dispose()
+        # await engine.dispose()
 
     @char.command(description="Edit PC on NPC")
     @option(
@@ -175,7 +175,7 @@ class InitiativeCog(commands.Cog):
                 await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
-        await engine.dispose()
+        # await engine.dispose()
 
     @char.command(description="Duplicate Character")
     @option(
@@ -206,7 +206,7 @@ class InitiativeCog(commands.Cog):
         else:
             await ctx.send_followup("Error Copying Character", ephemeral=True)
 
-        await engine.dispose()
+        # await engine.dispose()
 
     @char.command(description="Delete NPC")
     @option(
@@ -251,7 +251,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("Failed")
         else:
             await ctx.respond("You do not have the appropriate permissions to delete this character.")
-        await engine.dispose()
+        # await engine.dispose()
 
     @char.command(description="Display Character Sheet")
     @option(
@@ -275,7 +275,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup("Error displaying character sheet. Ensure valid character.")
         else:
             await ctx.send_followup("You do not have the appropriate permissions to view this character.")
-        await engine.dispose()
+        # await engine.dispose()
 
     @i.command(
         description="Manage Initiative",
@@ -338,7 +338,7 @@ class InitiativeCog(commands.Cog):
             report = ErrorReport(ctx, "/i manage", e, self.bot)
             await report.report()
 
-        await engine.dispose()
+        # await engine.dispose()
 
     @i.command(
         description="Advance Initiative",
@@ -359,7 +359,7 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/i next: {e}")
             report = ErrorReport(ctx, "slash command /i next", e, self.bot)
             await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
     @i.command(
         description="Set Init (Number or XdY+Z)",
@@ -391,7 +391,7 @@ class InitiativeCog(commands.Cog):
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
 
-        await engine.dispose()
+        # await engine.dispose()
 
     @i.command(
         description="Heal, Damage or add Temp HP",
@@ -428,7 +428,7 @@ class InitiativeCog(commands.Cog):
             Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
             await Tracker_Object.update_pinned_tracker()
 
-        await engine.dispose()
+        # await engine.dispose()
 
     @cc.command(
         description="Add conditions and counters",
@@ -438,7 +438,7 @@ class InitiativeCog(commands.Cog):
     @option("type", choices=["Condition", "Counter"])
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
     @option("unit", autocomplete=time_check_ac)
-    @option("flex", autocomplete=discord.utils.basic_autocomplete(["True", "False"]))
+    @option("flex", autocomplete=auto_complete.flex_ac)
     async def new(
         self,
         ctx: discord.ApplicationContext,
@@ -454,10 +454,21 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
-        if flex == "False":
-            flex_bool = False
-        else:
-            flex_bool = True
+        match flex:  # noqa
+            case "Decrement at beginning of the Turn":
+                flex_bool = True
+            case "Decrement at end of the Turn":
+                flex_bool = False
+            case "True":
+                flex_bool = True
+            case "False":
+                flex_bool = False
+            case "Ends with Save":
+                flex_bool = True
+            case "Ends after set time":
+                flex_bool = False
+            case _:
+                flex_bool = False
 
         if type == "Condition":
             counter_bool = False
@@ -500,7 +511,7 @@ class InitiativeCog(commands.Cog):
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Object.update_pinned_tracker()
         # print("Tracker Updated")
-        await engine.dispose()
+        # await engine.dispose()
 
     @cc.command(
         description="Edit or remove conditions and counters",
@@ -545,7 +556,7 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/cc modify: {e}")
             report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
             await report.report()
-        await engine.dispose()
+        # await engine.dispose()
 
 
 def setup(bot):
