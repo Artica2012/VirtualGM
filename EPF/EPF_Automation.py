@@ -185,6 +185,7 @@ class EPF_Automation(Automation):
         Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
         print(f"Cast dmg_modifier: {dmg_modifier}!")
         spell = Character_Model.character_model.spells[spell_name]
+        total_damage = 0
 
         # Attack
         if spell["type"] == "attack":
@@ -230,10 +231,11 @@ class EPF_Automation(Automation):
                     Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
                 )
             elif success_string == "Success":
-                orig_dmg_string, orig_total_damage = await roll_spell_dmg_resist(
+                dmg_string, orig_total_damage = await roll_spell_dmg_resist(
                     Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
                 )
-                dmg_string = f"{orig_dmg_string}/2"
+                for key in dmg_string.keys():
+                    dmg_string[key]["damage_string"] = f"{dmg_string[key]['damage_string']}/2"
                 total_damage = floor(int(orig_total_damage) / 2)
             else:
                 dmg_string = None
@@ -243,18 +245,21 @@ class EPF_Automation(Automation):
         # Damage
 
         if dmg_string is not None:
-            dmg_type: str = await Character_Model.get_spell_dmg_type(spell_name)
-            dmg_output_string = f"{character} damages {target} for:\n{dmg_string} {dmg_type.title()}"
+            dmg_output_string = f"{character} damages {target} for:\n"
+            for key in dmg_string.keys():
+                dmg_type: str = dmg_string[key]["damage_type"]
+                dmg_output_string += f"{dmg_string[key]['damage_roll']} {dmg_type.title()}\n"
+
             await Target_Model.change_hp(total_damage, heal=False, post=False)
             await Tracker_Model.update_pinned_tracker()
             if Target_Model.player:
                 return (
-                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
+                    f"{attk_output_string}\n{dmg_output_string}{Target_Model.char_name} damaged for"
                     f" {total_damage}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
                 )
             else:
                 return (
-                    f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for {total_damage}."
+                    f"{attk_output_string}\n{dmg_output_string}{Target_Model.char_name} damaged for {total_damage}."
                     f" {await Target_Model.calculate_hp()}"
                 )
         else:
@@ -366,17 +371,32 @@ async def roll_spell_dmg_resist(
     """
     logging.info("roll_dmg_spell_resist")
     # Roll the critical damage and apply resistances
+    dmg_rolls = {}
     if crit and "critical-hits" not in Target_Model.resistance["immune"]:
-        damage_roll = d20.roll(f"({await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)})*2")
+        spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
+        print(spell_dmg)
+        for key in spell_dmg.keys():
+            dmg_rolls[key] = {}
+            dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
+            dmg_rolls[key]["damage_roll"] = d20.roll(f"({dmg_rolls[key]['damage_string']})*2")
+            dmg_rolls[key]["damage_type"] = spell_dmg[key]["dmg_type"]
     else:
-        damage_roll = d20.roll(f"{await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)}")
-    total_damage = await damage_calc_resist(
-        damage_roll.total, await Character_Model.get_spell_dmg_type(spell), Target_Model
-    )
-    dmg_output_string = f"{damage_roll}"
+        spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
+
+        for key in spell_dmg.keys():
+            dmg_rolls[key] = {}
+            dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
+            dmg_rolls[key]["damage_roll"] = d20.roll(f"{dmg_rolls[key]['damage_string']}")
+            dmg_rolls[key]["damage_type"] = spell_dmg[key]["dmg_type"]
+
+    total_damage = 0
+    for key in spell_dmg.keys():
+        total_damage += await damage_calc_resist(
+            dmg_rolls[key]["damage_roll"].total, dmg_rolls[key]["damage_type"], Target_Model
+        )
 
     # print(dmg_output_string, total_damage)
-    return dmg_output_string, total_damage
+    return dmg_rolls, total_damage
 
 
 async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None):
