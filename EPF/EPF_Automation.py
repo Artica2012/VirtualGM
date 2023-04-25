@@ -1,4 +1,5 @@
 import logging
+from math import floor
 
 import d20
 from sqlalchemy.exc import NoResultFound
@@ -228,6 +229,12 @@ class EPF_Automation(Automation):
                 dmg_string, total_damage = await roll_spell_dmg_resist(
                     Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
                 )
+            elif success_string == "Success":
+                orig_dmg_string, orig_total_damage = await roll_spell_dmg_resist(
+                    Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
+                )
+                dmg_string = f"{orig_dmg_string}/2"
+                total_damage = floor(int(orig_total_damage) / 2)
             else:
                 dmg_string = None
         else:
