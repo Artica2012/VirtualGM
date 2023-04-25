@@ -24,6 +24,7 @@ Other:
 Armor Class = ac
 attack = attack
 damage = dmg
+initiative = init
 
 Circumstance Bonus = c
 Status Bonus = s

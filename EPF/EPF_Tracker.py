@@ -260,31 +260,35 @@ class EPF_Tracker(Tracker):
                                     processed_minutes_left = f"0{processed_minutes_left}"
                                 if days_left != 0:
                                     con_string = (
-                                        f"       {con_row.title}: {days_left} Days,"
-                                        f" {processed_minutes_left}:{processed_seconds_left}\n "
+                                        f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                        f" {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
                                     )
                                 else:
                                     if processed_hours_left != 0:
                                         con_string = (
-                                            f"       {con_row.title}:"
+                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
                                             f" {processed_hours_left}:{processed_minutes_left}:"
                                             f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
-                                            f"       {con_row.title}:"
+                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
                                             f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
-                                con_string = f"       {con_row.title}: {con_row.number}\n"
+                                con_string = (
+                                    f"       {con_row.title}{'*' if con_row.action != '' else ''}: {con_row.number}\n"
+                                )
                         else:
-                            con_string = f"       {con_row.title}\n"
+                            con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
 
                     elif con_row.counter is True and sel_bool and row.player:
                         if con_row.number != 0:
-                            con_string = f"       {con_row.title}: {con_row.number}\n"
+                            con_string = (
+                                f"       {con_row.title}{'*' if con_row.action != '' else ''}: {con_row.number}\n"
+                            )
                         else:
-                            con_string = f"       {con_row.title}\n"
+                            con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
                     else:
                         con_string = ""
                     output_string += con_string

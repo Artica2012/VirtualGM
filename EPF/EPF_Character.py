@@ -825,10 +825,11 @@ class EPF_Character(Character):
                     discord.EmbedField(name=status, value=user_name, inline=False),
                     discord.EmbedField(
                         name="HP: ",
-                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)",
+                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)\n",
                         inline=False,
                     ),
                     discord.EmbedField(name="Class: ", value=self.character_model.char_class, inline=False),
+                    discord.EmbedField(name="Initiative: ", value=self.character_model.init_string, inline=False),
                 ],
                 color=discord.Color.dark_gold(),
             )
@@ -1343,7 +1344,9 @@ async def calculate(ctx, engine, char_name, guild=None):
             character.class_dc = await skill_mod_calc(
                 key_ability, "class_dc", character.class_prof, character.level, bonuses, False
             )
-            character.init_string = f"1d20+{character.perception_mod}"
+
+            character.init_string = f"1d20+{await bonus_calc(character.perception_mod, 'init', bonuses)}"
+
             character.bonuses = bonuses
             character.resistance = resistance
 
