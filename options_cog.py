@@ -180,29 +180,21 @@ class OptionsCog(commands.Cog):
                     return
                 await session.commit()
 
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                updated_guild = result.scalars().one()
-                if updated_guild.system is None:
-                    system_str = "Base"
-                elif updated_guild.system == "PF2":
-                    system_str = "Pathfinder Second Edition"
-                elif updated_guild.system == "D4e":
-                    system_str = "D&D 4th Edition"
-                else:
-                    system_str = "Base"
+            guild = await get_guild(ctx, guild, refresh=True)
+            if guild.system is None:
+                system_str = "Base"
+            elif guild.system == "PF2":
+                system_str = "Pathfinder Second Edition"
+            elif guild.system == "D4e":
+                system_str = "D&D 4th Edition"
+            elif guild.system == "EPF":
+                system_str = "Enhanced Pathfinder 2e"
+            else:
+                system_str = "Base"
 
-                embed = await self.display_options(
-                    timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str
-                )
-                await ctx.send_followup(embed=embed)
-            # await engine.dispose()
+            embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
+            await ctx.send_followup(embed=embed)
+
         except NoResultFound:
             await ctx.channel.send(error_not_initialized, delete_after=30)
             return False
@@ -211,7 +203,6 @@ class OptionsCog(commands.Cog):
             report = ErrorReport(ctx, "/admin options", e, self.bot)
             await report.report()
             return False
-        # await engine.dispose()
 
 
 def setup(bot):
