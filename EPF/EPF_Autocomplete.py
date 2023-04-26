@@ -40,6 +40,12 @@ class EPF_Autocmplete(AutoComplete):
             dmg = kwargs["dmg"]
         else:
             dmg = False
+
+        if "auto" in kwargs.keys():
+            auto = kwargs["auto"]
+        else:
+            auto = False
+
         try:
             character = self.ctx.options["character"]
             char_split = character.split(",")
@@ -57,6 +63,15 @@ class EPF_Autocmplete(AutoComplete):
                 macro_list.append("Treat Wounds")
 
             # await self.engine.dispose()
+
+            if attk and auto:
+                attk_list = await EPF_Char.attack_list()
+                if self.ctx.value != "":
+                    val = self.ctx.value.lower()
+                    return [option for option in attk_list if val in option.lower()]
+                else:
+                    return attk_list
+
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
