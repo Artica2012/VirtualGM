@@ -194,18 +194,17 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog cast")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        try:
-            Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.cast(
-                self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
-            )
-            await ctx.send_followup(output_string)
-        except Exception as e:
-            logging.warning(f"attack_cog cast {e}")
-            report = ErrorReport(ctx, "/a cast", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
-        # await engine.dispose()
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        output_string = await Automation.cast(
+            self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
+        )
+        await ctx.send_followup(output_string)
+        # except Exception as e:
+        #     logging.warning(f"attack_cog cast {e}")
+        #     report = ErrorReport(ctx, "/a cast", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
 
 
 def setup(bot):

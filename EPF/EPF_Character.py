@@ -434,11 +434,16 @@ class EPF_Character(Character):
                 return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
-        print(f"Flat Bonus: {flat_bonus}!")
+        # print(f"Flat Bonus: {flat_bonus}!")
         # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
+        # print(spell_data)
+        dmg_dict = {}
         dmg_string = ""
         for x, key in enumerate(spell_data["damage"]):
+            # print(f"{x}, {key}")
+            # print(spell_data["damage"][key]["value"])
+            dmg_type = spell_data["damage"][key]["dmg_type"]
             if x > 0:
                 dmg_string += "+"
             if spell_data["damage"][key]["mod"]:
@@ -457,10 +462,16 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}"
-            else:
-                dmg_string += f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
+                dmg_dict[key] = {
+                    "dmg_string": f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}",
+                    "dmg_type": dmg_type,
+                }
 
+            else:
+                dmg_dict[key] = {
+                    "dmg_string": f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}",
+                    "dmg_type": dmg_type,
+                }
             # Heightening Calculations
         if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
             # print(level)
@@ -477,10 +488,10 @@ class EPF_Character(Character):
                 # print(i)
                 # print(spell_data["heightening"]["damage"])
                 for x, key in enumerate(spell_data["heightening"]["damage"]):
-                    # print(x, key)
-                    if x > 0:
-                        dmg_string += "+"
-                    dmg_string = f"{dmg_string}+{spell_data['heightening']['damage'][key]}"
+                    dmg_dict[key][
+                        "dmg_string"
+                    ] = f"{dmg_dict[key]['dmg_string']}+{spell_data['heightening']['damage'][key]}"
+            # print(dmg_dict)
         # Add fixed calcs
         elif level > spell_data["level"] and spell_data["heightening"]["type"] == "fixed":
             if level in spell_data["heightening"]["interval"].keys():
@@ -503,9 +514,9 @@ class EPF_Character(Character):
                         extra_dmg = f"{item['value']}+{mod_stat}"
                     else:
                         extra_dmg = f"{item['value']}"
-                    dmg_string = f"{dmg_string}+{extra_dmg}"
+                    dmg_dict[item]["dmg_string"] += f"+{extra_dmg}"
 
-        return dmg_string
+        return dmg_dict
 
     async def get_spell_dmg_type(self, spell):
         spell_data = self.character_model.spells[spell]
