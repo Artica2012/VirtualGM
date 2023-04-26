@@ -63,6 +63,34 @@ class Tracker:
         await self.advance_initiative()
         await self.block_post_init()
 
+    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+        logging.info("get_init_list")
+        try:
+            if guild is not None:
+                try:
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                except Exception:
+                    Tracker = await get_tracker(ctx, engine)
+            else:
+                Tracker = await get_tracker(ctx, engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Tracker)
+                    .where(Tracker.active == true())
+                    .order_by(Tracker.init.desc())
+                    .order_by(Tracker.id.desc())
+                )
+                init_list = result.scalars().all()
+                logging.info("GIL: Init list gotten")
+                # print(init_list)
+            return init_list
+
+        except Exception:
+            logging.error("error in get_init_list")
+            return []
+
     async def end(self):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
@@ -149,7 +177,7 @@ class Tracker:
 
     async def update(self):
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
-        self.init_list = await get_init_list(self.ctx, self.engine, guild=self.guild)
+        self.init_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
 
     async def init_integrity_check(self, init_pos: int, current_character: str):
         logging.info("init_integrity_check")

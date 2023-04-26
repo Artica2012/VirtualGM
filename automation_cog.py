@@ -18,6 +18,7 @@ from auto_complete import (
     spell_list,
     spell_level,
     var_dmg_type,
+    auto_macro_select,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -76,7 +77,6 @@ class AutomationCog(commands.Cog):
                 "you used a non-macro roll that it conforms tothe XdY+Z format without any "
                 "labels."
             )
-        # await engine.dispose()
 
     @att.command(description="Saving Throw")
     @option("character", description="Character forcing the save", autocomplete=character_select_gm)
@@ -104,7 +104,6 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a save", e, self.bot)
             await report.report()
             await ctx.send_followup("Error. Ensure that you selected valid targets and saves.")
-        # await engine.dispose()
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -137,12 +136,11 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a damage", e, self.bot)
             await report.report()
             await ctx.send_followup("Error. Ensure that your input was a valid dice roll or value.")
-        # await engine.dispose()
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=character_select)
-    @option("attack", description="Roll or Macro Roll", autocomplete=a_macro_select)
+    @option("attack", description="Roll or Macro Roll", autocomplete=auto_macro_select)
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
     @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
@@ -159,18 +157,19 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        # try:
-        Automation = await get_automation(ctx, engine=engine)
-        output_string = await Automation.auto(
-            self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
-        )
-        await ctx.send_followup(output_string)
-        # except Exception as e:
-        #     logging.warning(f"attack_cog auto {e}")
-        #     report = ErrorReport(ctx, "/a auto", e, self.bot)
-        #     await report.report()
-        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
-        # await engine.dispose()
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            output_string = await Automation.auto(
+                self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+            )
+            await ctx.send_followup(output_string)
+        except KeyError:
+            await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
+        except Exception as e:
+            logging.warning(f"attack_cog auto {e}")
+            report = ErrorReport(ctx, "/a auto", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
 
     @att.command(description="Cast a Spell (EPF Only)")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -205,7 +204,6 @@ class AutomationCog(commands.Cog):
             report = ErrorReport(ctx, "/a cast", e, self.bot)
             await report.report()
             await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
-        # await engine.dispose()
 
 
 def setup(bot):

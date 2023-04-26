@@ -168,6 +168,14 @@ async def a_macro_select(ctx: discord.AutocompleteContext):
         return []
 
 
+async def auto_macro_select(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.macro_select(attk=True, auto=True)
+    except Exception:
+        return []
+
+
 async def a_d_macro_select(ctx: discord.AutocompleteContext):
     try:
         AutoComplete = await get_autocomplete(ctx)
