@@ -197,7 +197,7 @@ class EPF_Character(Character):
         self.ac_total = self.character_model.ac_total
         self.resistance = self.character_model.resistance
 
-    async def get_roll(self, item):
+    async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
         if item == "Fortitude" or item == "Fort":
@@ -260,6 +260,23 @@ class EPF_Character(Character):
         elif item == "Thievery":
             # print("t")
             return f"1d20+{self.thievery_mod}"
+        elif "Lore" in item:
+            lore = item.split(":")[1]
+            lore = lore.strip()
+            lore_list = self.character_model.lores.split(";")
+            for i in lore_list:
+                parsed_lore = i.split(",")
+                if lore == parsed_lore[0].strip():
+                    if "Untrained Improvisation" in self.character_model.feats:
+                        ui = True
+                    else:
+                        ui = False
+                    # print(f"Int Mod: {self.itl_mod}, Prof: {parsed_lore[1]}, Level: {self.character_model.level}")
+
+                    return (
+                        f"1d20+{await skill_mod_calc(self.itl_mod, 'lore', int(parsed_lore[1]), self.character_model.level, self.character_model.bonuses, ui)} "
+                    )
+
         else:
             # print("Not a check")
             try:
@@ -1369,6 +1386,15 @@ async def calculate(ctx, engine, char_name, guild=None):
             #     macros.append(f"Spell Attack: {item['name']}")
             macros.extend(PF2_skills)
 
+            lore_list = character.lores.split(";")
+            # print(lore_list)
+            for item in lore_list:
+                parsed_item = item.split(",")
+                # print(parsed_item)
+                if len(parsed_item) > 1:
+                    # print(parsed_item[0])
+                    macros.append(f"Lore: {parsed_item[0]}")
+
             Macro = await get_macro(ctx, engine, id=guild.id)
             async with async_session() as macro_session:
                 result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
@@ -1379,6 +1405,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             for item in macros:
                 macro_string += f"{item},"
             character.macros = macro_string
+            print(macro_string)
 
             await session.commit()
 
