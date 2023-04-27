@@ -474,5 +474,5 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
             time = 10
         else:
             time = 60
-        await Character_Model.set_cc("Wounds Treated", False, time, "Minute", True)
+        await Target_Model.set_cc("Wounds Treated", False, time, "Minute", True)
     return output_string
