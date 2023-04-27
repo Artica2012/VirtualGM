@@ -1,15 +1,9 @@
-# fly.toml file generated for virtual-gm on 2022-11-09T02:08:44-08:00
+# fly.toml app configuration file generated for virtual-gm on 2023-04-26T00:14:57-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
 app = "virtual-gm"
+primary_region = "sjc"
 kill_signal = "SIGINT"
-kill_timeout = 5
-processes = []
-services = []
-
-[env]
-
-[experimental]
-  allowed_public_ports = []
-  cmd = []
-  entrypoint = []
-  exec = []
+kill_timeout = "5s"
