@@ -1484,9 +1484,10 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
 
 async def bonus_calc(base, skill, bonuses, item_name=""):
     mod = base
+    skill = skill.lower()
 
     if item_name != "":
-        specific_skill = f"{item_name},{skill}"
+        specific_skill = f"{item_name},{skill}".lower()
 
         c_pos = 0
         s_c_pos = 0
@@ -1657,7 +1658,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                         parsed = []
                 print(specific_weapon)
 
-                key = f"{specific_weapon}{parsed[0]}"
+                key = f"{specific_weapon}{parsed[0]}".lower()
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
                 else:

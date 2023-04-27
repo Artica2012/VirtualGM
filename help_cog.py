@@ -315,10 +315,8 @@ class HelpCog(commands.Cog):
         if command == "PF2e":
             await ctx.respond(
                 (
-                    "```Pathfinder Second Edition\n - /pf2 pb_import - Imports character data from the Pathbuilder 2e"
-                    " app or https://pathbuilder2e.com/\n - /pf2 add_npc - Allows the searching of all enemies and NPCs"
-                    " in the official published works, with the ability to add the NPC directly into the tracker\n -"
-                    " Attacks and saves are enabled via **/a attack** and **/a save**`` "
+                    "Legacy Pathfinder 2e Documentation:\n"
+                    "https://docs.google.com/document/d/13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
                 ),
                 ephemeral=True,
             )
