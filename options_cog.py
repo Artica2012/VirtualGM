@@ -62,7 +62,14 @@ class OptionsCog(commands.Cog):
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
             if response:
                 await ctx.send_followup("Server Setup", ephemeral=True)
-                return
+                if system == "Enhanced PF2":
+                    doc_msg = await ctx.channel.send(
+                        "Enhanced Pathfinder 2e Documentation:\n"
+                        " https://docs.google.com/document/d/"
+                        "1tD9PNXQ-iOBalvzxpTQ9CvuM2jy6Y_S75Rjjof-WRBk/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
+
             else:
                 await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
         except Exception as e:
