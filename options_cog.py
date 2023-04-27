@@ -69,6 +69,13 @@ class OptionsCog(commands.Cog):
                         "1tD9PNXQ-iOBalvzxpTQ9CvuM2jy6Y_S75Rjjof-WRBk/edit?usp=sharing"
                     )
                     await doc_msg.pin()
+                elif system == "Pathfinder 2e":
+                    doc_msg = await ctx.channel.send(
+                        "Legacy Pathfinder 2e Documentation:\n"
+                        "https://docs.google.com/document/d/"
+                        "13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
 
             else:
                 await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
