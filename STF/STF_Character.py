@@ -84,6 +84,65 @@ class STF_Character(Character):
 
         super().__init__(char_name, ctx, engine, character, guild)
 
+    async def update(self):
+        await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        self.id = self.character_model.id
+        self.name = self.character_model.name
+        self.player = self.character_model.player
+        self.user = self.character_model.user
+        self.current_hp = self.character_model.current_hp
+        self.max_hp = self.character_model.max_hp
+        self.temp_hp = self.character_model.max_hp
+        self.init_string = self.character_model.init_string
+        self.init = self.character_model.init
+
+        self.current_resolve = self.character_model.resolve
+        self.max_resolve = self.character_model.max_resolve
+        self.current_stamina = self.character_model.current_stamina
+        self.max_stamina = self.character_model.max_stamina
+
+        self.eac = self.character_model.eac
+        self.kac = self.character_model.kac
+
+        self.str_mod = self.character_model.str_mod
+        self.dex_mod = self.character_model.dex_mod
+        self.con_mod = self.character_model.con_mod
+        self.itl_mod = self.character_model.itl_mod
+        self.wis_mod = self.character_model.wis_mod
+        self.cha_mod = self.character_model.cha_mod
+
+        self.fort_mod = self.character_model.fort_mod
+        self.will_mod = self.character_model.will_mod
+        self.reflex_mod = self.character_model.reflex_mod
+
+        self.acrobatics_mod = self.character_model.acrobatics_mod
+        self.athletics_mod = self.character_model.athletics_mod
+        self.bluff_mod = self.character_model.bluff_mod
+        self.computers_mod = self.character_model.computers_mod
+        self.culture_mod = self.character_model.culture_mod
+        self.diplomacy_mod = self.character_model.diplomacy_mod
+        self.disguise_mod = self.character_model.disguise_mod
+        self.engineering_mod = self.character_model.engineering_mod
+        self.intimidate_mod = self.character_model.intimidate_mod
+        self.life_science_mod = self.character_model.life_science_mod
+        self.medicine_mod = self.character_model.medicine_mod
+        self.mysticism_mod = self.character_model.mysticism_mod
+        self.perception_mod = self.character_model.perception_mod
+        self.physical_science_mod = self.character_model.physical_science_mod
+        self.piloting_mod = self.character_model.piloting_mod
+        self.sense_motive_mod = self.character_model.sense_motive_mod
+        self.sleight_of_hand_mod = self.character_model.sleight_of_hand_mod
+        self.stealth_mod = self.character_model.stealth_mod
+        self.survival_mod = self.character_model.survival_mod
+
+        self.eac = self.character_model.eac
+        self.kac = self.character_model.kac
+
+        self.macros = self.character_model.macros
+        self.attacks = self.character_model.attacks
+        self.spells = self.character_model.spells
+        self.bonuses = self.character_model.bonuses
+
 
 async def calculate(ctx, engine, char_name, guild=None):
     logging.info("Updating Character Model")
@@ -140,7 +199,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             character.eac = await skill_mod_calc("eac", character.base_eac, bonuses)
             character.kac = await skill_mod_calc("kac", character.base_kac, bonuses)
 
-            character.init_string = f"1d20+{await skill_mod_calc('init'), character.dex_mod, bonuses}"
+            character.init_string = f"1d20+{await skill_mod_calc('init', character.dex_mod, bonuses)}"
             character.bonuses = bonuses
             character.resistance = resistance
 
