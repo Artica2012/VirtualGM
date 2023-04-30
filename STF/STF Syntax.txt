@@ -1,0 +1,13 @@
+Starfinder Syntax Guide
+
+attacks {
+    "Attack Name": {
+        "type": "Ranged" or "Melee",
+        "attk_bonus": int,
+        "dmg_type": str,
+        "dmg_die_num": int,
+        "dmg_die": str,
+        "dmg_bonus": int,
+        "traits": [str, str, str]
+    }
+}

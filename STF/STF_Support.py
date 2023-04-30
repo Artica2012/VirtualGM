@@ -32,6 +32,8 @@ class STF_Character_Model:
             db.Column("base_eac", db.INTEGER(), nullable=False),
             db.Column("base_kac", db.INTEGER(), nullable=False),
             db.Column("bab", db.INTEGER(), nullable=False),
+            db.Column("resolve", db.INTEGER(), default=1),
+            db.Column("max_resolve", db.INTEGER(), default=1),
             db.Column("str", db.INTEGER(), nullable=False),
             db.Column("dex", db.INTEGER(), nullable=False),
             db.Column("con", db.INTEGER(), nullable=False),
@@ -98,3 +100,26 @@ class STF_Character_Model:
 
         logging.info("stf_character_model_table")
         return emp
+
+
+STF_Skills = [
+    "Acrobatics",
+    "Athletics",
+    "Bluff",
+    "Computers",
+    "Culture",
+    "Diplomacy",
+    "Disguise",
+    "Engineering",
+    "Intimidate",
+    "Life Science",
+    "Medicine",
+    "Mysticism",
+    "Perception",
+    "Physical Science",
+    "Piloting",
+    "Sense Motive",
+    "Sleight of Hand",
+    "Stealth",
+    "Survival",
+]
