@@ -2,6 +2,7 @@ import asyncio
 import logging
 from math import floor
 
+import d20
 import discord
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -43,6 +44,8 @@ class STF_Character(Character):
 
         self.eac = character.eac
         self.kac = character.kac
+
+        self.key_ability = character.key_ability
 
         self.str_mod = character.str_mod
         self.dex_mod = character.dex_mod
@@ -105,6 +108,8 @@ class STF_Character(Character):
         self.eac = self.character_model.eac
         self.kac = self.character_model.kac
 
+        self.key_ability = self.character_model.key_ability
+
         self.str_mod = self.character_model.str_mod
         self.dex_mod = self.character_model.dex_mod
         self.con_mod = self.character_model.con_mod
@@ -114,7 +119,7 @@ class STF_Character(Character):
 
         self.fort_mod = self.character_model.fort_mod
         self.will_mod = self.character_model.will_mod
-        self.reflex_mod = self.character_model.reflex_mod
+        self.reflex_mod = self.character_model.reflex_mo
 
         self.acrobatics_mod = self.character_model.acrobatics_mod
         self.athletics_mod = self.character_model.athletics_mod
@@ -297,6 +302,51 @@ class STF_Character(Character):
 
     async def get_weapon(self, item):
         return self.attacks[item]
+
+    async def get_dc(self):
+        match self.key_ability:  # noqa
+            case "str":
+                ka = self.str_mod
+            case "dex":
+                ka = self.dex_mod
+            case "con":
+                ka = self.con_mod
+            case "itl":
+                ka = self.itl_mod
+            case "wis":
+                ka = self.wis_mod
+            case "cha":
+                ka = self.cha_mod
+            case _:
+                ka = 0
+
+        return 10 + floor(self.character_model.level / 2) + ka
+
+    async def roll_macro(self, macro, modifier):
+        macro_string = await self.get_roll(macro)
+        if macro_string == 0:
+            return 0
+        roll_string = f"{macro_string}{ParseModifiers(modifier)}"
+        # print(roll_string)
+        dice_result = d20.roll(roll_string)
+        return dice_result
+
+    async def macro_list(self):
+        list = self.character_model.macros.split(",")
+        logging.info(list)
+        if len(list) > 0:
+            if list[-1] == "":
+                return list[:-1]
+            else:
+                return list
+        else:
+            return []
+
+    async def attack_list(self):
+        list = []
+        for key in self.character_model.attacks:
+            list.append(key)
+        return list
 
 
 async def calculate(ctx, engine, char_name, guild=None):
