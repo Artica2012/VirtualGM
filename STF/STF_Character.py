@@ -287,9 +287,16 @@ class STF_Character(Character):
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         logging.info("weapon_dmg")
-        # weapon = self.character_model.attacks[item]
-        # mod = weapon["attk_bonus"]
-        # bonus_mod = await skill_mod_calc("dmg", 0, self.bonuses)
+        weapon = self.character_model.attacks[item]
+
+        bonus_mod = await skill_mod_calc("dmg", 0, self.bonuses)
+        return (
+            f"{weapon['dmg_die_num']}d{weapon['dmg_die']}{ParseModifiers(str(weapon['dmg_bonus']))}"
+            f"{ParseModifiers(str(bonus_mod))}"
+        )
+
+    async def get_weapon(self, item):
+        return self.attacks[item]
 
 
 async def calculate(ctx, engine, char_name, guild=None):

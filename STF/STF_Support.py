@@ -34,6 +34,7 @@ class STF_Character_Model:
             db.Column("bab", db.INTEGER(), nullable=False),
             db.Column("resolve", db.INTEGER(), default=1),
             db.Column("max_resolve", db.INTEGER(), default=1),
+            db.Column("key_ability", db.String(255), default=""),
             db.Column("str", db.INTEGER(), nullable=False),
             db.Column("dex", db.INTEGER(), nullable=False),
             db.Column("con", db.INTEGER(), nullable=False),

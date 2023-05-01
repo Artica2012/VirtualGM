@@ -15,6 +15,15 @@ from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
+Interpreter = {"str": "str", "dex": "dex", "con": "con", "int": "itl", "wis": "wis", "cha": "cha"}
+
+
+def interpret(item):
+    try:
+        return Interpreter[item]
+    except KeyError:
+        return ""
+
 
 async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None):
     # try:
@@ -75,7 +84,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
             character_data.base_kac = character["base_kac"]
             character_data.level = character["level"]
             character_data.max_resolve = floor(character["level"] / 2) if character["level"] > 2 else 1
-
+            character_data.key_ability = character["key_ability"]
             character_data.str = character["str"]
             character_data.dex = character["dex"]
             character_data.con = character["con"]
@@ -132,6 +141,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                     bab=character["bab"],
                     max_resolve=floor(character["level"] / 2) if character["level"] > 2 else 1,
                     resolve=floor(character["level"] / 2) if character["level"] > 2 else 1,
+                    key_ability=character["key_ability"],
                     str=character["str"],
                     dex=character["dex"],
                     con=character["con"],
@@ -213,6 +223,7 @@ async def stf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "base_eac": int(df.b[6]),
         "base_kac": int(df.d[6]),
         "bab": int(df.e[7]),
+        "key_ability": interpret(df.e[8]),
         "fort": await strip_mod(df.b[8]),
         "reflex": await strip_mod(df.b[9]),
         "will": await strip_mod(df.b[10]),
