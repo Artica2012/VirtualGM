@@ -166,7 +166,6 @@ class Character:
                         await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
                     else:
                         await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
-            await self.update()
             return True
         except Exception as e:
             logging.warning(f"change_hp: {e}")

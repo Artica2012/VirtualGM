@@ -13,6 +13,7 @@ from STF.STF_Support import STF_Skills
 from database_models import get_tracker, get_condition, get_macro
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
+from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
 
@@ -142,6 +143,153 @@ class STF_Character(Character):
         self.attacks = self.character_model.attacks
         self.spells = self.character_model.spells
         self.bonuses = self.character_model.bonuses
+
+    async def set_stamina(self, amount: int):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+            character.current_stamina = amount
+            await session.commit()
+            await self.update()
+
+    async def set_resolve(self, amount: int):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+            character = char_result.scalars().one()
+            character.resolve = amount
+            await session.commit()
+            await self.update()
+
+    async def change_hp(self, amount: int, heal: bool, post=True):
+        logging.info("Edit HP")
+        orig_ammount = amount.copy()
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+                character = char_result.scalars().one()
+
+                if not heal:
+                    # Handle Temp HP
+                    if character.temp_hp > 0:
+                        if amount > character.temp_hp:
+                            amount = amount - character.temp_hp
+                            character.temp_hp = 0
+                        else:
+                            character.temp_hp = character.temp_hp - amount
+                            amount = 0
+
+                    if character.current_stamina > 0 and character.current_stamina >= amount:
+                        character.current_stamina = character.current_stamina - amount
+                    elif character.current_stamina > 0:
+                        difference = abs(character.current_stamina - amount)
+                        character.current_hp = character.current_hp - difference
+                        character.current_stamina = 0
+                    else:
+                        character.current_hp = character.current_hp - amount
+                else:
+                    character.current_hp = character.current_hp + amount
+                    if character.current_hp > character.max_hp:
+                        character.current_hp = character.max_hp
+
+                await session.commit()
+                await self.update()
+            if post:
+                if character.player:  # Show the HP it its a player
+                    if heal:
+                        await self.ctx.send_followup(
+                            f"{self.name} healed for {amount}. New HP: {character.current_hp}/{character.max_hp}"
+                        )
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {orig_ammount}. HP: {character.current_hp}/{character.max_hp}, "
+                            f"SP: {character.current_stamina}/{character.max_stamina}"
+                        )
+                else:  # Obscure the HP if its an NPC
+                    if heal:
+                        await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {orig_ammount}. {await self.calculate_hp()}"
+                        )
+            return True
+        except Exception as e:
+            logging.warning(f"STF change_hp: {e}")
+            return False
+
+    async def get_roll(self, item):
+        logging.info(f"STF Returning roll: {item}")
+        # print(item)
+        if item == "Fortitude" or item == "Fort":
+            return f"1d20+{self.fort_mod}"
+        elif item == "Reflex":
+            return f"1d20+{self.reflex_mod}"
+        elif item == "Will":
+            return f"1d20+{self.will_mod}"
+        elif item == "Acrobatics":
+            return f"1d20+{self.acrobatics_mod}"
+        elif item == "Athletics":
+            return f"1d20+{self.athletics_mod}"
+        elif item == "BLuff":
+            return f"1d20+{self.bluff_mod}"
+        elif item == "Computers":
+            return f"1d20+{self.computers_mod}"
+        elif item == "Culture":
+            return f"1d20+{self.culture_mod}"
+        elif item == "Diplomacy":
+            return f"1d20+{self.diplomacy_mod}"
+        elif item == "Disguise":
+            return f"1d20+{self.disguise_mod}"
+        elif item == "Engineering":
+            return f"1d20+{self.engineering_mod}"
+        elif item == "Intimidate":
+            return f"1d20+{self.intimidate_mod}"
+        elif item == "Life Science":
+            return f"1d20+{self.life_science_mod}"
+        elif item == "Medicine":
+            return f"1d20+{self.medicine_mod}"
+        elif item == "Mysticism":
+            return f"1d20+{self.mysticism_mod}"
+        elif item == "Perception":
+            return f"1d20+{self.perception_mod}"
+        elif item == "Physical Science":
+            return f"1d20+{self.physical_science_mod}"
+        elif item == "Piloting":
+            return f"1d20+{self.piloting_mod}"
+        elif item == "Sense Motive":
+            return f"1d20+{self.sense_motive_mod}"
+        elif item == "Sleight of Hand":
+            return f"1d20+{self.sleight_of_hand_mod}"
+        elif item == "Stealth":
+            return f"1d20+{self.stealth_mod}"
+        elif item == "Survival":
+            return f"1d20+{self.survival_mod}"
+        else:
+            try:
+                # print(f"{item} - attk")
+                return await self.weapon_attack(item)
+            except KeyError:
+                pass
+            # Weapon Attack Code
+            return 0
+
+    async def weapon_attack(self, item):
+        logging.info("weapon_attack")
+        weapon = self.character_model.attacks[item]
+        mod = weapon["attk_bonus"]
+        bonus_mod = await skill_mod_calc("attack", 0, self.bonuses)
+        return f"1d20+{ParseModifiers(mod)}{ParseModifiers(bonus_mod)}"
+
+    async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
+        logging.info("weapon_dmg")
+        # weapon = self.character_model.attacks[item]
+        # mod = weapon["attk_bonus"]
+        # bonus_mod = await skill_mod_calc("dmg", 0, self.bonuses)
 
 
 async def calculate(ctx, engine, char_name, guild=None):
