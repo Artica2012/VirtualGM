@@ -117,6 +117,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
 
             character_data.spells = spells
             character_data.attacks = attacks
+            character_data.resistance = resistance
 
             await session.commit()
 
@@ -172,6 +173,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                     stealth=character["stealth"],
                     survival=character["survival"],
                     attacks=attacks,
+                    resistance=resistance,
                 )
                 session.add(new_char)
                 await session.commit()
@@ -268,7 +270,9 @@ async def stf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             }
             traits = []
             try:
-                traits.extend(df.e[i + 3]).split(",")
+                trait_string = df.e[1 + 3]
+                trait_list = trait_string.split(",")
+                traits.extend(trait_list)
             except Exception:
                 pass
             attack_data["traits"] = traits

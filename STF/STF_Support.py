@@ -1,5 +1,6 @@
 import logging
 
+import d20
 import sqlalchemy as db
 
 
@@ -97,6 +98,7 @@ class STF_Character_Model:
             db.Column("attacks", db.JSON()),
             db.Column("spells", db.JSON()),
             db.Column("bonuses", db.JSON()),
+            db.Column("resistance", db.JSON()),
         )
 
         logging.info("stf_character_model_table")
@@ -124,3 +126,70 @@ STF_Skills = [
     "Stealth",
     "Survival",
 ]
+
+STF_DMG_Types = ["Acid", "Cold", "Electricity", "Fire", "Sonic", "Bludgeoning", "Piercing", "Slashing"]
+
+STF_Saves = ["Fort", "Reflex", "Will"]
+STF_Attributes = ["KAC", "EAC", "Fort", "Reflex", "Will", "DC"]
+STF_Stats = ["str", "dex", "con", "itl", "wis", "cha", "None"]
+
+STF_Conditions = {
+    "Asleep": "perception -10 c",
+    "Blinded": "acrobatics -4 a, athletics -4 a, piloting -4 a, sleight_of_hand -4 a, stealth -4 a, perception -4 a",
+    "Dazzled": "attack -1 c, perception -1 c",
+    "Deafened": "init -4 c, perception -4 c",
+    "Entangled": (
+        "kac -2 c, eac -2 c, attack -2 c, reflex -2 c, init -2 c, acrobatics -2 a, piloting -2 a, "
+        "sleight_of_hand -2 a, stealth -2 a"
+    ),
+    "Flat Footed": "kac -2 c, eac -2 c",
+    "Frightened": (
+        "kac -2 c. eac -2 c, acrobatics -2 c, athletics -2 c, bluff -2 c, computers -2 c, culture -2 c, "
+        "diplomacy -2 c, disguise -2 c, engineering -2 c, intimidate -2 c, life_science -2 c, medicine -2 c,"
+        "mysticism -2 c, perception -2 c, physical_science -2 c, piloting -2 c, sense_motive -2 c, "
+        "sleight_of-hand -2 c, stealth -2 c, survival -2 c, attack -2 c, fort -2 c, reflex -2 c, will -2 c"
+    ),
+    "Grappled": (
+        "eac -2 c, kac -2 c, attack -2 c, reflex -2 c, init -2 c, acrobatics -4 a, piloting -4 a,"
+        " sleight_of_hand -4 a, stealth -4 a, perception -4 a"
+    ),
+    "Off-Kilter": "kac -2 c, eac -2 c, attack -2 c",
+    "Off-Target": "attack -2 c",
+    "Panicked": (
+        "acrobatics -2 c, athletics -2 c, bluff -2 c, computers -2 c, culture -2 c, "
+        "diplomacy -2 c, disguise -2 c, engineering -2 c, intimidate -2 c, life_science -2 c, medicine -2 c,"
+        "mysticism -2 c, perception -2 c, physical_science -2 c, piloting -2 c, sense_motive -2 c, "
+        "sleight_of-hand -2 c, stealth -2 c, survival -2 c, attack -2 c, fort -2 c, reflex -2 c, will -2 c"
+    ),
+    "Paralyzed": "dex -5 c, acrobatics -5 a, piloting -5 a, sleight_of_hand -5 a, stealth -5 a",
+    "Pinned": (
+        "eac -4 c, kac -4 c, attack -4 c, reflex -4 c, init -4 c, acrobatics -4 a, piloting -4 a,"
+        " sleight_of_hand -4 a, stealth -4 a"
+    ),
+    "Shaken": (
+        "acrobatics -2 c, athletics -2 c, bluff -2 c, computers -2 c, culture -2 c, "
+        "diplomacy -2 c, disguise -2 c, engineering -2 c, intimidate -2 c, life_science -2 c, medicine -2 c,"
+        "mysticism -2 c, perception -2 c, physical_science -2 c, piloting -2 c, sense_motive -2 c, "
+        "sleight_of-hand -2 c, stealth -2 c, survival -2 c, attack -2 c, fort -2 c, reflex -2 c, will -2 c"
+    ),
+    "Sickened": (
+        "acrobatics -2 c, athletics -2 c, bluff -2 c, computers -2 c, culture -2 c, "
+        "diplomacy -2 c, disguise -2 c, engineering -2 c, intimidate -2 c, life_science -2 c, medicine -2 c,"
+        "mysticism -2 c, perception -2 c, physical_science -2 c, piloting -2 c, sense_motive -2 c, "
+        "sleight_of-hand -2 c, stealth -2 c, survival -2 c, attack -2 c, fort -2 c, reflex -2 c, will -2 c"
+        "eac -2 c, kac -2 c, attack -2 c, dmg -2 c"
+    ),
+}
+
+
+def STF_eval_success(dice_result: d20.RollResult, goal: d20.RollResult):
+    success_string = ""
+    match dice_result.crit:  # noqa
+        case d20.CritType.CRIT:
+            success_string = "Success"
+        case d20.CritType.FAIL:
+            success_string = "Failure"
+        case _:
+            success_string = "Success" if dice_result.total >= goal.total else "Failure"
+
+    return success_string

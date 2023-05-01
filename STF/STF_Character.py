@@ -1,19 +1,22 @@
 import asyncio
+import datetime
 import logging
 from math import floor
 
 import d20
 import discord
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Character import Character
-from STF.STF_Support import STF_Skills
+from STF.STF_Support import STF_Skills, STF_Conditions
 from database_models import get_tracker, get_condition, get_macro
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
+from error_handling_reporting import error_not_initialized
+from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
@@ -85,6 +88,7 @@ class STF_Character(Character):
         self.attacks = character.attacks
         self.spells = character.spells
         self.bonuses = character.bonuses
+        self.resistance = character.resistance
 
         super().__init__(char_name, ctx, engine, character, guild)
 
@@ -119,7 +123,7 @@ class STF_Character(Character):
 
         self.fort_mod = self.character_model.fort_mod
         self.will_mod = self.character_model.will_mod
-        self.reflex_mod = self.character_model.reflex_mo
+        self.reflex_mod = self.character_model.reflex_mod
 
         self.acrobatics_mod = self.character_model.acrobatics_mod
         self.athletics_mod = self.character_model.athletics_mod
@@ -148,6 +152,7 @@ class STF_Character(Character):
         self.attacks = self.character_model.attacks
         self.spells = self.character_model.spells
         self.bonuses = self.character_model.bonuses
+        self.resistance = self.character_model.resistance
 
     async def set_stamina(self, amount: int):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -171,7 +176,7 @@ class STF_Character(Character):
 
     async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
-        orig_ammount = amount.copy()
+        orig_ammount = amount
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
@@ -288,39 +293,46 @@ class STF_Character(Character):
         weapon = self.character_model.attacks[item]
         mod = weapon["attk_bonus"]
         bonus_mod = await skill_mod_calc("attack", 0, self.bonuses)
-        return f"1d20+{ParseModifiers(mod)}{ParseModifiers(bonus_mod)}"
+        return f"1d20{ParseModifiers(mod)}{ParseModifiers(bonus_mod)}"
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         logging.info("weapon_dmg")
         weapon = self.character_model.attacks[item]
+        print(weapon)
 
         bonus_mod = await skill_mod_calc("dmg", 0, self.bonuses)
+        print(bonus_mod)
         return (
-            f"{weapon['dmg_die_num']}d{weapon['dmg_die']}{ParseModifiers(str(weapon['dmg_bonus']))}"
+            f"{weapon['dmg_die_num']}{weapon['dmg_die']}{ParseModifiers(str(weapon['dmg_bonus']))}"
             f"{ParseModifiers(str(bonus_mod))}"
         )
 
     async def get_weapon(self, item):
         return self.attacks[item]
 
-    async def get_dc(self):
-        match self.key_ability:  # noqa
-            case "str":
-                ka = self.str_mod
-            case "dex":
-                ka = self.dex_mod
-            case "con":
-                ka = self.con_mod
-            case "itl":
-                ka = self.itl_mod
-            case "wis":
-                ka = self.wis_mod
-            case "cha":
-                ka = self.cha_mod
-            case _:
-                ka = 0
-
-        return 10 + floor(self.character_model.level / 2) + ka
+    async def get_dc(self, item):
+        match item:  # noqa
+            case "DC":
+                match self.key_ability:  # noqa
+                    case "str":
+                        ka = self.str_mod
+                    case "dex":
+                        ka = self.dex_mod
+                    case "con":
+                        ka = self.con_mod
+                    case "itl":
+                        ka = self.itl_mod
+                    case "wis":
+                        ka = self.wis_mod
+                    case "cha":
+                        ka = self.cha_mod
+                    case _:
+                        ka = 0
+                return 10 + floor(self.character_model.level / 2) + ka
+            case "KAC":
+                return self.kac
+            case "EAC":
+                return self.eac
 
     async def roll_macro(self, macro, modifier):
         macro_string = await self.get_roll(macro)
@@ -347,6 +359,144 @@ class STF_Character(Character):
         for key in self.character_model.attacks:
             list.append(key)
         return list
+
+    async def set_cc(
+        self,
+        title: str,
+        counter: bool,
+        number: int,
+        unit: str,
+        auto_decrement: bool,
+        flex: bool = False,
+        data: str = "",
+        visible: bool = True,
+        update: bool = True,
+    ):
+        logging.info("set_cc")
+        # Get the Character's data
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        # Check to make sure there isn't a condition with the same name on the character
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == self.id).where(Condition.title == title)
+            )
+            check_con = result.scalars().all()
+            if len(check_con) > 0:
+                return False
+
+        # Process Data
+        # print(data)
+        if data == "":
+            # print(title)
+            if title in STF_Conditions.keys():
+                data = STF_Conditions[title]
+                # print(data)
+        print(data)
+        if "thp" in data:
+            data_list = data.split(",")
+            final_list = data_list.copy()
+            for x, item in enumerate(data_list):
+                parsed = item.strip().split(" ")
+                if parsed[0].lower() == "thp":
+                    try:
+                        thp_num = int(parsed[1])
+                        await self.add_thp(thp_num)
+                        final_list.pop(x)
+                    except Exception:
+                        pass
+            print(final_list)
+            data = ", ".join(final_list)
+            print(data)
+
+        # Write the condition to the table
+        try:
+            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                # print(f"Writing Condition: {title}")
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=number,
+                        counter=counter,
+                        auto_increment=auto_decrement,
+                        time=False,
+                        flex=flex,
+                        action=data,
+                        visible=visible,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
+
+            else:  # If its time based, then calculate the end time, before writing it
+                current_time = await get_time(self.ctx, self.engine)
+                if unit == "Minute":
+                    end_time = current_time + datetime.timedelta(minutes=number)
+                elif unit == "Hour":
+                    end_time = current_time + datetime.timedelta(hours=number)
+                else:
+                    end_time = current_time + datetime.timedelta(days=number)
+
+                timestamp = end_time.timestamp()
+
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=timestamp,
+                        counter=counter,
+                        auto_increment=True,
+                        time=True,
+                        action=data,
+                        visible=visible,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
+
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"set_cc: {e}")
+            return False
+
+    # Delete CC
+    async def delete_cc(self, condition):
+        result = await super().delete_cc(condition)
+        await self.update()
+        return result
+
+    async def update_resistance(self, weak, item, amount):
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        try:
+            updated_resistance = self.character_model.resistance
+            # print(updated_resistance)
+            if amount == 0:
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                async with async_session() as session:
+                    query = await session.execute(select(Condition).where(func.lower(Condition.item) == item.lower()))
+                    condition_object = query.scalars().one()
+                    await session.delete(condition_object)
+                    await session.commit()
+                return True
+            else:
+                condition_string = f"{item} {weak} {amount};"
+                result = await self.set_cc(item, True, amount, "Round", False, data=condition_string, visible=False)
+
+            await self.update()
+            # print(self.resistance)
+            return True
+        except Exception:
+            return False
 
 
 async def calculate(ctx, engine, char_name, guild=None):
@@ -544,7 +694,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     resistances = {"resist": {}, "weak": {}, "immune": {}}
 
     # Obviously a temporary bypass
-    return bonuses, resistances
+    # return bonuses, resistances
 
     # print("!!!!!!!!!!!!!!!!!!!111")
     # print(len(conditions))
@@ -560,44 +710,6 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                # if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                #     # print(True)
-                #     # print("Condition")
-                #     # print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
-                #     if parsed[2][-1] == ";":
-                #         parsed[2] = parsed[2][:-1]
-                #     parsed[0] = parsed[0].lower()
-                #     match parsed[1]:
-                #         case "r":
-                #             resistances["resist"][parsed[0]] = int(parsed[2])
-                #         case "w":
-                #             resistances["weak"][parsed[0]] = int(parsed[2])
-                #         case "i":
-                #             resistances["immune"][parsed[0]] = 1
-                # item_name = ""
-                # specific_weapon = ""
-                #
-                # print(parsed[0], parsed[0][0])
-                # if parsed[0][0] == '"':
-                #     print("Opening Quote")
-                #     for x, item in enumerate(parsed):
-                #         print(x, item)
-                #         print(item[-1])
-                #         if item[-1] == '"':
-                #             item_name = " ".join(parsed[0 : x + 1])
-                #             item_name = item_name.strip('"')
-                #             parsed = parsed[x + 1 :]
-                #             break
-                # print(item_name)
-                # print(parsed)
-                # if item_name != "":
-                #     if item_name.title() in await Characte_Model.attack_list():
-                #         specific_weapon = f"{item_name},"
-                #     else:
-                #         parsed = []
-                # print(specific_weapon)
-                #
-                # key = f"{specific_weapon}{parsed[0]}"
                 key = parsed[0]
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
@@ -607,45 +719,63 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     except ValueError:
                         value = int(parsed[1])
 
-                if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                    if key in bonuses["status_pos"]:
-                        if value > bonuses["status_pos"][key]:
-                            bonuses["status_pos"][key] = value
+                if parsed[1][0] == "-":
+                    if key in bonuses["penalty"]:
+                        if value > bonuses["penalty"][key]:
+                            bonuses["penalty"][key] = value
                     else:
-                        bonuses["status_pos"][key] = value
-                elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                    if key in bonuses["status_neg"]:
-                        if value > bonuses["status_neg"][key]:
-                            bonuses["status_neg"][key] = value
+                        bonuses["penalty"][key] = value
+                elif parsed[2] == "a":
+                    if key in bonuses["ability"]:
+                        if value > bonuses["ability"][key]:
+                            bonuses["ability"][key] = value
                     else:
-                        bonuses["status_neg"][key] = value
+                        bonuses["ability"][key] = value
+                elif parsed[2] == "r":
+                    if key in bonuses["armor"]:
+                        if value > bonuses["armor"][key]:
+                            bonuses["armor"][key] = value
+                    else:
+                        bonuses["armor"][key] = value
                         # print(f"{key}: {bonuses['status_neg'][key]}")
-                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
-                    if key in bonuses["circumstances_pos"]:
-                        if value > bonuses["circumstances_pos"][key]:
-                            bonuses["circumstances_pos"][key] = value
+                elif parsed[2] == "c":
+                    if key in bonuses["circumstance"]:
+                        if value > bonuses["circumstance"][key]:
+                            bonuses["circumstance"][key] = value
                     else:
-                        bonuses["circumstances_pos"][key] = value
-                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
-                    if key in bonuses["circumstances_neg"]:
-                        if value > bonuses["circumstances_neg"][key]:
-                            bonuses["circumstances_neg"][key] = value
+                        bonuses["circumstance"][key] = value
+                elif parsed[2] == "d":
+                    if key in bonuses["divine"]:
+                        if value > bonuses["divine"][key]:
+                            bonuses["divine"][key] = value
                     else:
-                        bonuses["circumstances_neg"][key] = value
+                        bonuses["divine"][key] = value
                         # print(f"{key}: {bonuses['circumstances_neg'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                    if key in bonuses["item_pos"]:
-                        if value > bonuses["item_pos"][key]:
-                            bonuses["item_pos"][key] = value
+                elif parsed[2] == "e":  # Enhancement
+                    if key in bonuses["enhancement"]:
+                        if value > bonuses["enhancement"][key]:
+                            bonuses["enhancement"][key] = value
                     else:
-                        bonuses["item_pos"][key] = value
+                        bonuses["enhancement"][key] = value
                         # print(f"{key}: {bonuses['item_pos'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                    if key in bonuses["item_neg"]:
-                        if value > bonuses["item_neg"][key]:
-                            bonuses["item_neg"][key] = value
+                elif parsed[2] == "i":
+                    if key in bonuses["insight"]:
+                        if value > bonuses["insight"][key]:
+                            bonuses["insight"][key] = value
                     else:
-                        bonuses["item_neg"][key] = value
+                        bonuses["insight"][key] = value
+                elif parsed[2] == "l":
+                    if key in bonuses["luck"]:
+                        if value > bonuses["luck"][key]:
+                            bonuses["luck"][key] = value
+                    else:
+                        bonuses["luck"][key] = value
+                elif parsed[2] == "m":
+                    if key in bonuses["morale"]:
+                        if value > bonuses["morale"][key]:
+                            bonuses["morale"][key] = value
+                    else:
+                        bonuses["morale"][key] = value
 
             except Exception:
                 pass

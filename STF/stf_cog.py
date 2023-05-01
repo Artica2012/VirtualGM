@@ -32,24 +32,24 @@ class STFCog(commands.Cog):
         await ctx.response.defer()
         response = False
 
-        # try:
-        guild = await get_guild(ctx, None)
-        if guild.system == "STF":
-            response = await stf_g_sheet_import(ctx, name, url)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
+        try:
+            guild = await get_guild(ctx, None)
+            if guild.system == "STF":
+                response = await stf_g_sheet_import(ctx, name, url)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
 
-        else:
-            response = False
-        # if response:
-        await ctx.send_followup(f"{name} successfully imported.")
-        # else:
-        #     await ctx.send_followup("Error importing character.")
-        # except Exception as e:
-        #     await ctx.send_followup("Error importing character")
-        #     logging.info(f"pb_import: {e}")
-        #     report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
-        #     await report.report()
+            else:
+                response = False
+            if response:
+                await ctx.send_followup(f"{name} successfully imported.")
+            else:
+                await ctx.send_followup("Error importing character.")
+        except Exception as e:
+            await ctx.send_followup("Error importing character")
+            logging.info(f"pb_import: {e}")
+            report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
+            await report.report()
 
         try:
             if response:

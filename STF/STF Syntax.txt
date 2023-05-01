@@ -11,3 +11,15 @@ attacks {
         "traits": [str, str, str]
     }
 }
+
+Scripting:
+
+Bonuses = a
+Armor = r
+Circumstance = c
+Divine = d
+Enhancement = e
+Insight = i
+Luck = l
+Morale = m
+Penalty = p (or negative number)

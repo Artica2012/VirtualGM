@@ -441,6 +441,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         attacks = Column(JSON())
         spells = Column(JSON())
         bonuses = Column(JSON())
+        resistance = Column(JSON())
 
     logging.info("get_tracker: returning tracker")
     return Tracker
@@ -477,7 +478,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             guild = result.scalars().one()
             # print(f"From ID:{guild.id}")
 
-    if guild.system == "EPF":
+    if guild.system == "EPF" or guild.system == "STF":
         return await get_EPF_condition(ctx, engine, id=id)
     else:
         tablename = f"Condition_{id}"
@@ -557,7 +558,7 @@ async def get_condition_table(ctx, metadata, engine, guild=None):
                 )
             )
             guild = result.scalars().one()
-    if guild.system == "EPF":
+    if guild.system == "EPF" or guild.system == "STF":
         return EPF_Support.EPF_ConditionTable(ctx, metadata, guild.id).condition_table()
 
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
