@@ -160,9 +160,11 @@ class EPF_Automation(Automation):
             dmg_string = None
             total_damage = 0
 
-        weapon = await Character_Model.get_weapon(attack)
         if dmg_string is not None:
-            dmg_output_string = f"{character} damages {target} for:\n{dmg_string} {weapon['dmg_type'].title()}"
+            dmg_output_string = f"{character} damages {target} for:"
+            print(dmg_string)
+            for item in dmg_string:
+                dmg_output_string += f"\n{item['dmg_output_string']} {item['dmg_type'].title()}"
             await Target_Model.change_hp(total_damage, heal=False, post=False)
             await Tracker_Model.update_pinned_tracker()
             if Target_Model.player:
@@ -337,11 +339,15 @@ async def roll_dmg_resist(
     :return: Tuple of damage_output_string(string), total_damage(int)
     """
     logging.info("roll_dmg_resist")
+    dmg_output = []
     # Roll the critical damage and apply resistances
     damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit, flat_bonus=flat_bonus))
     weapon = await Character_Model.get_weapon(attack)
     total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model, weapon=weapon)
     dmg_output_string = f"{damage_roll}"
+    output = {"dmg_output_string": dmg_output_string, "dmg_type": weapon["dmg_type"]}
+    dmg_output.append(output)
+
     # Check for bonus damage
     if "bonus" in Character_Model.character_model.attacks[attack]:
         for item in Character_Model.character_model.attacks[attack]["bonus"]:
@@ -349,8 +355,10 @@ async def roll_dmg_resist(
             bonus_damage = await damage_calc_resist(bonus_roll.total, item["dmg_type"], Target_Model)
             dmg_output_string = f"{dmg_output_string}+{bonus_roll}"
             total_damage += bonus_damage
+            output = {"dmg_output_string": bonus_roll, "dmg_type": item["dmg_type"]}
+            dmg_output.append((output))
     print(dmg_output_string, total_damage)
-    return dmg_output_string, total_damage
+    return dmg_output, total_damage
 
 
 async def roll_spell_dmg_resist(
