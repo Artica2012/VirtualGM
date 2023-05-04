@@ -827,7 +827,7 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                 else:
                     parsed_traits = []
 
-                if type(df.f[i + 9]) != str:
+                if type(df.f[i + 9]) == str:
                     dmg_type = df.f[1 + 9]
                 else:
                     dmg_type = "Bludgeoning"
