@@ -275,7 +275,6 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup("Error displaying character sheet. Ensure valid character.")
         else:
             await ctx.send_followup("You do not have the appropriate permissions to view this character.")
-        # await engine.dispose()
 
     @i.command(
         description="Manage Initiative",
