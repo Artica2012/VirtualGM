@@ -420,8 +420,18 @@ class Character:
                 status = "PC:"
             else:
                 status = "NPC:"
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == self.id)
+                    .where(Condition.visible == true())
+                    .order_by(Condition.title.asc())
+                )
 
-            condition_list = await self.conditions()
+                condition_list = result.scalars().all()
+
             user_name = bot.get_user(self.user).name
 
             embed = discord.Embed(
