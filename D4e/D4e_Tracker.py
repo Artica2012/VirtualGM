@@ -486,10 +486,15 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     print("D4e Tracker Buttons")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # print(guild.id)
+    # print(guild.initiative)
     guild = await get_guild(ctx, guild, refresh=True)
     tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
+
+    if guild.initiative is None:
+        return view
 
     init_list = await get_init_list(ctx, engine, guild=guild)
 

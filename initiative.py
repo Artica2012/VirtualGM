@@ -303,8 +303,6 @@ class InitiativeCog(commands.Cog):
 
                     await ctx.send_followup("Initiative Ended.")
                 elif mode == "delete character":
-                    # print(f"Character {character}")
-                    # print(f"Saved: {guild.saved_order}")
                     if character == guild.saved_order:
                         await ctx.respond(
                             (
@@ -337,8 +335,6 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/i mange {e}")
             report = ErrorReport(ctx, "/i manage", e, self.bot)
             await report.report()
-
-        # await engine.dispose()
 
     @i.command(
         description="Advance Initiative",
