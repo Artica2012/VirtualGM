@@ -417,7 +417,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             guild = result.scalars().one()
             # print(f"From ID:{guild.id}")
 
-    if guild.system == "EPF":
+    if guild.system == "EPF" or guild.system == "RED":
         return await get_EPF_condition(ctx, engine, id=id)
     else:
         tablename = f"Condition_{id}"
