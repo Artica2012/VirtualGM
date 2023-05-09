@@ -1,0 +1,110 @@
+Character Model
+
+    id : Integer
+    name : String
+    init : Integer
+    player : Bool
+    user : BigInteger
+    current_hp : Integer
+    max_hp : Integer
+    temp_hp : Integer
+    init_string : String = "1d10+REF"
+    active : Bool
+
+    char_class: String
+    level: Integer
+
+    humanity :JSON = {
+       max_humanity : Integer
+       current_humanity: Integer
+    }
+
+    current_luck : Integer
+    stats : JSON = {
+    intel :  {
+   				value: Integer
+   				base: Integer
+  			}
+    will :  {
+   				value: Integer
+   				base: Integer
+  			}
+    cool : {
+   				value: Integer
+   				base: Integer
+  			}
+    emp : {
+   				value: Integer
+   				base: Integer
+  			}
+    tech : {
+   				value: Integer
+   				base: Integer
+  			}
+    ref : {
+   				value: Integer
+   				base: Integer
+  			}
+    luck : {
+   				value: Integer
+   				base: Integer
+  			}
+    body :  {
+   				value: Integer
+   				base: Integer
+  			}
+    dex : {
+   				value: Integer
+   				base: Integer
+  			}
+    move : {
+   				value: Integer
+   				base: Integer
+  			}
+  	}
+
+    skills : JSON = {
+   			skill_name : {
+   					value : Integer
+   					stat: String
+   					base : Integer
+   					}
+		}
+
+		attacks : JSON ={
+				name :{
+					type: String (melee, ranged, advanced)
+					skill: String
+					dmg: String (eg. 2d6)
+					rof: Integer
+					attk_bonus: String
+					autofire : Bool
+					autofire_ammt : Integer
+					attach: [
+					]
+				}
+		}
+
+		armor : JSON = {
+				location : {
+						name: String
+						sp: Integer
+						penalty:  String
+				}
+		}
+
+		cyber: JSON ={
+				name : {
+					location : String
+					effect : String
+				}
+		}
+
+
+
+
+Notes:
+   Initiative is 1d10+REF
+   All participants in the combat place themselves according to their Initiative result into the Initiative Queue in descending order from highest score to lowest score. Resolve ties by rolling again.
+   Combat Time is divided into Turns, each
+of which takes approximately 3 seconds.
