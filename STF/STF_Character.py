@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Character import Character
-from STF.STF_Support import STF_Skills, STF_Conditions
+from STF.STF_Support import STF_Skills, STF_Conditions, STF_DMG_Types
 from database_models import get_tracker, get_condition, get_macro
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -509,8 +509,7 @@ async def calculate(ctx, engine, char_name, guild=None):
         STF_tracker = await get_tracker(ctx, engine)
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    # print(char_name)
-    # # TODO Bonuses and Resistances
+
     bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
 
     async with async_session() as session:
@@ -554,7 +553,8 @@ async def calculate(ctx, engine, char_name, guild=None):
             character.eac = await skill_mod_calc("eac", character.base_eac, bonuses)
             character.kac = await skill_mod_calc("kac", character.base_kac, bonuses)
 
-            character.init_string = f"1d20+{await skill_mod_calc('init', character.dex_mod, bonuses)}"
+            if character.max_stamina != 0:
+                character.init_string = f"1d20+{await skill_mod_calc('init', character.dex_mod, bonuses)}"
             character.bonuses = bonuses
             character.resistance = resistance
 
@@ -710,6 +710,22 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
+
+                if parsed[0].title() in STF_DMG_Types:
+                    # print(True)
+                    # print("Condition")
+                    # print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
+                    if parsed[2][-1] == ";":
+                        parsed[2] = parsed[2][:-1]
+                    parsed[0] = parsed[0].lower()
+                    match parsed[1]:
+                        case "r":
+                            resistances["resist"][parsed[0]] = int(parsed[2])
+                        case "w":
+                            resistances["weak"][parsed[0]] = int(parsed[2])
+                        case "i":
+                            resistances["immune"][parsed[0]] = 1
+
                 key = parsed[0]
                 if parsed[1][1:] == "X":
                     value = int(condition.number)

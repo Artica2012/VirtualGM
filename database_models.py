@@ -362,6 +362,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         temp_hp = Column(Integer(), default=0)
         init_string = Column(String(), nullable=True)
         active = Column(Boolean(), default=True)
+        char_class = Column(String(), default="")
 
         level = Column(Integer(), nullable=False)
         base_eac = Column(Integer(), nullable=False)

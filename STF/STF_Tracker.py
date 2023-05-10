@@ -106,7 +106,7 @@ class STF_Tracker(Tracker):
                             f"{selector}  {init_num} {str(character.char_name).title()}:"
                             f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
                             f"{character.max_stamina} (Temp:"
-                            f" {character.temp_hp}) \n KAC:{character.kac}, EAC: {character.eac}, RP:"
+                            f" {character.temp_hp}) \n     KAC:{character.kac}, EAC: {character.eac}, RP:"
                             f" {character.current_resolve}\n"
                         )
                     else:
@@ -114,7 +114,7 @@ class STF_Tracker(Tracker):
                             f"{selector}  {init_num} {str(character.char_name).title()}:"
                             f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
                             f"{character.max_stamina} \n"
-                            f" KAC:{character.kac}, EAC: {character.eac}, RP: {character.current_resolve}\n"
+                            f"     KAC:{character.kac}, EAC: {character.eac}, RP: {character.current_resolve}\n"
                         )
                 else:
                     string = (

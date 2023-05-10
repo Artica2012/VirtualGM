@@ -115,6 +115,7 @@ class STF_Automation(Automation):
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: STF_Character, weapon=None):
     logging.info("damage_calc_resist")
+    dmg_type = dmg_type.lower()
     if target.resistance == {"resist": {}, "weak": {}, "immune": {}}:
         return dmg_roll
     dmg = dmg_roll

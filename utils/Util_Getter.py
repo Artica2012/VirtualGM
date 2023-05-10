@@ -22,6 +22,6 @@ async def get_utilities(ctx, guild=None, engine=None):
     elif guild.system == "EPF":
         return EPF_Utilities(ctx, guild, engine)
     elif guild.system == "STF":
-        return STF_Utilities
+        return STF_Utilities(ctx, guild, engine)
     else:
         return Utilities(ctx, guild, engine)

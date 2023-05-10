@@ -29,6 +29,7 @@ class STF_Character_Model:
             db.Column("temp_hp", db.INTEGER(), default=0),
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
+            db.Column("char_class", db.String(), default=""),
             db.Column("level", db.INTEGER(), nullable=False),
             db.Column("base_eac", db.INTEGER(), nullable=False),
             db.Column("base_kac", db.INTEGER(), nullable=False),
