@@ -4,6 +4,7 @@
 
 import logging
 import discord
+import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 import EPF.EPF_GSHEET_Importer
@@ -66,12 +67,16 @@ class PF2Cog(commands.Cog):
                         "System not assigned as Pathfinder 2e. Please ensure that the correct system was set at table"
                         " setup"
                     )
+            except sqlalchemy.exc.NoResultFound:
+                await ctx.send_followup(
+                    "No active tracker set up in this channel. Please make sure that you are in the "
+                    "correct channel before trying again."
+                )
             except Exception as e:
                 await ctx.send_followup("Error importing character")
                 logging.info(f"pb_import: {e}")
                 report = ErrorReport(ctx, "pb_import", f"{e} - {pathbuilder_id}", self.bot)
                 await report.report()
-                # await engine.dispose()
 
         elif url is not None:
             try:
@@ -87,6 +92,11 @@ class PF2Cog(commands.Cog):
                     await ctx.send_followup(f"{name} successfully imported.")
                 else:
                     await ctx.send_followup("Error importing character.")
+            except sqlalchemy.exc.NoResultFound:
+                await ctx.send_followup(
+                    "No active tracker set up in this channel. Please make sure that you are in the "
+                    "correct channel before trying again."
+                )
             except Exception as e:
                 await ctx.send_followup("Error importing character")
                 logging.info(f"pb_import: {e}")
@@ -101,8 +111,8 @@ class PF2Cog(commands.Cog):
                 await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"pb_import: {e}")
-            report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
-            await report.report()
+            # report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
+            # await report.report()
         # await engine.dispose()
 
     @pf2.command(description="NPC Import")

@@ -10,7 +10,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Base.Tracker import Tracker, get_init_list
+from Base.Tracker import Tracker
 from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 from database_models import Global, get_condition, get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -25,12 +25,74 @@ async def get_D4e_Tracker(ctx, engine, init_list, bot, guild=None):
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
+    init_list = await get_init_list(ctx, engine, guild)
     return D4e_Tracker(ctx, engine, init_list, bot, guild=guild)
+
+
+async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+    logging.info("get_init_list (D4e")
+    try:
+        if guild is not None:
+            try:
+                Tracker = await get_tracker(ctx, engine, id=guild.id)
+            except Exception:
+                Tracker = await get_tracker(ctx, engine)
+        else:
+            Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Tracker)
+                .where(Tracker.active == true())
+                .order_by(Tracker.init.desc())
+                .order_by(Tracker.init_string.desc())
+            )
+            init_list = result.scalars().all()
+            for item in init_list:
+                print(item.name, item.init_string)
+            logging.info("GIL: Init list gotten (D4e")
+            # print(init_list)
+        return init_list
+
+    except Exception:
+        logging.error("error in get_init_list")
+        return []
 
 
 class D4e_Tracker(Tracker):
     def __init__(self, ctx, init_list, bot, engine=None, guild=None):
         super().__init__(ctx, init_list, bot, engine, guild)
+
+    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+        logging.info("get_init_list (D4e")
+        try:
+            if guild is not None:
+                try:
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                except Exception:
+                    Tracker = await get_tracker(ctx, engine)
+            else:
+                Tracker = await get_tracker(ctx, engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Tracker)
+                    .where(Tracker.active == true())
+                    .order_by(Tracker.init.desc())
+                    .order_by(Tracker.init_string.desc())
+                )
+                init_list = result.scalars().all()
+                for item in init_list:
+                    print(item.name, item.init_string)
+                logging.info("GIL: Init list gotten (D4e")
+                # print(init_list)
+            return init_list
+
+        except Exception:
+            logging.error("error in get_init_list")
+            return []
 
     # Updates the active initiative tracker (not the pinned tracker)
     async def update_pinned_tracker(self):
@@ -424,10 +486,15 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     print("D4e Tracker Buttons")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # print(guild.id)
+    # print(guild.initiative)
     guild = await get_guild(ctx, guild, refresh=True)
     tracker = await get_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     view = discord.ui.View(timeout=None)
+
+    if guild.initiative is None:
+        return view
 
     init_list = await get_init_list(ctx, engine, guild=guild)
 

@@ -62,7 +62,21 @@ class OptionsCog(commands.Cog):
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
             if response:
                 await ctx.send_followup("Server Setup", ephemeral=True)
-                return
+                if system == "Enhanced PF2":
+                    doc_msg = await ctx.channel.send(
+                        "Enhanced Pathfinder 2e Documentation:\n"
+                        " https://docs.google.com/document/d/"
+                        "1tD9PNXQ-iOBalvzxpTQ9CvuM2jy6Y_S75Rjjof-WRBk/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
+                elif system == "Pathfinder 2e":
+                    doc_msg = await ctx.channel.send(
+                        "Legacy Pathfinder 2e Documentation:\n"
+                        "https://docs.google.com/document/d/"
+                        "13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
+
             else:
                 await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
         except Exception as e:
@@ -180,29 +194,21 @@ class OptionsCog(commands.Cog):
                     return
                 await session.commit()
 
-                result = await session.execute(
-                    select(Global).where(
-                        or_(
-                            Global.tracker_channel == ctx.interaction.channel_id,
-                            Global.gm_tracker_channel == ctx.interaction.channel_id,
-                        )
-                    )
-                )
-                updated_guild = result.scalars().one()
-                if updated_guild.system is None:
-                    system_str = "Base"
-                elif updated_guild.system == "PF2":
-                    system_str = "Pathfinder Second Edition"
-                elif updated_guild.system == "D4e":
-                    system_str = "D&D 4th Edition"
-                else:
-                    system_str = "Base"
+            guild = await get_guild(ctx, guild, refresh=True)
+            if guild.system is None:
+                system_str = "Base"
+            elif guild.system == "PF2":
+                system_str = "Pathfinder Second Edition"
+            elif guild.system == "D4e":
+                system_str = "D&D 4th Edition"
+            elif guild.system == "EPF":
+                system_str = "Enhanced Pathfinder 2e"
+            else:
+                system_str = "Base"
 
-                embed = await self.display_options(
-                    timekeeping=updated_guild.timekeeping, block=updated_guild.block, system=system_str
-                )
-                await ctx.send_followup(embed=embed)
-            # await engine.dispose()
+            embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
+            await ctx.send_followup(embed=embed)
+
         except NoResultFound:
             await ctx.channel.send(error_not_initialized, delete_after=30)
             return False
@@ -211,7 +217,6 @@ class OptionsCog(commands.Cog):
             report = ErrorReport(ctx, "/admin options", e, self.bot)
             await report.report()
             return False
-        # await engine.dispose()
 
 
 def setup(bot):

@@ -106,7 +106,7 @@ class HelpCog(commands.Cog):
             "init",
             "hp",
             "cc new",
-            "cc_edit",
+            "cc_modify",
         ],
     )
     async def initiative(self, ctx: discord.ApplicationContext, command: str):
@@ -198,11 +198,11 @@ class HelpCog(commands.Cog):
                 ),
                 ephemeral=True,
             )
-        elif command == "/cc edit":
+        elif command == "/cc modify":
             await ctx.respond(
                 (
                     "```"
-                    "cc edit - Edit or Delete Counters or Conditions\n"
+                    "cc modify - Edit or Delete Counters or Conditions\n"
                     "- edit - Inputs the character's name, the name of the condition and the value, "
                     "which will overwrite the previous counter/condition\n "
                     "  - delete - Deletes the indicated condition or counter"
@@ -210,17 +210,6 @@ class HelpCog(commands.Cog):
                 ),
                 ephemeral=True,
             )
-        # elif command == "/cc show":
-        #     await ctx.respond(
-        #         (
-        #             "```"
-        #             "cc show - Show Custom Counters\n"
-        #             "- Displays a popup visible only to the user which displays the custom counters for the "
-        #             "selected character. Only the GM can see the custom counters of NPCs.\n "
-        #             "```"
-        #         ),
-        #         ephemeral=True,
-        #     )
         else:
             await ctx.respond("Invalid choice", ephemeral=True)
 
@@ -321,15 +310,13 @@ class HelpCog(commands.Cog):
         description="System Specific Commands",
         # guild_ids=[GUILD]
     )
-    @option("command", choices=["PF2e", "D&D 4e"])
+    @option("command", choices=["Enhanced Pathfinder 2e", "PF2e", "D&D 4e"])
     async def system_specific(self, ctx: discord.ApplicationContext, command: str):
         if command == "PF2e":
             await ctx.respond(
                 (
-                    "```Pathfinder Second Edition\n - /pf2 pb_import - Imports character data from the Pathbuilder 2e"
-                    " app or https://pathbuilder2e.com/\n - /pf2 add_npc - Allows the searching of all enemies and NPCs"
-                    " in the official published works, with the ability to add the NPC directly into the tracker\n -"
-                    " Attacks and saves are enabled via **/a attack** and **/a save**`` "
+                    "Legacy Pathfinder 2e Documentation:\n"
+                    "https://docs.google.com/document/d/13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
                 ),
                 ephemeral=True,
             )
@@ -345,6 +332,14 @@ class HelpCog(commands.Cog):
                     "- **NOTE:** A condition must have the argument _flex_ set to true, to allow it to be "
                     "auto-deleted by a saving throw\n "
                     "```"
+                ),
+                ephemeral=True,
+            )
+        elif command == "Enhanced Pathfinder 2e":
+            await ctx.respond(
+                (
+                    "Ehhanced Pathfinder 2e Documentation:\n"
+                    " https://docs.google.com/document/d/1tD9PNXQ-iOBalvzxpTQ9CvuM2jy6Y_S75Rjjof-WRBk/edit?usp=sharing"
                 ),
                 ephemeral=True,
             )

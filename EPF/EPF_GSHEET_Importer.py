@@ -391,7 +391,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     parsed_traits = df.f[i + 8].split(",")
                 else:
                     parsed_traits = []
-                if type(df.f[i + 9]) != str:
+                if type(df.f[i + 9]) == str:
                     dmg_type = df.f[1 + 9]
                 else:
                     dmg_type = "Bludgeoning"
@@ -637,7 +637,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                 else:
                     parsed_traits = []
                 print(df.f[i + 9])
-                if type(df.f[i + 9]) != str:
+                if type(df.f[i + 9]) == str:
                     dmg_type = df.f[1 + 9]
                 else:
                     dmg_type = "Bludgeoning"
@@ -827,22 +827,11 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                 else:
                     parsed_traits = []
 
-                if type(df.f[i + 9]) != str:
+                if type(df.f[i + 9]) == str:
                     dmg_type = df.f[1 + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
-                # print(
-                #     f"{df.b[i]}\n"
-                #     f"{df.b[i+1]}\n"
-                #     f"{df.b[i + 2]}\n"
-                #     f"{df.b[i + 3]}\n"
-                #     f"{df.b[i + 4]}\n"
-                #     f"{df.b[i + 5]}\n"
-                #     f"{df.b[i + 6]}\n"
-                #     f"{df.b[i + 7]}\n"
-                #     f"{df.b[i + 8]}\n"
-                # )
                 attack_data = {
                     "display_name": df.b[i],
                     "name": df.b[i + 1],
@@ -1016,7 +1005,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 crit = "*2"
                 dmg_stat = "str"
                 # print(df.g[i], type(df.g[i]))
-                if type(df.g[i]) is str:
+                if type(df.g[i]) == str:
                     dmg_type = df.g[i]
                 else:
                     dmg_type = "Bludgeoning"

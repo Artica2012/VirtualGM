@@ -197,7 +197,7 @@ class EPF_Character(Character):
         self.ac_total = self.character_model.ac_total
         self.resistance = self.character_model.resistance
 
-    async def get_roll(self, item):
+    async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
         if item == "Fortitude" or item == "Fort":
@@ -260,6 +260,23 @@ class EPF_Character(Character):
         elif item == "Thievery":
             # print("t")
             return f"1d20+{self.thievery_mod}"
+        elif "Lore" in item:
+            lore = item.split(":")[1]
+            lore = lore.strip()
+            lore_list = self.character_model.lores.split(";")
+            for i in lore_list:
+                parsed_lore = i.split(",")
+                if lore == parsed_lore[0].strip():
+                    if "Untrained Improvisation" in self.character_model.feats:
+                        ui = True
+                    else:
+                        ui = False
+                    # print(f"Int Mod: {self.itl_mod}, Prof: {parsed_lore[1]}, Level: {self.character_model.level}")
+
+                    return (
+                        f"1d20+{await skill_mod_calc(self.itl_mod, 'lore', int(parsed_lore[1]), self.character_model.level, self.character_model.bonuses, ui)} "
+                    )
+
         else:
             # print("Not a check")
             try:
@@ -434,11 +451,16 @@ class EPF_Character(Character):
                 return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
-        print(f"Flat Bonus: {flat_bonus}!")
+        # print(f"Flat Bonus: {flat_bonus}!")
         # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
+        # print(spell_data)
+        dmg_dict = {}
         dmg_string = ""
         for x, key in enumerate(spell_data["damage"]):
+            # print(f"{x}, {key}")
+            # print(spell_data["damage"][key]["value"])
+            dmg_type = spell_data["damage"][key]["dmg_type"]
             if x > 0:
                 dmg_string += "+"
             if spell_data["damage"][key]["mod"]:
@@ -457,10 +479,16 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_string += f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}"
-            else:
-                dmg_string += f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
+                dmg_dict[key] = {
+                    "dmg_string": f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}",
+                    "dmg_type": dmg_type,
+                }
 
+            else:
+                dmg_dict[key] = {
+                    "dmg_string": f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}",
+                    "dmg_type": dmg_type,
+                }
             # Heightening Calculations
         if level > spell_data["level"] and spell_data["heightening"]["type"] == "interval":
             # print(level)
@@ -477,10 +505,10 @@ class EPF_Character(Character):
                 # print(i)
                 # print(spell_data["heightening"]["damage"])
                 for x, key in enumerate(spell_data["heightening"]["damage"]):
-                    # print(x, key)
-                    if x > 0:
-                        dmg_string += "+"
-                    dmg_string = f"{dmg_string}+{spell_data['heightening']['damage'][key]}"
+                    dmg_dict[key][
+                        "dmg_string"
+                    ] = f"{dmg_dict[key]['dmg_string']}+{spell_data['heightening']['damage'][key]}"
+            # print(dmg_dict)
         # Add fixed calcs
         elif level > spell_data["level"] and spell_data["heightening"]["type"] == "fixed":
             if level in spell_data["heightening"]["interval"].keys():
@@ -503,9 +531,9 @@ class EPF_Character(Character):
                         extra_dmg = f"{item['value']}+{mod_stat}"
                     else:
                         extra_dmg = f"{item['value']}"
-                    dmg_string = f"{dmg_string}+{extra_dmg}"
+                    dmg_dict[item]["dmg_string"] += f"+{extra_dmg}"
 
-        return dmg_string
+        return dmg_dict
 
     async def get_spell_dmg_type(self, spell):
         spell_data = self.character_model.spells[spell]
@@ -825,10 +853,11 @@ class EPF_Character(Character):
                     discord.EmbedField(name=status, value=user_name, inline=False),
                     discord.EmbedField(
                         name="HP: ",
-                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)",
+                        value=f"{self.current_hp}/{self.max_hp}: ({self.temp_hp} Temp)\n",
                         inline=False,
                     ),
                     discord.EmbedField(name="Class: ", value=self.character_model.char_class, inline=False),
+                    discord.EmbedField(name="Initiative: ", value=self.character_model.init_string, inline=False),
                 ],
                 color=discord.Color.dark_gold(),
             )
@@ -1343,7 +1372,9 @@ async def calculate(ctx, engine, char_name, guild=None):
             character.class_dc = await skill_mod_calc(
                 key_ability, "class_dc", character.class_prof, character.level, bonuses, False
             )
-            character.init_string = f"1d20+{character.perception_mod}"
+
+            character.init_string = f"1d20+{await bonus_calc(character.perception_mod, 'init', bonuses)}"
+
             character.bonuses = bonuses
             character.resistance = resistance
 
@@ -1355,6 +1386,15 @@ async def calculate(ctx, engine, char_name, guild=None):
             #     macros.append(f"Spell Attack: {item['name']}")
             macros.extend(PF2_skills)
 
+            lore_list = character.lores.split(";")
+            # print(lore_list)
+            for item in lore_list:
+                parsed_item = item.split(",")
+                # print(parsed_item)
+                if len(parsed_item) > 1:
+                    # print(parsed_item[0])
+                    macros.append(f"Lore: {parsed_item[0]}")
+
             Macro = await get_macro(ctx, engine, id=guild.id)
             async with async_session() as macro_session:
                 result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
@@ -1365,6 +1405,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             for item in macros:
                 macro_string += f"{item},"
             character.macros = macro_string
+            print(macro_string)
 
             await session.commit()
 
@@ -1443,9 +1484,10 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
 
 async def bonus_calc(base, skill, bonuses, item_name=""):
     mod = base
+    skill = skill.lower()
 
     if item_name != "":
-        specific_skill = f"{item_name},{skill}"
+        specific_skill = f"{item_name},{skill}".lower()
 
         c_pos = 0
         s_c_pos = 0
@@ -1616,7 +1658,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                         parsed = []
                 print(specific_weapon)
 
-                key = f"{specific_weapon}{parsed[0]}"
+                key = f"{specific_weapon}{parsed[0]}".lower()
                 if parsed[1][1:] == "X":
                     value = int(condition.number)
                 else:
