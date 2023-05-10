@@ -76,6 +76,13 @@ class OptionsCog(commands.Cog):
                         "13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
                     )
                     await doc_msg.pin()
+                elif system == "Stafinder":
+                    doc_msg = await ctx.channel.send(
+                        "Starfinder Documentation:\n"
+                        "https://docs.google.com/document/d/"
+                        "1jCm_b6xE4CsRBOFYaYWU8WB1ake9pjucZMlBspcqhnU/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
 
             else:
                 await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
