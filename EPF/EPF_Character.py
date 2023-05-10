@@ -201,7 +201,7 @@ class EPF_Character(Character):
         logging.info(f"Returning roll: {item}")
         # print(item)
         if item == "Fortitude" or item == "Fort":
-            print("a")
+            # print("a")
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex":
             # print("b")

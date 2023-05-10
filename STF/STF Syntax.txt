@@ -1,0 +1,25 @@
+Starfinder Syntax Guide
+
+attacks {
+    "Attack Name": {
+        "type": "Ranged" or "Melee",
+        "attk_bonus": int,
+        "dmg_type": str,
+        "dmg_die_num": int,
+        "dmg_die": str,
+        "dmg_bonus": int,
+        "traits": [str, str, str]
+    }
+}
+
+Scripting:
+
+Bonuses = a
+Armor = r
+Circumstance = c
+Divine = d
+Enhancement = e
+Insight = i
+Luck = l
+Morale = m
+Penalty = p (or negative number)

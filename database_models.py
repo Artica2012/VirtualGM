@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 # from EPF import EPF_Support
 from EPF import EPF_Support
+from STF import STF_Support
 
 Base = declarative_base()
 LookupBase = declarative_base()
@@ -89,6 +90,8 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
     if guild.system == "EPF":
         return await get_EPF_tracker(ctx, engine, id=id)
+    elif guild.system == "STF":
+        return await get_STF_tracker(ctx, engine, id=id)
     else:
         tablename = f"Tracker_{id}"
         logging.info(f"get_tracker: Guild: {id}")
@@ -137,7 +140,8 @@ async def get_tracker_table(ctx, metadata, engine, guild=None):
 
     if guild.system == "EPF":
         table = EPF_Support.PF2_Character_Model(ctx, metadata, guild.id).pf2_character_model_table()
-
+    elif guild.system == "STF":
+        table = STF_Support.STF_Character_Model(ctx, metadata, guild.id).stf_character_model_table()
     else:
         table = TrackerTable(ctx, metadata, guild.id).tracker_table()
     return table
@@ -318,6 +322,132 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     return Tracker
 
 
+async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
+    if ctx is None and id is None:
+        raise Exception
+    if id is None:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Global.id).where(
+                    or_(
+                        Global.tracker_channel == ctx.interaction.channel_id,
+                        Global.gm_tracker_channel == ctx.interaction.channel_id,
+                    )
+                )
+            )
+            guild = result.scalars().one()
+            tablename = f"Tracker_{guild}"
+            logging.info(f"get_tracker: Guild: {guild}")
+
+    else:
+        tablename = f"Tracker_{id}"
+
+    DynamicBase = declarative_base(class_registry=dict())
+
+    class Tracker(DynamicBase):
+        __tablename__ = tablename
+        __table_args__ = {"extend_existing": True}
+
+        # The original tracker table
+        id = Column(Integer(), primary_key=True, autoincrement=True)
+        name = Column(String(), nullable=False, unique=True)
+        init = Column(Integer(), default=0)
+        player = Column(Boolean(), nullable=False)
+        user = Column(BigInteger(), nullable=False)
+        current_hp = Column(Integer(), default=0)
+        current_stamina = Column(Integer(), default=0)
+        max_stamina = Column(Integer(), default=1)
+        max_hp = Column(Integer(), default=1)
+        temp_hp = Column(Integer(), default=0)
+        init_string = Column(String(), nullable=True)
+        active = Column(Boolean(), default=True)
+        char_class = Column(String(), default="")
+
+        level = Column(Integer(), nullable=False)
+        base_eac = Column(Integer(), nullable=False)
+        base_kac = Column(Integer(), nullable=False)
+        bab = Column(Integer(), nullable=False)
+        max_resolve = Column(Integer(), default=1)
+        resolve = Column(Integer(), default=1)
+        key_ability = Column(String(), default="")
+
+        str = Column(Integer(), nullable=False)
+        dex = Column(Integer(), nullable=False)
+        con = Column(Integer(), nullable=False)
+        itl = Column(Integer(), nullable=False)
+        wis = Column(Integer(), nullable=False)
+        cha = Column(Integer(), nullable=False)
+
+        # Saves
+        fort = Column(Integer(), nullable=False)
+        will = Column(Integer(), nullable=False)
+        reflex = Column(Integer(), nullable=False)
+
+        acrobatics = Column(Integer(), nullable=False)
+        athletics = Column(Integer(), nullable=False)
+        bluff = Column(Integer(), nullable=False)
+        computers = Column(Integer(), nullable=False)
+        culture = Column(Integer(), nullable=False)
+        diplomacy = Column(Integer(), nullable=False)
+        disguise = Column(Integer(), nullable=False)
+        engineering = Column(Integer(), nullable=False)
+        intimidate = Column(Integer(), nullable=False)
+        life_science = Column(Integer(), nullable=False)
+        medicine = Column(Integer(), nullable=False)
+        mysticism = Column(Integer(), nullable=False)
+        perception = Column(Integer(), nullable=False)
+        physical_science = Column(Integer(), nullable=False)
+        piloting = Column(Integer(), nullable=False)
+        sense_motive = Column(Integer(), nullable=False)
+        sleight_of_hand = Column(Integer(), nullable=False)
+        stealth = Column(Integer(), nullable=False)
+        survival = Column(Integer(), nullable=False)
+
+        str_mod = Column(Integer())
+        dex_mod = Column(Integer())
+        con_mod = Column(Integer())
+        itl_mod = Column(Integer())
+        wis_mod = Column(Integer())
+        cha_mod = Column(Integer())
+
+        fort_mod = Column(Integer())
+        will_mod = Column(Integer())
+        reflex_mod = Column(Integer())
+
+        acrobatics_mod = Column(Integer())
+        athletics_mod = Column(Integer())
+        bluff_mod = Column(Integer())
+        computers_mod = Column(Integer())
+        culture_mod = Column(Integer())
+        diplomacy_mod = Column(Integer())
+        disguise_mod = Column(Integer())
+        engineering_mod = Column(Integer())
+        intimidate_mod = Column(Integer())
+        life_science_mod = Column(Integer())
+        medicine_mod = Column(Integer())
+        mysticism_mod = Column(Integer())
+        perception_mod = Column(Integer())
+        physical_science_mod = Column(Integer())
+        piloting_mod = Column(Integer())
+        sense_motive_mod = Column(Integer())
+        sleight_of_hand_mod = Column(Integer())
+        stealth_mod = Column(Integer())
+        survival_mod = Column(Integer())
+
+        eac = Column(Integer())
+        kac = Column(Integer())
+
+        macros = Column(JSON())
+        attacks = Column(JSON())
+        spells = Column(JSON())
+        bonuses = Column(JSON())
+        resistance = Column(JSON())
+
+    logging.info("get_tracker: returning tracker")
+    return Tracker
+
+
 #########################################
 #########################################
 # Condition Table
@@ -349,7 +479,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             guild = result.scalars().one()
             # print(f"From ID:{guild.id}")
 
-    if guild.system == "EPF":
+    if guild.system == "EPF" or guild.system == "STF":
         return await get_EPF_condition(ctx, engine, id=id)
     else:
         tablename = f"Condition_{id}"
@@ -429,7 +559,7 @@ async def get_condition_table(ctx, metadata, engine, guild=None):
                 )
             )
             guild = result.scalars().one()
-    if guild.system == "EPF":
+    if guild.system == "EPF" or guild.system == "STF":
         return EPF_Support.EPF_ConditionTable(ctx, metadata, guild.id).condition_table()
 
     table = ConditionTable(ctx, metadata, guild.id).condition_table()
