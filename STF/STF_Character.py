@@ -94,6 +94,7 @@ class STF_Character(Character):
 
     async def update(self):
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        self.character_model = await self.character()
         self.id = self.character_model.id
         self.name = self.character_model.name
         self.player = self.character_model.player
@@ -230,6 +231,21 @@ class STF_Character(Character):
             return True
         except Exception as e:
             logging.warning(f"STF change_hp: {e}")
+            return False
+
+    async def restore_stamina(self):
+        if self.current_stamina < self.max_stamina and self.current_resolve > 0:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+                character = char_result.scalars().one()
+                character.current_stamina = character.max_stamina
+                character.resolve -= 1
+                await session.commit()
+            await self.update()
+            return True
+        else:
             return False
 
     async def get_roll(self, item):
