@@ -231,7 +231,7 @@ class InitiativeCog(commands.Cog):
                     result = False
                     try:
                         Utilities = await get_utilities(ctx, guild=guild, engine=engine)
-                        result = await Utilities.delete_character(name)
+                        result = await Utilities.delete_character(character=name)
                     except Exception as e:
                         logging.warning(f"char delete {e}")
                         report = ErrorReport(ctx, "/char delete", e, self.bot)
