@@ -1040,6 +1040,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
         # Spells
         spells_raw = pb["build"]["spellCasters"]
+        focus_spells = pb["build"]["focus"]
         spell_library = {}
         for item in spells_raw:
             for spell_level in item["spells"]:
@@ -1057,6 +1058,59 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             "heightening": spell_data[1].heightening,
                         }
                         spell_library[spell_name] = spell
+        for key in focus_spells.keys():
+            try:
+                if "wis" in focus_spells[key].keys():
+                    if len(focus_spells[key]["wis"]["focusSpells"]) > 0:
+                        for item in focus_spells[key]["wis"]["focusSpells"]:
+                            spell_data = await spell_lookup(item)
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "wis",
+                                    "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+                if "cha" in focus_spells[key].keys():
+                    if len(focus_spells[key]["wis"]["focusSpells"]) > 0:
+                        for item in focus_spells[key]["wis"]["focusSpells"]:
+                            spell_data = await spell_lookup(item)
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "cha",
+                                    "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+                if "int" in focus_spells[key].keys():
+                    if len(focus_spells[key]["wis"]["focusSpells"]) > 0:
+                        for item in focus_spells[key]["wis"]["focusSpells"]:
+                            spell_data = await spell_lookup(item)
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "itl",
+                                    "proficiency": focus_spells[key]["int"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+
+            except Exception:
+                pass
 
         if overwrite:
             async with async_session() as session:
