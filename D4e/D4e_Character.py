@@ -4,7 +4,7 @@ import logging
 
 import discord
 from discord import Interaction
-from sqlalchemy import select, false, true
+from sqlalchemy import select, false, true, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -27,7 +27,7 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(tracker).where(tracker.name == char_name))
+            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
         async with async_session() as session:
             result = await session.execute(
