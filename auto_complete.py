@@ -63,6 +63,14 @@ async def character_select(ctx: discord.AutocompleteContext):
         return []
 
 
+async def character_select_multi(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.character_select(multi=True)
+    except Exception:
+        return []
+
+
 # Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
     try:
@@ -123,6 +131,18 @@ async def a_save_target_custom(ctx: discord.AutocompleteContext):
             return await AutoComplete.cc_select(flex=True)
         else:
             return await AutoComplete.character_select()
+    except Exception:
+        return []
+
+
+async def a_save_target_custom_multi(ctx: discord.AutocompleteContext):
+    try:
+        guild = await get_guild(ctx, None)
+        AutoComplete = await get_autocomplete(ctx, guild=guild)
+        if guild.system == "D4e":
+            return await AutoComplete.cc_select(flex=True)
+        else:
+            return await AutoComplete.character_select(multi=True)
     except Exception:
         return []
 

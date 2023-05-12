@@ -70,7 +70,7 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+            result = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = result.scalars().one()
             # if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
             #     await calculate(ctx, engine, char_name, guild=guild)
