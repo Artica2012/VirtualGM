@@ -9,6 +9,7 @@ from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 import EPF.EPF_GSHEET_Importer
 import initiative
+import utils.utils
 from EPF.EPF_Character import pb_import, calculate
 from EPF.EPF_NPC_Importer import epf_npc_lookup
 from PF2e.NPC_importer import npc_lookup
@@ -116,22 +117,33 @@ class PF2Cog(commands.Cog):
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
     @option("elite_weak", choices=["weak", "elite"], required=False)
-    async def add_npc(self, ctx: discord.ApplicationContext, name: str, lookup: str, elite_weak: str):
+    async def add_npc(self, ctx: discord.ApplicationContext, name: str, lookup: str, elite_weak: str, number: int = 1):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         response = False
-        try:
-            if guild.system == "PF2":
-                response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-            elif guild.system == "EPF":
-                response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-        except Exception as e:
-            await ctx.send_followup("Error importing character")
-            logging.info(f"pb_import: {e}")
-            report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
-            await report.report()
+        if number > 26:
+            number = 26
+        for x in range(0, number):
+            if number > 1:
+                modifier = f" {utils.utils.NPC_Iterator[x]}"
+            else:
+                modifier = ""
+            try:
+                if guild.system == "PF2":
+                    response = await npc_lookup(
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak
+                    )
+                elif guild.system == "EPF":
+                    response = await epf_npc_lookup(
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak
+                    )
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
+                await report.report()
 
         if not response:
             await ctx.send_followup("Import Failed")
