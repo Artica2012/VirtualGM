@@ -392,7 +392,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 else:
                     parsed_traits = []
                 if type(df.f[i + 9]) == str:
-                    dmg_type = df.f[1 + 9]
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
@@ -638,7 +638,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                     parsed_traits = []
                 print(df.f[i + 9])
                 if type(df.f[i + 9]) == str:
-                    dmg_type = df.f[1 + 9]
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
@@ -828,7 +828,7 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                     parsed_traits = []
 
                 if type(df.f[i + 9]) == str:
-                    dmg_type = df.f[1 + 9]
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
