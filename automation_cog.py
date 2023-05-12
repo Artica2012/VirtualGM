@@ -8,17 +8,17 @@ from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
 from auto_complete import (
-    character_select,
     character_select_gm,
     a_macro_select,
     a_d_macro_select,
     get_attributes,
-    a_save_target_custom,
     save_select,
     spell_list,
     spell_level,
     var_dmg_type,
     auto_macro_select,
+    a_save_target_custom_multi,
+    character_select_multi,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -46,7 +46,7 @@ class AutomationCog(commands.Cog):
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
-    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("target", description="Character to Target", autocomplete=character_select_multi)
     @option("roll", description="Roll or Macro Roll", autocomplete=a_macro_select)
     @option("vs", description="Target Attribute", autocomplete=get_attributes)
     @option("attack_modifier", description="Modifier to the macro (defaults to +)", required=False)
@@ -66,7 +66,17 @@ class AutomationCog(commands.Cog):
         try:
             await ctx.response.defer()
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
+            if "," in target:
+                output_string = ""
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        output_string += f"{await Automation.attack(character, char.strip(), roll, vs, attack_modifier,target_modifier)}\n\n"  # noqa
+                    except Exception:
+                        output_string += f"Invalid Target {char}.\n\n"
+
+            else:
+                output_string = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
             await ctx.send_followup(output_string)
         except Exception as e:
             logging.warning(f"attack_cog attack {e}")
@@ -80,7 +90,7 @@ class AutomationCog(commands.Cog):
 
     @att.command(description="Saving Throw")
     @option("character", description="Character forcing the save", autocomplete=character_select_gm)
-    @option("target", description="Saving Character", autocomplete=a_save_target_custom)
+    @option("target", description="Saving Character", autocomplete=a_save_target_custom_multi)
     @option("save", description="Save", autocomplete=save_select)
     @option("modifier", description="Modifier to the macro (defaults to +)", required=False)
     async def save(
@@ -97,7 +107,16 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.save(character, target, save, dc, modifier)
+            if "," in target:
+                output_string = ""
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        output_string += f"{await Automation.save(character, char.strip(), save, dc, modifier)}\n\n"
+                    except Exception:
+                        output_string += f"Invalid Target {char}.\n\n"
+            else:
+                output_string = await Automation.save(character, target, save, dc, modifier)
             await ctx.send_followup(output_string)
         except Exception as e:
             logging.warning(f"attack_cog save {e}")
@@ -107,9 +126,9 @@ class AutomationCog(commands.Cog):
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
-    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("target", description="Character to Target", autocomplete=character_select_multi)
     @option("user_roll_str", description="Roll or Macro Roll", autocomplete=a_d_macro_select)
-    @option("modifier", description="Roll Modifer", default="", type=str)
+    @option("modifier", description="Roll Modifier", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     @option("damage_type", description="Damage Type", autocomplete=var_dmg_type, required=False)
     async def damage(
@@ -127,9 +146,18 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.damage(
-                self.bot, character, target, user_roll_str, modifier, healing, damage_type
-            )
+            if "," in target:
+                output_string = ""
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        output_string += f"{await Automation.damage(self.bot, character, char.strip(), user_roll_str, modifier, healing, damage_type)}\n\n"  # noqa
+                    except Exception:
+                        output_string += f"Invalid Target {char}.\n\n"
+            else:
+                output_string = await Automation.damage(
+                    self.bot, character, target, user_roll_str, modifier, healing, damage_type
+                )
             await ctx.send_followup(output_string)
         except Exception as e:
             logging.warning(f"attack_cog damage {e}")
@@ -139,7 +167,7 @@ class AutomationCog(commands.Cog):
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
-    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("target", description="Character to Target", autocomplete=character_select_multi)
     @option("attack", description="Roll or Macro Roll", autocomplete=auto_macro_select)
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
@@ -159,9 +187,19 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.auto(
-                self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
-            )
+            Automation = await get_automation(ctx, engine=engine)
+            if "," in target:
+                output_string = ""
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        output_string += f"{ await Automation.auto(self.bot, character, char.strip(), attack, attack_modifer, target_modifier, damage_modifier)}\n\n"  # noqa
+                    except Exception:
+                        output_string += f"Invalid Target {char}.\n\n"
+            else:
+                output_string = await Automation.auto(
+                    self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+                )
             await ctx.send_followup(output_string)
         except KeyError:
             await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
@@ -173,7 +211,7 @@ class AutomationCog(commands.Cog):
 
     @att.command(description="Cast a Spell (EPF Only)")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
-    @option("target", description="Character to Target", autocomplete=character_select)
+    @option("target", description="Character to Target", autocomplete=character_select_multi)
     @option("spell", description="Roll or Macro Roll", autocomplete=spell_list)
     @option("level", description="Spell Level", autocomplete=spell_level)
     @option("attack_modifier", description="Attack Modifier", required=False)
@@ -195,9 +233,18 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
-            output_string = await Automation.cast(
-                self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
-            )
+            if "," in target:
+                output_string = ""
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        output_string += f"{await Automation.cast(self.bot, character, char.strip(), spell, level, attack_modifer, target_modifier, damage_modifier)}\n\n"  # noqa
+                    except Exception:
+                        output_string += f"Invalid Target {char}.\n\n"
+            else:
+                output_string = await Automation.cast(
+                    self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
+                )
             await ctx.send_followup(output_string)
         except Exception as e:
             logging.warning(f"attack_cog cast {e}")

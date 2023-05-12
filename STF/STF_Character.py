@@ -30,7 +30,7 @@ async def get_STF_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(tracker).where(tracker.name == char_name))
+            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
         return STF_Character(char_name, ctx, engine, character, guild=guild)
 
