@@ -32,7 +32,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lowe()))
+            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
         async with async_session() as session:
             result = await session.execute(
