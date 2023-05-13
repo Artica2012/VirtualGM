@@ -505,8 +505,6 @@ class InitiativeCog(commands.Cog):
         await ctx.send_followup(success_string)
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Object.update_pinned_tracker()
-        # print("Tracker Updated")
-        # await engine.dispose()
 
     @cc.command(
         description="Edit or remove conditions and counters",
@@ -551,7 +549,6 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/cc modify: {e}")
             report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
             await report.report()
-        # await engine.dispose()
 
 
 def setup(bot):
