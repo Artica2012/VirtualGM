@@ -4,12 +4,12 @@ import os
 
 import sqlalchemy as db
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy import select
 
 # imports
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import Session, sessionmaker
 
 from database_models import Global, Base
 
@@ -66,19 +66,23 @@ def get_db_engine(user, password, host, port, db):
     return engine
 
 
-def update_tracker_table():
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def update_tracker_table():
+    # engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(Global.system == "EPF"))
 
-    with Session(engine) as session:
-        guild = session.execute(select(Global)).all()
-        for row in guild:
-            try:
-                print(row[0].id)
-                alter_string = f'ALTER TABLE "Tracker_{row[0].id}" ADD active boolean DEFAULT TRUE'
-                with engine.connect() as conn:
-                    conn.execute(alter_string)
-            except Exception:
-                pass
+        guild = result.scalars().all()
+
+    for row in guild:
+        try:
+            print(f"Updating {row.id}")
+            alter_string = text(f'ALTER TABLE "Tracker_{row.id}" ADD pic varchar')
+            async with async_session() as session:
+                await session.execute(alter_string)
+                await session.commit()
+        except Exception as e:
+            print(f"{row[0].id}, {e}")
 
 
 def update_con_table():
