@@ -31,6 +31,7 @@ from utils.Automation_Getter import get_automation
 # UTILITY FUNCTIONS
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
+from utils.Tracker_Getter import get_tracker_model
 
 
 class AutomationCog(commands.Cog):
@@ -146,19 +147,37 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
+            embeds = []
             if "," in target:
-                output_string = ""
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        output_string += f"{await Automation.damage(self.bot, character, char.strip(), user_roll_str, modifier, healing, damage_type)}\n\n"  # noqa
+                        embeds.append(
+                            await Automation.damage(
+                                self.bot,
+                                character,
+                                char.strip(),
+                                user_roll_str,
+                                modifier,
+                                healing,
+                                damage_type,
+                                multi=True,
+                            )
+                        )
                     except Exception:
-                        output_string += f"Invalid Target {char}.\n\n"
+                        embeds.append(
+                            discord.Embed(
+                                title=char, fields=[discord.EmbedField(name=user_roll_str, value="Invalid Target")]
+                            )
+                        )
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
+
             else:
-                output_string = await Automation.damage(
-                    self.bot, character, target, user_roll_str, modifier, healing, damage_type
+                embeds.append(
+                    await Automation.damage(self.bot, character, target, user_roll_str, modifier, healing, damage_type)
                 )
-            await ctx.send_followup(output_string)
+            await ctx.send_followup(embeds=embeds)
         except Exception as e:
             logging.warning(f"attack_cog damage {e}")
             report = ErrorReport(ctx, "/a damage", e, self.bot)

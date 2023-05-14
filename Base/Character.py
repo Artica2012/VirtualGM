@@ -35,13 +35,13 @@ GUILD = os.getenv("GUILD")
 SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
+default_pic = (
+    "https://media.discordapp.net/attachments/1028702442927431720/1106950864226226176/"
+    "Clipped_image_20230513_072715.png?width=660&height=670"
+)
+
 
 class Character:
-    default_pic = (
-        "https://media.discordapp.net/attachments/1028702442927431720/1106950864226226176/"
-        "Clipped_image_20230513_072715.png?width=660&height=670"
-    )
-
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         self.char_name = char_name
         self.ctx = ctx
@@ -58,14 +58,7 @@ class Character:
         self.init = character.init
         self.active = character.active
         self.character_model = character
-        self.pic = (
-            character.pic
-            if character.pic is not None
-            else (
-                "https://media.discordapp.net/attachments"
-                "/1028702442927431720/1106950864226226176/Clipped_image_20230513_072715.png?width=660&height=670 "
-            )
-        )
+        self.pic = character.pic if character.pic is not None else default_pic
 
     # def __del__(self):
     #     print(f"Destroying {self.char_name}")

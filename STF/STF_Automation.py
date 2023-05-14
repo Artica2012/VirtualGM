@@ -1,6 +1,7 @@
 import logging
 
 import d20
+import discord
 from sqlalchemy.exc import NoResultFound
 
 from Base.Automation import Automation
@@ -85,7 +86,7 @@ class STF_Automation(Automation):
 
         return output_string
 
-    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False):
+    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
@@ -108,9 +109,17 @@ class STF_Automation(Automation):
         if not healing:
             dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+
+        embed = discord.Embed(
+            title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
+            fields=[discord.EmbedField(name=roll, value=output_string)],
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
         await Target_Model.change_hp(dmg, healing, post=True)
-        await Tracker_Model.update_pinned_tracker()
-        return output_string
+        if not multi:
+            await Tracker_Model.update_pinned_tracker()
+        return embed
 
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: STF_Character, weapon=None):

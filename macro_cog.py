@@ -174,24 +174,23 @@ class MacroCog(commands.Cog):
         else:
             guild = await get_guild(ctx, None)
         Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
-        try:
-            if secret == "Open":
-                await ctx.send_followup(await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild))
+        # try:
+        if secret == "Open":
+            await ctx.send_followup(embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild))
+        else:
+            if guild.gm_tracker_channel is not None:
+                await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
+                await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
+                    "Secret Roll:", embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
+                )
             else:
-                if guild.gm_tracker_channel is not None:
-                    await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
-                    await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                        f"Secret Roll:\n{await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)}"
-                    )
-                else:
-                    await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
-                    await ctx.channel.send(await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild))
-        except Exception as e:
-            logging.error(f"roll_macro: {e}")
-            report = ErrorReport(ctx, "roll_macro", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Macro Roll Failed")
-        # await engine.dispose()
+                await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
+                await ctx.channel.send(embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild))
+        # except Exception as e:
+        #     logging.error(f"roll_macro: {e}")
+        #     report = ErrorReport(ctx, "roll_macro", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Macro Roll Failed")
 
 
 def setup(bot):

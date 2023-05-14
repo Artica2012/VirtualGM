@@ -163,9 +163,15 @@ class Macro:
             )
         dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
         roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-        output_string = f"{character}:\n{macro_name.split(':')[0]}\n{roll_str}"
+        output_string = f"{roll_str}"
 
-        return output_string
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name=macro_name, value=output_string)],
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
 
     async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
         logging.info(f"get_macro {character}, {macro_name}")
