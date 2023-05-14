@@ -41,7 +41,9 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 
-async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str):
+async def npc_lookup(
+    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
+):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(NPC).where(NPC.name == lookup))
@@ -110,6 +112,7 @@ async def npc_lookup(ctx: discord.ApplicationContext, engine, lookup_engine, bot
                     current_hp=data.hp + hp_mod,
                     max_hp=data.hp + hp_mod,
                     temp_hp=0,
+                    pic=image,
                 )
                 session.add(tracker)
             await session.commit()

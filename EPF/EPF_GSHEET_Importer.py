@@ -38,7 +38,9 @@ Interpreter = {
 }
 
 
-async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None):
+async def epf_g_sheet_import(
+    ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
+):
     try:
         parsed_url = base_url.split("/")
         # print(parsed_url)
@@ -156,6 +158,8 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 character_data.feats = character["feats"]
                 character_data.spells = spells
                 character_data.attacks = attacks
+                if image is not None:
+                    character.pic = image
 
                 await session.commit()
 
@@ -222,6 +226,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                         resistance=resistance,
                         eidolon=character["eidolon"],
                         partner=character["partner"],
+                        pic=image,
                     )
                     session.add(new_char)
                 await session.commit()

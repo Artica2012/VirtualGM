@@ -40,7 +40,9 @@ DATABASE = os.getenv("DATABASE")
 
 
 # Import a PF2e character from pathbuilder
-async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name: str, pb_char_code: str):
+async def pathbuilder_import(
+    ctx: discord.ApplicationContext, engine, bot, name: str, pb_char_code: str, image: str = None
+):
     stats = {}
     macro = {}
 
@@ -237,6 +239,9 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                     char.current_hp = stats["hp"]
                     char.max_hp = stats["hp"]
 
+                    if image is not None:
+                        char.pic = image
+
                     await session.commit()
             else:
                 overwrite = False  # If not overwriting, just write the character
@@ -251,6 +256,7 @@ async def pathbuilder_import(ctx: discord.ApplicationContext, engine, bot, name:
                             current_hp=stats["hp"],
                             max_hp=stats["hp"],
                             temp_hp=0,
+                            pic=image,
                         )
                         session.add(new_char)
                     await session.commit()

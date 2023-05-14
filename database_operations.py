@@ -67,11 +67,9 @@ def get_db_engine(user, password, host, port, db):
 
 
 async def update_tracker_table():
-    # engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        result = await session.execute(select(Global).where(Global.system == "EPF"))
-
+        result = await session.execute(select(Global))
         guild = result.scalars().all()
 
     for row in guild:
@@ -82,7 +80,7 @@ async def update_tracker_table():
                 await session.execute(alter_string)
                 await session.commit()
         except Exception as e:
-            print(f"{row[0].id}, {e}")
+            print(f"{row.id}, {e}")
 
 
 def update_con_table():

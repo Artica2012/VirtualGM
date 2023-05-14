@@ -903,7 +903,7 @@ class EPF_Character(Character):
             await self.ctx.respond("Failed")
 
 
-async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
+async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None):
     paramaters = {"id": pb_char_code}
     overwrite = False
 
@@ -1188,6 +1188,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 character.feats = feats
                 character.attacks = attacks
                 character.spells = spell_library
+                if image is not None:
+                    character.pic = image
+
                 await session.commit()
 
         else:  # Create a new character
@@ -1278,6 +1281,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                         attacks=attacks,
                         spells=spell_library,
                         resistance={"resist": {}, "weak": {}, "immune": {}},
+                        pic=image,
                     )
                     session.add(new_char)
                 await session.commit()

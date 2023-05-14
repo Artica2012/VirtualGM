@@ -109,7 +109,9 @@ class InitiativeCog(commands.Cog):
     @option("hp", description="Total HP", input_type=int)
     @option("player", choices=["player", "npc"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=True, input_type=str)
-    async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str):
+    async def add(
+        self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str, image: str = None
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         player_bool = False
@@ -120,7 +122,7 @@ class InitiativeCog(commands.Cog):
 
         try:
             Utilities = await get_utilities(ctx, engine=engine)
-            response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative)
+            response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative, image=image)
         except Exception as e:
             logging.warning(f"char add {e}")
             report = ErrorReport(ctx, "/char add", e, self.bot)
@@ -154,6 +156,7 @@ class InitiativeCog(commands.Cog):
         initiative: str = None,
         active: bool = None,
         player: discord.User = None,
+        image: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
@@ -162,7 +165,7 @@ class InitiativeCog(commands.Cog):
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
-                response = await Character_Model.edit_character(name, hp, initiative, active, player, self.bot)
+                response = await Character_Model.edit_character(name, hp, initiative, active, player, image, self.bot)
             except Exception as e:
                 logging.warning(f"char edit {e}")
                 report = ErrorReport(ctx, "/char edit", e, self.bot)

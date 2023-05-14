@@ -112,6 +112,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
             temp_hp = Column(Integer(), default=0)
             init_string = Column(String(), nullable=True)
             active = Column(Boolean(), default=True)
+            pic = Column(String(), nullable=True)
 
         logging.info("get_tracker: returning tracker")
         return Tracker
@@ -170,6 +171,7 @@ class TrackerTable:
             db.Column("temp_hp", db.INTEGER(), default=0),
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
+            db.Column("pic", db.String(), nullable=True),
         )
         return emp
 
@@ -444,6 +446,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         spells = Column(JSON())
         bonuses = Column(JSON())
         resistance = Column(JSON())
+        pic = Column(String(), nullable=True)
 
     logging.info("get_tracker: returning tracker")
     return Tracker

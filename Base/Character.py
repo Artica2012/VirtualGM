@@ -37,6 +37,11 @@ DATABASE = os.getenv("DATABASE")
 
 
 class Character:
+    default_pic = (
+        "https://media.discordapp.net/attachments/1028702442927431720/1106950864226226176/"
+        "Clipped_image_20230513_072715.png?width=660&height=670"
+    )
+
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         self.char_name = char_name
         self.ctx = ctx
@@ -53,6 +58,14 @@ class Character:
         self.init = character.init
         self.active = character.active
         self.character_model = character
+        self.pic = (
+            character.pic
+            if character.pic is not None
+            else (
+                "https://media.discordapp.net/attachments"
+                "/1028702442927431720/1106950864226226176/Clipped_image_20230513_072715.png?width=660&height=670 "
+            )
+        )
 
     # def __del__(self):
     #     print(f"Destroying {self.char_name}")
@@ -486,7 +499,7 @@ class Character:
         except Exception:
             await self.ctx.respond("Failed")
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -514,6 +527,8 @@ class Character:
                     character.active = active
                 if active is not None and self.guild.saved_order != name:
                     character.active = active
+                if img != "":
+                    character.pic = img
 
                 await session.commit()
                 await self.ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
@@ -525,3 +540,19 @@ class Character:
         except Exception as e:
             logging.warning(f"add_character: {e}")
             return False
+
+    async def set_pic(self, url):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        try:
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = result.scalars().one()
+                character.pic = url
+                await session.commit()
+            return True
+        except Exception:
+            return False
+
+    async def get_pic(self):
+        return self.character_model.pic
