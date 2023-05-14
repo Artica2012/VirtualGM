@@ -1,6 +1,7 @@
 import logging
 
 import d20
+import discord
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ class PF2_Automation(Automation):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def attack(self, character, target, roll, vs, attack_modifier, target_modifier):
+    async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
         # Strip a macro:
         roll_list = roll.split(":")
         # print(roll_list)
@@ -27,7 +28,8 @@ class PF2_Automation(Automation):
             roll = roll
         else:
             roll = roll_list[1]
-        print(roll)
+
+        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
             Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
             roll_string: str = f"({await Macro_Model.get_macro(character, roll)}){ParseModifiers(attack_modifier)}"
@@ -62,7 +64,14 @@ class PF2_Automation(Automation):
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
-        return output_string
+
+        embed = discord.Embed(
+            title=f"{char_model.char_name} vs {Target_Model.char_name}",
+            fields=[discord.EmbedField(name=roll, value=output_string)],
+        )
+        embed.set_thumbnail(url=char_model.pic)
+
+        return embed
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:
