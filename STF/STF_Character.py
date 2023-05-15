@@ -20,6 +20,11 @@ from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107193557267259464/artica_A_"
+    "generic_sci-fi_character_portrait_cloaked_in_shadows_3ff451c7-cf44-423d-9b98-40c030daa967.png"
+)
+
 
 async def get_STF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating STF_Character Class")
@@ -40,6 +45,7 @@ async def get_STF_Character(char_name, ctx, guild=None, engine=None):
 
 class STF_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild):
+        super().__init__(char_name, ctx, engine, character, guild)
         self.current_resolve = character.resolve
         self.max_resolve = character.max_resolve
         self.current_stamina = character.current_stamina
@@ -90,7 +96,7 @@ class STF_Character(Character):
         self.bonuses = character.bonuses
         self.resistance = character.resistance
 
-        super().__init__(char_name, ctx, engine, character, guild)
+        self.pic = character.pic if character.pic is not None else default_pic
 
     async def update(self):
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)

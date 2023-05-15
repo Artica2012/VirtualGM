@@ -21,6 +21,11 @@ from error_handling_reporting import ErrorReport, error_not_initialized
 # from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107575116046540890/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_6c63c079-7ee7-4188-94b1-435a0879f7e7.png"
+)
+
 
 async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
@@ -61,8 +66,9 @@ class PF2_Character(Character):
         self.will = stats["Will"]
         self.dc = stats["DC"]
         super().__init__(char_name, ctx, engine, character, guild)
+        self.pic = character.pic if character.pic is not None else default_pic
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -89,6 +95,8 @@ class PF2_Character(Character):
                     character.active = active
                 if active is not None and self.guild.saved_order != name:
                     character.active = active
+                if img != "":
+                    character.pic = img
 
                 await session.commit()
 

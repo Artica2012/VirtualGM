@@ -19,12 +19,18 @@ class EPF_Macro(Macro):
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
         if dice_result == 0:
-            output_string = await super().roll_macro(character, macro_name, dc, modifier, guild)
+            embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
         else:
             roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-            output_string = f"{character}:\n{macro_name}\n{roll_str}"
+            output_string = f"{roll_str}"
 
-        return output_string
+            embed = discord.Embed(
+                title=Character_Model.char_name,
+                fields=[discord.EmbedField(name=macro_name, value=output_string)],
+            )
+            embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
 
     async def show(self, character):
         Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)

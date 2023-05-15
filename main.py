@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 # environmental variables - if Production - use the token and database of the production model, if Production is False,
 # then its running locally and use the local postgres server and the beta token. This allows one .env and code for both
 # testing and production.
+import database_operations
+
 print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -53,11 +55,11 @@ bot = discord.Bot(
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    # logging.warning("Updating tables...")
-    # database_operations.update_tracker_table()
+    logging.warning("Updating tables...")
+    await database_operations.update_tracker_table()
     # database_operations.update_con_table()
     # database_operations.create_reminder_table()
-    # logging.warning("Tables updated")
+    logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
 

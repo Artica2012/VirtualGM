@@ -1,29 +1,28 @@
 import logging
 
 import d20
+import discord
 from sqlalchemy.exc import NoResultFound
 
 from Base.Automation import Automation
 from STF.STF_Character import get_STF_Character, STF_Character
+from STF.STF_Support import STF_eval_success
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
-from STF.STF_Support import STF_eval_success
 
 
 class STF_Automation(Automation):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def attack(self, character, target, roll, vs, attack_modifier, target_modifier):
+    async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
+        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         try:
-            # if type(roll[0]) == int:
             roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
-            # print(roll_string)
             dice_result = d20.roll(roll_string)
         except Exception:
-            char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             roll_string = f"({await char_model.get_roll(roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
 
@@ -40,13 +39,21 @@ class STF_Automation(Automation):
         # Format output string
         success_string = STF_eval_success(dice_result, goal_result)
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+
+        embed = discord.Embed(
+            title=f"{char_model.char_name} vs {opponent.char_name}",
+            fields=[discord.EmbedField(name=roll, value=output_string)],
+        )
+        embed.set_thumbnail(url=char_model.pic)
+
         return output_string
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:
-            output_string = "Error. No Target Specified."
-            return output_string
-        # print(f" {save}, {dc}, {modifier}")
+            embed = discord.Embed(title=character, fields=[discord.EmbedField(name=save, value="Invalid Target")])
+
+            return embed
+
         attacker = await get_STF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         opponent = await get_STF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
 
@@ -54,20 +61,14 @@ class STF_Automation(Automation):
 
         if dc is None:
             dc = await attacker.get_dc("DC")
-            # print(dc)
         try:
-            # print(await opponent.get_roll(save))
             dice_result = d20.roll(f"{await opponent.get_roll(save)}{ParseModifiers(modifier)}")
-            # print(dice_result)
-            # goal_string: str = f"{dc}"
             goal_result = d20.roll(f"{dc}")
-            # print(goal_result)
         except Exception as e:
             logging.warning(f"attack: {e}")
             return False
         try:
             success_string = STF_eval_success(dice_result, goal_result)
-            # print(success_string)
             # Format output string
             if character == target:
                 output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
@@ -83,9 +84,15 @@ class STF_Automation(Automation):
             logging.warning(f"attack: {e}")
             return False
 
-        return output_string
+        embed = discord.Embed(
+            title=f"{attacker.char_name} vs {opponent.char_name}" if character != target else f"{attacker.char_name}",
+            fields=[discord.EmbedField(name=save, value=output_string)],
+        )
+        embed.set_thumbnail(url=attacker.pic)
 
-    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False):
+        return embed
+
+    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
@@ -108,9 +115,17 @@ class STF_Automation(Automation):
         if not healing:
             dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+
+        embed = discord.Embed(
+            title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
+            fields=[discord.EmbedField(name=roll, value=output_string)],
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
         await Target_Model.change_hp(dmg, healing, post=True)
-        await Tracker_Model.update_pinned_tracker()
-        return output_string
+        if not multi:
+            await Tracker_Model.update_pinned_tracker()
+        return embed
 
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: STF_Character, weapon=None):
