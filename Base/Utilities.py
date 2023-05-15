@@ -94,6 +94,7 @@ class Utilities:
                     current_hp=character.current_hp,
                     max_hp=character.max_hp,
                     temp_hp=character.temp_hp,
+                    pic=character.pic,
                 )
                 session.add(new_char)
             await session.commit()
