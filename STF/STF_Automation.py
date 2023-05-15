@@ -46,7 +46,7 @@ class STF_Automation(Automation):
         )
         embed.set_thumbnail(url=char_model.pic)
 
-        return output_string
+        return embed
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:
