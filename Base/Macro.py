@@ -156,11 +156,22 @@ class Macro:
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
-            macro_data = macro_list[0]
-            await self.ctx.channel.send(
-                "Error: Duplicate Macros with the Same Name. Rolling one macro, but please ensure that you do not have"
-                " duplicate names."
-            )
+            try:
+                macro_data = macro_list[0]
+            except Exception:
+                embed = discord.Embed(
+                    title=character,
+                    fields=[
+                        discord.EmbedField(
+                            name=macro_name,
+                            value=(
+                                "Error: Duplicate Macros with the Same Name or invalid macro. Rolling one macro, but"
+                                " please ensure that you do not have duplicate names."
+                            ),
+                        )
+                    ],
+                )
+                return embed
         dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
         roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
         output_string = f"{roll_str}"
