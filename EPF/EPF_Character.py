@@ -57,6 +57,11 @@ PF2_skills = [
     "Thievery",
 ]
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107574256763687012/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_4c0a4013-2c63-4a11-9754-66acba4c7319.png"
+)
+
 
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
 # initialization of the class.
@@ -72,10 +77,6 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
         async with async_session() as session:
             result = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = result.scalars().one()
-            # if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
-            #     await calculate(ctx, engine, char_name, guild=guild)
-            #     result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
-            #     character = result.scalars().one()
             return EPF_Character(char_name, ctx, engine, character, guild=guild)
 
     except NoResultFound:
@@ -122,6 +123,7 @@ class EPF_Character(Character):
 
         self.ac_total = character.ac_total
         self.resistance = character.resistance
+        self.pic = character.pic if character.pic is not None else default_pic
 
     async def character(self):
         logging.info("Loading Character")
@@ -665,61 +667,61 @@ class EPF_Character(Character):
             print(data)
 
         # Write the condition to the table
-        try:
-            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
-                # print(f"Writing Condition: {title}")
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=number,
-                        counter=counter,
-                        auto_increment=auto_decrement,
-                        time=False,
-                        flex=flex,
-                        action=data,
-                        visible=visible,
-                    )
-                    session.add(condition)
-                await session.commit()
-                if update:
-                    await self.update()
-                return True
+        # try:
+        if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+            # print(f"Writing Condition: {title}")
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_decrement,
+                    time=False,
+                    flex=flex,
+                    action=data,
+                    visible=visible,
+                )
+                session.add(condition)
+            await session.commit()
+            if update:
+                await self.update()
+            return True
 
-            else:  # If its time based, then calculate the end time, before writing it
-                current_time = await get_time(self.ctx, self.engine)
-                if unit == "Minute":
-                    end_time = current_time + datetime.timedelta(minutes=number)
-                elif unit == "Hour":
-                    end_time = current_time + datetime.timedelta(hours=number)
-                else:
-                    end_time = current_time + datetime.timedelta(days=number)
+        else:  # If its time based, then calculate the end time, before writing it
+            current_time = await get_time(self.ctx, self.engine)
+            if unit == "Minute":
+                end_time = current_time + datetime.timedelta(minutes=number)
+            elif unit == "Hour":
+                end_time = current_time + datetime.timedelta(hours=number)
+            else:
+                end_time = current_time + datetime.timedelta(days=number)
 
-                timestamp = end_time.timestamp()
+            timestamp = end_time.timestamp()
 
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=timestamp,
-                        counter=counter,
-                        auto_increment=True,
-                        time=True,
-                        action=data,
-                        visible=visible,
-                    )
-                    session.add(condition)
-                await session.commit()
-                if update:
-                    await self.update()
-                return True
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=timestamp,
+                    counter=counter,
+                    auto_increment=True,
+                    time=True,
+                    action=data,
+                    visible=visible,
+                )
+                session.add(condition)
+            await session.commit()
+            if update:
+                await self.update()
+            return True
 
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"set_cc: {e}")
-            return False
+        # except NoResultFound:
+        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        #     return False
+        # except Exception as e:
+        #     logging.warning(f"set_cc: {e}")
+        #     return False
 
     # Delete CC
     async def delete_cc(self, condition):
@@ -903,7 +905,7 @@ class EPF_Character(Character):
             await self.ctx.respond("Failed")
 
 
-async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
+async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None):
     paramaters = {"id": pb_char_code}
     overwrite = False
 
@@ -1188,6 +1190,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 character.feats = feats
                 character.attacks = attacks
                 character.spells = spell_library
+                if image is not None:
+                    character.pic = image
+
                 await session.commit()
 
         else:  # Create a new character
@@ -1278,6 +1283,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                         attacks=attacks,
                         spells=spell_library,
                         resistance={"resist": {}, "weak": {}, "immune": {}},
+                        pic=image,
                     )
                     session.add(new_char)
                 await session.commit()
@@ -1661,10 +1667,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     }
     resistances = {"resist": {}, "weak": {}, "immune": {}}
 
-    # print("!!!!!!!!!!!!!!!!!!!111")
-    # print(len(conditions))
     for condition in conditions:
-        # print(f"{condition.title}, {condition.number}, {condition.action}")
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
@@ -1675,10 +1678,18 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                    # print(True)
-                    # print("Condition")
-                    # print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
+                # Conditions adding conditions? Crazy
+                print(parsed[0].title())
+                if parsed[0].title() in EPF_Conditions.keys():
+                    print("Condition recognized")
+                    if parsed[0].title() not in await Characte_Model.conditions():
+                        print(f"Parsed: {parsed}")
+                        if len(parsed) > 1:
+                            num = int(parsed[1])
+                        else:
+                            num = 0
+                        await Characte_Model.set_cc(parsed[0].title(), False, num, "Round", False)
+                elif parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
                     if parsed[2][-1] == ";":
                         parsed[2] = parsed[2][:-1]
                     parsed[0] = parsed[0].lower()
@@ -1689,77 +1700,78 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
                             resistances["immune"][parsed[0]] = 1
-                item_name = ""
-                specific_weapon = ""
-
-                print(parsed[0], parsed[0][0])
-                if parsed[0][0] == '"':
-                    print("Opening Quote")
-                    for x, item in enumerate(parsed):
-                        print(x, item)
-                        print(item[-1])
-                        if item[-1] == '"':
-                            item_name = " ".join(parsed[0 : x + 1])
-                            item_name = item_name.strip('"')
-                            parsed = parsed[x + 1 :]
-                            break
-                print(item_name)
-                print(parsed)
-                if item_name != "":
-                    if item_name.title() in await Characte_Model.attack_list():
-                        specific_weapon = f"{item_name},"
-                    else:
-                        parsed = []
-                print(specific_weapon)
-
-                key = f"{specific_weapon}{parsed[0]}".lower()
-                if parsed[1][1:] == "X":
-                    value = int(condition.number)
                 else:
-                    try:
-                        value = int(parsed[1][1:])
-                    except ValueError:
-                        value = int(parsed[1])
+                    item_name = ""
+                    specific_weapon = ""
 
-                if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                    if key in bonuses["status_pos"]:
-                        if value > bonuses["status_pos"][key]:
+                    print(parsed[0], parsed[0][0])
+                    if parsed[0][0] == '"':
+                        print("Opening Quote")
+                        for x, item in enumerate(parsed):
+                            print(x, item)
+                            print(item[-1])
+                            if item[-1] == '"':
+                                item_name = " ".join(parsed[0 : x + 1])
+                                item_name = item_name.strip('"')
+                                parsed = parsed[x + 1 :]
+                                break
+                    print(item_name)
+                    print(parsed)
+                    if item_name != "":
+                        if item_name.title() in await Characte_Model.attack_list():
+                            specific_weapon = f"{item_name},"
+                        else:
+                            parsed = []
+                    print(specific_weapon)
+
+                    key = f"{specific_weapon}{parsed[0]}".lower()
+                    if parsed[1][1:] == "X":
+                        value = int(condition.number)
+                    else:
+                        try:
+                            value = int(parsed[1][1:])
+                        except ValueError:
+                            value = int(parsed[1])
+
+                    if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
+                        if key in bonuses["status_pos"]:
+                            if value > bonuses["status_pos"][key]:
+                                bonuses["status_pos"][key] = value
+                        else:
                             bonuses["status_pos"][key] = value
-                    else:
-                        bonuses["status_pos"][key] = value
-                elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                    if key in bonuses["status_neg"]:
-                        if value > bonuses["status_neg"][key]:
+                    elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
+                        if key in bonuses["status_neg"]:
+                            if value > bonuses["status_neg"][key]:
+                                bonuses["status_neg"][key] = value
+                        else:
                             bonuses["status_neg"][key] = value
-                    else:
-                        bonuses["status_neg"][key] = value
-                        # print(f"{key}: {bonuses['status_neg'][key]}")
-                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
-                    if key in bonuses["circumstances_pos"]:
-                        if value > bonuses["circumstances_pos"][key]:
+                            # print(f"{key}: {bonuses['status_neg'][key]}")
+                    elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
+                        if key in bonuses["circumstances_pos"]:
+                            if value > bonuses["circumstances_pos"][key]:
+                                bonuses["circumstances_pos"][key] = value
+                        else:
                             bonuses["circumstances_pos"][key] = value
-                    else:
-                        bonuses["circumstances_pos"][key] = value
-                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
-                    if key in bonuses["circumstances_neg"]:
-                        if value > bonuses["circumstances_neg"][key]:
+                    elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
+                        if key in bonuses["circumstances_neg"]:
+                            if value > bonuses["circumstances_neg"][key]:
+                                bonuses["circumstances_neg"][key] = value
+                        else:
                             bonuses["circumstances_neg"][key] = value
-                    else:
-                        bonuses["circumstances_neg"][key] = value
-                        # print(f"{key}: {bonuses['circumstances_neg'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                    if key in bonuses["item_pos"]:
-                        if value > bonuses["item_pos"][key]:
+                            # print(f"{key}: {bonuses['circumstances_neg'][key]}")
+                    elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
+                        if key in bonuses["item_pos"]:
+                            if value > bonuses["item_pos"][key]:
+                                bonuses["item_pos"][key] = value
+                        else:
                             bonuses["item_pos"][key] = value
-                    else:
-                        bonuses["item_pos"][key] = value
-                        # print(f"{key}: {bonuses['item_pos'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                    if key in bonuses["item_neg"]:
-                        if value > bonuses["item_neg"][key]:
+                            # print(f"{key}: {bonuses['item_pos'][key]}")
+                    elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
+                        if key in bonuses["item_neg"]:
+                            if value > bonuses["item_neg"][key]:
+                                bonuses["item_neg"][key] = value
+                        else:
                             bonuses["item_neg"][key] = value
-                    else:
-                        bonuses["item_neg"][key] = value
 
             except Exception:
                 pass

@@ -73,7 +73,7 @@ class EPF_NPC(LookupBase):
 
 
 async def epf_npc_lookup(
-    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str
+    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
 ):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -188,6 +188,7 @@ async def epf_npc_lookup(
                     macros="",
                     attacks=data.attacks,
                     spells=data.spells,
+                    pic=image,
                 )
                 session.add(tracker)
             await session.commit()

@@ -35,7 +35,7 @@ class PF2Cog(commands.Cog):
     @option("pathbuilder_id", description="Pathbuilder Export ID")
     @option("url", description="Public Google Sheet URL")
     async def import_character(
-        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None
+        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None, image: str = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
@@ -48,14 +48,14 @@ class PF2Cog(commands.Cog):
                 Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
 
                 if guild.system == "PF2":
-                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
+                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id), image=image)
                     if response:
                         await Tracker_Model.update_pinned_tracker()
                     else:
                         await ctx.send_followup("Import Failed")
                 elif guild.system == "EPF":
                     logging.info("Beginning PF2-Enhanced import")
-                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
+                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild, image=image)
                     logging.info("Imported")
                     if response:
                         await Tracker_Model.update_pinned_tracker()
@@ -83,7 +83,7 @@ class PF2Cog(commands.Cog):
             try:
                 guild = await get_guild(ctx, None)
                 if guild.system == "EPF":
-                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
                     Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                     await Tracker_Model.update_pinned_tracker()
                 else:
@@ -117,7 +117,15 @@ class PF2Cog(commands.Cog):
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
     @option("elite_weak", choices=["weak", "elite"], required=False)
-    async def add_npc(self, ctx: discord.ApplicationContext, name: str, lookup: str, elite_weak: str, number: int = 1):
+    async def add_npc(
+        self,
+        ctx: discord.ApplicationContext,
+        name: str,
+        lookup: str,
+        elite_weak: str,
+        number: int = 1,
+        image: str = None,
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
@@ -133,11 +141,11 @@ class PF2Cog(commands.Cog):
             try:
                 if guild.system == "PF2":
                     response = await npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
                 elif guild.system == "EPF":
                     response = await epf_npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
             except Exception as e:
                 await ctx.send_followup("Error importing character")

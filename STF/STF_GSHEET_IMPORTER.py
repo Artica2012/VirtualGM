@@ -27,7 +27,9 @@ def interpret(item):
         return ""
 
 
-async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None):
+async def stf_g_sheet_import(
+    ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
+):
     try:
         parsed_url = base_url.split("/")
         sheet_id = parsed_url[5]
@@ -129,6 +131,8 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 character_data.spells = spells
                 character_data.attacks = attacks
                 character_data.resistance = resistance
+                if image is not None:
+                    character.pic = image
 
                 await session.commit()
 
@@ -186,6 +190,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                         survival=character["survival"],
                         attacks=attacks,
                         resistance=resistance,
+                        pic=image,
                     )
                     session.add(new_char)
                     await session.commit()

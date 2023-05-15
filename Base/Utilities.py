@@ -17,7 +17,7 @@ class Utilities:
         self.guild = guild
         self.engine = engine
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
         logging.info("add_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -45,6 +45,7 @@ class Utilities:
                         current_hp=hp,
                         max_hp=hp,
                         temp_hp=0,
+                        pic=image,
                     )
                     session.add(tracker)
                 await session.commit()

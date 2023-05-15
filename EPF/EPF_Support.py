@@ -111,6 +111,7 @@ class PF2_Character_Model:
             db.Column("bonuses", db.JSON()),
             db.Column("eidolon", db.BOOLEAN(), default=False),
             db.Column("partner", db.String(255)),
+            db.Column("pic", db.String(), nullable=True),
         )
 
         logging.info("pf2_character_model_table")
@@ -150,6 +151,7 @@ EPF_Conditions = {
     "Confused": "ac -2 c",
     "Deafened": "perception -2 s",
     "Drained": "con -X s",
+    "Dying": "prone, unconscious",
     "Enfeebled": "str -X s",
     "Fascinated": (
         "perception -2 s, acrobatics -2 s, arcana -2 s, athletics -2 s, crafting -2 s, deception -2 s, "
@@ -165,7 +167,7 @@ EPF_Conditions = {
         "fort -X s, reflex -X s, will -X s, attack -X s"
     ),
     "Paralyzed": "ac -2 c",
-    "Prone": "ac -2 c, attack -2 c",
+    "Prone": "ac -2 s, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
     "Stupefied": "itl -X s, wis -X s, cha -X s",
     "Unconscious": "ac -4 s, perception -4 s, reflex -4 s",

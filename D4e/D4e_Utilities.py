@@ -14,7 +14,6 @@ from Base.Tracker import get_init_list
 from Base.Utilities import Utilities
 from database_models import get_tracker, get_condition
 from error_handling_reporting import error_not_initialized, ErrorReport
-from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
@@ -26,7 +25,7 @@ class D4e_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
         logging.info("add_character")
         try:
             initiative = 0
@@ -50,6 +49,7 @@ class D4e_Utilities(Utilities):
                 engine=self.engine,
                 bot=bot,
                 title=name,
+                pic=image,
             )
             await self.ctx.send_modal(D4eModal)
             return True
