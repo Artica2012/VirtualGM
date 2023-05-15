@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from database_models import get_macro
 from utils.Char_Getter import get_character
+from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 
 
@@ -22,7 +23,7 @@ class Automation:
         return "Save Function not set up for current system."
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, multi=False):
-        # Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
+        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
@@ -50,13 +51,15 @@ class Automation:
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        # await Target_Model.change_hp(roll_result.total, healing, post=False)
-        # if not multi:
-        #     await Tracker_Model.update_pinned_tracker()
+        await Target_Model.change_hp(roll_result.total, healing, post=False)
+        if not multi:
+            await Tracker_Model.update_pinned_tracker()
         return embed
 
-    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier, dmg_modifier):
+    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier, dmg_modifier, multi=False):
         return "Auto Function not set up for current system"
 
-    async def cast(self, bot, character, target, spell_name, level, attack_modifier, target_modifier, dmg_modifier):
+    async def cast(
+        self, bot, character, target, spell_name, level, attack_modifier, target_modifier, dmg_modifier, multi=False
+    ):
         return "Cast Function not set up for current system"

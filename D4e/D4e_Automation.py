@@ -58,7 +58,7 @@ class D4e_Automation(Automation):
         output_string = f"{character} rolls {roll}vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
         embed = discord.Embed(
-            title=f"{char_model.char_name} vs {opponent.char_name}",
+            title=f"{char_model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
         )
         embed.set_thumbnail(url=char_model.pic)
@@ -77,12 +77,18 @@ class D4e_Automation(Automation):
             if dice_result.total >= D4e_base_roll.total:
                 await Character_Model.delete_cc(target)
 
-            return output_string
+            embed = discord.Embed(
+                title=f"{Character_Model.char_name}",
+                fields=[discord.EmbedField(name=save, value=output_string)],
+            )
+            embed.set_thumbnail(url=Character_Model.pic)
+
+            return embed
 
         except NoResultFound:
             if self.ctx is not None:
                 await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return "Error"
+            return False
         except Exception as e:
             logging.warning(f"save: {e}")
-            return "Error"
+            return False

@@ -57,6 +57,11 @@ PF2_skills = [
     "Thievery",
 ]
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107574256763687012/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_4c0a4013-2c63-4a11-9754-66acba4c7319.png"
+)
+
 
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
 # initialization of the class.
@@ -72,10 +77,6 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
         async with async_session() as session:
             result = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = result.scalars().one()
-            # if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
-            #     await calculate(ctx, engine, char_name, guild=guild)
-            #     result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
-            #     character = result.scalars().one()
             return EPF_Character(char_name, ctx, engine, character, guild=guild)
 
     except NoResultFound:
@@ -122,6 +123,7 @@ class EPF_Character(Character):
 
         self.ac_total = character.ac_total
         self.resistance = character.resistance
+        self.pic = character.pic if character.pic is not None else default_pic
 
     async def character(self):
         logging.info("Loading Character")

@@ -36,8 +36,8 @@ SERVER_DATA = os.getenv("SERVERDATA")
 DATABASE = os.getenv("DATABASE")
 
 default_pic = (
-    "https://media.discordapp.net/attachments/1028702442927431720/1106950864226226176/"
-    "Clipped_image_20230513_072715.png?width=660&height=670"
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107574197061963807/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_b571634a-b297-4e86-a57a-496ce438dd0b.png"
 )
 
 

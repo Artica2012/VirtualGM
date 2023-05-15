@@ -2,14 +2,10 @@ import logging
 
 import d20
 import discord
-from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-from PF2e.pf2_functions import PF2_base_dc, PF2_eval_succss
 
 from Base.Automation import Automation
-from database_models import get_macro
+from PF2e.pf2_functions import PF2_base_dc, PF2_eval_succss
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.Macro_Getter import get_macro_object
@@ -75,8 +71,9 @@ class PF2_Automation(Automation):
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:
-            output_string = "Error. No Target Specified."
-            return output_string
+            embed = discord.Embed(title=character, fields=[discord.EmbedField(name=save, value="Invalid Target")])
+
+            return embed
 
         orig_dc = dc
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -132,4 +129,14 @@ class PF2_Automation(Automation):
             logging.warning(f"attack: {e}")
             return False
 
-        return output_string
+        embed = discord.Embed(
+            title=(
+                f"{Character_Model.char_name} vs {Target_Model.char_name}"
+                if character != target
+                else f"{Character_Model.char_name}"
+            ),
+            fields=[discord.EmbedField(name=save, value=output_string)],
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
