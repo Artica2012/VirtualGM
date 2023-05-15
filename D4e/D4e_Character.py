@@ -1,5 +1,4 @@
 # imports
-import asyncio
 import logging
 
 import discord
@@ -224,13 +223,14 @@ async def edit_stats(ctx, engine, name: str, bot):
         guild = await get_guild(ctx, None)
 
         Character_Model = await get_D4e_Character(name, ctx, guild=guild, engine=engine)
-        condition_dict = {}
-        for con in await Character_Model.conditions():
-            await asyncio.sleep(0)
-            print(con)
-            condition_dict[con.title] = con.number
-        print("GENERATING MODAL")
-        print(condition_dict)
+        # condition_dict = {}
+
+        # for con in await Character_Model.conditions():
+        #     await asyncio.sleep(0)
+        #     print(con)
+        #     condition_dict[con.title] = con.number
+        # print("GENERATING MODAL")
+        # print(condition_dict)
         editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
         print(editModal)
         result = await ctx.send_modal(editModal)
