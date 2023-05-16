@@ -11,6 +11,7 @@ import Base.Character
 from database_models import get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers, opposed_roll
+from utils.utils import relabel_roll
 
 
 class Macro:
@@ -172,7 +173,10 @@ class Macro:
                     ],
                 )
                 return embed
-        dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
+        try:
+            dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
+        except Exception:
+            dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
         roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
         output_string = f"{roll_str}"
 
