@@ -387,8 +387,12 @@ async def roll_dmg_resist(
 
     # Check for bonus damage
     if "bonus" in Character_Model.character_model.attacks[attack]:
+        if crit:
+            crit_mod = "*2"
+        else:
+            crit_mod = ""
         for item in Character_Model.character_model.attacks[attack]["bonus"]:
-            bonus_roll = d20.roll(item["damage"])
+            bonus_roll = d20.roll(f"({item['damage']}){crit_mod}")
             bonus_damage = await damage_calc_resist(bonus_roll.total, item["dmg_type"], Target_Model)
             dmg_output_string = f"{dmg_output_string}+{bonus_roll}"
             total_damage += bonus_damage

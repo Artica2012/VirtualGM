@@ -11,7 +11,7 @@ from discord.ext import commands
 # import initiative
 from error_handling_reporting import ErrorReport
 from utils.parsing import opposed_roll
-from utils.utils import get_guild
+from utils.utils import get_guild, relabel_roll
 
 
 class DiceRollerCog(commands.Cog):
@@ -23,6 +23,7 @@ class DiceRollerCog(commands.Cog):
     @option("secret", choices=["Secret", "Open"])
     @option("dc", description="Number to which dice result will be compared", required=False)
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
+        roll = relabel_roll(roll)
         try:
             # print('Rolling')
             try:

@@ -416,6 +416,35 @@ class EPF_Character(Character):
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
 
+    async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
+        try:
+            original_attk = await self.get_weapon(attack)
+            if "bonus" in original_attk.keys():
+                bonus_list = original_attk["bonus"]
+            else:
+                bonus_list = []
+            bonus_dict = {"damage": bonus_dmg, "dmg_type": dmg_type}
+            bonus_list.append(bonus_dict)
+            original_attk["bonus"] = bonus_list
+
+            attacks = self.character_model.attacks
+            attacks[f"{attack} ({new_name})"] = original_attk
+
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+            Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = char_result.scalars().one()
+                character.attacks = attacks
+                await session.commit()
+            await self.update()
+            return True
+        except Exception as e:
+            logging.warning(f"epf clone_attack {e}")
+            return False
+
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell

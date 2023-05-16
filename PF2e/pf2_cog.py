@@ -8,6 +8,7 @@ import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 import EPF.EPF_GSHEET_Importer
+import database_operations
 import initiative
 import utils.utils
 from EPF.EPF_Character import pb_import, calculate
@@ -189,7 +190,30 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Success")
         else:
             await ctx.send_followup("Failed")
-        # await engine.dispose()
+
+    @pf2.command(description="Clone an attack and add bonus damage (EPF)")
+    @option("character", description="Character to select", autocomplete=character_select_gm)
+    @option("attack", description="Select Attack", autocomplete=attacks)
+    @option("dmg_type", autocomplete=dmg_type)
+    async def clone_attack(
+        self, ctx: discord.ApplicationContext, character, attack, new_name: str, bonus_roll: str, dmg_type
+    ):
+        await ctx.response.defer(ephemeral=True)
+        engine = database_operations.engine
+        response = False
+
+        try:
+            Character_Model = await get_character(character, ctx, engine=engine)
+            response = await Character_Model.clone_attack(attack, new_name, bonus_roll, dmg_type)
+        except Exception as e:
+            await ctx.send_followup("Error cloning attack")
+            logging.info(f"clone attack: {e}")
+            report = ErrorReport(ctx, "Clone attack", f"{e} - {character} {attack}", self.bot)
+            await report.report()
+        if response:
+            await ctx.send_followup("Success")
+        else:
+            await ctx.send_followup("Failed")
 
     @pf2.command(description="Edit Character Resistances")
     @option("character", description="Character to select", autocomplete=character_select_gm)
