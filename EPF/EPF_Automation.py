@@ -121,9 +121,6 @@ class EPF_Automation(Automation):
                 dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         except Exception:
             try:
-                # roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
-                # weapon = await Character_Model.get_weapon(roll)
-
                 dmg_output, total_damage = await roll_dmg_resist(Character_Model, Target_Model, roll, crit, modifier)
                 roll_string = ""
                 for item in dmg_output:
