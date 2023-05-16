@@ -41,11 +41,20 @@ class EPF_Automation(Automation):
 
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
+        if success_string == "Critical Success":
+            color = discord.Color.gold()
+        elif success_string == "Success":
+            color = discord.Color.green()
+        elif success_string == "Failure":
+            color = discord.Color.red()
+        else:
+            color = discord.Color.dark_red()
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
         embed = discord.Embed(
             title=f"{char_model.char_name} vs {opponent.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
+            color=color,
         )
         embed.set_thumbnail(url=char_model.pic)
 
@@ -107,19 +116,34 @@ class EPF_Automation(Automation):
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
+            dmg = roll_result.total
+            if not healing:
+                dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         except Exception:
             try:
-                roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
-                weapon = await Character_Model.get_weapon(roll)
+                # roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
+                # weapon = await Character_Model.get_weapon(roll)
+
+                dmg_output, total_damage = await roll_dmg_resist(Character_Model, Target_Model, roll, crit, modifier)
+                roll_string = ""
+                for item in dmg_output:
+                    roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
+                dmg = total_damage
+                roll_result = roll_string
             except Exception:
                 try:
                     roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
+                    dmg = roll_result.total
+                    if not healing:
+                        dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
                 except Exception:
                     roll_result = d20.roll("0 [Error]")
-        dmg = roll_result.total
-        if not healing:
-            dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-        output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+                    dmg = roll_result.total
+
+        output_string = (
+            f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}"
+        )
 
         embed = discord.Embed(
             title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
@@ -127,7 +151,7 @@ class EPF_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        await Target_Model.change_hp(dmg, healing)
+        await Target_Model.change_hp(dmg, healing, post=False)
         if not multi:
             await Tracker_Model.update_pinned_tracker()
         return embed
@@ -174,7 +198,7 @@ class EPF_Automation(Automation):
 
         if dmg_string is not None:
             dmg_output_string = f"{character} damages {target} for:"
-            print(dmg_string)
+            # print(dmg_string)
             for item in dmg_string:
                 dmg_output_string += f"\n{item['dmg_output_string']} {item['dmg_type'].title()}"
             await Target_Model.change_hp(total_damage, heal=False, post=False)
