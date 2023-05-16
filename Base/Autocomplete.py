@@ -196,27 +196,27 @@ class AutoComplete:
 
     async def attacks(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def stats(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def dmg_types(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def npc_lookup(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def spell_list(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def spell_level(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def init(self, **kwargs):
         # await self.engine.dispose()

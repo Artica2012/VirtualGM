@@ -135,3 +135,15 @@ async def player_check(ctx: discord.ApplicationContext, engine, bot, character: 
         logging.warning(f"player_check: {e}")
         report = ErrorReport(ctx, player_check.__name__, e, bot)
         await report.report()
+
+
+def relabel_roll(roll: str):
+    try:
+        parsed_roll = roll.split(" ", maxsplit=1)
+        if len(parsed_roll) > 1 and parsed_roll[1][0] != "[":
+            output = f"{parsed_roll[0]} [{parsed_roll[1]}]"
+        else:
+            output = roll
+    except Exception:
+        output = roll
+    return output
