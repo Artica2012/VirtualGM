@@ -59,11 +59,22 @@ class PF2_Automation(Automation):
 
         # Format output string
         success_string = PF2_eval_succss(dice_result, goal_result)
+
+        if success_string == "Critical Success":
+            color = discord.Color.gold()
+        elif success_string == "Success":
+            color = discord.Color.green()
+        elif success_string == "Failure":
+            color = discord.Color.red()
+        else:
+            color = discord.Color.dark_red()
+
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
         embed = discord.Embed(
             title=f"{char_model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
+            color=color,
         )
         embed.set_thumbnail(url=char_model.pic)
 
@@ -109,6 +120,16 @@ class PF2_Automation(Automation):
                 return False
 
             success_string = PF2_eval_succss(dice_result, goal_result)
+
+            if success_string == "Critical Success":
+                color = discord.Color.gold()
+            elif success_string == "Success":
+                color = discord.Color.green()
+            elif success_string == "Failure":
+                color = discord.Color.red()
+            else:
+                color = discord.Color.dark_red()
+
             # Format output string
             if character == target:
                 output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
@@ -136,6 +157,7 @@ class PF2_Automation(Automation):
                 else f"{Character_Model.char_name}"
             ),
             fields=[discord.EmbedField(name=save, value=output_string)],
+            color=color,
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
