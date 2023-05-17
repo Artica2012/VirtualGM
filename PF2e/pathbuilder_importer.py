@@ -330,10 +330,10 @@ async def pathbuilder_import(
             await session.commit()
         # await engine.dispose()
         if overwrite:
-            await ctx.send_followup(f"Successfully updated {name}.")
+            return f"Successfully updated {name}."
         else:
-            await ctx.send_followup(f"Successfully imported {name}.")
-        return True
+            return f"Successfully imported {name}."
+
     except Exception as e:
         logging.warning(f"create_macro: {e}")
         report = ErrorReport(ctx, "pathbuilder importer", e, bot)
