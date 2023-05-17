@@ -187,7 +187,7 @@ class EPF_Automation(Automation):
 
         success_string = PF2_eval_succss(dice_result, goal_result)
         attk_output_string = (
-            f"{character} attacks {target} {'' if target_modifier is None else f'(AC {target_modifier})' } with their"
+            f"{character} attacks {target} {'' if target_modifier == '' else f'(AC {target_modifier})' } with their"
             f" {attack}:\n{dice_result}\n{success_string}"
         )
 
