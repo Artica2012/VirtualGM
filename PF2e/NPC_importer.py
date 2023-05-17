@@ -17,7 +17,6 @@ from database_models import (
 )
 
 # define global variables
-from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
 
 # imports
@@ -215,11 +214,11 @@ async def npc_lookup(
             await session.commit()
         print("Committed")
 
-        Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
-        await Tracker_Model.update_pinned_tracker()
-        output_string = f"{data.name} added as {name}"
+        # Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
+        # await Tracker_Model.update_pinned_tracker()
+        # output_string = f"{data.name} added as {name}"
 
-        await ctx.send_followup(output_string)
+        # await ctx.send_followup(output_string)
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)
 
