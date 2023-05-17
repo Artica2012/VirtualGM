@@ -365,6 +365,9 @@ class EPF_Character(Character):
 
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
+        print(f"dmg die. {weapon['die_num']}")
+        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses)
+        print(die_mod)
 
         dmg_mod = 0
         match weapon["stat"]:
@@ -409,16 +412,18 @@ class EPF_Character(Character):
                     parsed_string = item.split("-")
                     die = parsed_string[1]
                     weapon["crit"] = f"*2+{parsed_string[1]}"
-            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
+            return f"({die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
+            return f"{die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
 
     async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
         try:
-            original_attk = await self.get_weapon(attack)
+            attk = await self.get_weapon(attack)
+            original_attk = attk.copy()
+            # print(original_attk)
             if "bonus" in original_attk.keys():
                 bonus_list = original_attk["bonus"]
             else:
@@ -428,7 +433,9 @@ class EPF_Character(Character):
             original_attk["bonus"] = bonus_list
 
             attacks = self.character_model.attacks
+            # print(attacks)
             attacks[f"{attack} ({new_name})"] = original_attk
+            # print(attacks)
 
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
