@@ -19,6 +19,7 @@ from auto_complete import (
     auto_macro_select,
     a_save_target_custom_multi,
     character_select_multi,
+    dmg_type,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -205,6 +206,7 @@ class AutomationCog(commands.Cog):
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
     @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
+    @option("damage_type_override", description="Override the base damage type", autocomplete=dmg_type, required=False)
     async def auto(
         self,
         ctx: discord.ApplicationContext,
@@ -214,6 +216,7 @@ class AutomationCog(commands.Cog):
         attack_modifer: str = "",
         target_modifier: str = "",
         damage_modifier: str = "",
+        damage_type_override: str = None,
     ):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -234,6 +237,7 @@ class AutomationCog(commands.Cog):
                                 attack_modifer,
                                 target_modifier,
                                 damage_modifier,
+                                damage_type_override,
                                 multi=True,
                             )
                         )
@@ -246,7 +250,14 @@ class AutomationCog(commands.Cog):
             else:
                 embeds.append(
                     await Automation.auto(
-                        self.bot, character, target, attack, attack_modifer, target_modifier, damage_modifier
+                        self.bot,
+                        character,
+                        target,
+                        attack,
+                        attack_modifer,
+                        target_modifier,
+                        damage_modifier,
+                        damage_type_override,
                     )
                 )
             await ctx.send_followup(embeds=embeds)
@@ -266,6 +277,7 @@ class AutomationCog(commands.Cog):
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
     @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
+    @option("damage_type_override", description="Override the base damage type", autocomplete=dmg_type, required=False)
     async def cast(
         self,
         ctx: discord.ApplicationContext,
@@ -276,6 +288,7 @@ class AutomationCog(commands.Cog):
         attack_modifer: str = "",
         target_modifier: str = "",
         damage_modifier: str = "",
+        damage_type_override: str = None,
     ):
         logging.info("attack_cog cast")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -297,6 +310,7 @@ class AutomationCog(commands.Cog):
                                 attack_modifer,
                                 target_modifier,
                                 damage_modifier,
+                                damage_type_override,
                                 multi=True,
                             )
                         )
@@ -309,7 +323,15 @@ class AutomationCog(commands.Cog):
             else:
                 embeds.append(
                     await Automation.cast(
-                        self.bot, character, target, spell, level, attack_modifer, target_modifier, damage_modifier
+                        self.bot,
+                        character,
+                        target,
+                        spell,
+                        level,
+                        attack_modifer,
+                        target_modifier,
+                        damage_modifier,
+                        damage_type_override,
                     )
                 )
             await ctx.send_followup(embeds=embeds)
