@@ -80,6 +80,16 @@ class EPF_Automation(Automation):
             return False
         try:
             success_string = PF2_eval_succss(dice_result, goal_result)
+
+            if success_string == "Critical Success":
+                color = discord.Color.gold()
+            elif success_string == "Success":
+                color = discord.Color.green()
+            elif success_string == "Failure":
+                color = discord.Color.red()
+            else:
+                color = discord.Color.dark_red()
+
             # Format output string
             if character == target:
                 output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
@@ -98,6 +108,7 @@ class EPF_Automation(Automation):
         embed = discord.Embed(
             title=f"{attacker.char_name} vs {opponent.char_name}" if character != target else f"{attacker.char_name}",
             fields=[discord.EmbedField(name=save, value=output_string)],
+            color=color,
         )
         embed.set_thumbnail(url=attacker.pic)
 
@@ -121,9 +132,6 @@ class EPF_Automation(Automation):
                 dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         except Exception:
             try:
-                # roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
-                # weapon = await Character_Model.get_weapon(roll)
-
                 dmg_output, total_damage = await roll_dmg_resist(Character_Model, Target_Model, roll, crit, modifier)
                 roll_string = ""
                 for item in dmg_output:
@@ -192,9 +200,12 @@ class EPF_Automation(Automation):
             )
             color = color.green()
         else:
+            if success_string == "Failure":
+                color = color.red()
+            else:
+                color = color.dark_red()
             dmg_string = None
             total_damage = 0
-            color = color.red()
 
         if dmg_string is not None:
             dmg_output_string = f"{character} damages {target} for:"

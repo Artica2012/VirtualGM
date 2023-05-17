@@ -141,6 +141,7 @@ class AutomationCog(commands.Cog):
     @option("modifier", description="Roll Modifier", default="", type=str)
     @option("healing", description="Apply as Healing?", default=False, type=bool)
     @option("damage_type", description="Damage Type", autocomplete=var_dmg_type, required=False)
+    @option("crit", description="Critical Hit", choices=[True, False])
     async def damage(
         self,
         ctx: discord.ApplicationContext,
@@ -150,6 +151,7 @@ class AutomationCog(commands.Cog):
         modifier: str = "",
         healing: bool = False,
         damage_type: str = "",
+        crit: bool = False,
     ):
         logging.info("attack_cog damage")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -171,6 +173,7 @@ class AutomationCog(commands.Cog):
                                 healing,
                                 damage_type,
                                 multi=True,
+                                crit=crit,
                             )
                         )
                     except Exception:
@@ -184,7 +187,9 @@ class AutomationCog(commands.Cog):
 
             else:
                 embeds.append(
-                    await Automation.damage(self.bot, character, target, user_roll_str, modifier, healing, damage_type)
+                    await Automation.damage(
+                        self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
+                    )
                 )
             await ctx.send_followup(embeds=embeds)
         except Exception as e:
