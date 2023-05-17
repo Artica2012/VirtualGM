@@ -22,7 +22,7 @@ class Automation:
     async def save(self, character, target, save, dc, modifier):
         return "Save Function not set up for current system."
 
-    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, multi=False):
+    async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
@@ -39,7 +39,10 @@ class Automation:
                         select(Macro.macro).where(Macro.character_id == Character_Model.id).where(Macro.name == roll)
                     )
                     macro_roll = result.scalars().one()
-                roll_result = d20.roll(f"({macro_roll}){ParseModifiers(modifier)}")
+                if crit:
+                    roll_result = d20.roll(f"(({macro_roll}){ParseModifiers(modifier)})*2")
+                else:
+                    roll_result = d20.roll(f"({macro_roll}){ParseModifiers(modifier)}")
                 output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
             except Exception:  # Error handling in case that a non-macro string in input
                 roll_result = d20.roll(0)
