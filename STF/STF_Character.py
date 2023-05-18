@@ -268,7 +268,7 @@ class STF_Character(Character):
             return f"1d20+{self.acrobatics_mod}"
         elif item == "Athletics":
             return f"1d20+{self.athletics_mod}"
-        elif item == "BLuff":
+        elif item == "Bluff":
             return f"1d20+{self.bluff_mod}"
         elif item == "Computers":
             return f"1d20+{self.computers_mod}"
