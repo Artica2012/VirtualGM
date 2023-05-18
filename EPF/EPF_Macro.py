@@ -31,16 +31,22 @@ class EPF_Macro(Macro):
         logging.info("EPF roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
+        print(dice_result)
         if dice_result == 0:
             embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
         else:
-            roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-            output_string = f"{roll_str[0]}"
+            if dc != 0:
+                roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+                output_string = f"{roll_str[0]}"
+                color = roll_str[1]
+            else:
+                output_string = str(dice_result)
+                color = discord.Color.dark_grey()
 
             embed = discord.Embed(
                 title=Character_Model.char_name,
                 fields=[discord.EmbedField(name=macro_name, value=output_string)],
-                color=roll_str[1],
+                color=color,
             )
             embed.set_thumbnail(url=Character_Model.pic)
 

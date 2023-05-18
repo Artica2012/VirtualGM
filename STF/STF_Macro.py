@@ -8,7 +8,6 @@ import STF.STF_Character
 from Base.Macro import Macro
 from STF.STF_Character import get_STF_Character
 from utils.Char_Getter import get_character
-from utils.parsing import opposed_roll
 
 
 class STF_Macro(Macro):
@@ -22,12 +21,18 @@ class STF_Macro(Macro):
         if dice_result == 0:
             embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
         else:
-            roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-            output_string = f"{roll_str}"
+            if dc:
+                roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+                output_string = f"{roll_str[0]}"
+                color = roll_str[1]
+            else:
+                output_string = str(dice_result)
+                color = discord.Color.dark_grey()
 
             embed = discord.Embed(
                 title=Character_Model.char_name,
                 fields=[discord.EmbedField(name=macro_name, value=output_string)],
+                color=color,
             )
             embed.set_thumbnail(url=Character_Model.pic)
 
