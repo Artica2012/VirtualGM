@@ -191,14 +191,18 @@ class Macro:
             dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
         except Exception:
             dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
-        roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-
-        output_string = f"{roll_str[0]}"
+        if dc:
+            roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+            output_string = f"{roll_str[0]}"
+            color = roll_str[1]
+        else:
+            output_string = str(dice_result)
+            color = discord.Color.dark_grey()
 
         embed = discord.Embed(
             title=Character_Model.char_name,
             fields=[discord.EmbedField(name=macro_name, value=output_string)],
-            color=roll_str[1],
+            color=color,
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
