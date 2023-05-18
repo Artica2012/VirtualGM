@@ -4,14 +4,13 @@
 # imports
 import asyncio
 import logging
-import warnings
 
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from sqlalchemy import exc, true, false
 from sqlalchemy import select
+from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -37,8 +36,6 @@ from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import gm_check, get_guild
 
-# warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-
 
 #############################################################################
 #############################################################################
@@ -48,41 +45,12 @@ class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.lock = asyncio.Lock()
-        self.update_status.start()
-        # self.check_latency.start()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
-    # @tasks.loop(seconds=30)
-    # async def check_latency(self):
-    #     logging.info(f"{self.bot.latency}: {datetime.datetime.now()}")
-
-    # Update the bot's status periodically
-    @tasks.loop(minutes=1)
-    async def update_status(self):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            async with async_session() as session:
-                guild = await session.execute(select(Global))
-                result = guild.scalars().all()
-                count = len(result)
-            async with self.lock:
-                await self.bot.change_presence(
-                    activity=discord.Game(name=f"ttRPGs in {count} tables across the digital universe.")
-                )
-        except Exception as e:
-            logging.error(f"Initiative Cog = Update Status: {e}")
-        # await engine.dispose()
-
-    # Don't start the loop unti the bot is ready
-    @update_status.before_loop
-    async def before_update_status(self):
-        await self.bot.wait_until_ready()
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -107,8 +75,9 @@ class InitiativeCog(commands.Cog):
     )
     @option("name", description="Character Name", input_type=str)
     @option("hp", description="Total HP", input_type=int)
-    @option("player", choices=["player", "npc"], input_type=str)
+    @option("player", description="Player or NPC", choices=["player", "npc"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=True, input_type=str)
+    @option("image", description="Link to character portrait.")
     async def add(
         self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str, image: str = None
     ):
@@ -120,8 +89,8 @@ class InitiativeCog(commands.Cog):
         elif player == "npc":
             player_bool = False
 
+        Utilities = await get_utilities(ctx, engine=engine)
         try:
-            Utilities = await get_utilities(ctx, engine=engine)
             response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative, image=image)
         except Exception as e:
             logging.warning(f"char add {e}")
@@ -129,6 +98,7 @@ class InitiativeCog(commands.Cog):
             await report.report()
 
         if response:
+            Character_Model = get_character(name, ctx, engine=engine)
             await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
@@ -136,7 +106,6 @@ class InitiativeCog(commands.Cog):
                 await Utilities.add_to_vault(name)
         else:
             await ctx.respond("Error Adding Character", ephemeral=True)
-        # await engine.dispose()
 
     @char.command(description="Edit PC on NPC")
     @option(
@@ -148,6 +117,7 @@ class InitiativeCog(commands.Cog):
     @option("hp", description="Total HP", input_type=int, required=False)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     @option("active", description="Active State", required=False, input_type=bool)
+    @option("image", description="Link to character portrait.")
     async def edit(
         self,
         ctx: discord.ApplicationContext,
@@ -178,7 +148,6 @@ class InitiativeCog(commands.Cog):
                 await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
-        # await engine.dispose()
 
     @char.command(description="Duplicate Character")
     @option(
@@ -192,9 +161,9 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         response = False
-        Utilites = await get_utilities(ctx, engine=engine)
+        Utilities = await get_utilities(ctx, engine=engine)
         try:
-            response = await Utilites.copy_character(name, new_name)
+            response = await Utilities.copy_character(name, new_name)
         except Exception as e:
             logging.warning(f"char copy {e}")
             report = ErrorReport(ctx, "/char copy", e, self.bot)
@@ -205,7 +174,7 @@ class InitiativeCog(commands.Cog):
             await Tracker_Model.update_pinned_tracker()
             Copy_Model = await get_character(new_name, ctx, engine=engine)
             if Copy_Model.player:
-                await Utilites.add_to_vault(new_name)
+                await Utilities.add_to_vault(new_name)
         else:
             await ctx.send_followup("Error Copying Character", ephemeral=True)
 
