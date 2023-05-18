@@ -100,6 +100,14 @@ async def epf_g_sheet_import(
                 except Exception:
                     initiative_num = 0
 
+        if "lore" in character.keys():
+            print("lore")
+            lore = character["lore"]
+            print(lore)
+        else:
+            print("not lore")
+            lore = ""
+
         if overwrite:
             async with async_session() as session:
                 query = await session.execute(
@@ -158,6 +166,7 @@ async def epf_g_sheet_import(
                 character_data.feats = character["feats"]
                 character_data.spells = spells
                 character_data.attacks = attacks
+                character_data.lores = lore
                 if image is not None:
                     character.pic = image
 
@@ -218,7 +227,7 @@ async def epf_g_sheet_import(
                         stealth_prof=character["stealth"],
                         survival_prof=character["survival"],
                         thievery_prof=character["thievery"],
-                        lores="",
+                        lores=lore,
                         feats=character["feats"],
                         key_ability=character["key_ability"],
                         attacks=attacks,
@@ -322,6 +331,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "primal": Interpreter[df.e[22]],
         "eidolon": False,
         "partner": None,
+        "lore": "",
     }
     character["class_prof"] = (
         int(character["class_dc"])
@@ -336,6 +346,14 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     attacks = {}
     items = []
     resistances = {"resist": {}, "weak": {}, "immune": {}}
+
+    lore = ""
+    for i in range(26, 30):
+        print(df.d[i])
+        if type(df.e[i]) == str and type(df.d[i]) == str:
+            string = f"{df.d[i]}, {Interpreter[df.e[i]]}; "
+            lore += string
+    character["lore"] = lore
 
     for i in range(31, (len(df.a) - 1)):
         name = df.a[i]

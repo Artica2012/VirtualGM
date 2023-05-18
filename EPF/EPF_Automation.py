@@ -132,7 +132,9 @@ class EPF_Automation(Automation):
                 dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         except Exception:
             try:
-                dmg_output, total_damage = await roll_dmg_resist(Character_Model, Target_Model, roll, crit, modifier)
+                dmg_output, total_damage = await roll_dmg_resist(
+                    Character_Model, Target_Model, roll, crit, modifier, dmg_type_override=damage_type
+                )
                 roll_string = ""
                 for item in dmg_output:
                     roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
@@ -148,9 +150,11 @@ class EPF_Automation(Automation):
                     roll_result = d20.roll("0 [Error]")
                     dmg = roll_result.total
 
+        await Target_Model.change_hp(dmg, healing, post=False)
         output_string = (
             f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
-            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}"
+            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
+            f"{await Target_Model.calculate_hp()}"
         )
 
         embed = discord.Embed(
@@ -159,12 +163,22 @@ class EPF_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        await Target_Model.change_hp(dmg, healing, post=False)
         if not multi:
             await Tracker_Model.update_pinned_tracker()
         return embed
 
-    async def auto(self, bot, character, target, attack, attack_modifier, target_modifier, dmg_modifier, multi=False):
+    async def auto(
+        self,
+        bot,
+        character,
+        target,
+        attack,
+        attack_modifier,
+        target_modifier,
+        dmg_modifier,
+        dmg_type_override,
+        multi=False,
+    ):
         logging.info("/a auto")
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -194,12 +208,22 @@ class EPF_Automation(Automation):
         # Damage
         if success_string == "Critical Success":
             dmg_string, total_damage = await roll_dmg_resist(
-                Character_Model, Target_Model, attack, True, flat_bonus=dmg_modifier
+                Character_Model,
+                Target_Model,
+                attack,
+                True,
+                flat_bonus=dmg_modifier,
+                dmg_type_override=dmg_type_override,
             )
             color = color.gold()
         elif success_string == "Success":
             dmg_string, total_damage = await roll_dmg_resist(
-                Character_Model, Target_Model, attack, False, flat_bonus=dmg_modifier
+                Character_Model,
+                Target_Model,
+                attack,
+                False,
+                flat_bonus=dmg_modifier,
+                dmg_type_override=dmg_type_override,
             )
             color = color.green()
         else:
@@ -241,7 +265,17 @@ class EPF_Automation(Automation):
         return embed
 
     async def cast(
-        self, bot, character, target, spell_name, level, attack_modifier, target_modifier, dmg_modifier, multi=False
+        self,
+        bot,
+        character,
+        target,
+        spell_name,
+        level,
+        attack_modifier,
+        target_modifier,
+        dmg_modifier,
+        dmg_type_override,
+        multi=False,
     ):
         logging.info("/a cast")
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
@@ -263,12 +297,24 @@ class EPF_Automation(Automation):
 
             if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
                 dmg_string, total_damage = await roll_spell_dmg_resist(
-                    Character_Model, Target_Model, spell_name, level, True, flat_bonus=dmg_modifier
+                    Character_Model,
+                    Target_Model,
+                    spell_name,
+                    level,
+                    True,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
                 )
                 color = color.gold()
             elif success_string == "Success":
                 dmg_string, total_damage = await roll_spell_dmg_resist(
-                    Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
+                    Character_Model,
+                    Target_Model,
+                    spell_name,
+                    level,
+                    False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
                 )
                 color = color.green()
             else:
@@ -289,17 +335,35 @@ class EPF_Automation(Automation):
             )
             if success_string == "Critical Failure":
                 dmg_string, total_damage = await roll_spell_dmg_resist(
-                    Character_Model, Target_Model, spell_name, level, True, flat_bonus=dmg_modifier
+                    Character_Model,
+                    Target_Model,
+                    spell_name,
+                    level,
+                    True,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
                 )
                 color = color.gold()
             elif success_string == "Failure":
                 dmg_string, total_damage = await roll_spell_dmg_resist(
-                    Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
+                    Character_Model,
+                    Target_Model,
+                    spell_name,
+                    level,
+                    False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
                 )
                 color = color.green()
             elif success_string == "Success":
                 dmg_string, orig_total_damage = await roll_spell_dmg_resist(
-                    Character_Model, Target_Model, spell_name, level, False, flat_bonus=dmg_modifier
+                    Character_Model,
+                    Target_Model,
+                    spell_name,
+                    level,
+                    False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
                 )
                 for key in dmg_string.keys():
                     dmg_string[key]["damage_string"] = f"{dmg_string[key]['damage_string']}/2"
@@ -404,6 +468,7 @@ async def roll_dmg_resist(
     attack: str,
     crit: bool,
     flat_bonus="",
+    dmg_type_override=None,
 ):
     """
     Rolls damage and calculates resists
@@ -418,9 +483,15 @@ async def roll_dmg_resist(
     # Roll the critical damage and apply resistances
     damage_roll = d20.roll(await Character_Model.weapon_dmg(attack, crit=crit, flat_bonus=flat_bonus))
     weapon = await Character_Model.get_weapon(attack)
-    total_damage = await damage_calc_resist(damage_roll.total, weapon["dmg_type"], Target_Model, weapon=weapon)
+    if dmg_type_override == "":
+        dmg_type_override = None
+    if dmg_type_override is not None:
+        base_dmg_type = dmg_type_override
+    else:
+        base_dmg_type = weapon["dmg_type"]
+    total_damage = await damage_calc_resist(damage_roll.total, base_dmg_type, Target_Model, weapon=weapon)
     dmg_output_string = f"{damage_roll}"
-    output = {"dmg_output_string": dmg_output_string, "dmg_type": weapon["dmg_type"]}
+    output = {"dmg_output_string": dmg_output_string, "dmg_type": base_dmg_type}
     dmg_output.append(output)
 
     # Check for bonus damage
@@ -447,6 +518,7 @@ async def roll_spell_dmg_resist(
     level: int,
     crit: bool,
     flat_bonus="",
+    dmg_type_override=None,
 ):
     """
     Rolls damage and calculates resists
@@ -463,18 +535,28 @@ async def roll_spell_dmg_resist(
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
         print(spell_dmg)
         for key in spell_dmg.keys():
+            if dmg_type_override is not None:
+                dmg_type = dmg_type_override
+            else:
+                dmg_type = spell_dmg[key]["dmg_type"]
+
             dmg_rolls[key] = {}
             dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
             dmg_rolls[key]["damage_roll"] = d20.roll(f"({dmg_rolls[key]['damage_string']})*2")
-            dmg_rolls[key]["damage_type"] = spell_dmg[key]["dmg_type"]
+            dmg_rolls[key]["damage_type"] = dmg_type
     else:
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
 
         for key in spell_dmg.keys():
+            if dmg_type_override is not None:
+                dmg_type = dmg_type_override
+            else:
+                dmg_type = spell_dmg[key]["dmg_type"]
+
             dmg_rolls[key] = {}
             dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
             dmg_rolls[key]["damage_roll"] = d20.roll(f"{dmg_rolls[key]['damage_string']}")
-            dmg_rolls[key]["damage_type"] = spell_dmg[key]["dmg_type"]
+            dmg_rolls[key]["damage_type"] = dmg_type
 
     total_damage = 0
     for key in spell_dmg.keys():
