@@ -56,7 +56,6 @@ class OptionsCog(commands.Cog):
         system: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
         try:
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
@@ -90,11 +89,9 @@ class OptionsCog(commands.Cog):
             await ctx.send_followup("Server Setup Failed", ephemeral=True)
             report = ErrorReport(ctx, "start", e, self.bot)
             await report.report()
-        # await engine.dispose()
 
     @setup.command(
         description="Administrative Commands",
-        # guild_ids=[GUILD]
     )
     @discord.default_permissions(manage_messages=True)
     @option("mode", choices=["transfer gm", "reset trackers", "delete tracker"])
@@ -107,7 +104,6 @@ class OptionsCog(commands.Cog):
         gm: discord.User = discord.ApplicationContext.user,
         delete: str = "",
     ):
-        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if not await gm_check(ctx, engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)

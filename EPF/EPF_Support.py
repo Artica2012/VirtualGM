@@ -1,5 +1,6 @@
 import logging
 
+import discord
 import sqlalchemy as db
 from sqlalchemy import ForeignKey
 
@@ -171,6 +172,7 @@ EPF_Conditions = {
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
     "Stupefied": "itl -X s, wis -X s, cha -X s",
     "Unconscious": "ac -4 s, perception -4 s, reflex -4 s",
+    "Magic Weapon": "dmg_die +1 s, attk +1 s",
     "Shield Raised +1": "ac +1 c",
     "Shield Raised +2": "ac +2 c",
     "Shield Raised +3": "ac +3 c",
@@ -281,3 +283,14 @@ EPF_SKills_NO_SAVE = [
 ]
 
 EPF_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
+
+
+def EPF_Success_colors(success_string):
+    if success_string == "Critical Success":
+        return discord.Color.gold()
+    elif success_string == "Success":
+        return discord.Color.green()
+    elif success_string == "Failure":
+        return discord.Color.red()
+    else:
+        return discord.Color.dark_red()

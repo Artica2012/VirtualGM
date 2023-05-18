@@ -27,19 +27,30 @@ class Update_and_Maintenance_Cog(commands.Cog):
         self.bot = bot
         self.lock = asyncio.Lock()
         self.garbage_collect.start()
+        self.update_status.start()
         # self.resource_monitor.start()
 
-    # @tasks.loop(seconds=30)
-    # async def resource_monitor(self):
-    #     mem_usage = tracemalloc.get_traced_memory()
-    #     print(f"Memory Usage:\n Current: {mem_usage[0]/(1024*1024)}, Max: {mem_usage[1]/(1024*1024)}")
+    # Update the bot's status periodically
+    @tasks.loop(minutes=1)
+    async def update_status(self):
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        try:
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                guild = await session.execute(select(Global))
+                result = guild.scalars().all()
+                count = len(result)
+            async with self.lock:
+                await self.bot.change_presence(
+                    activity=discord.Game(name=f"ttRPGs in {count} tables across the digital universe.")
+                )
+        except Exception as e:
+            logging.error(f"Initiative Cog = Update Status: {e}")
 
-    #
-    #     snapshot = tracemalloc.take_snapshot()
-    #     top_stats = snapshot.statistics('lineno')
-    #     print("[ Top 10 ]")
-    #     for stat in top_stats[:10]:
-    #         print(stat)
+    # Don't start the loop unti the bot is ready
+    @update_status.before_loop
+    async def before_update_status(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(minutes=30)
     async def garbage_collect(self):

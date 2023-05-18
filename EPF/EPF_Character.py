@@ -195,9 +195,9 @@ class EPF_Character(Character):
         self.divine_mod = self.character_model.divine_mod
         self.occult_mod = self.character_model.occult_mod
         self.primal_mod = self.character_model.primal_mod
-
         self.ac_total = self.character_model.ac_total
         self.resistance = self.character_model.resistance
+        self.pic = self.character_model.pic if self.character_model.pic is not None else default_pic
 
     async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
@@ -280,16 +280,12 @@ class EPF_Character(Character):
                     )
 
         else:
-            # print("Not a check")
             try:
-                # print(f"{item} - attk")
                 return await self.weapon_attack(item)
             except KeyError:
                 pass
 
             for attack in self.character_model.spells:
-                # print(f"{item} - spell")
-                # print(attack["name"])
                 if attack["name"] in item:
                     stat_mod = 0
                     match attack["ability"]:  # noqa
@@ -313,11 +309,7 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
-        # print(weapon)
-        # print(item)
-        # print(weapon["display"])
         attk_stat = self.str_mod
-        # print(f"Saved attack stat: {weapon['attk_stat']}")
         match weapon["attk_stat"]:
             case "dex":
                 attk_stat = self.dex_mod
@@ -344,10 +336,7 @@ class EPF_Character(Character):
                     proficiency = self.character_model.martial_prof
                 case "advanced":
                     proficiency = self.character_model.advanced_prof
-        # print(f"proficiency: {proficiency}")
-        # print(f"attack stat: {attk_stat}")
-        # print(self.character_model.level)
-        # print(f"potency {weapon['pot']}")
+
         if weapon["prof"] == "NPC":
             attack_mod = attk_stat + self.character_model.level + weapon["pot"]
         elif proficiency > 0:
@@ -356,8 +345,7 @@ class EPF_Character(Character):
             attack_mod = attk_stat
 
         bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses, item_name=item)
-        # bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
-        # print(attack_mod)
+
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
@@ -366,7 +354,7 @@ class EPF_Character(Character):
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
         print(f"dmg die. {weapon['die_num']}")
-        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses)
+        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses, item_name=item)
         print(die_mod)
 
         dmg_mod = 0
@@ -703,61 +691,61 @@ class EPF_Character(Character):
             print(data)
 
         # Write the condition to the table
-        # try:
-        if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
-            # print(f"Writing Condition: {title}")
-            async with session.begin():
-                condition = Condition(
-                    character_id=self.id,
-                    title=title,
-                    number=number,
-                    counter=counter,
-                    auto_increment=auto_decrement,
-                    time=False,
-                    flex=flex,
-                    action=data,
-                    visible=visible,
-                )
-                session.add(condition)
-            await session.commit()
-            if update:
-                await self.update()
-            return True
+        try:
+            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                # print(f"Writing Condition: {title}")
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=number,
+                        counter=counter,
+                        auto_increment=auto_decrement,
+                        time=False,
+                        flex=flex,
+                        action=data,
+                        visible=visible,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
 
-        else:  # If its time based, then calculate the end time, before writing it
-            current_time = await get_time(self.ctx, self.engine)
-            if unit == "Minute":
-                end_time = current_time + datetime.timedelta(minutes=number)
-            elif unit == "Hour":
-                end_time = current_time + datetime.timedelta(hours=number)
-            else:
-                end_time = current_time + datetime.timedelta(days=number)
+            else:  # If its time based, then calculate the end time, before writing it
+                current_time = await get_time(self.ctx, self.engine)
+                if unit == "Minute":
+                    end_time = current_time + datetime.timedelta(minutes=number)
+                elif unit == "Hour":
+                    end_time = current_time + datetime.timedelta(hours=number)
+                else:
+                    end_time = current_time + datetime.timedelta(days=number)
 
-            timestamp = end_time.timestamp()
+                timestamp = end_time.timestamp()
 
-            async with session.begin():
-                condition = Condition(
-                    character_id=self.id,
-                    title=title,
-                    number=timestamp,
-                    counter=counter,
-                    auto_increment=True,
-                    time=True,
-                    action=data,
-                    visible=visible,
-                )
-                session.add(condition)
-            await session.commit()
-            if update:
-                await self.update()
-            return True
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=timestamp,
+                        counter=counter,
+                        auto_increment=True,
+                        time=True,
+                        action=data,
+                        visible=visible,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
 
-        # except NoResultFound:
-        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
-        #     return False
-        # except Exception as e:
-        #     logging.warning(f"set_cc: {e}")
-        #     return False
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"set_cc: {e}")
+            return False
 
     # Delete CC
     async def delete_cc(self, condition):
@@ -899,6 +887,7 @@ class EPF_Character(Character):
                 ],
                 color=discord.Color.dark_gold(),
             )
+            embed.set_thumbnail(url=self.pic)
             # if condition_list != None:
             condition_embed = discord.Embed(
                 title="Conditions",

@@ -43,7 +43,7 @@ class PF2Cog(commands.Cog):
         response = False
         success = discord.Embed(
             title=name.title(),
-            fields=[discord.EmbedField(name="Success", value="Sucessfully Imported")],
+            fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
             color=discord.Color.dark_gold(),
         )
         if pathbuilder_id is None and url is None:
