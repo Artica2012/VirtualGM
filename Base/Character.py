@@ -453,6 +453,7 @@ class Character:
                 ],
                 color=discord.Color.dark_gold(),
             )
+            embed.set_thumbnail(url=self.pic)
             # if condition_list != None:
             condition_embed = discord.Embed(
                 title="Conditions",
@@ -524,7 +525,14 @@ class Character:
                     character.pic = img
 
                 await session.commit()
-                await self.ctx.respond(f"Character {name} edited successfully.", ephemeral=True)
+                await self.update()
+                success = discord.Embed(
+                    title=name.title(),
+                    fields=[discord.EmbedField(name="Success", value="Successfully Updated")],
+                    color=discord.Color.dark_gold(),
+                )
+                success.set_thumbnail(url=self.pic)
+                await self.ctx.respond(embed=success)
                 return True
 
         except NoResultFound:
