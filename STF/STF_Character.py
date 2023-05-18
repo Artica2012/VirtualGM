@@ -160,6 +160,7 @@ class STF_Character(Character):
         self.spells = self.character_model.spells
         self.bonuses = self.character_model.bonuses
         self.resistance = self.character_model.resistance
+        self.pic = self.character_model.pic if self.character_model.pic is not None else default_pic
 
     async def set_stamina(self, amount: int):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
