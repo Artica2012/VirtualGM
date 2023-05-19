@@ -54,6 +54,7 @@ class PF2_Lookup:
             async with session.get(self.endpoints[endpoint], headers=headers, params=params, ssl=False) as response:
                 if response.status is not 200:
                     return []
+                # print(await response.text())
                 data: dict = await response.json()
 
             output_list = []
@@ -269,6 +270,7 @@ class Result:
                 ),
                 discord.EmbedField(name="Usage: ", value=self.data["system"]["usage"]["value"], inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
+                discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -291,7 +293,7 @@ class Result:
         embed.set_footer(text=self.data["system"]["source"]["value"])
         return embed
 
-    async def spell_embed(self):
+    async def generic_embed(self):
         trait_str = ""
         for trait in self.traits:
             trait_str += f"{trait.title()}\n"
@@ -307,7 +309,7 @@ class Result:
         embed.set_footer(text=self.data["system"]["source"]["value"])
         return embed
 
-    async def generic_embed(self):
+    async def spell_embed(self):
         trait_str = ""
         for trait in self.traits:
             trait_str += f"{trait.title()}\n"
@@ -316,19 +318,25 @@ class Result:
         for trad in self.data["system"]["traditions"]["value"]:
             trad_str += f"{trad.title()}\n"
 
+        if self.data["system"]["range"]["value"] != None:
+            spell_range = self.data["system"]["range"]["value"]
+        else:
+            spell_range = "-"
         embed = discord.Embed(
             title=self.name,
             fields=[
                 discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
-                    name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=False
+                    name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=True
                 ),
-                discord.EmbedField(name="Target: ", value=self.data["system"]["target"]["value"].title(), inline=False),
+                discord.EmbedField(name="Target: ", value=self.data["system"]["target"]["value"].title(), inline=True),
+                discord.EmbedField(name="Range: ", value=spell_range, inline=True),
                 discord.EmbedField(
-                    name="Actions: ", value=f"{self.data['system']['time']['value']} actions", inline=False
+                    name="Actions: ", value=f"{self.data['system']['time']['value']} actions", inline=True
                 ),
+                discord.EmbedField(name="Level: ", value=f"{self.data['system']['level']['value']}", inline=True),
                 discord.EmbedField(name="Traditions: ", value=trad_str, inline=False),
-                discord.EmbedField(name="School: ", value=self.data["system"]["school"]["value"], inline=False),
+                discord.EmbedField(name="School: ", value=self.data["system"]["school"]["value"].title(), inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
