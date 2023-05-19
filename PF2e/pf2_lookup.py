@@ -13,6 +13,7 @@ endpoints = [
     "deity",
     "equipment",
     "feat",
+    "heritage",
     "spell",
 ]
 
@@ -37,6 +38,7 @@ class PF2_Lookup:
             "deity": "https://api.pathfinder2.fr/v1/pf2/deity",
             "equipment": "https://api.pathfinder2.fr/v1/pf2/equipment",
             "feat": "https://api.pathfinder2.fr/v1/pf2/feat",
+            "heritage": "https://api.pathfinder2.fr/v1/pf2/heritage",
             "spell": "https://api.pathfinder2.fr/v1/pf2/spell",
         }
 
@@ -50,9 +52,10 @@ class PF2_Lookup:
             params = {"name": query}
             headers = {"Authorization": self.key}
             async with session.get(self.endpoints[endpoint], headers=headers, params=params, ssl=False) as response:
-                print(response.status)
+                if response.status is not 200:
+                    return []
                 data: dict = await response.json()
-                print(await response.text())
+
             output_list = []
             for item in data["results"]:
                 output_list.append(Result(item))
@@ -100,6 +103,16 @@ class Result:
                 return await self.class_embed()
             case "deity":
                 return await self.deity_embed()
+            case "equipment":
+                return await self.equipment_embed()
+            case "weapon":
+                return await self.weapon_embed()
+            case "heritage":
+                return await self.heritage_embed()
+            case "spell":
+                return await self.spell_embed()
+            case _:
+                return await self.generic_embed()
 
     async def action_embed(self):
         trait_str = ""
@@ -194,7 +207,6 @@ class Result:
         for item in self.data["system"]["weapons"]:
             weapons += f"{item.title()}\n"
 
-        print(self.data["system"]["alignment"]["own"])
         embed = discord.Embed(
             title=self.name,
             fields=[
@@ -214,5 +226,113 @@ class Result:
             ],
             color=discord.Color.random(),
         )
+        embed.set_footer(text=self.data["system"]["source"]["value"])
+        return embed
+
+    async def equipment_embed(self):
+        value = ""
+        for key in self.data["system"]["price"]["value"]:
+            value += f"{self.data['system']['price']['value'][key]} {key} "
+
+        embed = discord.Embed(
+            title=self.name,
+            fields=[
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
+                discord.EmbedField(name="Price: ", value=value, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+        embed.set_footer(text=self.data["system"]["source"]["value"])
+        return embed
+
+    async def weapon_embed(self):
+        value = ""
+        for key in self.data["system"]["price"]["value"]:
+            value += f"{self.data['system']['price']['value'][key]} {key} "
+
+        trait_str = ""
+        for trait in self.traits:
+            trait_str += f"{trait.title()}\n"
+
+        embed = discord.Embed(
+            title=self.name,
+            fields=[
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
+                discord.EmbedField(name="Proficiency: ", value=self.data["system"]["category"], inline=False),
+                discord.EmbedField(name="Group: ", value=self.data["system"]["group"].title(), inline=False),
+                discord.EmbedField(
+                    name="Damage: ",
+                    value=f"{self.data['system']['damage']['die']} {self.data['system']['damage']['damageType']}",
+                    inline=False,
+                ),
+                discord.EmbedField(name="Usage: ", value=self.data["system"]["usage"]["value"], inline=False),
+                discord.EmbedField(name="Price: ", value=value, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+        embed.set_footer(text=self.data["system"]["source"]["value"])
+        return embed
+
+    async def heritage_embed(self):
+        trait_str = ""
+        for trait in self.traits:
+            trait_str += f"{trait.title()}\n"
+
+        embed = discord.Embed(
+            title=self.name,
+            fields=[
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+        embed.set_footer(text=self.data["system"]["source"]["value"])
+        return embed
+
+    async def spell_embed(self):
+        trait_str = ""
+        for trait in self.traits:
+            trait_str += f"{trait.title()}\n"
+
+        embed = discord.Embed(
+            title=self.name,
+            fields=[
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+        embed.set_footer(text=self.data["system"]["source"]["value"])
+        return embed
+
+    async def generic_embed(self):
+        trait_str = ""
+        for trait in self.traits:
+            trait_str += f"{trait.title()}\n"
+
+        trad_str = ""
+        for trad in self.data["system"]["traditions"]["value"]:
+            trad_str += f"{trad.title()}\n"
+
+        embed = discord.Embed(
+            title=self.name,
+            fields=[
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(
+                    name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=False
+                ),
+                discord.EmbedField(name="Target: ", value=self.data["system"]["target"]["value"].title(), inline=False),
+                discord.EmbedField(
+                    name="Actions: ", value=f"{self.data['system']['time']['value']} actions", inline=False
+                ),
+                discord.EmbedField(name="Traditions: ", value=trad_str, inline=False),
+                discord.EmbedField(name="School: ", value=self.data["system"]["school"]["value"], inline=False),
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+
         embed.set_footer(text=self.data["system"]["source"]["value"])
         return embed

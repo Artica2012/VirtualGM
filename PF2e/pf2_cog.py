@@ -284,42 +284,32 @@ class PF2Cog(commands.Cog):
     @pf2.command(description="Pathfinder Lookup")
     @option("category", description="category", required=True, choices=endpoints)
     @option("query", description="Lookup")
-    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str):
-        await ctx.response.defer()
+    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str, private: bool = True):
+        await ctx.response.defer(ephemeral=private)
         results = await pf2_lookup_search(category, query)
-        print(len(results))
-        if len(results) > 4:
+        total_results = len(results)
+        if total_results > 4:
             results = results[:4]
 
-        if len(results) == 0:
-            embeds = [
-                discord.Embed(
-                    title=query,
-                    fields=[
-                        discord.EmbedField(name="Category: ", value=category, inline=False),
-                        discord.EmbedField(name="No Results", value="No Results Found.", inline=False),
-                    ],
-                    color=discord.Color.random(),
-                )
-            ]
-            await ctx.send_followup(embeds=embeds)
-        else:
-            embeds = []
-            for item in results:
-                # trait_str = ""
-                # for trait in item.traits:
-                #     trait_str += f"{trait.title()}\n"
-                # this_embed = discord.Embed(
-                #     title=item.name,
-                #     fields=[
-                #         discord.EmbedField(name="Description: ", value=item.description, inline=False),
-                #         discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                #     ],
-                #     color=discord.Color.random(),
-                # )
-                # embeds.append(this_embed)
+        embeds = []
+        header_embed = discord.Embed(
+            title=f"Search Results: {query}",
+            fields=[
+                discord.EmbedField(name="Category: ", value=category, inline=False),
+                discord.EmbedField(name="Results", value=f"Displaying {len(results)} of {total_results}", inline=False),
+            ],
+            color=discord.Color.dark_blue(),
+        )
+        embeds.append(header_embed)
+
+        for item in results:
+            try:
                 embeds.append(await item.get_embed())
-            await ctx.send_followup(embeds=embeds)
+            except Exception as e:
+                logging.info(f"pf2_lookup {query} {category}: {e}")
+                report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
+                await report.report()
+        await ctx.send_followup(embeds=embeds, ephemeral=private)
 
 
 def setup(bot):
