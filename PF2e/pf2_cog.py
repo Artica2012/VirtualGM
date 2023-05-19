@@ -23,6 +23,7 @@ from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
+from PF2e.pf2_lookup import pf2_lookup_search, endpoints
 
 
 class PF2Cog(commands.Cog):
@@ -279,7 +280,36 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup(embeds=await Character.show_resistance())
         else:
             await ctx.send_followup("Failed")
-        # await engine.dispose()
+
+    @pf2.command(description="Pathfinder Lookup")
+    @option("category", description="category", required=True, choices=endpoints)
+    @option("query", description="Lookup")
+    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str, private: bool = True):
+        await ctx.response.defer(ephemeral=private)
+        results = await pf2_lookup_search(category, query)
+        total_results = len(results)
+        if total_results > 4:
+            results = results[:4]
+
+        embeds = []
+        header_embed = discord.Embed(
+            title=f"Search Results: {query}",
+            fields=[
+                discord.EmbedField(name="Category: ", value=category, inline=False),
+                discord.EmbedField(name="Results", value=f"Displaying {len(results)} of {total_results}", inline=False),
+            ],
+            color=discord.Color.dark_blue(),
+        )
+        embeds.append(header_embed)
+
+        for item in results:
+            try:
+                embeds.append(await item.get_embed())
+            except Exception as e:
+                logging.info(f"pf2_lookup {query} {category}: {e}")
+                report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
+                await report.report()
+        await ctx.send_followup(embeds=embeds, ephemeral=private)
 
 
 def setup(bot):
