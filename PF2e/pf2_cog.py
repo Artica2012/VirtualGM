@@ -23,6 +23,7 @@ from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
+from PF2e.pf2_lookup import pf2_lookup_search, endpoints
 
 
 class PF2Cog(commands.Cog):
@@ -279,7 +280,46 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup(embeds=await Character.show_resistance())
         else:
             await ctx.send_followup("Failed")
-        # await engine.dispose()
+
+    @pf2.command(description="Pathfinder Lookup")
+    @option("category", description="category", required=True, choices=endpoints)
+    @option("query", description="Lookup")
+    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str):
+        await ctx.response.defer()
+        results = await pf2_lookup_search(category, query)
+        print(len(results))
+        if len(results) > 4:
+            results = results[:4]
+
+        if len(results) == 0:
+            embeds = [
+                discord.Embed(
+                    title=query,
+                    fields=[
+                        discord.EmbedField(name="Category: ", value=category, inline=False),
+                        discord.EmbedField(name="No Results", value="No Results Found.", inline=False),
+                    ],
+                    color=discord.Color.random(),
+                )
+            ]
+            await ctx.send_followup(embeds=embeds)
+        else:
+            embeds = []
+            for item in results:
+                # trait_str = ""
+                # for trait in item.traits:
+                #     trait_str += f"{trait.title()}\n"
+                # this_embed = discord.Embed(
+                #     title=item.name,
+                #     fields=[
+                #         discord.EmbedField(name="Description: ", value=item.description, inline=False),
+                #         discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                #     ],
+                #     color=discord.Color.random(),
+                # )
+                # embeds.append(this_embed)
+                embeds.append(await item.get_embed())
+            await ctx.send_followup(embeds=embeds)
 
 
 def setup(bot):
