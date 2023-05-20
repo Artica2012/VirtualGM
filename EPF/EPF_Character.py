@@ -57,6 +57,11 @@ PF2_skills = [
     "Thievery",
 ]
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107574256763687012/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_4c0a4013-2c63-4a11-9754-66acba4c7319.png"
+)
+
 
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
 # initialization of the class.
@@ -70,12 +75,8 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+            result = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = result.scalars().one()
-            # if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
-            #     await calculate(ctx, engine, char_name, guild=guild)
-            #     result = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
-            #     character = result.scalars().one()
             return EPF_Character(char_name, ctx, engine, character, guild=guild)
 
     except NoResultFound:
@@ -122,6 +123,7 @@ class EPF_Character(Character):
 
         self.ac_total = character.ac_total
         self.resistance = character.resistance
+        self.pic = character.pic if character.pic is not None else default_pic
 
     async def character(self):
         logging.info("Loading Character")
@@ -193,15 +195,15 @@ class EPF_Character(Character):
         self.divine_mod = self.character_model.divine_mod
         self.occult_mod = self.character_model.occult_mod
         self.primal_mod = self.character_model.primal_mod
-
         self.ac_total = self.character_model.ac_total
         self.resistance = self.character_model.resistance
+        self.pic = self.character_model.pic if self.character_model.pic is not None else default_pic
 
     async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
         if item == "Fortitude" or item == "Fort":
-            print("a")
+            # print("a")
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex":
             # print("b")
@@ -278,16 +280,12 @@ class EPF_Character(Character):
                     )
 
         else:
-            # print("Not a check")
             try:
-                # print(f"{item} - attk")
                 return await self.weapon_attack(item)
             except KeyError:
                 pass
 
             for attack in self.character_model.spells:
-                # print(f"{item} - spell")
-                # print(attack["name"])
                 if attack["name"] in item:
                     stat_mod = 0
                     match attack["ability"]:  # noqa
@@ -311,11 +309,7 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
-        # print(weapon)
-        # print(item)
-        # print(weapon["display"])
         attk_stat = self.str_mod
-        # print(f"Saved attack stat: {weapon['attk_stat']}")
         match weapon["attk_stat"]:
             case "dex":
                 attk_stat = self.dex_mod
@@ -342,10 +336,7 @@ class EPF_Character(Character):
                     proficiency = self.character_model.martial_prof
                 case "advanced":
                     proficiency = self.character_model.advanced_prof
-        # print(f"proficiency: {proficiency}")
-        # print(f"attack stat: {attk_stat}")
-        # print(self.character_model.level)
-        # print(f"potency {weapon['pot']}")
+
         if weapon["prof"] == "NPC":
             attack_mod = attk_stat + self.character_model.level + weapon["pot"]
         elif proficiency > 0:
@@ -354,8 +345,7 @@ class EPF_Character(Character):
             attack_mod = attk_stat
 
         bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses, item_name=item)
-        # bonus_mod = await bonus_calc(bonus_mod, f"{item},attack", self.character_model.bonuses)
-        # print(attack_mod)
+
         return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
@@ -363,6 +353,9 @@ class EPF_Character(Character):
 
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
+        print(f"dmg die. {weapon['die_num']}")
+        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses, item_name=item)
+        print(die_mod)
 
         dmg_mod = 0
         match weapon["stat"]:
@@ -407,12 +400,45 @@ class EPF_Character(Character):
                     parsed_string = item.split("-")
                     die = parsed_string[1]
                     weapon["crit"] = f"*2+{parsed_string[1]}"
-            return f"({weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
+            return f"({die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}){weapon['crit']}"
         else:
-            return f"{weapon['die_num']}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
+            return f"{die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
+
+    async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
+        try:
+            attk = await self.get_weapon(attack)
+            original_attk = attk.copy()
+            # print(original_attk)
+            if "bonus" in original_attk.keys():
+                bonus_list = original_attk["bonus"]
+            else:
+                bonus_list = []
+            bonus_dict = {"damage": bonus_dmg, "dmg_type": dmg_type}
+            bonus_list.append(bonus_dict)
+            original_attk["bonus"] = bonus_list
+
+            attacks = self.character_model.attacks
+            # print(attacks)
+            attacks[f"{attack} ({new_name})"] = original_attk
+            # print(attacks)
+
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+            Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                character = char_result.scalars().one()
+                character.attacks = attacks
+                await session.commit()
+            await self.update()
+            return True
+        except Exception as e:
+            logging.warning(f"epf clone_attack {e}")
+            return False
 
     async def get_spell_mod(self, spell, mod: bool):
         """
@@ -861,6 +887,7 @@ class EPF_Character(Character):
                 ],
                 color=discord.Color.dark_gold(),
             )
+            embed.set_thumbnail(url=self.pic)
             # if condition_list != None:
             condition_embed = discord.Embed(
                 title="Conditions",
@@ -903,7 +930,7 @@ class EPF_Character(Character):
             await self.ctx.respond("Failed")
 
 
-async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
+async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None):
     paramaters = {"id": pb_char_code}
     overwrite = False
 
@@ -1040,6 +1067,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
 
         # Spells
         spells_raw = pb["build"]["spellCasters"]
+        focus_spells = pb["build"]["focus"]
+        print(focus_spells)
         spell_library = {}
         for item in spells_raw:
             for spell_level in item["spells"]:
@@ -1057,6 +1086,97 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                             "heightening": spell_data[1].heightening,
                         }
                         spell_library[spell_name] = spell
+        for key in focus_spells.keys():
+            print(key)
+            try:
+                if type(focus_spells[key]) == dict:
+                    if "wis" in focus_spells[key].keys():
+                        if "focusSpells" in focus_spells[key]["wis"].keys():
+                            discriminator = "focusSpells"
+                        elif "focusCantrips" in focus_spells[key]["wis"].keys():
+                            discriminator = "focusCantrips"
+                        else:
+                            discriminator = None
+                        if discriminator is not None:
+                            for item in focus_spells[key]["wis"]["focusSpells"]:
+                                if "(Amped)" in item:
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    lookup_name = item
+                                spell_data = await spell_lookup(lookup_name)
+                                if spell_data[0] is True:
+                                    spell = {
+                                        "level": 0,
+                                        "tradition": key,
+                                        "ability": "wis",
+                                        "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                        "type": spell_data[1].type,
+                                        "save": spell_data[1].save,
+                                        "damage": spell_data[1].damage,
+                                        "heightening": spell_data[1].heightening,
+                                    }
+                                    spell_library[item] = spell
+                    if "cha" in focus_spells[key].keys():
+                        if "focusSpells" in focus_spells[key]["cha"].keys():
+                            discriminator = "focusSpells"
+                        elif "focusCantrips" in focus_spells[key]["cha"].keys():
+                            discriminator = "focusCantrips"
+                        else:
+                            discriminator = None
+                        if discriminator is not None:
+                            for item in focus_spells[key]["cha"][discriminator]:
+                                print(item)
+                                if "(Amped)" in item:
+                                    print("amped")
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    print("not amped")
+                                    lookup_name = item
+                                print(lookup_name)
+                                spell_data = await spell_lookup(lookup_name)
+                                print(spell_data[0])
+                                if spell_data[0] is True:
+                                    spell = {
+                                        "level": 0,
+                                        "tradition": key,
+                                        "ability": "cha",
+                                        "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                        "type": spell_data[1].type,
+                                        "save": spell_data[1].save,
+                                        "damage": spell_data[1].damage,
+                                        "heightening": spell_data[1].heightening,
+                                    }
+                                    spell_library[item] = spell
+
+                    if "int" in focus_spells[key].keys():
+                        if "focusSpells" in focus_spells[key]["int"].keys():
+                            discriminator = "focusSpells"
+                        elif "focusCantrips" in focus_spells[key]["int"].keys():
+                            discriminator = "focusCantrips"
+                        else:
+                            discriminator = None
+                        if discriminator is not None:
+                            for item in focus_spells[key]["int"]["focusSpells"]:
+                                if "(Amped)" in item:
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    lookup_name = item
+                                spell_data = await spell_lookup(lookup_name)
+                                if spell_data[0] is True:
+                                    spell = {
+                                        "level": 0,
+                                        "tradition": key,
+                                        "ability": "itl",
+                                        "proficiency": focus_spells[key]["int"]["proficiency"],
+                                        "type": spell_data[1].type,
+                                        "save": spell_data[1].save,
+                                        "damage": spell_data[1].damage,
+                                        "heightening": spell_data[1].heightening,
+                                    }
+                                    spell_library[item] = spell
+
+            except Exception as e:
+                pass
 
         if overwrite:
             async with async_session() as session:
@@ -1134,6 +1254,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                 character.feats = feats
                 character.attacks = attacks
                 character.spells = spell_library
+                if image is not None:
+                    character.pic = image
+
                 await session.commit()
 
         else:  # Create a new character
@@ -1224,6 +1347,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None):
                         attacks=attacks,
                         spells=spell_library,
                         resistance={"resist": {}, "weak": {}, "immune": {}},
+                        pic=image,
                     )
                     session.add(new_char)
                 await session.commit()
@@ -1607,10 +1731,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     }
     resistances = {"resist": {}, "weak": {}, "immune": {}}
 
-    # print("!!!!!!!!!!!!!!!!!!!111")
-    # print(len(conditions))
     for condition in conditions:
-        # print(f"{condition.title}, {condition.number}, {condition.action}")
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
@@ -1621,10 +1742,18 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
-                if parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                    # print(True)
-                    # print("Condition")
-                    # print(f"0: {parsed[0]}, 1: {parsed[1]}, 2: {parsed[2]}")
+                # Conditions adding conditions? Crazy
+                print(parsed[0].title())
+                if parsed[0].title() in EPF_Conditions.keys():
+                    print("Condition recognized")
+                    if parsed[0].title() not in await Characte_Model.conditions():
+                        print(f"Parsed: {parsed}")
+                        if len(parsed) > 1:
+                            num = int(parsed[1])
+                        else:
+                            num = 0
+                        await Characte_Model.set_cc(parsed[0].title(), False, num, "Round", False)
+                elif parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
                     if parsed[2][-1] == ";":
                         parsed[2] = parsed[2][:-1]
                     parsed[0] = parsed[0].lower()
@@ -1635,77 +1764,78 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
                             resistances["immune"][parsed[0]] = 1
-                item_name = ""
-                specific_weapon = ""
-
-                print(parsed[0], parsed[0][0])
-                if parsed[0][0] == '"':
-                    print("Opening Quote")
-                    for x, item in enumerate(parsed):
-                        print(x, item)
-                        print(item[-1])
-                        if item[-1] == '"':
-                            item_name = " ".join(parsed[0 : x + 1])
-                            item_name = item_name.strip('"')
-                            parsed = parsed[x + 1 :]
-                            break
-                print(item_name)
-                print(parsed)
-                if item_name != "":
-                    if item_name.title() in await Characte_Model.attack_list():
-                        specific_weapon = f"{item_name},"
-                    else:
-                        parsed = []
-                print(specific_weapon)
-
-                key = f"{specific_weapon}{parsed[0]}".lower()
-                if parsed[1][1:] == "X":
-                    value = int(condition.number)
                 else:
-                    try:
-                        value = int(parsed[1][1:])
-                    except ValueError:
-                        value = int(parsed[1])
+                    item_name = ""
+                    specific_weapon = ""
 
-                if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                    if key in bonuses["status_pos"]:
-                        if value > bonuses["status_pos"][key]:
+                    print(parsed[0], parsed[0][0])
+                    if parsed[0][0] == '"':
+                        print("Opening Quote")
+                        for x, item in enumerate(parsed):
+                            print(x, item)
+                            print(item[-1])
+                            if item[-1] == '"':
+                                item_name = " ".join(parsed[0 : x + 1])
+                                item_name = item_name.strip('"')
+                                parsed = parsed[x + 1 :]
+                                break
+                    print(item_name)
+                    print(parsed)
+                    if item_name != "":
+                        if item_name.title() in await Characte_Model.attack_list():
+                            specific_weapon = f"{item_name},"
+                        else:
+                            parsed = []
+                    print(specific_weapon)
+
+                    key = f"{specific_weapon}{parsed[0]}".lower()
+                    if parsed[1][1:] == "X":
+                        value = int(condition.number)
+                    else:
+                        try:
+                            value = int(parsed[1][1:])
+                        except ValueError:
+                            value = int(parsed[1])
+
+                    if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
+                        if key in bonuses["status_pos"]:
+                            if value > bonuses["status_pos"][key]:
+                                bonuses["status_pos"][key] = value
+                        else:
                             bonuses["status_pos"][key] = value
-                    else:
-                        bonuses["status_pos"][key] = value
-                elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                    if key in bonuses["status_neg"]:
-                        if value > bonuses["status_neg"][key]:
+                    elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
+                        if key in bonuses["status_neg"]:
+                            if value > bonuses["status_neg"][key]:
+                                bonuses["status_neg"][key] = value
+                        else:
                             bonuses["status_neg"][key] = value
-                    else:
-                        bonuses["status_neg"][key] = value
-                        # print(f"{key}: {bonuses['status_neg'][key]}")
-                elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
-                    if key in bonuses["circumstances_pos"]:
-                        if value > bonuses["circumstances_pos"][key]:
+                            # print(f"{key}: {bonuses['status_neg'][key]}")
+                    elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
+                        if key in bonuses["circumstances_pos"]:
+                            if value > bonuses["circumstances_pos"][key]:
+                                bonuses["circumstances_pos"][key] = value
+                        else:
                             bonuses["circumstances_pos"][key] = value
-                    else:
-                        bonuses["circumstances_pos"][key] = value
-                elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
-                    if key in bonuses["circumstances_neg"]:
-                        if value > bonuses["circumstances_neg"][key]:
+                    elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
+                        if key in bonuses["circumstances_neg"]:
+                            if value > bonuses["circumstances_neg"][key]:
+                                bonuses["circumstances_neg"][key] = value
+                        else:
                             bonuses["circumstances_neg"][key] = value
-                    else:
-                        bonuses["circumstances_neg"][key] = value
-                        # print(f"{key}: {bonuses['circumstances_neg'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                    if key in bonuses["item_pos"]:
-                        if value > bonuses["item_pos"][key]:
+                            # print(f"{key}: {bonuses['circumstances_neg'][key]}")
+                    elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
+                        if key in bonuses["item_pos"]:
+                            if value > bonuses["item_pos"][key]:
+                                bonuses["item_pos"][key] = value
+                        else:
                             bonuses["item_pos"][key] = value
-                    else:
-                        bonuses["item_pos"][key] = value
-                        # print(f"{key}: {bonuses['item_pos'][key]}")
-                elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                    if key in bonuses["item_neg"]:
-                        if value > bonuses["item_neg"][key]:
+                            # print(f"{key}: {bonuses['item_pos'][key]}")
+                    elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
+                        if key in bonuses["item_neg"]:
+                            if value > bonuses["item_neg"][key]:
+                                bonuses["item_neg"][key] = value
+                        else:
                             bonuses["item_neg"][key] = value
-                    else:
-                        bonuses["item_neg"][key] = value
 
             except Exception:
                 pass

@@ -2,30 +2,16 @@
 import logging
 
 import discord
-import d20
-import sqlalchemy as db
-from discord import option, Interaction
-from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
-from dotenv import load_dotenv
-from sqlalchemy import or_, select, false, true
+from discord import Interaction
+from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.ddl import DropTable
 
-import time_keeping_functions
-import ui_components
+from Base.Character import Character
 
 # from utils.Tracker_Getter import get_tracker_model
-from utils.utils import get_guild
-from database_models import Global
-from database_models import get_tracker, get_condition, get_macro
-from database_models import get_tracker_table, get_condition_table, get_macro_table
-from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, check_timekeeper, advance_time, get_time
-from Base.Character import Character
+from database_models import get_tracker, get_condition
 
 # from utils.Char_Getter import get_character
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -34,6 +20,11 @@ from error_handling_reporting import ErrorReport, error_not_initialized
 
 # from utils.Tracker_Getter import get_tracker_model
 from utils.utils import get_guild
+
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107575116046540890/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_6c63c079-7ee7-4188-94b1-435a0879f7e7.png"
+)
 
 
 async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
@@ -46,7 +37,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(tracker).where(tracker.name == char_name))
+            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
         async with async_session() as session:
             result = await session.execute(
@@ -57,13 +48,7 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
             )
             stat_list = result.scalars().all()
             # print(len(stat_list))
-            stats = {
-                "AC": 0,
-                "Fort": 0,
-                "Reflex": 0,
-                "Will": 0,
-                "DC": 0
-            }
+            stats = {"AC": 0, "Fort": 0, "Reflex": 0, "Will": 0, "DC": 0}
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
             # print(stats)
@@ -81,8 +66,9 @@ class PF2_Character(Character):
         self.will = stats["Will"]
         self.dc = stats["DC"]
         super().__init__(char_name, ctx, engine, character, guild)
+        self.pic = character.pic if character.pic is not None else default_pic
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -109,6 +95,8 @@ class PF2_Character(Character):
                     character.active = active
                 if active is not None and self.guild.saved_order != name:
                     character.active = active
+                if img != "":
+                    character.pic = img
 
                 await session.commit()
 

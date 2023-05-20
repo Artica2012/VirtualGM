@@ -7,7 +7,6 @@ from sqlalchemy.orm import sessionmaker
 import EPF.EPF_Character
 from EPF.EPF_Character import get_EPF_Character, delete_intested_items
 from database_models import get_tracker, LookupBase
-from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
@@ -73,7 +72,7 @@ class EPF_NPC(LookupBase):
 
 
 async def epf_npc_lookup(
-    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str
+    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
 ):
     async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
@@ -188,6 +187,7 @@ async def epf_npc_lookup(
                     macros="",
                     attacks=data.attacks,
                     spells=data.spells,
+                    pic=image,
                 )
                 session.add(tracker)
             await session.commit()
@@ -222,11 +222,11 @@ async def epf_npc_lookup(
         await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
         await Charater_Model.update()
-        Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
-        await Tracker_Model.update_pinned_tracker()
-        output_string = f"{data.name} added as {name}"
+        # Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
+        # await Tracker_Model.update_pinned_tracker()
+        # output_string = f"{data.name} added as {name}"
 
-        await ctx.send_followup(output_string)
+        # await ctx.send_followup(output_string)
         return True
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)

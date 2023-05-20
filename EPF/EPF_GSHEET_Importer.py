@@ -38,7 +38,9 @@ Interpreter = {
 }
 
 
-async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None):
+async def epf_g_sheet_import(
+    ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
+):
     try:
         parsed_url = base_url.split("/")
         # print(parsed_url)
@@ -98,6 +100,14 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 except Exception:
                     initiative_num = 0
 
+        if "lore" in character.keys():
+            print("lore")
+            lore = character["lore"]
+            print(lore)
+        else:
+            print("not lore")
+            lore = ""
+
         if overwrite:
             async with async_session() as session:
                 query = await session.execute(
@@ -156,6 +166,9 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 character_data.feats = character["feats"]
                 character_data.spells = spells
                 character_data.attacks = attacks
+                character_data.lores = lore
+                if image is not None:
+                    character.pic = image
 
                 await session.commit()
 
@@ -214,7 +227,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                         stealth_prof=character["stealth"],
                         survival_prof=character["survival"],
                         thievery_prof=character["thievery"],
-                        lores="",
+                        lores=lore,
                         feats=character["feats"],
                         key_ability=character["key_ability"],
                         attacks=attacks,
@@ -222,6 +235,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                         resistance=resistance,
                         eidolon=character["eidolon"],
                         partner=character["partner"],
+                        pic=image,
                     )
                     session.add(new_char)
                 await session.commit()
@@ -317,6 +331,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "primal": Interpreter[df.e[22]],
         "eidolon": False,
         "partner": None,
+        "lore": "",
     }
     character["class_prof"] = (
         int(character["class_dc"])
@@ -331,6 +346,14 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     attacks = {}
     items = []
     resistances = {"resist": {}, "weak": {}, "immune": {}}
+
+    lore = ""
+    for i in range(26, 30):
+        print(df.d[i])
+        if type(df.e[i]) == str and type(df.d[i]) == str:
+            string = f"{df.d[i]}, {Interpreter[df.e[i]]}; "
+            lore += string
+    character["lore"] = lore
 
     for i in range(31, (len(df.a) - 1)):
         name = df.a[i]
@@ -391,8 +414,8 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     parsed_traits = df.f[i + 8].split(",")
                 else:
                     parsed_traits = []
-                if type(df.f[i + 9]) != str:
-                    dmg_type = df.f[1 + 9]
+                if type(df.f[i + 9]) == str:
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
@@ -637,8 +660,8 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                 else:
                     parsed_traits = []
                 print(df.f[i + 9])
-                if type(df.f[i + 9]) != str:
-                    dmg_type = df.f[1 + 9]
+                if type(df.f[i + 9]) == str:
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
@@ -827,22 +850,11 @@ async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_nam
                 else:
                     parsed_traits = []
 
-                if type(df.f[i + 9]) != str:
-                    dmg_type = df.f[1 + 9]
+                if type(df.f[i + 9]) == str:
+                    dmg_type = df.f[i + 9]
                 else:
                     dmg_type = "Bludgeoning"
 
-                # print(
-                #     f"{df.b[i]}\n"
-                #     f"{df.b[i+1]}\n"
-                #     f"{df.b[i + 2]}\n"
-                #     f"{df.b[i + 3]}\n"
-                #     f"{df.b[i + 4]}\n"
-                #     f"{df.b[i + 5]}\n"
-                #     f"{df.b[i + 6]}\n"
-                #     f"{df.b[i + 7]}\n"
-                #     f"{df.b[i + 8]}\n"
-                # )
                 attack_data = {
                     "display_name": df.b[i],
                     "name": df.b[i + 1],
@@ -1016,7 +1028,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 crit = "*2"
                 dmg_stat = "str"
                 # print(df.g[i], type(df.g[i]))
-                if type(df.g[i]) is str:
+                if type(df.g[i]) == str:
                     dmg_type = df.g[i]
                 else:
                     dmg_type = "Bludgeoning"

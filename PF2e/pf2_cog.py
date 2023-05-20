@@ -8,7 +8,9 @@ import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 import EPF.EPF_GSHEET_Importer
+import database_operations
 import initiative
+import utils.utils
 from EPF.EPF_Character import pb_import, calculate
 from EPF.EPF_NPC_Importer import epf_npc_lookup
 from PF2e.NPC_importer import npc_lookup
@@ -21,6 +23,7 @@ from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
+from PF2e.pf2_lookup import pf2_lookup_search, endpoints
 
 
 class PF2Cog(commands.Cog):
@@ -34,11 +37,16 @@ class PF2Cog(commands.Cog):
     @option("pathbuilder_id", description="Pathbuilder Export ID")
     @option("url", description="Public Google Sheet URL")
     async def import_character(
-        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None
+        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None, image: str = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
+        success = discord.Embed(
+            title=name.title(),
+            fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
+            color=discord.Color.dark_gold(),
+        )
         if pathbuilder_id is None and url is None:
             await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
         elif pathbuilder_id is not None:
@@ -47,18 +55,25 @@ class PF2Cog(commands.Cog):
                 Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
 
                 if guild.system == "PF2":
-                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id))
-                    if response:
+                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id), image=image)
+                    if type(response) == str:
+                        success.clear_fields()
+                        success.add_field(name="Success", value=response)
+                        Character_Model = await get_character(name, ctx, engine=engine)
+                        success.set_thumbnail(url=Character_Model.pic)
+                        await ctx.send_followup(embed=success)
                         await Tracker_Model.update_pinned_tracker()
                     else:
                         await ctx.send_followup("Import Failed")
                 elif guild.system == "EPF":
                     logging.info("Beginning PF2-Enhanced import")
-                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild)
+                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild, image=image)
                     logging.info("Imported")
                     if response:
                         await Tracker_Model.update_pinned_tracker()
-                        await ctx.send_followup(f"{name} successfully imported")
+                        Character_Model = await get_character(name, ctx, engine=engine)
+                        success.set_thumbnail(url=Character_Model.pic)
+                        await ctx.send_followup(embed=success)
                         logging.info("Import Successful")
                     else:
                         await ctx.send_followup("Import Failed")
@@ -82,14 +97,15 @@ class PF2Cog(commands.Cog):
             try:
                 guild = await get_guild(ctx, None)
                 if guild.system == "EPF":
-                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url)
+                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
                     Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                     await Tracker_Model.update_pinned_tracker()
-                    # await engine.dispose()
                 else:
                     response = False
                 if response:
-                    await ctx.send_followup(f"{name} successfully imported.")
+                    Character_Model = await get_character(name, ctx, engine=engine)
+                    success.set_thumbnail(url=Character_Model.pic)
+                    await ctx.send_followup(embed=success)
                 else:
                     await ctx.send_followup("Error importing character.")
             except sqlalchemy.exc.NoResultFound:
@@ -113,31 +129,67 @@ class PF2Cog(commands.Cog):
             logging.warning(f"pb_import: {e}")
             # report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
             # await report.report()
-        # await engine.dispose()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)
     @option("elite_weak", choices=["weak", "elite"], required=False)
-    async def add_npc(self, ctx: discord.ApplicationContext, name: str, lookup: str, elite_weak: str):
+    async def add_npc(
+        self,
+        ctx: discord.ApplicationContext,
+        name: str,
+        lookup: str,
+        elite_weak: str,
+        number: int = 1,
+        image: str = None,
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         response = False
-        # try:
-        if guild.system == "PF2":
-            response = await npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-        elif guild.system == "EPF":
-            response = await epf_npc_lookup(ctx, engine, lookup_engine, self.bot, name, lookup, elite_weak)
-        # except Exception as e:
-        #     await ctx.send_followup("Error importing character")
-        #     logging.info(f"pb_import: {e}")
-        #     report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
-        #     await report.report()
+        if number > 26:
+            number = 26
 
+        embeds = []
+        success = discord.Embed(title=name.title(), fields=[], color=discord.Color.dark_gold())
+
+        for x in range(0, number):
+            if number > 1:
+                modifier = f" {utils.utils.NPC_Iterator[x]}"
+            else:
+                modifier = ""
+            try:
+                if guild.system == "PF2":
+                    response = await npc_lookup(
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                    )
+
+                    this_success = success.copy()
+                    this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
+                    Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
+                    # print(Character_Model.pic)
+                    this_success.set_thumbnail(url=Character_Model.pic)
+                    embeds.append(this_success)
+                elif guild.system == "EPF":
+                    response = await epf_npc_lookup(
+                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                    )
+
+                    this_success = success.copy()
+                    this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
+                    Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
+                    this_success.set_thumbnail(url=Character_Model.pic)
+                    embeds.append(this_success)
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
+                await report.report()
+        await ctx.send_followup(embeds=embeds)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        await Tracker_Model.update_pinned_tracker()
         if not response:
             await ctx.send_followup("Import Failed")
-        # await engine.dispose()
 
     @pf2.command(description="Edit Attack")
     @option("character", description="Character to select", autocomplete=character_select_gm)
@@ -172,7 +224,30 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Success")
         else:
             await ctx.send_followup("Failed")
-        # await engine.dispose()
+
+    @pf2.command(description="Clone an attack and add bonus damage (EPF)")
+    @option("character", description="Character to select", autocomplete=character_select_gm)
+    @option("attack", description="Select Attack", autocomplete=attacks)
+    @option("dmg_type", autocomplete=dmg_type)
+    async def clone_attack(
+        self, ctx: discord.ApplicationContext, character, attack, new_name: str, bonus_roll: str, dmg_type
+    ):
+        await ctx.response.defer(ephemeral=True)
+        engine = database_operations.engine
+        response = False
+
+        try:
+            Character_Model = await get_character(character, ctx, engine=engine)
+            response = await Character_Model.clone_attack(attack, new_name, bonus_roll, dmg_type)
+        except Exception as e:
+            await ctx.send_followup("Error cloning attack")
+            logging.info(f"clone attack: {e}")
+            report = ErrorReport(ctx, "Clone attack", f"{e} - {character} {attack}", self.bot)
+            await report.report()
+        if response:
+            await ctx.send_followup("Success")
+        else:
+            await ctx.send_followup("Failed")
 
     @pf2.command(description="Edit Character Resistances")
     @option("character", description="Character to select", autocomplete=character_select_gm)
@@ -205,7 +280,36 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup(embeds=await Character.show_resistance())
         else:
             await ctx.send_followup("Failed")
-        # await engine.dispose()
+
+    @pf2.command(description="Pathfinder Lookup")
+    @option("category", description="category", required=True, choices=endpoints)
+    @option("query", description="Lookup")
+    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str, private: bool = True):
+        await ctx.response.defer(ephemeral=private)
+        results = await pf2_lookup_search(category, query)
+        total_results = len(results)
+        if total_results > 4:
+            results = results[:4]
+
+        embeds = []
+        header_embed = discord.Embed(
+            title=f"Search Results: {query}",
+            fields=[
+                discord.EmbedField(name="Category: ", value=category, inline=False),
+                discord.EmbedField(name="Results", value=f"Displaying {len(results)} of {total_results}", inline=False),
+            ],
+            color=discord.Color.dark_blue(),
+        )
+        embeds.append(header_embed)
+
+        for item in results:
+            try:
+                embeds.append(await item.get_embed())
+            except Exception as e:
+                logging.info(f"pf2_lookup {query} {category}: {e}")
+                report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
+                await report.report()
+        await ctx.send_followup(embeds=embeds, ephemeral=private)
 
 
 def setup(bot):

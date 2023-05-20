@@ -10,7 +10,8 @@ from sqlalchemy.orm import sessionmaker
 import Base.Character
 from database_models import get_macro
 from utils.Char_Getter import get_character
-from utils.parsing import ParseModifiers, opposed_roll
+from utils.parsing import ParseModifiers
+from utils.utils import relabel_roll
 
 
 class Macro:
@@ -18,6 +19,20 @@ class Macro:
         self.ctx = ctx
         self.engine = engine
         self.guild = guild
+
+    def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
+        # print(f"{roll} - {dc}")
+        if roll.total >= dc.total:
+            color = discord.Color.green()
+        else:
+            color = discord.Color.red()
+        return (
+            (
+                f"{':thumbsup:' if roll.total >= dc.total else ':thumbsdown:'}"
+                f" {roll} >= {dc} {'Success' if roll.total >= dc.total else 'Failure'}!"
+            ),
+            color,
+        )
 
     async def create_macro(self, character: str, macro_name: str, macro_string: str):
         logging.info("create_macro")
@@ -156,16 +171,42 @@ class Macro:
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
-            macro_data = macro_list[0]
-            await self.ctx.channel.send(
-                "Error: Duplicate Macros with the Same Name. Rolling one macro, but please ensure that you do not have"
-                " duplicate names."
-            )
-        dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
-        roll_str = opposed_roll(dice_result, d20.roll(f"{dc}")) if dc else dice_result
-        output_string = f"{character}:\n{macro_name.split(':')[0]}\n{roll_str}"
+            try:
+                macro_data = macro_list[0]
+            except Exception:
+                embed = discord.Embed(
+                    title=character,
+                    fields=[
+                        discord.EmbedField(
+                            name=macro_name,
+                            value=(
+                                "Error: Duplicate Macros with the Same Name or invalid macro. Rolling one macro, but"
+                                " please ensure that you do not have duplicate names."
+                            ),
+                        )
+                    ],
+                )
+                return embed
+        try:
+            dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
+        except Exception:
+            dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
+        if dc:
+            roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+            output_string = f"{roll_str[0]}"
+            color = roll_str[1]
+        else:
+            output_string = str(dice_result)
+            color = discord.Color.dark_grey()
 
-        return output_string
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name=macro_name, value=output_string)],
+            color=color,
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
 
     async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
         logging.info(f"get_macro {character}, {macro_name}")

@@ -4,14 +4,13 @@
 # imports
 import asyncio
 import logging
-import warnings
 
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
-from sqlalchemy import exc, true, false
 from sqlalchemy import select
+from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -37,8 +36,6 @@ from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import gm_check, get_guild
 
-# warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-
 
 #############################################################################
 #############################################################################
@@ -48,41 +45,12 @@ class InitiativeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.lock = asyncio.Lock()
-        self.update_status.start()
-        # self.check_latency.start()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
-    # @tasks.loop(seconds=30)
-    # async def check_latency(self):
-    #     logging.info(f"{self.bot.latency}: {datetime.datetime.now()}")
-
-    # Update the bot's status periodically
-    @tasks.loop(minutes=1)
-    async def update_status(self):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-            async with async_session() as session:
-                guild = await session.execute(select(Global))
-                result = guild.scalars().all()
-                count = len(result)
-            async with self.lock:
-                await self.bot.change_presence(
-                    activity=discord.Game(name=f"ttRPGs in {count} tables across the digital universe.")
-                )
-        except Exception as e:
-            logging.error(f"Initiative Cog = Update Status: {e}")
-        # await engine.dispose()
-
-    # Don't start the loop unti the bot is ready
-    @update_status.before_loop
-    async def before_update_status(self):
-        await self.bot.wait_until_ready()
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -107,9 +75,12 @@ class InitiativeCog(commands.Cog):
     )
     @option("name", description="Character Name", input_type=str)
     @option("hp", description="Total HP", input_type=int)
-    @option("player", choices=["player", "npc"], input_type=str)
+    @option("player", description="Player or NPC", choices=["player", "npc"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=True, input_type=str)
-    async def add(self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str):
+    @option("image", description="Link to character portrait.")
+    async def add(
+        self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str, image: str = None
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         player_bool = False
@@ -118,23 +89,29 @@ class InitiativeCog(commands.Cog):
         elif player == "npc":
             player_bool = False
 
+        Utilities = await get_utilities(ctx, engine=engine)
         try:
-            Utilities = await get_utilities(ctx, engine=engine)
-            response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative)
+            response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative, image=image)
         except Exception as e:
             logging.warning(f"char add {e}")
             report = ErrorReport(ctx, "/char add", e, self.bot)
             await report.report()
 
         if response:
-            await ctx.respond(f"Character {name} added successfully.", ephemeral=True)
+            Character_Model = await get_character(name, ctx, engine=engine)
+            success = discord.Embed(
+                title=name.title(),
+                fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
+                color=discord.Color.dark_gold(),
+            )
+            success.set_thumbnail(url=Character_Model.pic)
+            await ctx.respond(embed=success)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:
                 await Utilities.add_to_vault(name)
         else:
             await ctx.respond("Error Adding Character", ephemeral=True)
-        # await engine.dispose()
 
     @char.command(description="Edit PC on NPC")
     @option(
@@ -146,6 +123,7 @@ class InitiativeCog(commands.Cog):
     @option("hp", description="Total HP", input_type=int, required=False)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     @option("active", description="Active State", required=False, input_type=bool)
+    @option("image", description="Link to character portrait.")
     async def edit(
         self,
         ctx: discord.ApplicationContext,
@@ -154,6 +132,7 @@ class InitiativeCog(commands.Cog):
         initiative: str = None,
         active: bool = None,
         player: discord.User = None,
+        image: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
@@ -162,7 +141,7 @@ class InitiativeCog(commands.Cog):
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
-                response = await Character_Model.edit_character(name, hp, initiative, active, player, self.bot)
+                response = await Character_Model.edit_character(name, hp, initiative, active, player, image, self.bot)
             except Exception as e:
                 logging.warning(f"char edit {e}")
                 report = ErrorReport(ctx, "/char edit", e, self.bot)
@@ -175,7 +154,6 @@ class InitiativeCog(commands.Cog):
                 await Tracker_Model.update_pinned_tracker()
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
-        # await engine.dispose()
 
     @char.command(description="Duplicate Character")
     @option(
@@ -189,24 +167,30 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         response = False
-        Utilites = await get_utilities(ctx, engine=engine)
+        Utilities = await get_utilities(ctx, engine=engine)
         try:
-            response = await Utilites.copy_character(name, new_name)
+            response = await Utilities.copy_character(name, new_name)
         except Exception as e:
             logging.warning(f"char copy {e}")
             report = ErrorReport(ctx, "/char copy", e, self.bot)
             await report.report()
         if response:
-            await ctx.send_followup(f"{new_name} Created", ephemeral=True)
+            Character_Model = await get_character(new_name, ctx, engine=engine)
+            success = discord.Embed(
+                title=new_name.title(),
+                fields=[discord.EmbedField(name="Success", value="Successfully Copied")],
+                color=discord.Color.dark_gold(),
+            )
+            success.set_thumbnail(url=Character_Model.pic)
+
+            await ctx.send_followup(embed=success)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
             Copy_Model = await get_character(new_name, ctx, engine=engine)
             if Copy_Model.player:
-                await Utilites.add_to_vault(new_name)
+                await Utilities.add_to_vault(new_name)
         else:
             await ctx.send_followup("Error Copying Character", ephemeral=True)
-
-        # await engine.dispose()
 
     @char.command(description="Delete NPC")
     @option(
@@ -231,7 +215,7 @@ class InitiativeCog(commands.Cog):
                     result = False
                     try:
                         Utilities = await get_utilities(ctx, guild=guild, engine=engine)
-                        result = await Utilities.delete_character(name)
+                        result = await Utilities.delete_character(character=name)
                     except Exception as e:
                         logging.warning(f"char delete {e}")
                         report = ErrorReport(ctx, "/char delete", e, self.bot)
@@ -251,7 +235,6 @@ class InitiativeCog(commands.Cog):
                 await ctx.respond("Failed")
         else:
             await ctx.respond("You do not have the appropriate permissions to delete this character.")
-        # await engine.dispose()
 
     @char.command(description="Display Character Sheet")
     @option(
@@ -275,11 +258,9 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup("Error displaying character sheet. Ensure valid character.")
         else:
             await ctx.send_followup("You do not have the appropriate permissions to view this character.")
-        # await engine.dispose()
 
     @i.command(
         description="Manage Initiative",
-        # guild_ids=[GUILD]
     )
     @discord.default_permissions(manage_messages=True)
     @option("mode", choices=["start", "stop", "delete character"], required=True)
@@ -303,8 +284,6 @@ class InitiativeCog(commands.Cog):
 
                     await ctx.send_followup("Initiative Ended.")
                 elif mode == "delete character":
-                    # print(f"Character {character}")
-                    # print(f"Saved: {guild.saved_order}")
                     if character == guild.saved_order:
                         await ctx.respond(
                             (
@@ -338,8 +317,6 @@ class InitiativeCog(commands.Cog):
             report = ErrorReport(ctx, "/i manage", e, self.bot)
             await report.report()
 
-        # await engine.dispose()
-
     @i.command(
         description="Advance Initiative",
     )
@@ -359,7 +336,6 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/i next: {e}")
             report = ErrorReport(ctx, "slash command /i next", e, self.bot)
             await report.report()
-        # await engine.dispose()
 
     @i.command(
         description="Set Init (Number or XdY+Z)",
@@ -369,7 +345,7 @@ class InitiativeCog(commands.Cog):
         description="Character to select",
         autocomplete=character_select_gm,
     )
-    @option("initiative", autocomplete=initiative)
+    @option("initiative", autocomplete=initiative, description="Initiative")
     async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
@@ -391,11 +367,8 @@ class InitiativeCog(commands.Cog):
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
 
-        # await engine.dispose()
-
     @i.command(
         description="Heal, Damage or add Temp HP",
-        # guild_ids=[GUILD]
     )
     @option("name", description="Character Name", autocomplete=character_select)
     @option("mode", choices=["Damage", "Heal", "Temporary HP"])
@@ -428,17 +401,20 @@ class InitiativeCog(commands.Cog):
             Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
             await Tracker_Object.update_pinned_tracker()
 
-        # await engine.dispose()
-
     @cc.command(
         description="Add conditions and counters",
     )
     @option("character", description="Character to select", autocomplete=character_select_con)
-    @option("title", autocomplete=add_condition_select)
-    @option("type", choices=["Condition", "Counter"])
+    @option("title", description="Name of Condition/Counter", autocomplete=add_condition_select)
+    @option(
+        "type",
+        description="Condition = Always Dispalyed, Counter = Displayed on Turn Only",
+        choices=["Condition", "Counter"],
+    )
     @option("auto", description="Auto Decrement", choices=["Auto Decrement", "Static"])
-    @option("unit", autocomplete=time_check_ac)
-    @option("flex", autocomplete=auto_complete.flex_ac)
+    @option("unit", description="Unit of Time (if applicable)", autocomplete=time_check_ac)
+    @option("flex", description="Function Varies depending on system", autocomplete=auto_complete.flex_ac)
+    @option("data", description="Add functionality to condition (only for systems with a scripting language")
     async def new(
         self,
         ctx: discord.ApplicationContext,
@@ -481,6 +457,7 @@ class InitiativeCog(commands.Cog):
         response = False
 
         success_string = f"Condition {title} added on:"
+        embeds = []
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         if character == "All PCs":
@@ -499,19 +476,37 @@ class InitiativeCog(commands.Cog):
                 model = await get_character(char, ctx, guild=guild, engine=engine)
                 response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
                 if response:
+                    success = discord.Embed(
+                        title=model.char_name.title(),
+                        fields=[
+                            discord.EmbedField(
+                                name="Success", value=f"{title} {number if number != None else ''} added."
+                            )
+                        ],
+                        color=discord.Color.blurple(),
+                    )
+                    success.set_thumbnail(url=model.pic)
+                    embeds.append(success)
                     success_string += f"\n{char}"
 
             except Exception as e:
-                await ctx.channel.send(f"Error /cc placing condition/counter on {char}")
+                failure = discord.Embed(
+                    title=char.title(),
+                    fields=[
+                        discord.EmbedField(
+                            name="Failure", value=f"{title} {number if number != None else ''} not added."
+                        )
+                    ],
+                    color=discord.Color.greyple(),
+                )
+                embeds.append(failure)
                 logging.warning(f"/cc new: {e}")
                 report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
                 await report.report()
 
-        await ctx.send_followup(success_string)
+        await ctx.send_followup(embeds=embeds)
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Object.update_pinned_tracker()
-        # print("Tracker Updated")
-        # await engine.dispose()
 
     @cc.command(
         description="Edit or remove conditions and counters",
@@ -533,7 +528,6 @@ class InitiativeCog(commands.Cog):
                     await ctx.send_followup("Successful Delete", ephemeral=True)
                     await ctx.send(f"{condition} on {character} deleted.")
             elif mode == "edit":
-                # print("editing")
                 if value is not None:
                     result = await Character_Model.edit_cc(condition, value)
                     if result:
@@ -556,7 +550,6 @@ class InitiativeCog(commands.Cog):
             logging.warning(f"/cc modify: {e}")
             report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
             await report.report()
-        # await engine.dispose()
 
 
 def setup(bot):

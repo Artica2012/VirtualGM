@@ -38,6 +38,7 @@ class RED_Character_Model:
             db.Column("net", db.JSON(), nullable=False),
             db.Column("macros", db.JSON()),
             db.Column("bonuses", db.JSON()),
+            db.Column("pic", db.String(), nullable=True),
         )
 
         logging.info("RED_character_model_table")

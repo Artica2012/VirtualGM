@@ -13,12 +13,12 @@ class EPF_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str):
-        await self.ctx.channel.send("Please use `/pf2 pb_import` or `/pf2 add_npc` to add a character")
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
+        await self.ctx.channel.send("Please use `/pf2 import character` or `/pf2 add_npc` to add a character")
         return False
 
     async def copy_character(self, name: str, new_name: str):
-        await self.ctx.channel.send("Please use `/pf2 pb_import` or `/pf2 add_npc` to add a character")
+        await self.ctx.channel.send("Please use `/pf2 import_character` or `/pf2 add_npc` to add a character")
         return False
 
     async def edit_attack(self, character, attack, dmg_stat, attk_stat, crit, dmg, prof):

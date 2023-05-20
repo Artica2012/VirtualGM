@@ -1,10 +1,9 @@
 # imports
-import asyncio
 import logging
 
 import discord
 from discord import Interaction
-from sqlalchemy import select, false, true
+from sqlalchemy import select, false, true, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -15,6 +14,11 @@ from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from utils.utils import get_guild
+
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1028702442927431720/1107574226816352348/"
+    "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_ea9fd7f1-e3a4-43f5-96d4-04b6f933b932.png"
+)
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
@@ -27,7 +31,7 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(tracker).where(tracker.name == char_name))
+            result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
         async with async_session() as session:
             result = await session.execute(
@@ -55,6 +59,7 @@ class D4e_Character(Character):
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
         super().__init__(char_name, ctx, engine, character, guild)
+        self.pic = character.pic if character.pic is not None else default_pic
 
     async def conditions(self, no_time=False, flex=False):
         logging.info("Returning D4e Character Conditions")
@@ -161,7 +166,7 @@ class D4e_Character(Character):
             logging.warning(f"change_hp: {e}")
             return False
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, bot):
+    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -188,6 +193,8 @@ class D4e_Character(Character):
                     character.active = active
                 if active is not None and self.guild.saved_order != name:
                     character.active = active
+                if img != "":
+                    character.pic = img
 
                 await session.commit()
 
@@ -216,13 +223,14 @@ async def edit_stats(ctx, engine, name: str, bot):
         guild = await get_guild(ctx, None)
 
         Character_Model = await get_D4e_Character(name, ctx, guild=guild, engine=engine)
-        condition_dict = {}
-        for con in await Character_Model.conditions():
-            await asyncio.sleep(0)
-            print(con)
-            condition_dict[con.title] = con.number
-        print("GENERATING MODAL")
-        print(condition_dict)
+        # condition_dict = {}
+
+        # for con in await Character_Model.conditions():
+        #     await asyncio.sleep(0)
+        #     print(con)
+        #     condition_dict[con.title] = con.number
+        # print("GENERATING MODAL")
+        # print(condition_dict)
         editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
         print(editModal)
         result = await ctx.send_modal(editModal)

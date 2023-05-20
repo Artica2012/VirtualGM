@@ -46,7 +46,11 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Cyberpunk RED"], required=False)
+    @option(
+        "system",
+        choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Cyberpunk RED", "Starfinder"],
+        required=False,
+    )
     async def start(
         self,
         ctx: discord.ApplicationContext,
@@ -56,7 +60,6 @@ class OptionsCog(commands.Cog):
         system: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         await ctx.response.defer(ephemeral=True)
         try:
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
@@ -76,6 +79,13 @@ class OptionsCog(commands.Cog):
                         "13nJH7xE18fO_SiM-cbCKgq6HbIl3aPIG602rB_nPRik/edit?usp=sharing"
                     )
                     await doc_msg.pin()
+                elif system == "Stafinder":
+                    doc_msg = await ctx.channel.send(
+                        "Starfinder Documentation:\n"
+                        "https://docs.google.com/document/d/"
+                        "1jCm_b6xE4CsRBOFYaYWU8WB1ake9pjucZMlBspcqhnU/edit?usp=sharing"
+                    )
+                    await doc_msg.pin()
 
             else:
                 await ctx.send_followup("Server Setup Failed. Perhaps it has already been set up?", ephemeral=True)
@@ -83,11 +93,9 @@ class OptionsCog(commands.Cog):
             await ctx.send_followup("Server Setup Failed", ephemeral=True)
             report = ErrorReport(ctx, "start", e, self.bot)
             await report.report()
-        # await engine.dispose()
 
     @setup.command(
         description="Administrative Commands",
-        # guild_ids=[GUILD]
     )
     @discord.default_permissions(manage_messages=True)
     @option("mode", choices=["transfer gm", "reset trackers", "delete tracker"])
@@ -100,7 +108,6 @@ class OptionsCog(commands.Cog):
         gm: discord.User = discord.ApplicationContext.user,
         delete: str = "",
     ):
-        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if not await gm_check(ctx, engine):
             await ctx.respond("GM Restricted Command", ephemeral=True)
@@ -207,6 +214,8 @@ class OptionsCog(commands.Cog):
                 system_str = "Enhanced Pathfinder 2e"
             elif guild.system == "RED":
                 system_str = "Cyberpunk RED"
+            elif guild.system == "STF":
+                system_str = "Starfinder"
             else:
                 system_str = "Base"
 
@@ -253,6 +262,8 @@ async def setup_tracker(
         g_system = "EPF"
     elif system == "Cyberpunk RED":
         g_system = "RED"
+    elif system == "Starfinder":
+        g_system = "STF"
     else:
         g_system = None
 

@@ -22,18 +22,23 @@ class AutoComplete:
         else:
             gm = False
 
+        if "multi" in kwargs.keys():
+            multi = kwargs["multi"]
+        else:
+            multi = False
+
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(self.ctx, self.engine)
             async with async_session() as session:
                 if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
-                    print("You are the GM")
+                    # print("You are the GM")
                     char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                 elif not gm:
                     char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                 else:
-                    print("Not the GM")
+                    # print("Not the GM")
                     char_result = await session.execute(
                         select(Tracker.name)
                         .where(Tracker.user == self.ctx.interaction.user.id)
@@ -44,13 +49,15 @@ class AutoComplete:
             # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
+                if multi and val[-1] == ",":
+                    return [f"{val.title()} {option}" for option in character]
                 return [option for option in character if val in option.lower()]
             return character
         except NoResultFound:
             # await self.engine.dispose()
             return []
         except Exception as e:
-            logging.warning(f"character_select: {e}")
+            logging.warning(f"epf character_select: {e}")
             # await self.engine.dispose()
             return []
 
@@ -189,27 +196,27 @@ class AutoComplete:
 
     async def attacks(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def stats(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def dmg_types(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def npc_lookup(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def spell_list(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def spell_level(self, **kwargs):
         # await self.engine.dispose()
-        return []
+        return ["Not Available for this system"]
 
     async def init(self, **kwargs):
         # await self.engine.dispose()

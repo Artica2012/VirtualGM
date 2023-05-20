@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 # environmental variables - if Production - use the token and database of the production model, if Production is False,
 # then its running locally and use the local postgres server and the beta token. This allows one .env and code for both
 # testing and production.
+# import database_operations
+
 print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -54,7 +56,7 @@ bot = discord.Bot(
 @bot.event
 async def on_ready():
     # logging.warning("Updating tables...")
-    # database_operations.update_tracker_table()
+    # await database_operations.update_tracker_table()
     # database_operations.update_con_table()
     # database_operations.create_reminder_table()
     # logging.warning("Tables updated")
@@ -89,6 +91,7 @@ bot.load_extension("PF2e.pf2_cog")
 bot.load_extension("automation_cog")
 bot.load_extension("Update_and__Maintenance_Cog")
 bot.load_extension("reminder_cog")
+bot.load_extension("STF.stf_cog")
 
 # run the bot
 bot.run(TOKEN)
