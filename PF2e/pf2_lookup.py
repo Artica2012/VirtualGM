@@ -83,8 +83,11 @@ class Result:
 
         clean = re.compile("<.*?>")
         clean_2 = re.compile("@.*?]")
+
         sub_string = re.sub(clean, "", text)
         string = re.sub(clean_2, "", sub_string)
+        string = string.replace("{", "**")
+        string = string.replace("}", "**")
         if len(string) > 1000:
             return f"{string[:1000]}..."
         else:
@@ -116,18 +119,19 @@ class Result:
                 return await self.generic_embed()
 
     async def action_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
             fields=[
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
                 discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Type: ", value=self.data["system"]["actionType"]["value"].title(), inline=False
                 ),
-                discord.EmbedField(name="Traits", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -148,15 +152,16 @@ class Result:
         return embed
 
     async def feat_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -252,13 +257,15 @@ class Result:
         for key in self.data["system"]["price"]["value"]:
             value += f"{self.data['system']['price']['value'][key]} {key} "
 
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
             fields=[
+                discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
                 discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
                 discord.EmbedField(name="Proficiency: ", value=self.data["system"]["category"], inline=False),
@@ -270,7 +277,6 @@ class Result:
                 ),
                 discord.EmbedField(name="Usage: ", value=self.data["system"]["usage"]["value"], inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
-                discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -278,15 +284,16 @@ class Result:
         return embed
 
     async def heritage_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -294,15 +301,16 @@ class Result:
         return embed
 
     async def generic_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -310,9 +318,10 @@ class Result:
         return embed
 
     async def spell_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         trad_str = ""
         for trad in self.data["system"]["traditions"]["value"]:
@@ -325,6 +334,7 @@ class Result:
         embed = discord.Embed(
             title=self.name,
             fields=[
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
                 discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=True
@@ -337,7 +347,6 @@ class Result:
                 discord.EmbedField(name="Level: ", value=f"{self.data['system']['level']['value']}", inline=True),
                 discord.EmbedField(name="Traditions: ", value=trad_str, inline=False),
                 discord.EmbedField(name="School: ", value=self.data["system"]["school"]["value"].title(), inline=False),
-                discord.EmbedField(name="Traits", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
