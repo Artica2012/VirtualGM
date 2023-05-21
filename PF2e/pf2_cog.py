@@ -295,6 +295,7 @@ class PF2Cog(commands.Cog):
             paginator = Paginator(pages=await lookup.embed_list(query=query, endpoint=category))
             await paginator.respond(ctx.interaction, ephemeral=private)
         except Exception as e:
+            await ctx.send_followup("Lookup Failed. No Results.", ephemeral=private)
             logging.info(f"pf2_lookup {query} {category}: {e}")
             report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
             await report.report()
