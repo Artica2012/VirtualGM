@@ -2,6 +2,7 @@ import os
 
 import aiohttp
 import discord
+from cache import AsyncTTL
 
 endpoints = [
     "action",
@@ -42,6 +43,7 @@ class PF2_Lookup:
             "spell": "https://api.pathfinder2.fr/v1/pf2/spell",
         }
 
+    @AsyncTTL(time_to_live=3600, maxsize=50)
     async def lookup(self, query, endpoint):
         """
         :param query:
@@ -52,7 +54,7 @@ class PF2_Lookup:
             params = {"name": query}
             headers = {"Authorization": self.key}
             async with session.get(self.endpoints[endpoint], headers=headers, params=params, ssl=False) as response:
-                if response.status is not 200:
+                if response.status != 200:
                     return []
                 # print(await response.text())
                 data: dict = await response.json()
@@ -61,6 +63,13 @@ class PF2_Lookup:
             for item in data["results"]:
                 output_list.append(Result(item))
         return output_list
+
+    async def embed_list(self, query, endpoint):
+        results = await self.lookup(query, endpoint)
+        output = []
+        for item in results:
+            output.append(await item.get_embed())
+        return output
 
 
 class Result:
@@ -88,8 +97,11 @@ class Result:
         string = re.sub(clean_2, "", sub_string)
         string = string.replace("{", "**")
         string = string.replace("}", "**")
-        if len(string) > 1000:
-            return f"{string[:1000]}..."
+        string = string.replace("[[", "")
+        string = string.replace("]]", "")
+        string = string.replace("/r", "")
+        if len(string) > 4000:
+            return f"{string[:4000]}..."
         else:
             return string
 
@@ -126,9 +138,10 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Type: ", value=self.data["system"]["actionType"]["value"].title(), inline=False
                 ),
@@ -141,8 +154,9 @@ class Result:
     async def ancestry_embed(self):
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Size: ", value=self.data["system"]["size"].title(), inline=False),
                 discord.EmbedField(name="Speed: ", value=self.data["system"]["speed"], inline=False),
             ],
@@ -159,9 +173,10 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -175,8 +190,9 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Feat: ", value=item_list.title(), inline=False),
                 discord.EmbedField(name="Lore: ", value=self.data["system"]["trainedLore"].title(), inline=False),
             ],
@@ -189,10 +205,13 @@ class Result:
         ability_str = ""
         for item in self.data["system"]["keyAbility"]["value"]:
             ability_str += f"{item.title()}\n"
+
+        class_desc = self.description.split("Your Level")
         embed = discord.Embed(
             title=self.name,
+            description=class_desc[0],
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Key Ability: ", value=ability_str, inline=False),
             ],
             color=discord.Color.random(),
@@ -215,8 +234,9 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Alignment: ",
                     value=(
@@ -242,8 +262,9 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
             ],
@@ -264,9 +285,10 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
                 discord.EmbedField(name="Proficiency: ", value=self.data["system"]["category"], inline=False),
                 discord.EmbedField(name="Group: ", value=self.data["system"]["group"].title(), inline=False),
@@ -291,9 +313,10 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -308,9 +331,10 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -333,9 +357,10 @@ class Result:
             spell_range = "-"
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=True
                 ),
