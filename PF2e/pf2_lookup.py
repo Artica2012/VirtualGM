@@ -68,7 +68,10 @@ class PF2_Lookup:
         results = await self.lookup(query, endpoint)
         output = []
         for item in results:
-            output.append(await item.get_embed())
+            try:
+                output.append(await item.get_embed())
+            except Exception:
+                print(item.name)
         return output
 
 
@@ -257,15 +260,22 @@ class Result:
 
     async def equipment_embed(self):
         value = ""
-        for key in self.data["system"]["price"]["value"]:
-            value += f"{self.data['system']['price']['value'][key]} {key} "
+        try:
+            for key in self.data["system"]["price"]["value"]:
+                value += f"{self.data['system']['price']['value'][key]} {key} "
+        except Exception:
+            value = ""
 
+        try:
+            level = self.data["system"]["level"]["value"]
+        except Exception:
+            level = ""
         embed = discord.Embed(
             title=self.name,
             description=self.description,
             fields=[
                 # discord.EmbedField(name="Description: ", value=self.description, inline=False),
-                discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
+                discord.EmbedField(name="Level: ", value=level, inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
             ],
             color=discord.Color.random(),
