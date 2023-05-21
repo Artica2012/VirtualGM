@@ -66,6 +66,8 @@ class PF2_Lookup:
 
     async def embed_list(self, query, endpoint):
         results = await self.lookup(query, endpoint)
+        if len(results) == 0 or results is None:
+            return []
         output = []
         for item in results:
             try:
