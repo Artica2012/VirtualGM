@@ -117,7 +117,7 @@ async def gm_check(ctx, engine):
             else:
                 return True
     except Exception:
-        return False
+        raise
 
 
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
