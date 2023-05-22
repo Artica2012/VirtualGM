@@ -354,7 +354,7 @@ class EPF_Character(Character):
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
         print(f"dmg die. {weapon['die_num']}")
-        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses, item_name=item)
+        die_mod = await bonus_calc(int(weapon["die_num"]), "dmg_die", self.character_model.bonuses, item_name=item)
         print(die_mod)
 
         dmg_mod = 0
