@@ -4,14 +4,14 @@ import os
 
 import sqlalchemy as db
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, or_
 from sqlalchemy import select
 
 # imports
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Base
+from database_models import Global, Base, get_condition
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -83,19 +83,51 @@ async def update_tracker_table():
             print(f"{row.id}, {e}")
 
 
-def update_con_table():
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def update_con_table():
+    total = 0
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(
+            select(Global).where(or_(Global.system == "EPF", Global.system == "STF", Global.system == "RED"))
+        )
+        guild = result.scalars().all()
 
-    with Session(engine) as session:
-        guild = session.execute(select(Global)).all()
-        for row in guild:
-            print(row[0].id)
-            try:
-                alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD flex boolean DEFAULT FALSE'
-                with engine.connect() as conn:
-                    conn.execute(alter_string)
-            except Exception:
-                print(f"Table {row[0].id} Not Updated")
+    for row in guild:
+        try:
+            print(f"Updating {row.id}")
+            alter_string = text(f'ALTER TABLE "Condition_{row.id}" ADD target INTEGER')
+            async with async_session() as session:
+                await session.execute(alter_string)
+                await session.commit()
+        except Exception as e:
+            print(f"{row.id}, {e}")
+
+    for row in guild:
+        Condition = await get_condition(None, engine, id=row.id)
+        async with async_session() as session:
+            result = await session.execute(select(Condition))
+            con_list = result.scalars().all()
+        for condition_row in con_list:
+            async with async_session() as session:
+                result = await session.execute(select(Condition).where(Condition.id == condition_row.id))
+                working_con = result.scalars().one()
+                working_con.target = working_con.character_id
+                await session.commit()
+                total += 1
+    logging.warning(f"Update Complete. {total} conditions updated")
+
+    # engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    #
+    # with Session(engine) as session:
+    #     guild = session.execute(select(Global)).all()
+    #     for row in guild:
+    #         print(row[0].id)
+    #         try:
+    #             alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD flex boolean DEFAULT FALSE'
+    #             with engine.connect() as conn:
+    #                 conn.execute(alter_string)
+    #         except Exception:
+    #             print(f"Table {row[0].id} Not Updated")
 
 
 def create_reminder_table():

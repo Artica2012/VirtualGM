@@ -545,6 +545,7 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
         visible = Column(Boolean(), default=True)
         flex = Column(Boolean(), default=False)
         action = Column(String(), default="")
+        target = Column(Integer(), nullable=False)
 
     logging.info("get_condition: returning condition")
     return Condition
