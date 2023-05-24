@@ -101,18 +101,21 @@ async def update_con_table():
             print(f"{row.id}, {e}")
 
     for row in guild:
-        Condition = await get_condition(None, engine, id=row.id)
-        async with async_session() as session:
-            result = await session.execute(select(Condition))
-            con_list = result.scalars().all()
-        for condition_row in con_list:
+        try:
+            Condition = await get_condition(None, engine, id=row.id)
             async with async_session() as session:
-                result = await session.execute(select(Condition).where(Condition.id == condition_row.id))
-                working_con = result.scalars().one()
-                if working_con.target is None:
-                    working_con.target = working_con.character_id
-                    await session.commit()
-                    total += 1
+                result = await session.execute(select(Condition))
+                con_list = result.scalars().all()
+            for condition_row in con_list:
+                async with async_session() as session:
+                    result = await session.execute(select(Condition).where(Condition.id == condition_row.id))
+                    working_con = result.scalars().one()
+                    if working_con.target is None:
+                        working_con.target = working_con.character_id
+                        await session.commit()
+                        total += 1
+        except Exception as e:
+            logging.error(f"{row.id}: {e}")
     logging.warning(f"Update Complete. {total} conditions updated")
 
 
