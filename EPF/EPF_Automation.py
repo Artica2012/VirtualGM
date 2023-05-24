@@ -130,6 +130,7 @@ class EPF_Automation(Automation):
             dmg = roll_result.total
             if not healing:
                 dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
+            roll_string = f"{roll_result} {damage_type}"
         except Exception:
             try:
                 dmg_output, total_damage = await roll_dmg_resist(
@@ -139,20 +140,21 @@ class EPF_Automation(Automation):
                 for item in dmg_output:
                     roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
                 dmg = total_damage
-                roll_result = roll_string
             except Exception:
                 try:
                     roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
                     dmg = roll_result.total
                     if not healing:
                         dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
+                    roll_string = f"{roll_result} {damage_type}"
                 except Exception:
                     roll_result = d20.roll("0 [Error]")
                     dmg = roll_result.total
+                    roll_string = roll_result
 
         await Target_Model.change_hp(dmg, healing, post=False)
         output_string = (
-            f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
+            f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_string}"
             f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
             f"{await Target_Model.calculate_hp()}"
         )
