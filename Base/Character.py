@@ -7,7 +7,7 @@ import os
 import d20
 import discord
 from dotenv import load_dotenv
-from sqlalchemy import select, false, true
+from sqlalchemy import select, false, true, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -268,13 +268,22 @@ class Character:
         auto_decrement: bool,
         flex: bool = False,
         data: str = "",
+        target: str = None,
     ):
         logging.info("set_cc")
         # Get the Character's data
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        if target is None:
+            target = self.char_name
+            target_id = self.character_model.id
+        else:
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
+                target_id = result.scalars().one()
 
         # Check to make sure there isn't a condition with the same name on the character
         async with async_session() as session:
@@ -297,6 +306,7 @@ class Character:
                         auto_increment=auto_decrement,
                         time=False,
                         flex=flex,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()
@@ -322,6 +332,7 @@ class Character:
                         counter=counter,
                         auto_increment=True,
                         time=True,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()

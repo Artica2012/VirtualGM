@@ -4,7 +4,7 @@ import os
 
 import sqlalchemy as db
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text, or_
+from sqlalchemy import create_engine, text
 from sqlalchemy import select
 
 # imports
@@ -87,9 +87,7 @@ async def update_con_table():
     total = 0
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
-        result = await session.execute(
-            select(Global).where(or_(Global.system == "EPF", Global.system == "STF", Global.system == "RED"))
-        )
+        result = await session.execute(select(Global))
         guild = result.scalars().all()
 
     for row in guild:
@@ -111,23 +109,11 @@ async def update_con_table():
             async with async_session() as session:
                 result = await session.execute(select(Condition).where(Condition.id == condition_row.id))
                 working_con = result.scalars().one()
-                working_con.target = working_con.character_id
-                await session.commit()
-                total += 1
+                if working_con.target is None:
+                    working_con.target = working_con.character_id
+                    await session.commit()
+                    total += 1
     logging.warning(f"Update Complete. {total} conditions updated")
-
-    # engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    #
-    # with Session(engine) as session:
-    #     guild = session.execute(select(Global)).all()
-    #     for row in guild:
-    #         print(row[0].id)
-    #         try:
-    #             alter_string = f'ALTER TABLE "Condition_{row[0].id}" ADD flex boolean DEFAULT FALSE'
-    #             with engine.connect() as conn:
-    #                 conn.execute(alter_string)
-    #         except Exception:
-    #             print(f"Table {row[0].id} Not Updated")
 
 
 def create_reminder_table():
