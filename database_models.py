@@ -503,6 +503,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             time = Column(Boolean(), default=False)
             visible = Column(Boolean(), default=True)
             flex = Column(Boolean(), default=False)
+            target = Column(Integer(), nullable=False)
 
         logging.info("get_condition: returning condition")
         return Condition
@@ -545,6 +546,7 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
         visible = Column(Boolean(), default=True)
         flex = Column(Boolean(), default=False)
         action = Column(String(), default="")
+        target = Column(Integer(), nullable=False)
 
     logging.info("get_condition: returning condition")
     return Condition
@@ -591,6 +593,7 @@ class ConditionTable:
             db.Column("time", db.BOOLEAN, default=False),
             db.Column("visible", db.BOOLEAN, default=True),
             db.Column("flex", db.BOOLEAN, default=False),
+            db.Column("target", db.INTEGER()),
         )
         return con
 

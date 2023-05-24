@@ -93,7 +93,7 @@ class AutomationCog(commands.Cog):
             await report.report()
             await ctx.send_followup(
                 "Error. Ensure that you selected valid targets and attack rolls.  Ensure that if "
-                "you used a non-macro roll that it conforms tothe XdY+Z format without any "
+                "you used a non-macro roll that it conforms to the XdY+Z format without any "
                 "labels."
             )
 

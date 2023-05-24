@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from Base.Character import Character
 from STF.STF_Support import STF_Skills, STF_Conditions, STF_DMG_Types
-from database_models import get_tracker, get_condition, get_macro
+from database_models import get_tracker, get_condition, get_macro, get_STF_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized
@@ -394,13 +394,22 @@ class STF_Character(Character):
         data: str = "",
         visible: bool = True,
         update: bool = True,
+        target: str = None,
     ):
         logging.info("set_cc")
         # Get the Character's data
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        if target is None:
+            target = self.char_name
+            target_id = self.character_model.id
+        else:
+            Tracker = await get_STF_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
+                target_id = result.scalars().one()
 
         # Check to make sure there isn't a condition with the same name on the character
         async with async_session() as session:
@@ -450,6 +459,7 @@ class STF_Character(Character):
                         flex=flex,
                         action=data,
                         visible=visible,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()
@@ -478,6 +488,7 @@ class STF_Character(Character):
                         time=True,
                         action=data,
                         visible=visible,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()
