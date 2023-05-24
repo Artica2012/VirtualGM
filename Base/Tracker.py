@@ -639,6 +639,8 @@ class Tracker:
             logging.info(f"GTL1: guild: {self.guild.id}")
             iteration = 0
             init_pos = self.guild.initiative
+            if init_pos is None:
+                return []
             # print(f"init_pos: {init_pos}")
             # print(init_pos)
             length = len(self.init_list)
