@@ -31,6 +31,7 @@ from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
 from initiative_functions import edit_cc_interface
 from time_keeping_functions import check_timekeeper
+from utils import utils
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
@@ -163,34 +164,43 @@ class InitiativeCog(commands.Cog):
         autocomplete=character_select_gm,
     )
     @option("new_name", description="Name for the new NPC", input_type=str, required=True)
-    async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str):
+    async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str, number: int = 1):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         response = False
-        Utilities = await get_utilities(ctx, engine=engine)
-        try:
-            response = await Utilities.copy_character(name, new_name)
-        except Exception as e:
-            logging.warning(f"char copy {e}")
-            report = ErrorReport(ctx, "/char copy", e, self.bot)
-            await report.report()
-        if response:
-            Character_Model = await get_character(new_name, ctx, engine=engine)
-            success = discord.Embed(
-                title=new_name.title(),
-                fields=[discord.EmbedField(name="Success", value="Successfully Copied")],
-                color=discord.Color.dark_gold(),
-            )
-            success.set_thumbnail(url=Character_Model.pic)
 
-            await ctx.send_followup(embed=success)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-            Copy_Model = await get_character(new_name, ctx, engine=engine)
-            if Copy_Model.player:
-                await Utilities.add_to_vault(new_name)
-        else:
-            await ctx.send_followup("Error Copying Character", ephemeral=True)
+        if number > 26:
+            number = 26
+        embeds = []
+        success = discord.Embed(title=name.title(), fields=[], color=discord.Color.dark_gold())
+        Utilities = await get_utilities(ctx, engine=engine)
+        for x in range(0, number):
+            if number > 1:
+                modifier = f" {utils.NPC_Iterator[x]}"
+            else:
+                modifier = ""
+            try:
+                response = await Utilities.copy_character(name, f"{new_name}{modifier}")
+                if response:
+                    this_success = success.copy()
+                    this_success.add_field(name=f"{name}{modifier}", value=f"Successfully copied.")
+                    Character_Model = await get_character(f"{new_name}{modifier}", ctx, engine=engine)
+                    if Character_Model.player:
+                        await Utilities.add_to_vault(Character_Model.char_name)
+                    this_success.set_thumbnail(url=Character_Model.pic)
+                    embeds.append(this_success)
+                else:
+                    raise Exception
+            except Exception as e:
+                logging.warning(f"char copy {e}")
+                report = ErrorReport(ctx, "/char copy", e, self.bot)
+                await report.report()
+                failure = discord.Embed(title=name.title(), description="Copy Failed", color=discord.Color.red())
+                embeds.append(failure)
+
+        await ctx.send_followup(embeds=embeds)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
 
     @char.command(description="Delete NPC")
     @option(
