@@ -273,6 +273,7 @@ class Macro:
             )
 
         async def callback(self, interaction: discord.Interaction):
+            print(self.macro.macro)
             dice_result = d20.roll(self.macro.macro)
             output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
 
