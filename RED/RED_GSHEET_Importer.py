@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from EPF.EPF_Character import spell_lookup, EPF_Weapon, delete_intested_items, invest_items, get_EPF_Character
-from database_models import get_EPF_tracker
+from database_models import get_EPF_tracker, get_RED_tracker
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
@@ -38,7 +38,7 @@ Interpreter = {
 }
 
 
-async def epf_g_sheet_import(
+async def red_g_sheet_import(
     ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
 ):
     try:
@@ -53,10 +53,10 @@ async def epf_g_sheet_import(
         if engine == None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        red_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
+            query = await session.execute(select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower()))
             character = query.scalars().all()
         if len(character) > 0:
             overwrite = True
@@ -69,23 +69,8 @@ async def epf_g_sheet_import(
 
         decision_header = headers[0].strip()
 
-        if decision_header == "Info:":
-            character, spells, attacks, items, resistance = await epf_g_sheet_character_import(
-                ctx, char_name, df, engine, guild
-            )
-        elif decision_header == "Eidolon:":
-            character, spells, attacks, items, resistance = await epf_g_sheet_eidolon_import(
-                ctx, char_name, df, engine, guild
-            )
-        elif decision_header == "Companion:":
-            character, spells, attacks, items, resistance = await epf_g_sheet_companion_import(
-                ctx, char_name, df, engine, guild
-            )
-        elif decision_header == "NPC:":
-            # print("Its an NPC")
-            character, spells, attacks, items, resistance = await epf_g_sheet_npc_import(
-                ctx, char_name, df, engine, guild
-            )
+        if decision_header == "CyberpunkRED:":
+            (character,) = await red_g_sheet_character_import(ctx, char_name, df, engine, guild)
         else:
             return False
 
@@ -111,7 +96,7 @@ async def epf_g_sheet_import(
         if overwrite:
             async with async_session() as session:
                 query = await session.execute(
-                    select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower())
+                    select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower())
                 )
                 character_data = query.scalars().one()
 
@@ -164,8 +149,8 @@ async def epf_g_sheet_import(
                 character_data.survival_prof = character["survival"]
                 character_data.thievery_prof = character["thievery"]
                 character_data.feats = character["feats"]
-                character_data.spells = spells
-                character_data.attacks = attacks
+                # character_data.spells = spells
+                # character_data.attacks = attacks
                 character_data.lores = lore
                 if image is not None:
                     character.pic = image
@@ -175,7 +160,7 @@ async def epf_g_sheet_import(
         else:
             async with async_session() as session:
                 async with session.begin():
-                    new_char = EPF_tracker(
+                    new_char = red_tracker(
                         name=char_name,
                         player=True if "npc" not in character.keys() else False,
                         active=character["active"],
@@ -230,9 +215,9 @@ async def epf_g_sheet_import(
                         lores=lore,
                         feats=character["feats"],
                         key_ability=character["key_ability"],
-                        attacks=attacks,
-                        spells=spells,
-                        resistance=resistance,
+                        # attacks=attacks,
+                        # spells=spells,
+                        # resistance=resistance,
                         eidolon=character["eidolon"],
                         partner=character["partner"],
                         pic=image,
@@ -240,18 +225,9 @@ async def epf_g_sheet_import(
                     session.add(new_char)
                 await session.commit()
 
-        # This deletes both items and conditions
-        await delete_intested_items(char_name, ctx, guild, engine)
-        # Rewrite the items
-        # print(f"Items: {items}")
-        for item in items:
-            # print(item)
-            result = await invest_items(item, char_name, ctx, guild, engine)
-            # print(result)
-
         Character = await get_EPF_Character(char_name, ctx, guild, engine)
         # Write the conditions
-        await write_resitances(resistance, Character, ctx, guild, engine)
+        # await write_resitances(resistance, Character, ctx, guild, engine)
         await Character.update()
         return True
 
@@ -260,13 +236,13 @@ async def epf_g_sheet_import(
         return False
 
 
-async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
     logging.info("g-sheet-char")
     try:
         df.rename(
             columns={
-                "Info:": "a",
-                "Info: ": "a",
+                "CyberpunkRED:": "a",
+                "CyberpunkRED: ": "a",
                 "Unnamed: 1": "b",
                 "Unnamed: 2": "c",
                 "Unnamed: 3": "d",
@@ -285,59 +261,32 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "name": df.b[0],
         "level": int(df.d[0]),
         "active": True,
-        "class": df.b[1],
-        "hp": int(df.d[1]),
-        "str": int(df.b[2]),
-        "dex": int(df.b[3]),
-        "con": int(df.b[4]),
-        "itl": int(df.d[2]),
-        "wis": int(df.d[3]),
-        "cha": int(df.d[4]),
-        "class_dc": int(df.b[5]),
-        "ac_base": int(df.d[5]),
-        "key_ability": Interpreter[df.f[5]],
-        "fort": Interpreter[df.b[7]],
-        "reflex": Interpreter[df.b[8]],
-        "will": Interpreter[df.b[9]],
-        "perception": Interpreter[df.b[11]],
-        "acrobatics": Interpreter[df.b[13]],
-        "arcana": Interpreter[df.b[14]],
-        "athletics": Interpreter[df.b[15]],
-        "crafting": Interpreter[df.b[16]],
-        "deception": Interpreter[df.b[17]],
-        "diplomacy": Interpreter[df.b[18]],
-        "intimidation": Interpreter[df.b[19]],
-        "medicine": Interpreter[df.b[20]],
-        "nature": Interpreter[df.b[21]],
-        "occultism": Interpreter[df.b[22]],
-        "performance": Interpreter[df.b[23]],
-        "religion": Interpreter[df.b[24]],
-        "society": Interpreter[df.b[25]],
-        "stealth": Interpreter[df.b[26]],
-        "survival": Interpreter[df.b[27]],
-        "thievery": Interpreter[df.b[28]],
-        "UI": Interpreter[df.b[29]],
-        "unarmored": Interpreter[df.e[7]],
-        "light": Interpreter[df.e[8]],
-        "medium": Interpreter[df.e[9]],
-        "heavy": Interpreter[df.e[10]],
-        "unarmed": Interpreter[df.e[13]],
-        "simple": Interpreter[df.e[14]],
-        "martial": Interpreter[df.e[15]],
-        "advanced": Interpreter[df.e[16]],
-        "arcane": Interpreter[df.e[19]],
-        "divine": Interpreter[df.e[20]],
-        "occult": Interpreter[df.e[21]],
-        "primal": Interpreter[df.e[22]],
-        "eidolon": False,
-        "partner": None,
-        "lore": "",
+        "role": df.b[1],
+        "hp": df.d[1],
     }
-    character["class_prof"] = (
-        int(character["class_dc"])
-        - int(character["level"])
-        - (floor(int(character[character["key_ability"]]) - 10) / 2)
-    )
+    stats = {}
+
+    for i in range(2, 8):
+        try:
+            title = str(df.a[i])
+            title = title.split(" ")[0].lower()
+            base = int(df.b[i])
+            stats[title] = {"value": base, "base": base}
+        except Exception:
+            pass
+        try:
+            title = str(df.c[i])
+            title = title.split(" ")[0].lower()
+            base = int(df.d[i])
+            stats[title] = {"value": base, "base": base}
+        except Exception:
+            pass
+
+    print(stats)
+    character["stats"] = stats
+
+    skills = {}
+
     feats = ""
     if character["UI"] == True:
         feats += "Untrained Improvisation, "
@@ -489,609 +438,6 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         if df.h[i] != numpy.nan:
             # print(df.h[i])
             items.append(df.h[i])
-
-    return character, spells, attacks, items, resistances
-
-
-async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
-    logging.info("g-sheet eidolon")
-    try:
-        df.rename(
-            columns={
-                "Eidolon:": "a",
-                "Eidolon: ": "a",
-                "Unnamed: 1": "b",
-                "Unnamed: 2": "c",
-                "Unnamed: 3": "d",
-                "Unnamed: 4": "e",
-                "Unnamed: 5": "f",
-                "Unnamed: 6": "g",
-                "Unnamed: 7": "h",
-            },
-            inplace=True,
-        )
-
-        # print(df)
-    except Exception:
-        return False
-
-    guild = await get_guild(ctx, guild)
-    if engine == None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    try:
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        print(df.b[1])
-        partner_name: str = df.b[1]
-        partner_name = partner_name.strip()
-        async with async_session() as session:
-            query = await session.execute(
-                select(EPF_tracker).where(func.lower(EPF_tracker.name) == partner_name.lower())
-            )
-            partner_query = query.scalars().one()
-            partner_query.partner = char_name
-            await session.commit()
-        Partner = await get_EPF_Character(partner_name, ctx, engine=engine, guild=guild)
-        print(Partner.char_name)
-    except:
-        logging.warning("Import Error")
-        raise
-
-    # for i in range(0, len(df.a) - 1):
-    # print(df.iloc[[i]])
-
-    # print(df.d[1])
-
-    character = {
-        "name": df.b[0],
-        "level": Partner.character_model.level,
-        "class": "Eidolon",
-        "active": False,
-        "hp": Partner.max_hp,
-        "str": int(df.b[2]),
-        "dex": int(df.b[3]),
-        "con": int(df.b[4]),
-        "itl": int(df.d[2]),
-        "wis": int(df.d[3]),
-        "cha": int(df.d[4]),
-        "class_dc": Partner.character_model.class_dc,
-        "ac_base": int(df.d[5]),
-        "key_ability": Partner.character_model.key_ability,
-        "fort": Interpreter[df.b[7]],
-        "reflex": Interpreter[df.b[8]],
-        "will": Interpreter[df.b[9]],
-        "perception": Partner.character_model.perception_prof,
-        "acrobatics": Partner.character_model.acrobatics_prof,
-        "arcana": Partner.character_model.arcana_prof,
-        "athletics": Partner.character_model.athletics_prof,
-        "crafting": Partner.character_model.crafting_prof,
-        "deception": Partner.character_model.deception_prof,
-        "diplomacy": Partner.character_model.diplomacy_prof,
-        "intimidation": Partner.character_model.intimidation_prof,
-        "medicine": Partner.character_model.medicine_prof,
-        "nature": Partner.character_model.nature_prof,
-        "occultism": Partner.character_model.occultism_prof,
-        "performance": Partner.character_model.performance_prof,
-        "religion": Partner.character_model.religion_prof,
-        "society": Partner.character_model.society_prof,
-        "stealth": Partner.character_model.stealth_prof,
-        "survival": Partner.character_model.survival_prof,
-        "thievery": Partner.character_model.thievery_prof,
-        "UI": False,
-        "unarmored": Interpreter[df.e[7]],
-        "light": 0,
-        "medium": 0,
-        "heavy": 0,
-        "unarmed": Interpreter[df.e[10]],
-        "simple": 0,
-        "martial": 0,
-        "advanced": 0,
-        "arcane": Partner.character_model.arcane_prof,
-        "divine": Partner.character_model.divine_prof,
-        "occult": Partner.character_model.occult_prof,
-        "primal": Partner.character_model.primal_prof,
-        "feats": "",
-        "class_prof": Partner.character_model.class_prof,
-        "eidolon": True,
-        "partner": Partner.char_name,
-    }
-
-    spells = {}
-    attacks = {}
-    items = []
-    resistances = {"resist": {}, "weak": {}, "immune": {}}
-
-    for i in range(12, (len(df.a) - 1)):
-        name = df.a[i]
-        # print(name)
-        if name != numpy.nan:
-            lookup_data = await spell_lookup(name)
-            if lookup_data[0] is True:
-                tradition = df.c[i]
-                # print(tradition)
-                match tradition:
-                    case "Arcane":
-                        ability = "cha"
-                        proficiency = Partner.character_model.arcane_prof
-                    case "Divine":
-                        ability = "cha"
-                        proficiency = Partner.character_model.divine_prof
-                    case "Occult":
-                        ability = "cha"
-                        proficiency = Partner.character_model.occult_prof
-                    case "Primal":
-                        ability = "cha"
-                        proficiency = Partner.character_model.occult_prof
-                    case _:
-                        ability = "cha"
-                        proficiency = 0
-
-                spell = {
-                    "level": int(df.b[i]),
-                    "tradition": tradition,
-                    "ability": ability,
-                    "proficiency": proficiency,
-                    "type": lookup_data[1].type,
-                    "save": lookup_data[1].save,
-                    "damage": lookup_data[1].damage,
-                    "heightening": lookup_data[1].heightening,
-                }
-                spells[name] = spell
-
-    for i in range(12, (len(df.e) - 1)):
-        if df.e[i] == "Name" and df.f[i] is not numpy.nan:
-            try:
-                # print(df.f[i])
-                try:
-                    potency = int(df.f[i + 3])
-                except Exception:
-                    potency = 0
-                die_num = 1
-                # print(type(df.f[i + 4]))
-                # print(df.f[i + 4])
-                if Interpreter[df.f[i + 4]] == "striking":
-                    die_num = 2
-                elif Interpreter[df.f[i + 4]] == "greaterStriking":
-                    die_num = 3
-                elif Interpreter[df.f[i + 4]] == "majorStriking":
-                    die_num = 4
-                if df.f[i + 8] is not numpy.nan:
-                    parsed_traits = df.f[i + 8].split(",")
-                else:
-                    parsed_traits = []
-                print(df.f[i + 9])
-                if type(df.f[i + 9]) == str:
-                    dmg_type = df.f[i + 9]
-                else:
-                    dmg_type = "Bludgeoning"
-
-                attack_data = {
-                    "display_name": df.f[i],
-                    "name": df.f[i + 1],
-                    "prof": df.f[i + 2].lower(),
-                    "pot": potency,
-                    "str": Interpreter[df.f[i + 4]],
-                    "runes": [],
-                    "die_num": die_num,
-                    "die": df.f[i + 5],
-                    "crit": "*2",
-                    "stat": Interpreter[df.f[i + 7]],
-                    "dmg_type": dmg_type,
-                    "attk_stat": Interpreter[df.f[i + 6]],
-                    "traits": parsed_traits,
-                }
-                edited_attack = await attack_lookup(attack_data, character)
-                attacks[edited_attack["display_name"]] = edited_attack
-            except Exception:
-                pass
-    # print(attacks)
-
-    # print("Getting Items")
-    for i in range(12, (len(df.h) - 1)):
-        # print(i)
-        # print(df.h[i])
-        if df.h[i] != numpy.nan:
-            # print(df.h[i])
-            items.append(df.h[i])
-
-    return character, spells, attacks, items, resistances
-
-
-async def attack_lookup(attack, character: dict):
-    lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-    async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == str(attack["display"]).lower())
-            )
-            data = result.scalars().one()
-    except Exception:
-        try:
-            async with async_session() as session:
-                result = await session.execute(
-                    select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == str(attack["name"]).lower())
-                )
-                data = result.scalars().one()
-        except:
-            return attack
-    # await lookup_engine.dispose()
-
-    if data.range is not None:
-        attack["stat"] = None
-    # print(data.name)
-    # print(data.traits)
-    for item in data.traits:
-        if "deadly" in item:
-            if "deadly" in item:
-                string = item.split("-")
-                if data.striking_rune == "greaterStriking":
-                    dd = 2
-                elif data.striking_rune == "majorStriking":
-                    dd = 3
-                else:
-                    dd = 1
-                attack["crit"] = f"*2 + {dd}{string[1]}"
-        elif item.strip().lower() == "finesse" and character["dex"] > character["str"]:
-            # print("Finesse")
-            attack["attk_stat"] = "dex"
-        elif item.strip().lower() == "brutal":
-            attack["attk_stat"] = "str"
-    attack["traits"] = data.traits
-    attack["dmg_type"] = data.damage_type
-    return attack
-
-
-async def epf_g_sheet_companion_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
-    logging.info("g-sheet-char")
-    try:
-        df.rename(
-            columns={
-                "Companion:": "a",
-                "Companion: ": "a",
-                "Unnamed: 1": "b",
-                "Unnamed: 2": "c",
-                "Unnamed: 3": "d",
-                "Unnamed: 4": "e",
-                "Unnamed: 5": "f",
-                "Unnamed: 6": "g",
-                "Unnamed: 7": "h",
-            },
-            inplace=True,
-        )
-
-        # print(df)
-    except Exception:
-        return False
-
-    character = {
-        "name": df.b[0],
-        "level": int(df.d[0]),
-        "active": False,
-        "class": df.b[1],
-        "hp": int(df.d[1]),
-        "str": int(df.b[2]),
-        "dex": int(df.b[3]),
-        "con": int(df.b[4]),
-        "itl": int(df.d[2]),
-        "wis": int(df.d[3]),
-        "cha": int(df.d[4]),
-        "class_dc": int(df.b[5]),
-        "ac_base": int(df.d[5]),
-        "key_ability": "str",
-        "fort": Interpreter[df.b[7]],
-        "reflex": Interpreter[df.b[8]],
-        "will": Interpreter[df.b[9]],
-        "perception": Interpreter[df.b[10]],
-        "acrobatics": Interpreter[df.b[11]],
-        "arcana": Interpreter[df.b[12]],
-        "athletics": Interpreter[df.b[13]],
-        "crafting": Interpreter[df.b[14]],
-        "deception": Interpreter[df.b[15]],
-        "diplomacy": Interpreter[df.b[16]],
-        "intimidation": Interpreter[df.b[17]],
-        "medicine": Interpreter[df.b[18]],
-        "nature": Interpreter[df.b[19]],
-        "occultism": Interpreter[df.b[20]],
-        "performance": Interpreter[df.b[21]],
-        "religion": Interpreter[df.b[22]],
-        "society": Interpreter[df.b[23]],
-        "stealth": Interpreter[df.b[24]],
-        "survival": Interpreter[df.b[25]],
-        "thievery": Interpreter[df.b[26]],
-        "UI": False,
-        "unarmored": Interpreter[df.e[7]],
-        "light": 0,
-        "medium": 0,
-        "heavy": 0,
-        "unarmed": Interpreter[df.e[11]],
-        "simple": 0,
-        "martial": 0,
-        "advanced": 0,
-        "arcane": 0,
-        "divine": 0,
-        "occult": 0,
-        "primal": 0,
-        "eidolon": False,
-        "partner": None,
-    }
-    character["class_prof"] = (
-        int(character["class_dc"])
-        - int(character["level"])
-        - (floor(int(character[character["key_ability"]]) - 10) / 2)
-    )
-    feats = ""
-    character["feats"] = feats
-    spells = {}
-    attacks = {}
-    items = []
-    resistances = {"resist": {}, "weak": {}, "immune": {}}
-
-    for i in range(27, (len(df.e) - 1)):
-        # print(i, df.a[i], df.b[i])
-        if df.a[i] == "Name" and df.b[i] is not numpy.nan:
-            try:
-                # print(df.b[i])
-                try:
-                    potency = int(df.b[i + 3])
-                except Exception:
-                    potency = 0
-                die_num = 1
-                # print(type(df.b[i + 4]))
-                # print(df.b[i + 4])
-                if Interpreter[df.b[i + 4]] == "striking":
-                    die_num = 2
-                elif Interpreter[df.b[i + 4]] == "greaterStriking":
-                    die_num = 3
-                elif Interpreter[df.b[i + 4]] == "majorStriking":
-                    die_num = 4
-                if df.b[i + 8] is not numpy.nan:
-                    parsed_traits = df.b[i + 8].split(",")
-                else:
-                    parsed_traits = []
-
-                if type(df.f[i + 9]) == str:
-                    dmg_type = df.f[i + 9]
-                else:
-                    dmg_type = "Bludgeoning"
-
-                attack_data = {
-                    "display_name": df.b[i],
-                    "name": df.b[i + 1],
-                    "prof": "" if type(df.b[i + 2]) != str else df.b[i + 2].lower(),
-                    "pot": potency,
-                    "str": Interpreter[df.b[i + 4]],
-                    "runes": [],
-                    "die_num": die_num,
-                    "die": df.b[i + 5],
-                    "crit": "*2",
-                    "stat": Interpreter[df.b[i + 7]],
-                    "dmg_type": dmg_type,
-                    "attk_stat": Interpreter[df.b[i + 6]],
-                    "traits": parsed_traits,
-                }
-                edited_attack = await attack_lookup(attack_data, character)
-                attacks[edited_attack["display_name"]] = edited_attack
-            except Exception:
-                pass
-    # print(attacks)
-
-    # print("Getting Items")
-    for i in range(27, (len(df.d) - 1)):
-        # print(i)
-        # print(df.d[i])
-        if df.d[i] != numpy.nan:
-            # print(df.d[i])
-            items.append(df.d[i])
-
-    return character, spells, attacks, items, resistances
-
-
-async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
-    logging.info("g-sheet-char")
-    try:
-        df.rename(
-            columns={
-                "NPC:": "a",
-                "NPC: ": "a",
-                "Unnamed: 1": "b",
-                "Unnamed: 2": "c",
-                "Unnamed: 3": "d",
-                "Unnamed: 4": "e",
-                "Unnamed: 5": "f",
-                "Unnamed: 6": "g",
-                "Unnamed: 7": "h",
-                "Unnamed: 8": "i",
-                "Unnamed: 9": "j",
-                "Unnamed: 10": "k",
-                "Unnamed: 11": "l",
-                "Unnamed: 12": "m",
-            },
-            inplace=True,
-        )
-
-        # print(df)
-    except Exception:
-        return False
-
-    # Back Calculations
-    str_mdd = int(df.b[2])
-    str_stat = 10 + (int(df.b[2]) * 2)
-    dex_mdd = int(df.b[3])
-    dex_stat = 10 + (int(df.b[3]) * 2)
-    con_mdd = int(df.b[4])
-    con_stat = 10 + (int(df.b[4]) * 2)
-    itl_mdd = int(df.b[2])
-    itl_stat = 10 + (int(df.d[2]) * 2)
-    wis_mdd = int(df.b[3])
-    wis_stat = 10 + (int(df.d[3]) * 2)
-    cha_mdd = int(df.b[4])
-    cha_stat = 10 + (int(df.d[4]) * 2)
-
-    level = int(df.d[0])
-
-    character = {
-        "name": df.b[0],
-        "level": level,
-        "active": True,
-        "class": df.b[1],
-        "npc": True,
-        "hp": int(df.d[1]),
-        "str": str_stat,
-        "dex": dex_stat,
-        "con": con_stat,
-        "itl": itl_stat,
-        "wis": wis_stat,
-        "cha": cha_stat,
-        "class_dc": 0 if df.b[15] == numpy.nan else int(df.b[15]),
-        "ac_base": int(df.b[5]),
-        "key_ability": "",
-        "fort": int(df.b[7]) - level - con_mdd,
-        "reflex": int(df.b[8]) - level - dex_mdd,
-        "will": int(df.b[9]) - level - wis_mdd,
-        "perception": await gs_npc_skill_calc(df.b[11], level, wis_mdd),
-        "acrobatics": await gs_npc_skill_calc(df.e[7], level, dex_mdd),
-        "arcana": await gs_npc_skill_calc(df.e[8], level, itl_mdd),
-        "athletics": await gs_npc_skill_calc(df.e[9], level, str_mdd),
-        "crafting": await gs_npc_skill_calc(df.e[10], level, itl_mdd),
-        "deception": await gs_npc_skill_calc(df.e[11], level, cha_mdd),
-        "diplomacy": await gs_npc_skill_calc(df.e[12], level, cha_mdd),
-        "intimidation": await gs_npc_skill_calc(df.e[13], level, cha_mdd),
-        "medicine": await gs_npc_skill_calc(df.e[14], level, wis_mdd),
-        "nature": await gs_npc_skill_calc(df.e[15], level, wis_mdd),
-        "occultism": await gs_npc_skill_calc(df.e[16], level, itl_mdd),
-        "performance": await gs_npc_skill_calc(df.e[17], level, cha_mdd),
-        "religion": await gs_npc_skill_calc(df.e[18], level, wis_mdd),
-        "society": await gs_npc_skill_calc(df.e[19], level, itl_mdd),
-        "stealth": await gs_npc_skill_calc(df.e[20], level, dex_mdd),
-        "survival": await gs_npc_skill_calc(df.e[21], level, wis_mdd),
-        "thievery": await gs_npc_skill_calc(df.e[22], level, dex_mdd),
-        "UI": False,
-        "unarmored": 0,
-        "light": 0,
-        "medium": 0,
-        "heavy": 0,
-        "unarmed": 0,
-        "simple": 0,
-        "martial": 0,
-        "advanced": 0,
-        "arcane": 0,
-        "divine": 0,
-        "occult": 0,
-        "primal": 0,
-        "eidolon": False,
-        "partner": None,
-        "feats": "",
-        "class_prof": 0,
-    }
-    spells = {}
-    attacks = {}
-    items = []
-    resistances = {"resist": {}, "weak": {}, "immune": {}}
-
-    for i in range(25, (len(df.a) - 1)):
-        name = df.a[i]
-        # print(name)
-        if name != numpy.nan:
-            lookup_data = await spell_lookup(name)
-            if lookup_data[0] is True:
-                proficiency = int(df.b[14]) - level - cha_mdd
-                spell = {
-                    "level": int(df.b[i]),
-                    "tradition": "NPC",
-                    "ability": "cha",
-                    "proficiency": proficiency,
-                    "dc": int(df.b[15]),
-                    "type": lookup_data[1].type,
-                    "save": lookup_data[1].save,
-                    "damage": lookup_data[1].damage,
-                    "heightening": lookup_data[1].heightening,
-                }
-                spells[name] = spell
-
-    for i in range(24, (len(df.d) - 1)):
-        # print(df.d[i], df.e[i])
-        if df.d[i] == "Name" and df.e[i] is not numpy.nan:
-            try:
-                # print(df.e[i])
-                try:
-                    potency = int(df.g[i + 2])
-                except Exception:
-                    potency = 0
-                die_num = int(df.e[i + 2])
-                if df.e[i + 3] is not numpy.nan:
-                    parsed_traits = df.e[i + 3].split(",")
-                else:
-                    parsed_traits = []
-
-                attk_stat = "str"
-                crit = "*2"
-                dmg_stat = "str"
-                # print(df.g[i], type(df.g[i]))
-                if type(df.g[i]) == str:
-                    dmg_type = df.g[i]
-                else:
-                    dmg_type = "Bludgeoning"
-
-                if df.f[i] == "Ranged":
-                    attk_stat = "dex"
-                    dmg_stat = None
-
-                for item in parsed_traits:
-                    if "deadly" in item:
-                        if "deadly" in item:
-                            string = item.split("-")
-                            if int(df.e[i + 2]) == 3:
-                                dd = 2
-                            elif int(df.e[i + 2]) == 4:
-                                dd = 3
-                            else:
-                                dd = 1
-                            crit = f"*2 + {dd}{string[1]}"
-                    elif item.strip().lower() == "finesse" and dex_mdd > str_mdd:
-                        # print("Finesse")
-                        attk_stat = "dex"
-                    elif item.strip().lower() == "brutal":
-                        attk_stat = "str"
-
-                attack_data = {
-                    "display_name": df.e[i],
-                    "name": df.e[i],
-                    "prof": "NPC",
-                    "pot": potency,
-                    "runes": [],
-                    "die_num": die_num,
-                    "die": df.f[i + 2],
-                    "crit": crit,
-                    "stat": dmg_stat,
-                    "dmg_type": dmg_type,
-                    "attk_stat": attk_stat,
-                    "traits": parsed_traits,
-                }
-
-                attacks[attack_data["display_name"]] = attack_data
-            except Exception:
-                pass
-    # print(attacks)
-    # print(len(df.i) - 1)
-    for i in range(25, (len(df.i) - 1)):
-        # print(i)
-        if df.i[i] is not numpy.nan and df.j[i] is not numpy.nan:
-            # print(df.i[i], df.j[i])
-            resistances["resist"][df.i[i]] = int(df.j[i])
-
-    for i in range(25, (len(df.k) - 1)):
-        # print(i)
-        if df.k[i] is not numpy.nan and df.l[i] is not numpy.nan:
-            print(df.k[i], df.l[i])
-            resistances["weak"][df.k[i]] = int(df.l[i])
-
-    for i in range(25, (len(df.m) - 1)):
-        # print(i)
-        if df.m[i] is not numpy.nan:
-            print(df.m[i])
-            resistances["immune"][df.m[i]] = 1
-    # print(resistances)
 
     return character, spells, attacks, items, resistances
 

@@ -12,6 +12,12 @@ from database_models import get_tracker
 from utils.utils import get_guild
 
 
+default_pic = (
+    "https://cdn.discordapp.com/attachments/1106097168181375066/1111774244808949760/artica"
+    "_A_portrait_of_a_genetic_cyberpunk_character._Cloaked_in__7108cd00-9880-4d22-9d18-c0930eb9a149.png"
+)
+
+
 async def get_RED_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = database_operations.engine
@@ -58,6 +64,7 @@ class RED_Character(Character):
         self.temp_hp = self.character_model.max_hp
         self.init_string = self.character_model.init_string
         self.init = self.character_model.init
+        self.pic = self.character_model.pic if self.character_model.pic is not None else default_pic
 
         self.level = self.character_model.level
         self.humanity = self.character_model.humanity
