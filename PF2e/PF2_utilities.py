@@ -67,7 +67,7 @@ class PF2_Utilities(Utilities):
 
 
 class PF2AddCharacterModal(discord.ui.Modal):
-    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, *args, **kwargs):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, pic, *args, **kwargs):
         self.name = name
         self.hp = hp
         self.init = init
@@ -76,6 +76,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
         self.ctx = ctx
         self.engine = engine
         self.bot = bot
+        self.pic = pic
         super().__init__(
             discord.ui.InputText(
                 label="AC",
@@ -123,6 +124,9 @@ class PF2AddCharacterModal(discord.ui.Modal):
             color=discord.Color.dark_gold(),
         )
 
+        if self.pic is not None:
+            embed.set_thumbnail(url=self.pic)
+
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
@@ -136,6 +140,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
                     current_hp=self.hp,
                     max_hp=self.hp,
                     temp_hp=0,
+                    pic=self.pic,
                 )
                 session.add(tracker)
             await session.commit()
