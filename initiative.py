@@ -273,7 +273,7 @@ class InitiativeCog(commands.Cog):
         description="Manage Initiative",
     )
     @discord.default_permissions(manage_messages=True)
-    @option("mode", choices=["start", "stop", "delete character"], required=True)
+    @option("mode", choices=["start", "stop", "delete character", "reroll initiative"], required=True)
     @option("character", description="Character to delete", required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ""):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -316,6 +316,10 @@ class InitiativeCog(commands.Cog):
                                 pass
                         else:
                             await ctx.send_followup("Delete Operation Failed", ephemeral=True)
+                elif mode == "reroll initiative":
+                    await ctx.response.defer()
+                    await Tracker_Model.reroll_init()
+
         except NoResultFound:
             await ctx.respond(error_not_initialized, ephemeral=True)
             return False
