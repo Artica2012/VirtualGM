@@ -77,6 +77,6 @@ class STF_Macro(Macro):
 
         async def callback(self, interaction: discord.Interaction):
             Macro = STF_Macro(self.ctx, self.engine, self.guild)
-            output_string = await Macro.roll_macro(self.character.char_name, self.macro, None, "", guild=self.guild)
+            output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)
 
-            await interaction.response.send_message(output_string)
+            await interaction.response.send_message(embed=output)
