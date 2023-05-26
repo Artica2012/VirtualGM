@@ -285,26 +285,29 @@ class EPF_Character(Character):
                 return await self.weapon_attack(item)
             except KeyError:
                 pass
+            try:
+                for attack in self.character_model.spells:
+                    if attack["name"] in item:
+                        stat_mod = 0
+                        match attack["ability"]:  # noqa
+                            case "con":
+                                stat_mod = self.con_mod
+                            case "int":
+                                stat_mod = self.itl_mod
+                            case "wis":
+                                stat_mod = self.wis_mod
+                            case "cha":
+                                stat_mod = self.cha_mod
 
-            for attack in self.character_model.spells:
-                if attack["name"] in item:
-                    stat_mod = 0
-                    match attack["ability"]:  # noqa
-                        case "con":
-                            stat_mod = self.con_mod
-                        case "int":
-                            stat_mod = self.itl_mod
-                        case "wis":
-                            stat_mod = self.wis_mod
-                        case "cha":
-                            stat_mod = self.cha_mod
+                        if attack["proficiency"] > 0:
+                            attack_mod = stat_mod + self.character_model.level + attack["proficiency"]
+                        else:
+                            attack_mod = stat_mod
+                        # print(attack_mod)
+                        return f"1d20+{attack_mod}"
+            except TypeError:
+                pass
 
-                    if attack["proficiency"] > 0:
-                        attack_mod = stat_mod + self.character_model.level + attack["proficiency"]
-                    else:
-                        attack_mod = stat_mod
-                    # print(attack_mod)
-                    return f"1d20+{attack_mod}"
             return 0
 
     async def weapon_attack(self, item):

@@ -59,9 +59,14 @@ class Tracker:
     #     print("Destroying Tracker")
 
     async def next(self):
-        print("next")
+        # print("next")
         await self.advance_initiative()
         await self.block_post_init()
+
+    async def reroll_init(self):
+        await self.end(clean=False)
+        await self.update()
+        await self.next()
 
     async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
         logging.info("get_init_list")
@@ -99,7 +104,7 @@ class Tracker:
         character = result.scalars().one()
         return await get_character(character.name, self.ctx, guild=self.guild, engine=self.engine)
 
-    async def end(self):
+    async def end(self, clean=True):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
@@ -125,53 +130,54 @@ class Tracker:
 
         # tracker cleanup
         # Delete condition with round timers
-        async with async_session() as session:
-            result = await session.execute(
-                select(Condition).where(Condition.auto_increment == true()).where(Condition.time == false())
-            )
-            con_del_list = result.scalars().all()
-        for con in con_del_list:
-            await asyncio.sleep(0)
-            # print(con.title)
+        if clean:
             async with async_session() as session:
-                await session.delete(con)
-                await session.commit()
-
-        # Delete any dead NPCs
-        async with async_session() as session:
-            result = await session.execute(
-                select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
-            )
-            delete_list = result.scalars().all()
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
-        for npc in delete_list:
-            async with async_session() as session:
-                # print(character)
-                result = await session.execute(select(Tracker).where(Tracker.name == npc.name))
-                char = result.scalars().one()
-                # print(char.id)
-                result = await session.execute(select(Condition).where(Condition.character_id == char.id))
-                Condition_list = result.scalars().all()
-                # print(Condition_list)
-                result = await session.execute(select(Macro).where(Macro.character_id == char.id))
-                Macro_list = result.scalars().all()
-            # Delete Conditions
-            for con in Condition_list:
+                result = await session.execute(
+                    select(Condition).where(Condition.auto_increment == true()).where(Condition.time == false())
+                )
+                con_del_list = result.scalars().all()
+            for con in con_del_list:
                 await asyncio.sleep(0)
+                # print(con.title)
                 async with async_session() as session:
                     await session.delete(con)
                     await session.commit()
-            # Delete Macros
-            for mac in Macro_list:
-                await asyncio.sleep(0)
-                async with async_session() as session:
-                    await session.delete(mac)
-                    await session.commit()
-            # Delete the Character
+
+            # Delete any dead NPCs
             async with async_session() as session:
-                await session.delete(char)
-                await session.commit()
-            await self.ctx.channel.send(f"{char.name} Deleted")
+                result = await session.execute(
+                    select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
+                )
+                delete_list = result.scalars().all()
+            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            for npc in delete_list:
+                async with async_session() as session:
+                    # print(character)
+                    result = await session.execute(select(Tracker).where(Tracker.name == npc.name))
+                    char = result.scalars().one()
+                    # print(char.id)
+                    result = await session.execute(select(Condition).where(Condition.character_id == char.id))
+                    Condition_list = result.scalars().all()
+                    # print(Condition_list)
+                    result = await session.execute(select(Macro).where(Macro.character_id == char.id))
+                    Macro_list = result.scalars().all()
+                # Delete Conditions
+                for con in Condition_list:
+                    await asyncio.sleep(0)
+                    async with async_session() as session:
+                        await session.delete(con)
+                        await session.commit()
+                # Delete Macros
+                for mac in Macro_list:
+                    await asyncio.sleep(0)
+                    async with async_session() as session:
+                        await session.delete(mac)
+                        await session.commit()
+                # Delete the Character
+                async with async_session() as session:
+                    await session.delete(char)
+                    await session.commit()
+                await self.ctx.channel.send(f"{char.name} Deleted")
 
         # Set all initiatives to 0
         async with async_session() as session:
@@ -639,6 +645,8 @@ class Tracker:
             logging.info(f"GTL1: guild: {self.guild.id}")
             iteration = 0
             init_pos = self.guild.initiative
+            if init_pos is None:
+                return []
             # print(f"init_pos: {init_pos}")
             # print(init_pos)
             length = len(self.init_list)
