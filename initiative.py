@@ -98,13 +98,16 @@ class InitiativeCog(commands.Cog):
             await report.report()
 
         if response:
-            Character_Model = await get_character(name, ctx, engine=engine)
             success = discord.Embed(
                 title=name.title(),
                 fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
                 color=discord.Color.dark_gold(),
             )
-            success.set_thumbnail(url=Character_Model.pic)
+            try:
+                Character_Model = await get_character(name, ctx, engine=engine)
+                success.set_thumbnail(url=Character_Model.pic)
+            except AttributeError:
+                pass
             await ctx.respond(embed=success)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
