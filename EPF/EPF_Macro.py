@@ -31,7 +31,7 @@ class EPF_Macro(Macro):
         logging.info("EPF roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
-        print(dice_result)
+        # print(dice_result)
         if dice_result == 0:
             embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
         else:
@@ -54,9 +54,8 @@ class EPF_Macro(Macro):
 
     async def show(self, character):
         Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
-
         macro_list = await Character_Model.macro_list()
-
+        print(macro_list)
         view = discord.ui.View(timeout=None)
         for macro in macro_list:
             try:
@@ -65,7 +64,12 @@ class EPF_Macro(Macro):
                     roll_string = await super().get_macro(character, macro, Character_Model=Character_Model)
                 await asyncio.sleep(0)
                 button = self.MacroButton(
-                    self.ctx, self.engine, self.guild, Character_Model, macro, f"{macro}: {roll_string}"
+                    self.ctx,
+                    self.engine,
+                    self.guild,
+                    Character_Model,
+                    macro,
+                    f"{macro}: {roll_string}",
                 )
                 if len(view.children) == 24:
                     await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
@@ -91,6 +95,8 @@ class EPF_Macro(Macro):
 
         async def callback(self, interaction: discord.Interaction):
             Macro = EPF_Macro(self.ctx, self.engine, self.guild)
-            output_string = await Macro.roll_macro(self.character.char_name, self.macro, None, "", guild=self.guild)
 
-            await interaction.response.send_message(output_string)
+            # print(self.macro)
+            output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)
+
+            await interaction.response.send_message(embed=output)

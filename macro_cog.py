@@ -120,7 +120,6 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macros Created Successfully")
         else:
             await ctx.send_followup("Action Failed")
-        # await engine.dispose()
 
     @macro.command(description="Display Macros")
     @option(
@@ -139,8 +138,6 @@ class MacroCog(commands.Cog):
             report = ErrorReport(ctx, "/macro show", e, self.bot)
             await report.report()
             await ctx.send_followup("Error Displaying Character Sheet")
-
-        # await engine.dispose()
 
     @commands.slash_command(name="m", description="Roll Macro")
     @option(
