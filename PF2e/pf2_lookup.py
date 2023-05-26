@@ -2,6 +2,7 @@ import os
 
 import aiohttp
 import discord
+from cache import AsyncTTL
 
 endpoints = [
     "action",
@@ -42,6 +43,7 @@ class PF2_Lookup:
             "spell": "https://api.pathfinder2.fr/v1/pf2/spell",
         }
 
+    @AsyncTTL(time_to_live=3600, maxsize=50)
     async def lookup(self, query, endpoint):
         """
         :param query:
@@ -52,7 +54,7 @@ class PF2_Lookup:
             params = {"name": query}
             headers = {"Authorization": self.key}
             async with session.get(self.endpoints[endpoint], headers=headers, params=params, ssl=False) as response:
-                if response.status is not 200:
+                if response.status != 200:
                     return []
                 # print(await response.text())
                 data: dict = await response.json()
@@ -61,6 +63,18 @@ class PF2_Lookup:
             for item in data["results"]:
                 output_list.append(Result(item))
         return output_list
+
+    async def embed_list(self, query, endpoint):
+        results = await self.lookup(query, endpoint)
+        if len(results) == 0 or results is None:
+            return []
+        output = []
+        for item in results:
+            try:
+                output.append(await item.get_embed())
+            except Exception:
+                print(item.name)
+        return output
 
 
 class Result:
@@ -83,10 +97,16 @@ class Result:
 
         clean = re.compile("<.*?>")
         clean_2 = re.compile("@.*?]")
+
         sub_string = re.sub(clean, "", text)
         string = re.sub(clean_2, "", sub_string)
-        if len(string) > 1000:
-            return f"{string[:1000]}..."
+        string = string.replace("{", "**")
+        string = string.replace("}", "**")
+        string = string.replace("[[", "")
+        string = string.replace("]]", "")
+        string = string.replace("/r", "")
+        if len(string) > 4000:
+            return f"{string[:4000]}..."
         else:
             return string
 
@@ -116,18 +136,20 @@ class Result:
                 return await self.generic_embed()
 
     async def action_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Type: ", value=self.data["system"]["actionType"]["value"].title(), inline=False
                 ),
-                discord.EmbedField(name="Traits", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -137,8 +159,9 @@ class Result:
     async def ancestry_embed(self):
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Size: ", value=self.data["system"]["size"].title(), inline=False),
                 discord.EmbedField(name="Speed: ", value=self.data["system"]["speed"], inline=False),
             ],
@@ -148,15 +171,17 @@ class Result:
         return embed
 
     async def feat_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -170,8 +195,9 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Feat: ", value=item_list.title(), inline=False),
                 discord.EmbedField(name="Lore: ", value=self.data["system"]["trainedLore"].title(), inline=False),
             ],
@@ -184,10 +210,13 @@ class Result:
         ability_str = ""
         for item in self.data["system"]["keyAbility"]["value"]:
             ability_str += f"{item.title()}\n"
+
+        class_desc = self.description.split("Your Level")
         embed = discord.Embed(
             title=self.name,
+            description=class_desc[0],
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Key Ability: ", value=ability_str, inline=False),
             ],
             color=discord.Color.random(),
@@ -210,8 +239,9 @@ class Result:
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Alignment: ",
                     value=(
@@ -232,14 +262,22 @@ class Result:
 
     async def equipment_embed(self):
         value = ""
-        for key in self.data["system"]["price"]["value"]:
-            value += f"{self.data['system']['price']['value'][key]} {key} "
+        try:
+            for key in self.data["system"]["price"]["value"]:
+                value += f"{self.data['system']['price']['value'][key]} {key} "
+        except Exception:
+            value = ""
 
+        try:
+            level = self.data["system"]["level"]["value"]
+        except Exception:
+            level = ""
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
-                discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Level: ", value=level, inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
             ],
             color=discord.Color.random(),
@@ -252,14 +290,17 @@ class Result:
         for key in self.data["system"]["price"]["value"]:
             value += f"{self.data['system']['price']['value'][key]} {key} "
 
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Level: ", value=self.data["system"]["level"]["value"], inline=False),
                 discord.EmbedField(name="Proficiency: ", value=self.data["system"]["category"], inline=False),
                 discord.EmbedField(name="Group: ", value=self.data["system"]["group"].title(), inline=False),
@@ -270,7 +311,6 @@ class Result:
                 ),
                 discord.EmbedField(name="Usage: ", value=self.data["system"]["usage"]["value"], inline=False),
                 discord.EmbedField(name="Price: ", value=value, inline=False),
-                discord.EmbedField(name="Traits: ", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -278,15 +318,17 @@ class Result:
         return embed
 
     async def heritage_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -294,15 +336,17 @@ class Result:
         return embed
 
     async def generic_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
             ],
             color=discord.Color.random(),
         )
@@ -310,9 +354,10 @@ class Result:
         return embed
 
     async def spell_embed(self):
-        trait_str = ""
+        trait_list = []
         for trait in self.traits:
-            trait_str += f"{trait.title()}\n"
+            trait_list.append(f"`{trait.title()}`")
+        trait_str = ", ".join(trait_list)
 
         trad_str = ""
         for trad in self.data["system"]["traditions"]["value"]:
@@ -324,8 +369,10 @@ class Result:
             spell_range = "-"
         embed = discord.Embed(
             title=self.name,
+            description=self.description,
             fields=[
-                discord.EmbedField(name="Description: ", value=self.description, inline=False),
+                discord.EmbedField(name="Traits", value=trait_str, inline=False),
+                # discord.EmbedField(name="Description: ", value=self.description, inline=False),
                 discord.EmbedField(
                     name="Duration: ", value=self.data["system"]["duration"]["value"].title(), inline=True
                 ),
@@ -337,7 +384,6 @@ class Result:
                 discord.EmbedField(name="Level: ", value=f"{self.data['system']['level']['value']}", inline=True),
                 discord.EmbedField(name="Traditions: ", value=trad_str, inline=False),
                 discord.EmbedField(name="School: ", value=self.data["system"]["school"]["value"].title(), inline=False),
-                discord.EmbedField(name="Traits", value=trait_str, inline=False),
             ],
             color=discord.Color.random(),
         )

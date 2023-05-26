@@ -24,6 +24,7 @@ from database_models import (
     Base,
     LookupBase,
     get_macro,
+    get_tracker,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine, DATABASE
@@ -354,7 +355,7 @@ class EPF_Character(Character):
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
         print(f"dmg die. {weapon['die_num']}")
-        die_mod = await bonus_calc(weapon["die_num"], "dmg_die", self.character_model.bonuses, item_name=item)
+        die_mod = await bonus_calc(int(weapon["die_num"]), "dmg_die", self.character_model.bonuses, item_name=item)
         print(die_mod)
 
         dmg_mod = 0
@@ -649,13 +650,22 @@ class EPF_Character(Character):
         data: str = "",
         visible: bool = True,
         update: bool = True,
+        target: str = None,
     ):
         logging.info("set_cc")
         # Get the Character's data
 
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        if target is None:
+            target = self.char_name
+            target_id = self.character_model.id
+        else:
+            Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
+                target_id = result.scalars().one()
 
         # Check to make sure there isn't a condition with the same name on the character
         async with async_session() as session:
@@ -673,7 +683,7 @@ class EPF_Character(Character):
             if title in EPF_Conditions:
                 data = EPF_Conditions[title]
                 # print(data)
-        print(data)
+        # print(data)
         if "thp" in data:
             data_list = data.split(",")
             final_list = data_list.copy()
@@ -686,9 +696,9 @@ class EPF_Character(Character):
                         final_list.pop(x)
                     except Exception:
                         pass
-            print(final_list)
+            # print(final_list)
             data = ", ".join(final_list)
-            print(data)
+            # print(data)
 
         # Write the condition to the table
         try:
@@ -705,6 +715,7 @@ class EPF_Character(Character):
                         flex=flex,
                         action=data,
                         visible=visible,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()
@@ -733,6 +744,7 @@ class EPF_Character(Character):
                         time=True,
                         action=data,
                         visible=visible,
+                        target=target_id,
                     )
                     session.add(condition)
                 await session.commit()
@@ -1068,7 +1080,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         # Spells
         spells_raw = pb["build"]["spellCasters"]
         focus_spells = pb["build"]["focus"]
-        print(focus_spells)
+        # print(focus_spells)
         spell_library = {}
         for item in spells_raw:
             for spell_level in item["spells"]:
@@ -1087,7 +1099,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                         }
                         spell_library[spell_name] = spell
         for key in focus_spells.keys():
-            print(key)
+            # print(key)
             try:
                 if type(focus_spells[key]) == dict:
                     if "wis" in focus_spells[key].keys():
@@ -1125,16 +1137,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                             discriminator = None
                         if discriminator is not None:
                             for item in focus_spells[key]["cha"][discriminator]:
-                                print(item)
+                                # print(item)
                                 if "(Amped)" in item:
-                                    print("amped")
+                                    # print("amped")
                                     lookup_name = item.strip("(Amped)")
                                 else:
-                                    print("not amped")
+                                    # print("not amped")
                                     lookup_name = item
-                                print(lookup_name)
+                                # print(lookup_name)
                                 spell_data = await spell_lookup(lookup_name)
-                                print(spell_data[0])
+                                # print(spell_data[0])
                                 if spell_data[0] is True:
                                     spell = {
                                         "level": 0,
@@ -1529,7 +1541,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             for item in macros:
                 macro_string += f"{item},"
             character.macros = macro_string
-            print(macro_string)
+            # print(macro_string)
 
             await session.commit()
 
@@ -1735,7 +1747,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
-        print(f"{condition.title}, {condition.action}")
+        # print(f"{condition.title}, {condition.action}")
 
         data: str = condition.action
         data_list = data.split(",")
@@ -1743,11 +1755,11 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
             try:
                 parsed = item.strip().split(" ")
                 # Conditions adding conditions? Crazy
-                print(parsed[0].title())
+                # print(parsed[0].title())
                 if parsed[0].title() in EPF_Conditions.keys():
-                    print("Condition recognized")
+                    # print("Condition recognized")
                     if parsed[0].title() not in await Characte_Model.conditions():
-                        print(f"Parsed: {parsed}")
+                        # print(f"Parsed: {parsed}")
                         if len(parsed) > 1:
                             num = int(parsed[1])
                         else:
@@ -1768,25 +1780,25 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     item_name = ""
                     specific_weapon = ""
 
-                    print(parsed[0], parsed[0][0])
+                    # print(parsed[0], parsed[0][0])
                     if parsed[0][0] == '"':
-                        print("Opening Quote")
+                        # print("Opening Quote")
                         for x, item in enumerate(parsed):
-                            print(x, item)
-                            print(item[-1])
+                            # print(x, item)
+                            # print(item[-1])
                             if item[-1] == '"':
                                 item_name = " ".join(parsed[0 : x + 1])
                                 item_name = item_name.strip('"')
                                 parsed = parsed[x + 1 :]
                                 break
-                    print(item_name)
-                    print(parsed)
+                    # print(item_name)
+                    # print(parsed)
                     if item_name != "":
                         if item_name.title() in await Characte_Model.attack_list():
                             specific_weapon = f"{item_name},"
                         else:
                             parsed = []
-                    print(specific_weapon)
+                    # print(specific_weapon)
 
                     key = f"{specific_weapon}{parsed[0]}".lower()
                     if parsed[1][1:] == "X":
@@ -1841,7 +1853,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                 pass
 
     # print(bonuses)
-    print(resistances)
+    # print(resistances)
     return bonuses, resistances
 
 
@@ -1900,7 +1912,7 @@ async def attack_lookup(attack, pathbuilder):
             data = result.scalars().one()
     except Exception:
         try:
-            print(attack["name"])
+            # print(attack["name"])
             item_name = attack["name"].strip()
             async with async_session() as session:
                 result = await session.execute(

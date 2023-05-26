@@ -415,6 +415,12 @@ class InitiativeCog(commands.Cog):
     @option("unit", description="Unit of Time (if applicable)", autocomplete=time_check_ac)
     @option("flex", description="Function Varies depending on system", autocomplete=auto_complete.flex_ac)
     @option("data", description="Add functionality to condition (only for systems with a scripting language")
+    @option(
+        "linked_character",
+        description="Character whose turn the condition decrements on.",
+        autocomplete=character_select,
+        required=False,
+    )
     async def new(
         self,
         ctx: discord.ApplicationContext,
@@ -426,6 +432,7 @@ class InitiativeCog(commands.Cog):
         auto: str = "Static",
         flex: str = "False",
         data: str = "",
+        linked_character: str = None,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
@@ -474,7 +481,9 @@ class InitiativeCog(commands.Cog):
         for char in char_list:
             try:
                 model = await get_character(char, ctx, guild=guild, engine=engine)
-                response = await model.set_cc(title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data)
+                response = await model.set_cc(
+                    title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
+                )
                 if response:
                     success = discord.Embed(
                         title=model.char_name.title(),
@@ -488,6 +497,8 @@ class InitiativeCog(commands.Cog):
                     success.set_thumbnail(url=model.pic)
                     embeds.append(success)
                     success_string += f"\n{char}"
+                else:
+                    raise KeyError
 
             except Exception as e:
                 failure = discord.Embed(

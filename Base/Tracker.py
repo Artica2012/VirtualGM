@@ -91,6 +91,14 @@ class Tracker:
             logging.error("error in get_init_list")
             return []
 
+    async def get_char_from_id(self, char_id: int):
+        Char_Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Char_Tracker).where(Char_Tracker.id == char_id))
+        character = result.scalars().one()
+        return await get_character(character.name, self.ctx, guild=self.guild, engine=self.engine)
+
     async def end(self):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
@@ -390,35 +398,44 @@ class Tracker:
                 if before is not None:
                     char_result = await session.execute(
                         select(Condition)
-                        .where(Condition.character_id == current_character.id)
+                        .where(Condition.target == current_character.id)
                         .where(Condition.flex == before)
                         .where(Condition.auto_increment == true())
                     )
                 else:
                     char_result = await session.execute(
                         select(Condition)
-                        .where(Condition.character_id == current_character.id)
+                        .where(Condition.target == current_character.id)
                         .where(Condition.auto_increment == true())
                     )
                 con_list = char_result.scalars().all()
+                print(len(con_list))
                 logging.info("BAI9: condition's retrieved")
                 # print("First Con List")
 
             for con_row in con_list:
+                print(con_row.title)
+                Con_Character = await self.get_char_from_id(con_row.character_id)
+                print(Con_Character.char_name)
                 logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
                 await asyncio.sleep(0)
                 if not con_row.time:
                     if con_row.number >= 2:
-                        await current_character.edit_cc(con_row.title, con_row.number - 1)
+                        await Con_Character.edit_cc(con_row.title, con_row.number - 1)
                     else:
-                        await current_character.delete_cc(con_row.title)
+                        await Con_Character.delete_cc(con_row.title)
+                        del_embed = discord.Embed(
+                            title=Con_Character.char_name,
+                            description=f"{con_row.title} removed from {Con_Character.char_name}",
+                        )
+                        del_embed.set_thumbnail(url=Con_Character.pic)
                         if self.ctx is not None:
-                            await self.ctx.channel.send(f"{con_row.title} removed from {current_character.char_name}")
+                            await self.ctx.channel.send(embed=del_embed)
                         elif self.bot is not None:
                             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
-                            await tracker_channel.send(f"{con_row.title} removed from {current_character.char_name}")
+                            await tracker_channel.send(embed=del_embed)
                 else:
-                    await current_character.check_time_cc(bot=self.bot)
+                    await Con_Character.check_time_cc(bot=self.bot)
 
         except Exception as e:
             logging.error(f"block_advance_initiative: {e}")

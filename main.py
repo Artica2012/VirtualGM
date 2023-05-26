@@ -57,7 +57,7 @@ bot = discord.Bot(
 async def on_ready():
     # logging.warning("Updating tables...")
     # await database_operations.update_tracker_table()
-    # database_operations.update_con_table()
+    # await database_operations.update_con_table()
     # database_operations.create_reminder_table()
     # logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
