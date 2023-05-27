@@ -80,6 +80,7 @@ Character Model
 					attk_bonus: String
 					autofire : Bool
 					autofire_ammt : Integer
+					Hands: Integer
 					attach: [
 					]
 				}
@@ -87,7 +88,6 @@ Character Model
 
 		armor : JSON = {
 				location : {
-						name: String
 						sp: Integer
 						penalty:  String
 				}
