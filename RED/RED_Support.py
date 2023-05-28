@@ -1,5 +1,6 @@
 import logging
 
+import d20
 import sqlalchemy as db
 
 
@@ -43,6 +44,11 @@ class RED_Character_Model:
 
         logging.info("RED_character_model_table")
         return emp
+
+
+# Work in progress, may be unnecessary
+def RED_crit_check(dice_result: d20.RollResult):
+    pass
 
 
 # Conditions

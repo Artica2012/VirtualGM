@@ -4,8 +4,7 @@ import logging
 import d20
 import discord
 
-import EPF.EPF_Support
-import PF2e.pf2_functions
+from Alt_Dice_Rollers import d20_to_d10
 from Base.Macro import Macro
 from EPF.EPF_Character import get_EPF_Character, EPF_Character
 from utils.Char_Getter import get_character
@@ -15,12 +14,14 @@ class RED_Macro(Macro):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
 
-
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
-        logging.info("EPF roll_macro")
+        logging.info("RED roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-        dice_result = await Character_Model.roll_macro(macro_name, modifier)
+        dice_result = d20_to_d10(await Character_Model.roll_macro(macro_name, modifier))
         print(dice_result)
+        print(dice_result.total)
+        print(dice_result.crit)
+
         if dice_result == 0:
             embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
         else:

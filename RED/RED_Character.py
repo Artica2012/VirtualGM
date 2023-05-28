@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import d20
 import discord
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
@@ -10,7 +11,9 @@ from sqlalchemy.orm import sessionmaker
 import database_operations
 from Base.Character import Character
 from database_models import get_tracker, get_condition, get_RED_tracker
+from utils.parsing import ParseModifiers
 from utils.utils import get_guild
+from RED.RED_Support import RED_SKills
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1106097168181375066/1111774244808949760/artica"
@@ -78,6 +81,58 @@ class RED_Character(Character):
         self.macros = self.character_model.macros
         self.bonuses = self.character_model.bonuses
 
+    async def get_roll(self, item: str):
+        item = item.lower()
+        logging.info(f"RED returning roll: {item}")
+        if item in self.skills.keys():
+            return f"1d10+{self.skills[item]['value']}"
+        elif item in self.attacks.keys():
+            return await self.weapon_attack(item)
+        elif item in RED_SKills.keys():
+            return f"1d10+{await self.get_skill(item)}"
+        else:
+            return 0
+
+    async def get_skill(self, item: str):
+        item = item.lower()
+        if item in self.skills.keys():
+            return self.skills[item]["value"]
+        elif item in RED_SKills:
+            return self.stats[RED_SKills[item]]["value"]
+        else:
+            return 0
+
+    async def roll_macro(self, macro, modifier):
+        macro_string = await self.get_roll(macro)
+        if macro_string == 0:
+            return 0
+        roll_string = f"{macro_string}{ParseModifiers(modifier)}"
+        print(roll_string)
+        dice_result = d20.roll(roll_string)
+        return dice_result
+
+    async def weapon_attack(self, item):
+        item = item.lower()
+        logging.info(f"RED weapon attack: {item}")
+        weapon = self.attacks["item"]
+        match weapon["type"]:  # noqa
+            case "melee":
+                stat = self.stats["dex"]["value"]
+            case "ranged":
+                stat = self.stats["ref"]["value"]
+            case _:
+                stat = self.stats["ref"]["value"]
+
+        if weapon["skill"] in self.skills.keys():
+            skill = self.skills[weapon["skill"]]["value"]
+        else:
+            skill = 0
+
+        attack_mod = int(stat) + skill
+        bonus = await bonus_calc("attack", self.bonuses)
+
+        return f"1d10+{attack_mod}{ParseModifiers(f'{bonus}')}"
+
 
 async def calculate(ctx, engine, char_name, guild=None):
     logging.info("Updating Character Model")
@@ -111,7 +166,8 @@ async def calculate(ctx, engine, char_name, guild=None):
             # print(skills)
 
             macros = []
-            macros = character.attacks.keys()
+            macros.extend(character.skills.keys())
+            macros.extend(character.attacks.keys())
             character.macros = macros
 
             await session.commit()
