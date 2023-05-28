@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import discord
@@ -8,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 import database_operations
 from Base.Character import Character
-from database_models import get_tracker
+from database_models import get_tracker, get_condition, get_RED_tracker, get_EPF_tracker
 from utils.utils import get_guild
 
 
@@ -81,3 +82,99 @@ class RED_Character(Character):
 
 async def calculate(ctx, engine, char_name, guild=None):
     return True
+
+async def calc_mods(stats:dict, ):
+    pass
+
+async def parse_bonuses(ctx, engine, char_name: str, guild=None):
+    guild = await get_guild(ctx, guild=guild)
+    Character_Model = await get_RED_Character(char_name, ctx, guild=guild, engine=engine)
+    # Database boilerplate
+    if guild is not None:
+        RED_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+    else:
+        RED_tracker = await get_RED_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(RED_tracker.id).where(RED_tracker.name == char_name))
+            char = result.scalars().one()
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == char))
+            conditions = result.scalars().all()
+    except NoResultFound:
+        conditions = []
+
+    bonuses = {
+        "pos": {},
+        "neg": {}
+    }
+    resistances = {"resist": {}, "weak": {}, "immune": {}}
+
+    for condition in conditions:
+        await asyncio.sleep(0)
+        # Get the data from the conditions
+        # Write the bonuses into the two dictionaries
+
+        data: str = condition.action
+        data_list = data.split(",")
+        for item in data_list:
+            try:
+                parsed = item.strip().split(" ")
+                # Conditions adding conditions? Crazy
+
+
+                item_name = ""
+                specific_weapon = ""
+
+                # print(parsed[0], parsed[0][0])
+                if parsed[0][0] == '"':
+                    # print("Opening Quote")
+                    for x, item in enumerate(parsed):
+                        # print(x, item)
+                        # print(item[-1])
+                        if item[-1] == '"':
+                            item_name = " ".join(parsed[0 : x + 1])
+                            item_name = item_name.strip('"')
+                            parsed = parsed[x + 1 :]
+                            break
+                # print(item_name)
+                # print(parsed)
+                if item_name != "":
+                    if item_name.title() in await Character_Model.attacks['list']:
+                        specific_weapon = f"{item_name},"
+                    else:
+                        parsed = []
+                # print(specific_weapon)
+
+                key = f"{specific_weapon}{parsed[0]}".lower()
+                if parsed[1][1:] == "X":
+                    value = int(condition.number)
+                else:
+                    try:
+                        value = int(parsed[1][1:])
+                    except ValueError:
+                        value = int(parsed[1])
+
+                if parsed[1][0] == "+":  # Positive
+                    if key in bonuses["pos"]:
+                        if value > bonuses["pos"][key]:
+                            bonuses["pos"][key] = value
+                    else:
+                        bonuses["pos"][key] = value
+                elif parsed[1][0] == "-":  # Negative
+                    if key in bonuses["neg"]:
+                        if value > bonuses["neg"][key]:
+                            bonuses["neg"][key] = value
+                    else:
+                        bonuses["neg"][key] = value
+            except Exception:
+                pass
+
+    # print(bonuses)
+    # print(resistances)
+    return bonuses, resistances

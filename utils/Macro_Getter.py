@@ -1,4 +1,6 @@
 import logging
+
+from RED.RED_Macro import RED_Macro
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
@@ -20,5 +22,7 @@ async def get_macro_object(ctx, engine=None, guild=None):
         return PF2_Macro(ctx, engine, guild)
     elif guild.system == "STF":
         return STF_Macro(ctx, engine, guild)
+    elif guild.system == "RED":
+        return RED_Macro(ctx, engine, guild)
     else:
         return Macro(ctx, engine, guild)
