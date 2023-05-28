@@ -5,14 +5,12 @@
 import logging
 
 import discord
-import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
 import RED.RED_GSHEET_Importer
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
-from error_handling_reporting import ErrorReport
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
@@ -39,30 +37,30 @@ class REDCog(commands.Cog):
             color=discord.Color.dark_gold(),
         )
         if url is not None:
-            try:
-                guild = await get_guild(ctx, None)
-                if guild.system == "RED":
-                    response = await RED.RED_GSHEET_Importer.red_g_sheet_import(ctx, name, url, image=image)
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                    await Tracker_Model.update_pinned_tracker()
-                else:
-                    response = False
-                if response:
-                    Character_Model = await get_character(name, ctx, engine=engine)
-                    success.set_thumbnail(url=Character_Model.pic)
-                    await ctx.send_followup(embed=success)
-                else:
-                    await ctx.send_followup("Error importing character.")
-            except sqlalchemy.exc.NoResultFound:
-                await ctx.send_followup(
-                    "No active tracker set up in this channel. Please make sure that you are in the "
-                    "correct channel before trying again."
-                )
-            except Exception as e:
-                await ctx.send_followup("Error importing character")
-                logging.info(f"pb_import: {e}")
-                report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
-                await report.report()
+            # try:
+            guild = await get_guild(ctx, None)
+            if guild.system == "RED":
+                response = await RED.RED_GSHEET_Importer.red_g_sheet_import(ctx, name, url, image=image)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
+            else:
+                response = False
+            if response:
+                Character_Model = await get_character(name, ctx, engine=engine)
+                success.set_thumbnail(url=Character_Model.pic)
+                await ctx.send_followup(embed=success)
+            else:
+                await ctx.send_followup("Error importing character.")
+            # except sqlalchemy.exc.NoResultFound:
+            #     await ctx.send_followup(
+            #     "No active tracker set up in this channel. Please make sure that you are in the "
+            #     "correct channel before trying again."
+            # )
+            # except Exception as e:
+            #     await ctx.send_followup("Error importing character")
+            #     logging.info(f"pb_import: {e}")
+            #     report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
+            #     await report.report()
         try:
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
