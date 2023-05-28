@@ -2,16 +2,15 @@ import asyncio
 import logging
 
 import discord
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import database_operations
 from Base.Character import Character
-from database_models import get_tracker, get_condition, get_RED_tracker, get_EPF_tracker
+from database_models import get_tracker, get_condition, get_RED_tracker
 from utils.utils import get_guild
-
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1106097168181375066/1111774244808949760/artica"
@@ -28,7 +27,7 @@ async def get_RED_Character(char_name, ctx, guild=None, engine=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(RED_tracker).where(RED_tracker.name == char_name))
+            result = await session.execute(select(RED_tracker).where(func.lower(RED_tracker.name) == char_name.lower()))
             character = result.scalars().one()
             return RED_Character(char_name, ctx, engine, character, guild=guild)
 
@@ -81,10 +80,66 @@ class RED_Character(Character):
 
 
 async def calculate(ctx, engine, char_name, guild=None):
-    return True
+    logging.info("Updating Character Model")
+    guild = await get_guild(ctx, guild=guild)
+    # Database boilerplate
+    if guild is not None:
+        RED_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
+    else:
+        RED_tracker = await get_RED_tracker(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-async def calc_mods(stats:dict, ):
-    pass
+    bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
+
+    async with async_session() as session:
+        try:
+            query = await session.execute(select(RED_tracker).where(func.lower(RED_tracker.name) == char_name.lower()))
+            character = query.scalars().one()
+
+            stats = character.stats
+            for stat in character.stats.keys():
+                stats = await calc_stats(stat, stats, bonuses)
+            character.stats = stats
+            # print(stats)
+
+            skills = character.skills
+            # print(skills)
+            for skill in character.skills.keys():
+                # print(skill)
+                skills = await calc_mods(stats, skill, skills, bonuses)
+            character.skills = skills
+            # print(skills)
+
+            macros = []
+            macros = character.attacks.keys()
+            character.macros = macros
+
+            await session.commit()
+
+        except Exception as e:
+            logging.error(e)
+
+
+async def calc_stats(stat_name, stats, bonuses):
+    stats[stat_name]["value"] = stats[stat_name]["base"] + await bonus_calc(stat_name, bonuses)
+    return stats
+
+
+async def calc_mods(stats: dict, skill_name: str, skills: dict, bonuses: dict):
+    skill_base = skills[skill_name]["base"]
+    stat = stats[skills[skill_name]["stat"]]["value"]
+    skills[skill_name]["value"] = skill_base + stat + await bonus_calc(skill_name, bonuses)
+    return skills
+
+
+async def bonus_calc(skill, bonuses):
+    mod = 0
+    if skill in bonuses["pos"]:
+        mod += bonuses["pos"][skill]
+    if skill in bonuses["neg"]:
+        mod -= bonuses["neg"][skill]
+    return mod
+
 
 async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
@@ -100,7 +155,9 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
 
     try:
         async with async_session() as session:
-            result = await session.execute(select(RED_tracker.id).where(RED_tracker.name == char_name))
+            result = await session.execute(
+                select(RED_tracker.id).where(func.lower(RED_tracker.name) == char_name.lower())
+            )
             char = result.scalars().one()
 
         async with async_session() as session:
@@ -109,10 +166,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     except NoResultFound:
         conditions = []
 
-    bonuses = {
-        "pos": {},
-        "neg": {}
-    }
+    bonuses = {"pos": {}, "neg": {}}
     resistances = {"resist": {}, "weak": {}, "immune": {}}
 
     for condition in conditions:
@@ -126,7 +180,6 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
             try:
                 parsed = item.strip().split(" ")
                 # Conditions adding conditions? Crazy
-
 
                 item_name = ""
                 specific_weapon = ""
@@ -145,7 +198,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                 # print(item_name)
                 # print(parsed)
                 if item_name != "":
-                    if item_name.title() in await Character_Model.attacks['list']:
+                    if item_name.title() in await Character_Model.attacks["list"]:
                         specific_weapon = f"{item_name},"
                     else:
                         parsed = []

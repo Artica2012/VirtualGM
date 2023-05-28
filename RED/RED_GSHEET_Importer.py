@@ -163,7 +163,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "active": True,
         "role": df.a[3],
         "hp": df.d[2],
-        "humanity": df.d[11],
+        "humanity": {"max_humanity": df.d[11], "current_humanity": df.d[11]},
         "cyber": {},
         "net": {},
     }

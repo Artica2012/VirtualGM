@@ -72,7 +72,9 @@ class Character:
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                result = await session.execute(
+                    select(Tracker).where(func.lower(Tracker.name) == self.char_name.lower())
+                )
                 character = result.scalars().one()
             return character
 
