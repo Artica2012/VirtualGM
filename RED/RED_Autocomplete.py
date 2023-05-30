@@ -28,6 +28,7 @@ class RED_Autocomplete(AutoComplete):
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             macro_list = Character_Model.macros
+            print(macro_list)
 
             if attk and auto:
                 attk_list = Character_Model.attacks.keys()

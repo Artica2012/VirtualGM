@@ -2,6 +2,8 @@ import logging
 
 import d20
 import sqlalchemy as db
+from d20 import CritType
+from Alt_Dice_Rollers import d20_to_d10
 
 
 class RED_Character_Model:
@@ -39,6 +41,7 @@ class RED_Character_Model:
             db.Column("net", db.JSON(), nullable=False),
             db.Column("macros", db.JSON()),
             db.Column("bonuses", db.JSON()),
+            db.Column("resistances", db.JSON()),
             db.Column("pic", db.String(), nullable=True),
         )
 
@@ -46,9 +49,40 @@ class RED_Character_Model:
         return emp
 
 
-# Work in progress, may be unnecessary
-def RED_crit_check(dice_result: d20.RollResult):
-    pass
+class RED_Roll_Result:
+    def __init__(self, roll_result: d20.RollResult):
+        self.roll_result = d20_to_d10(roll_result)
+        self._RED_crit_check()
+
+    @property
+    def crit(self) -> CritType:
+        return self.roll_result.crit
+
+    def _RED_crit_check(self):
+        if self.crit == CritType.CRIT:
+            additonal_dice = d20.roll("1d10")
+            self.total = self.roll_result.total + additonal_dice.total
+            self.output = f"{self.roll_result.result}\nPlus Critical dice: {additonal_dice.result}\nTotal: {self.total}"
+        elif self.crit == CritType.FAIL:
+            additonal_dice = d20.roll("1d10")
+            self.total = self.roll_result.total - additonal_dice.total
+            if self.total < 0:
+                self.total = 0
+            self.output = (
+                f"{self.roll_result.result}\nMinus Critical dice: {additonal_dice.result}\nTotal: {self.total}"
+            )
+        else:
+            self.total = self.roll_result.total
+            self.output = self.roll_result.result
+
+    def __str__(self):
+        return self.output
+
+    def __int__(self):
+        return self.total
+
+    def __repr__(self):
+        return f"<RED RollResult total={self.total}>"
 
 
 # Conditions

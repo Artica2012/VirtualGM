@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 import database_operations
 from Base.Character import Character
-from database_models import get_tracker, get_condition, get_RED_tracker
+from database_models import get_tracker, get_condition, get_RED_tracker, get_macro
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 from RED.RED_Support import RED_SKills
@@ -25,6 +25,7 @@ async def get_RED_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = database_operations.engine
     guild = await get_guild(ctx, guild)
+    print(guild.id)
     RED_tracker = await get_tracker(ctx, engine, id=guild.id)
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -41,6 +42,7 @@ async def get_RED_Character(char_name, ctx, guild=None, engine=None):
 class RED_Character(Character):
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
         super().__init__(char_name, ctx, engine, character)
+        self.guild = guild
         self.level = character.level
         self.humanity = character.humanity
         self.current_luck = character.current_luck
@@ -83,6 +85,7 @@ class RED_Character(Character):
 
     async def get_roll(self, item: str):
         item = item.lower()
+        # print(item)
         logging.info(f"RED returning roll: {item}")
         if item in self.skills.keys():
             return f"1d10+{self.skills[item]['value']}"
@@ -91,7 +94,18 @@ class RED_Character(Character):
         elif item in RED_SKills.keys():
             return f"1d10+{await self.get_skill(item)}"
         else:
-            return 0
+            try:
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                macro_table = await get_macro(self.ctx, self.engine, id=self.guild.id)
+                async with async_session() as macro_session:
+                    result = await macro_session.execute(
+                        select(macro_table.macro)
+                        .where(macro_table.character_id == self.id)
+                        .where(func.lower(macro_table.name) == item)
+                    )
+                    return result.scalars().one()
+            except NoResultFound:
+                return "0"
 
     async def get_skill(self, item: str):
         item = item.lower()
@@ -114,7 +128,7 @@ class RED_Character(Character):
     async def weapon_attack(self, item):
         item = item.lower()
         logging.info(f"RED weapon attack: {item}")
-        weapon = self.attacks["item"]
+        weapon = self.attacks[item]
         match weapon["type"]:  # noqa
             case "melee":
                 stat = self.stats["dex"]["value"]
@@ -145,11 +159,13 @@ async def calculate(ctx, engine, char_name, guild=None):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
-
-    async with async_session() as session:
-        try:
+    try:
+        async with async_session() as session:
             query = await session.execute(select(RED_tracker).where(func.lower(RED_tracker.name) == char_name.lower()))
             character = query.scalars().one()
+
+            character.bonuses = bonuses
+            character.resistances = resistance
 
             stats = character.stats
             for stat in character.stats.keys():
@@ -168,12 +184,20 @@ async def calculate(ctx, engine, char_name, guild=None):
             macros = []
             macros.extend(character.skills.keys())
             macros.extend(character.attacks.keys())
+            macro_table = await get_macro(ctx, engine, id=guild.id)
+            async with async_session() as macro_session:
+                result = await macro_session.execute(
+                    select(macro_table.name).where(macro_table.character_id == character.id)
+                )
+                macro_data = result.scalars().all()
+            macros.extend(macro_data)
+            print(macros)
             character.macros = macros
 
             await session.commit()
 
-        except Exception as e:
-            logging.error(e)
+    except Exception as e:
+        logging.error(e)
 
 
 async def calc_stats(stat_name, stats, bonuses):
@@ -189,6 +213,7 @@ async def calc_mods(stats: dict, skill_name: str, skills: dict, bonuses: dict):
 
 
 async def bonus_calc(skill, bonuses):
+    print(bonuses)
     mod = 0
     if skill in bonuses["pos"]:
         mod += bonuses["pos"][skill]

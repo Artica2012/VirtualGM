@@ -215,7 +215,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 print(df.e[i], str(df.f[i]))
                 try:
                     dmg_string = f"{df.f[i + 2]}{df.g[i + 2]}"
-                    name = str(df.f[i])
+                    name = str(df.f[i]).lower()
                     attack_data = {
                         "skill": str(df.f[i + 1]).lower(),
                         "type": str(df.h[i + 1]).lower(),

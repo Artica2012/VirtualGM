@@ -3,11 +3,18 @@ import logging
 
 import d20
 import discord
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-from Alt_Dice_Rollers import d20_to_d10
 from Base.Macro import Macro
-from EPF.EPF_Character import get_EPF_Character, EPF_Character
+from EPF.EPF_Character import EPF_Character
+from RED.RED_Character import get_RED_Character
+from RED.RED_Support import RED_Roll_Result
+from database_models import get_macro
 from utils.Char_Getter import get_character
+from utils.parsing import ParseModifiers
+from utils.utils import relabel_roll
 
 
 class RED_Macro(Macro):
@@ -17,13 +24,57 @@ class RED_Macro(Macro):
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info("RED roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-        dice_result = d20_to_d10(await Character_Model.roll_macro(macro_name, modifier))
-        print(dice_result)
-        print(dice_result.total)
-        print(dice_result.crit)
+        dice_result = RED_Roll_Result(await Character_Model.roll_macro(macro_name, modifier))
 
         if dice_result == 0:
-            embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            macro_table = await get_macro(self.ctx, self.engine, id=self.guild.id)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(macro_table)
+                    .where(macro_table.character_id == Character_Model.id)
+                    .where(macro_table.name == macro_name.split(":")[0])
+                )
+            try:
+                macro_data = result.scalars().one()
+            except Exception:
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(macro_table)
+                        .where(macro_table.character_id == Character_Model.id)
+                        .where(macro_table.name == macro_name.split(":")[0])
+                    )
+                    macro_list = result.scalars().all()
+                # print(macro_list)
+                try:
+                    macro_data = macro_list[0]
+                except Exception:
+                    embed = discord.Embed(
+                        title=character,
+                        fields=[
+                            discord.EmbedField(
+                                name=macro_name,
+                                value=(
+                                    "Error: Duplicate Macros with the Same Name or invalid macro. Rolling one macro,"
+                                    " but please ensure that you do not have duplicate names."
+                                ),
+                            )
+                        ],
+                    )
+                    return embed
+            try:
+                dice_result = RED_Roll_Result(d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}"))
+            except Exception:
+                dice_result = RED_Roll_Result(d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}"))
+            if dc:
+                roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+                output_string = f"{roll_str[0]}"
+                color = roll_str[1]
+            else:
+                output_string = str(dice_result)
+                color = discord.Color.dark_grey()
+
         else:
             if dc != 0:
                 roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
@@ -33,19 +84,19 @@ class RED_Macro(Macro):
                 output_string = str(dice_result)
                 color = discord.Color.dark_grey()
 
-            embed = discord.Embed(
-                title=Character_Model.char_name,
-                fields=[discord.EmbedField(name=macro_name, value=output_string)],
-                color=color,
-            )
-            embed.set_thumbnail(url=Character_Model.pic)
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name=macro_name, value=output_string)],
+            color=color,
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
 
         return embed
 
     async def show(self, character):
-        Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_RED_Character(character, self.ctx, engine=self.engine, guild=self.guild)
 
-        macro_list = await Character_Model.macro_list()
+        macro_list = Character_Model.macros
 
         view = discord.ui.View(timeout=None)
         for macro in macro_list:
@@ -81,6 +132,6 @@ class RED_Macro(Macro):
 
         async def callback(self, interaction: discord.Interaction):
             Macro = RED_Macro(self.ctx, self.engine, self.guild)
-            output_string = await Macro.roll_macro(self.character.char_name, self.macro, None, "", guild=self.guild)
+            output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)
 
-            await interaction.response.send_message(output_string)
+            await interaction.response.send_message(embed=output)

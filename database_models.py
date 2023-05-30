@@ -516,6 +516,7 @@ async def get_RED_tracker(ctx: discord.ApplicationContext, engine, id=None):
         # Functional Stuff
         macros = Column(JSON())
         bonuses = Column(JSON())
+        resistances = Column(JSON())
         pic = Column(String(), nullable=True)
 
     logging.info("get_tracker: returning tracker RED")

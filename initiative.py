@@ -377,6 +377,7 @@ class InitiativeCog(commands.Cog):
         response = False
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
+        print(guild.id)
         try:
             model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
