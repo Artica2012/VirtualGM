@@ -646,4 +646,8 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
         else:
             time = 60
         await Target_Model.set_cc("Wounds Treated", False, time, "Minute", True)
-    return output_string
+
+    embed = discord.Embed(title="Treat Wounds", description=output_string)
+    embed.set_thumbnail(url=Character_Model.pic)
+
+    return embed
