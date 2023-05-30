@@ -5,6 +5,7 @@
 import asyncio
 import logging
 
+import d20
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
@@ -75,12 +76,12 @@ class InitiativeCog(commands.Cog):
         # guild_ids=[GUILD]
     )
     @option("name", description="Character Name", input_type=str)
-    @option("hp", description="Total HP", input_type=int)
+    @option("hp", description="Total HP", input_type=str)
     @option("player", description="Player or NPC", choices=["player", "npc"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     @option("image", description="Link to character portrait.")
     async def add(
-        self, ctx: discord.ApplicationContext, name: str, hp: int, player: str, initiative: str, image: str = None
+        self, ctx: discord.ApplicationContext, name: str, hp: str, player: str, initiative: str, image: str = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
@@ -92,6 +93,7 @@ class InitiativeCog(commands.Cog):
 
         Utilities = await get_utilities(ctx, engine=engine)
         try:
+            hp = d20.roll(f"{hp}").total
             response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative, image=image)
         except Exception as e:
             logging.warning(f"char add {e}")
