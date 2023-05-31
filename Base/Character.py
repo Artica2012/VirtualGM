@@ -121,66 +121,66 @@ class Character:
 
     async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
-        # try:
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        except AttributeError:
-            Tracker = await get_tracker(self.ctx, self.engine)
-        async with async_session() as session:
-            char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
-            character = char_result.scalars().one()
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            try:
+                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            except AttributeError:
+                Tracker = await get_tracker(self.ctx, self.engine)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
+                character = char_result.scalars().one()
 
-            chp = character.current_hp
-            new_hp = chp
-            maxhp = character.max_hp
-            thp = character.temp_hp
-            new_thp = 0
+                chp = character.current_hp
+                new_hp = chp
+                maxhp = character.max_hp
+                thp = character.temp_hp
+                new_thp = 0
 
-            # If its D4e, let the HP go below 0, but start healing form 0.
-            # Bottom out at 0 for everyone else
-            if heal:
-                new_hp = chp + amount
-                if new_hp > maxhp:
-                    new_hp = maxhp
-            if not heal:
-                if thp == 0:
-                    new_hp = chp - amount
-                    if new_hp < 0:
-                        new_hp = 0
-                else:
-                    if thp > amount:
-                        new_thp = thp - amount
-                        new_hp = chp
+                # If its D4e, let the HP go below 0, but start healing form 0.
+                # Bottom out at 0 for everyone else
+                if heal:
+                    new_hp = chp + amount
+                    if new_hp > maxhp:
+                        new_hp = maxhp
+                if not heal:
+                    if thp == 0:
+                        new_hp = chp - amount
+                        if new_hp < 0:
+                            new_hp = 0
                     else:
-                        new_thp = 0
-                        new_hp = chp - amount + thp
-                    if new_hp < 0:
-                        new_hp = 0
+                        if thp > amount:
+                            new_thp = thp - amount
+                            new_hp = chp
+                        else:
+                            new_thp = 0
+                            new_hp = chp - amount + thp
+                        if new_hp < 0:
+                            new_hp = 0
 
-            character.current_hp = new_hp
-            character.temp_hp = new_thp
-            await session.commit()
-            await self.update()
-        if post:
-            if character.player:  # Show the HP it its a player
-                if heal:
-                    await self.ctx.send_followup(
-                        f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
-                    )
-                else:
-                    await self.ctx.send_followup(
-                        f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
-                    )
-            else:  # Obscure the HP if its an NPC
-                if heal:
-                    await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
-                else:
-                    await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
-        return True
-        # except Exception as e:
-        #     logging.warning(f"change_hp: {e}")
-        #     return False
+                character.current_hp = new_hp
+                character.temp_hp = new_thp
+                await session.commit()
+                await self.update()
+            if post:
+                if character.player:  # Show the HP it its a player
+                    if heal:
+                        await self.ctx.send_followup(
+                            f"{self.name} healed for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
+                    else:
+                        await self.ctx.send_followup(
+                            f"{self.name} damaged for {amount}. New HP: {new_hp}/{character.max_hp}"
+                        )
+                else:  # Obscure the HP if its an NPC
+                    if heal:
+                        await self.ctx.send_followup(f"{self.name} healed for {amount}. {await self.calculate_hp()}")
+                    else:
+                        await self.ctx.send_followup(f"{self.name} damaged for {amount}. {await self.calculate_hp()}")
+            return True
+        except Exception as e:
+            logging.warning(f"change_hp: {e}")
+            return False
 
     async def calculate_hp(self):
         logging.info("Calculate hp")

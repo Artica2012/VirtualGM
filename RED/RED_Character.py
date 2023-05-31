@@ -13,7 +13,7 @@ from Base.Character import Character
 from database_models import get_tracker, get_condition, get_RED_tracker, get_macro
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
-from RED.RED_Support import RED_SKills
+from RED.RED_Support import RED_SKills, RED_Roll_Result, RED_AF_DV, RED_SS_DV
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1106097168181375066/1111774244808949760/artica"
@@ -116,6 +116,13 @@ class RED_Character(Character):
         else:
             return 0
 
+    async def get_stat(self, item: str):
+        item = item.lower()
+        if item in self.stats.keys():
+            return self.stats[item]["value"]
+        else:
+            return None
+
     async def roll_macro(self, macro, modifier):
         macro_string = await self.get_roll(macro)
         if macro_string == 0:
@@ -124,6 +131,46 @@ class RED_Character(Character):
         print(roll_string)
         dice_result = d20.roll(roll_string)
         return dice_result
+
+    async def red_get_auto_dv(self, weapon, range: int, target, autofire=False):
+        # try:
+        weapon_type = weapon["category"]
+        if range <= 6:
+            range = 6
+        elif range <= 12:
+            range = 12
+        elif range <= 25:
+            range = 25
+        elif range <= 50:
+            range = 50
+        elif range <= 100:
+            range = 100
+        elif range <= 200:
+            range = 200
+        elif range <= 400:
+            range = 400
+        elif range <= 800:
+            range = 800
+
+        if autofire:
+            ranged_dv = RED_AF_DV[weapon_type][range]
+        else:
+            ranged_dv = RED_SS_DV[weapon_type][range]
+        if ranged_dv is None:
+            return None
+        elif await target.get_stat("ref") >= 8:
+            dex_dv = RED_Roll_Result(
+                d20.roll(f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}")
+            )
+            average = 5 + await target.get_stat("dex") + await target.get_skill("evasion")
+            if average > ranged_dv:
+                return dex_dv.total
+            else:
+                return ranged_dv
+        else:
+            return ranged_dv
+        # except Exception:
+        #     return None
 
     async def weapon_attack(self, item):
         item = item.lower()
@@ -146,6 +193,50 @@ class RED_Character(Character):
         bonus = await bonus_calc("attack", self.bonuses)
 
         return f"1d10+{attack_mod}{ParseModifiers(f'{bonus}')}"
+
+    async def weapon_damage(self, item: str, modifier: str):
+        item = item.lower()
+        dmg_str = f"{self.attacks[item]['dmg']}{ParseModifiers(modifier)}"
+        dmg = RED_Roll_Result(d20.roll(dmg_str))
+        return dmg
+
+    async def get_weapon(self, item):
+        item = item.lower()
+        logging.info(f"RED get weapon: {item}")
+        return self.attacks[item]
+
+    async def ablate_armor(self, amount: int, location: str):
+        try:
+            RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
+                character = query.scalars().one()
+                armor = character.armor
+                sp = armor[location]["sp"]
+                new_sp = sp - amount
+                if new_sp < 0:
+                    new_sp = 0
+                armor["location"][sp] = new_sp
+                character.armor = armor
+                await session.commit()
+            return True
+        except Exception:
+            return False
+
+    async def damage_armor(self, amount: RED_Roll_Result, location: str):
+        # try:
+        sp = self.armor[location]["sp"]
+        if sp > amount.total:
+            return 0
+        else:
+            dmg = amount.total - sp
+            await self.ablate_armor(1, location)
+            await self.change_hp(dmg, False, False)
+            await self.update()
+            return dmg
+        # except Exception:
+        #     return 0
 
 
 async def calculate(ctx, engine, char_name, guild=None):

@@ -9,8 +9,10 @@ from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
 import RED.RED_GSHEET_Importer
+from auto_complete import character_select_gm, character_select_multi, auto_macro_select
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
+from utils.Automation_Getter import get_automation
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
@@ -72,6 +74,82 @@ class REDCog(commands.Cog):
             logging.warning(f"pb_import: {e}")
             # report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
             # await report.report()
+
+    @red.command(description="Automatic Attack")
+    @option("character", description="Character Attacking", autocomplete=character_select_gm)
+    @option("target", description="Character to Target", autocomplete=character_select_multi)
+    @option("attack", description="Roll or Macro Roll", autocomplete=auto_macro_select)
+    @option("range", description="Range")
+    @option("location", description="Location", choices=["Body", "Head"])
+    @option("attack_modifier", description="Attack Modifier", required=False)
+    @option("target_modifier", description="Target Modifier", required=False)
+    @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)
+    async def auto(
+        self,
+        ctx: discord.ApplicationContext,
+        character: str,
+        target: str,
+        attack: str,
+        range: int,
+        location="Body",
+        attack_modifer: str = "",
+        target_modifier: str = "",
+        damage_modifier: str = "",
+        damage_type_override: str = None,
+    ):
+        logging.info("attack_cog auto")
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        await ctx.response.defer()
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        embeds = []
+        if "," in target:
+            multi_target = target.split(",")
+            for char in multi_target:
+                try:
+                    embeds.append(
+                        await Automation.auto(
+                            self.bot,
+                            character,
+                            char.strip(),
+                            attack,
+                            attack_modifer,
+                            target_modifier,
+                            damage_modifier,
+                            multi=True,
+                            range=range,
+                            location=location,
+                        )
+                    )
+                except Exception:
+                    embeds.append(
+                        discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
+                    )
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
+        else:
+            embeds.append(
+                await Automation.auto(
+                    self.bot,
+                    character,
+                    target,
+                    attack,
+                    attack_modifer,
+                    target_modifier,
+                    damage_modifier,
+                    multi=True,
+                    range=range,
+                    location=location,
+                )
+            )
+        await ctx.send_followup(embeds=embeds)
+        # except KeyError:
+        #     await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
+        # except Exception as e:
+        #     logging.warning(f"attack_cog auto {e}")
+        #     report = ErrorReport(ctx, "/a auto", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
 
 
 def setup(bot):

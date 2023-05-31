@@ -219,6 +219,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     attack_data = {
                         "skill": str(df.f[i + 1]).lower(),
                         "type": str(df.h[i + 1]).lower(),
+                        "category": str(df.h[i]).lower(),
                         "dmg": dmg_string,
                         "hands": int(df.f[i + 3]),
                         "rof": int(df.f[i + 4]),
@@ -229,8 +230,15 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     }
                     attacks[name] = attack_data
                     print(attack_data)
+
+                    if attack_data["autofire"]:
+                        autofire_attack = attack_data.copy()
+                        autofire_attack["skill"] = "autofire"
+                        attacks[f"{name} (autofire)"] = autofire_attack
+
                 except Exception as e:
                     logging.error(f"red-g-sheet-import: {e}, {i}")
+
     print(attacks)
     character["attacks"] = attacks
 
@@ -240,7 +248,11 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             location = str(df.i[i])
             sp = df.j[i]
             penalty = df.k[i]
-        armor[location] = {"sp": sp, "penalty": penalty}
+            armor[location] = {
+                "sp": sp,
+                "penalty": penalty,
+                "base": sp,
+            }
     print(armor)
     character["armor"] = armor
     return character

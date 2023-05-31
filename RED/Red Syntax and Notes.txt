@@ -75,6 +75,7 @@ Character Model
 				name :{
 					type: String (melee, ranged, advanced)
 					skill: String
+					category: pistol, smg, etc
 					dmg: String (eg. 2d6)
 					rof: Integer
 					attk_bonus: String
