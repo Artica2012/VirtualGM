@@ -24,7 +24,7 @@ class RED_Macro(Macro):
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info("RED roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-        dice_result = RED_Roll_Result(await Character_Model.roll_macro(macro_name, modifier))
+        dice_result = await Character_Model.roll_macro(macro_name, modifier)
 
         if dice_result == 0:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

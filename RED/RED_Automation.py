@@ -4,10 +4,10 @@ import d20
 import discord
 
 from Base.Automation import Automation
+from RED.RED_Support import RED_Roll_Result, RED_eval_success
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
-from RED.RED_Support import RED_Roll_Result, RED_eval_success
 
 
 class RED_Automation(Automation):
@@ -105,4 +105,54 @@ class RED_Automation(Automation):
 
         if not multi:
             await Tracker_Model.update_pinned_tracker()
+        return embed
+
+    async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
+        # Strip a macro:
+        roll_list = roll.split(":")
+        # print(roll_list)
+        if len(roll_list) == 1:
+            roll = roll
+        else:
+            roll = roll_list[1]
+
+        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        try:
+            dice_result = RED_Roll_Result(
+                d20.roll(f"{await char_model.get_roll(roll)}{ParseModifiers(attack_modifier)}")
+            )
+            print(dice_result)
+        except Exception:
+            roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
+            dice_result = d20.roll(roll_string)
+
+        Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
+
+        goal_value = await Target_Model.get_roll(vs)
+        print(goal_value)
+
+        try:
+            goal_string: str = f"({goal_value}){ParseModifiers(target_modifier)}"
+            goal_result = RED_Roll_Result(d20.roll(goal_string))
+        except Exception as e:
+            logging.warning(f"attack: {e}")
+            return "Error"
+
+        # Format output string
+        success_string = RED_eval_success(dice_result, goal_result)
+
+        if success_string == "Success":
+            color = discord.Color.green()
+        else:
+            color = discord.Color.red()
+
+        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+
+        embed = discord.Embed(
+            title=f"{char_model.char_name} vs {Target_Model.char_name}",
+            fields=[discord.EmbedField(name=roll, value=output_string)],
+            color=color,
+        )
+        embed.set_thumbnail(url=char_model.pic)
+
         return embed

@@ -132,7 +132,7 @@ class RED_Character(Character):
             return 0
         roll_string = f"{macro_string}{ParseModifiers(modifier)}"
         print(roll_string)
-        dice_result = d20.roll(roll_string)
+        dice_result = RED_Roll_Result(d20.roll(roll_string))
         return dice_result
 
     async def red_get_auto_dv(self, weapon, range: int, target, autofire=False):
