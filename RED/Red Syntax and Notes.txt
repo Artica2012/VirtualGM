@@ -91,6 +91,7 @@ Character Model
 				location : {
 						sp: Integer
 						penalty:  String
+						base: Integer
 				}
 		}
 

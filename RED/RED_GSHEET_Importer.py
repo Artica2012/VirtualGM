@@ -246,8 +246,8 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     armor = {}
     for i in range(14, 17):
         if type(df.i[i]) == str:
-            location = str(df.i[i])
-            sp = df.j[i]
+            location = str(df.i[i]).lower()
+            sp = int(df.j[i])
             penalty = df.k[i]
             armor[location] = {
                 "sp": sp,

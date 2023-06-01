@@ -2,6 +2,7 @@ import logging
 
 import discord
 
+from RED.RED_Tracker import get_RED_Tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Base.Tracker import get_init_list, Tracker
 from database_operations import get_asyncio_db_engine
@@ -25,6 +26,8 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
         return await get_PF2_Tracker(ctx, engine, init_list, bot, guild=guild)
     elif guild.system == "STF":
         return await get_STF_Tracker(ctx, engine, init_list, bot, guild=guild)
+    elif guild.system == "RED":
+        return await get_RED_Tracker(ctx, engine, init_list, bot, guild=guild)
     else:
         return Tracker(ctx, engine, init_list, bot, guild=guild)
 

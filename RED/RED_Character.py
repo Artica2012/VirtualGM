@@ -136,48 +136,48 @@ class RED_Character(Character):
         return dice_result
 
     async def red_get_auto_dv(self, weapon, range: int, target, autofire=False):
-        # try:
-        if weapon["type"] == "ranged" or weapon["type"] == "advanced":
-            weapon_type = weapon["category"]
-            if range <= 6:
-                range = 6
-            elif range <= 12:
-                range = 12
-            elif range <= 25:
-                range = 25
-            elif range <= 50:
-                range = 50
-            elif range <= 100:
-                range = 100
-            elif range <= 200:
-                range = 200
-            elif range <= 400:
-                range = 400
-            elif range <= 800:
-                range = 800
+        try:
+            if weapon["type"] == "ranged" or weapon["type"] == "advanced":
+                weapon_type = weapon["category"]
+                if range <= 6:
+                    range = 6
+                elif range <= 12:
+                    range = 12
+                elif range <= 25:
+                    range = 25
+                elif range <= 50:
+                    range = 50
+                elif range <= 100:
+                    range = 100
+                elif range <= 200:
+                    range = 200
+                elif range <= 400:
+                    range = 400
+                elif range <= 800:
+                    range = 800
 
-            if autofire:
-                ranged_dv = RED_AF_DV[weapon_type][range]
-            else:
-                ranged_dv = RED_SS_DV[weapon_type][range]
-            if ranged_dv is None:
-                return None
-            elif await target.get_stat("ref") >= 8:
-                dex_dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
-                average = 5 + await target.get_stat("dex") + await target.get_skill("evasion")
-                if average > ranged_dv:
-                    return dex_dv.total
+                if autofire:
+                    ranged_dv = RED_AF_DV[weapon_type][range]
+                else:
+                    ranged_dv = RED_SS_DV[weapon_type][range]
+                if ranged_dv is None:
+                    return None
+                elif await target.get_stat("ref") >= 8:
+                    dex_dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
+                    average = 5 + await target.get_stat("dex") + await target.get_skill("evasion")
+                    if average > ranged_dv:
+                        return dex_dv
+                    else:
+                        return ranged_dv
                 else:
                     return ranged_dv
             else:
-                return ranged_dv
-        else:
-            dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
+                dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
 
-            # dv = 10
-            return dv
-        # except Exception:
-        #     return None
+                # dv = 10
+                return dv
+        except Exception:
+            return None
 
     async def weapon_attack(self, item):
         item = item.lower()
@@ -236,18 +236,58 @@ class RED_Character(Character):
             return False
 
     async def damage_armor(self, amount: RED_Roll_Result, location: str):
-        # try:
-        sp = self.armor[location]["sp"]
-        if sp > amount.total:
+        try:
+            sp = self.armor[location]["sp"]
+            if sp > amount.total:
+                return 0
+            else:
+                dmg = amount.total - sp
+                await self.ablate_armor(1, location)
+                await self.change_hp(dmg, False, False)
+                await self.update()
+                return int(dmg)
+        except Exception:
             return 0
-        else:
-            dmg = amount.total - sp
-            await self.ablate_armor(1, location)
-            await self.change_hp(dmg, False, False)
-            await self.update()
-            return int(dmg)
+
+    @property
+    def armor_output_string(self):
+        # try:
+        body = int(self.armor["body"]["sp"])
+        head = int(self.armor["head"]["sp"])
+        output_string = f"B:{body} SP/ H:{head} SP\n"
+        print(self.armor.keys())
+        if "cover" in self.armor.keys():
+            print("COVER!!!!!!!!!!!!!!!!!!")
+            cover = int(self.armor["cover"]["sp"])
+            output_string += f"   Cover:{cover}\n"
+        return output_string
         # except Exception:
-        #     return 0
+        #     return "ERROR!!!"
+
+    async def set_cover(self, amount, remove=False):
+        try:
+            RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
+                character = query.scalars().one()
+                # print(character.armor.keys())
+
+                new_armor = character.armor.copy()
+                if "cover" in character.armor.keys():
+                    # print("cover")
+                    if remove:
+                        new_armor.pop("cover")
+                    else:
+                        new_armor["cover"] = {"sp": amount, "base": amount}
+                else:
+                    new_armor["cover"] = {"sp": amount, "base": amount}
+                character.armor = new_armor
+                await session.commit()
+            await self.update()
+            return True
+        except Exception:
+            return False
 
 
 async def calculate(ctx, engine, char_name, guild=None):
