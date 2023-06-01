@@ -24,7 +24,7 @@ class RED_Automation(Automation):
         target_modifier,
         dmg_modifier,
         multi=False,
-        range=None,
+        range_value=None,
         location="Body",
     ):
         logging.info("/red auto")
@@ -37,21 +37,24 @@ class RED_Automation(Automation):
         roll_string = f"({await Character_Model.get_roll(attack)})"
         dice_result = RED_Roll_Result(d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}"))
         print(dice_result.total)
-        if "(autofire)" in attack:
+        if "(Autofire)" in attack:
             autofire = True
         else:
             autofire = False
+        print(f"Autofire: {autofire}")
 
         weapon = await Character_Model.get_weapon(attack)
 
-        goal_value = await Character_Model.red_get_auto_dv(weapon, range, Target_Model, autofire=autofire)
-        try:
-            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-            goal_result = RED_Roll_Result(d20.roll(goal_string))
-            print(goal_result.total)
-        except Exception as e:
-            logging.warning(f"auto: {e}")
-            return "Error"
+        goal_value = await Character_Model.red_get_auto_dv(weapon, range_value, Target_Model, autofire=autofire)
+        print(goal_value)
+        # try:
+        goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+        print(goal_string)
+        goal_result = RED_Roll_Result(d20.roll(goal_string))
+        print(goal_result.total)
+        # except Exception as e:
+        #     logging.warning(f"auto: {e}")
+        #     return "Error"
 
         # Format output string
 
@@ -63,9 +66,19 @@ class RED_Automation(Automation):
 
         # Damage
         # Roll Damage
-        dmg: RED_Roll_Result = await Character_Model.weapon_damage(attack, dmg_modifier)
 
         if success_string == "Success":
+            if autofire:
+                diff = dice_result - goal_result
+                if diff > weapon["autofire_ammt"]:
+                    diff = weapon["autofire_ammt"]
+                elif diff == 0:
+                    diff = 1
+
+                dmg = await Character_Model.weapon_damage(attack, dmg_modifier, iter=diff)
+            else:
+                dmg = await Character_Model.weapon_damage(attack, dmg_modifier)
+
             amt = await Target_Model.damage_armor(dmg, location)
             color = color.green()
             dmg_output_string = f"{character} damages {target} for: {dmg}"

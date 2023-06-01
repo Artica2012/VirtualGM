@@ -110,8 +110,10 @@ class RED_Character(Character):
     async def get_skill(self, item: str):
         item = item.lower()
         if item in self.skills.keys():
+            print(self.skills[item]["value"])
             return self.skills[item]["value"]
         elif item in RED_SKills:
+            print(self.stats[RED_SKills[item]]["value"])
             return self.stats[RED_SKills[item]]["value"]
         else:
             return 0
@@ -119,6 +121,7 @@ class RED_Character(Character):
     async def get_stat(self, item: str):
         item = item.lower()
         if item in self.stats.keys():
+            print(self.stats[item]["value"])
             return self.stats[item]["value"]
         else:
             return None
@@ -134,41 +137,45 @@ class RED_Character(Character):
 
     async def red_get_auto_dv(self, weapon, range: int, target, autofire=False):
         # try:
-        weapon_type = weapon["category"]
-        if range <= 6:
-            range = 6
-        elif range <= 12:
-            range = 12
-        elif range <= 25:
-            range = 25
-        elif range <= 50:
-            range = 50
-        elif range <= 100:
-            range = 100
-        elif range <= 200:
-            range = 200
-        elif range <= 400:
-            range = 400
-        elif range <= 800:
-            range = 800
+        if weapon["type"] == "ranged" or weapon["type"] == "advanced":
+            weapon_type = weapon["category"]
+            if range <= 6:
+                range = 6
+            elif range <= 12:
+                range = 12
+            elif range <= 25:
+                range = 25
+            elif range <= 50:
+                range = 50
+            elif range <= 100:
+                range = 100
+            elif range <= 200:
+                range = 200
+            elif range <= 400:
+                range = 400
+            elif range <= 800:
+                range = 800
 
-        if autofire:
-            ranged_dv = RED_AF_DV[weapon_type][range]
-        else:
-            ranged_dv = RED_SS_DV[weapon_type][range]
-        if ranged_dv is None:
-            return None
-        elif await target.get_stat("ref") >= 8:
-            dex_dv = RED_Roll_Result(
-                d20.roll(f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}")
-            )
-            average = 5 + await target.get_stat("dex") + await target.get_skill("evasion")
-            if average > ranged_dv:
-                return dex_dv.total
+            if autofire:
+                ranged_dv = RED_AF_DV[weapon_type][range]
+            else:
+                ranged_dv = RED_SS_DV[weapon_type][range]
+            if ranged_dv is None:
+                return None
+            elif await target.get_stat("ref") >= 8:
+                dex_dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
+                average = 5 + await target.get_stat("dex") + await target.get_skill("evasion")
+                if average > ranged_dv:
+                    return dex_dv.total
+                else:
+                    return ranged_dv
             else:
                 return ranged_dv
         else:
-            return ranged_dv
+            dv = f"1d10+{await target.get_stat('dex')}+{await target.get_skill('evasion')}"
+
+            # dv = 10
+            return dv
         # except Exception:
         #     return None
 
@@ -194,9 +201,13 @@ class RED_Character(Character):
 
         return f"1d10+{attack_mod}{ParseModifiers(f'{bonus}')}"
 
-    async def weapon_damage(self, item: str, modifier: str):
+    async def weapon_damage(self, item: str, modifier: str, iter: int = 1):
         item = item.lower()
-        dmg_str = f"{self.attacks[item]['dmg']}{ParseModifiers(modifier)}"
+        attk_list = []
+        for i in range(0, iter):
+            attk_list.append(self.attacks[item]["dmg"])
+        attk_string = "+".join(attk_list)
+        dmg_str = f"{attk_string}{ParseModifiers(modifier)}"
         dmg = RED_Roll_Result(d20.roll(dmg_str))
         return dmg
 
@@ -234,7 +245,7 @@ class RED_Character(Character):
             await self.ablate_armor(1, location)
             await self.change_hp(dmg, False, False)
             await self.update()
-            return dmg
+            return int(dmg)
         # except Exception:
         #     return 0
 

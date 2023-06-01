@@ -117,7 +117,7 @@ class REDCog(commands.Cog):
                             target_modifier,
                             damage_modifier,
                             multi=True,
-                            range=range,
+                            range_value=range,
                             location=location,
                         )
                     )
@@ -138,7 +138,7 @@ class REDCog(commands.Cog):
                     target_modifier,
                     damage_modifier,
                     multi=True,
-                    range=range,
+                    range_value=range,
                     location=location,
                 )
             )

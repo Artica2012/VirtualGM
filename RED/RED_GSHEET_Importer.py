@@ -234,6 +234,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     if attack_data["autofire"]:
                         autofire_attack = attack_data.copy()
                         autofire_attack["skill"] = "autofire"
+                        autofire_attack["dmg"] = "2d6"
                         attacks[f"{name} (autofire)"] = autofire_attack
 
                 except Exception as e:

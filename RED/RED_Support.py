@@ -85,6 +85,15 @@ class RED_Roll_Result:
     def __float__(self):
         return self.total
 
+    def __add__(self, other):
+        return self.total
+
+    def __sub__(self, other):
+        return self.total
+
+    def __mul__(self, other):
+        return self.total
+
     def __repr__(self):
         return f"<RED RollResult total={self.total}>"
 
