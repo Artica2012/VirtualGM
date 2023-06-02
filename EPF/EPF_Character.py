@@ -996,6 +996,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         for item in pb["build"]["feats"]:
             feats += f"{item[0]}, "
 
+        bonus_dmg_list = []
         attacks = {}
         for item in pb["build"]["weapons"]:
             die_num = 0
@@ -1008,6 +1009,12 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     die_num = 3
                 case "majorStriking":
                     die_num = 4
+
+            if len(item["extraDamage"]) > 0:
+                for i in item["extraDamage"]:
+                    bonus = i.split(" ")[0]
+                    bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
+
             attacks[item["display"]] = {
                 "display": item["display"],
                 "prof": item["prof"],
@@ -1369,9 +1376,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
         await delete_intested_items(char_name, ctx, guild, engine)
         for item in pb["build"]["equipment"]:
-            # print(item)
-            result = await invest_items(item[0], char_name, ctx, guild, engine)
-            # print(result)
+            await invest_items(item[0], char_name, ctx, guild, engine)
+        await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
         await calculate(ctx, engine, char_name, guild=guild)
         # Character = await get_EPF_Character(char_name, ctx, guild, engine)
@@ -1797,7 +1803,9 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     # print(item_name)
                     # print(parsed)
                     if item_name != "":
+                        print(item_name)
                         if item_name.title() in await Characte_Model.attack_list():
+                            print("Match!")
                             specific_weapon = f"{item_name},"
                         else:
                             parsed = []
@@ -2032,6 +2040,32 @@ async def invest_items(item, character, ctx, guild, engine):
     except Exception:
         # await engine.dispose()
         return False
+
+
+async def write_bonuses(ctx, engine, guild, character: str, bonuses: list):
+    bonus_string = ", ".join(bonuses)
+    print(bonus_string)
+    EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+    Condition = await get_condition(ctx, engine, id=guild.id)
+    write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with write_session() as write_session:
+        char_result = await write_session.execute(
+            select(EPF_Tracker.id).where(func.lower(EPF_Tracker.name) == character.lower())
+        )
+        id = char_result.scalars().one()
+
+    async with write_session.begin():
+        write_session.add(
+            Condition(
+                character_id=id,
+                title="Weapon Bonuses",
+                number=0,
+                counter=True,
+                visible=False,
+                action=bonus_string,
+            )
+        )
+        await write_session.commit()
 
 
 async def spell_lookup(spell: str):
