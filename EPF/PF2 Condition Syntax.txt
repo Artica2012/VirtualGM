@@ -61,6 +61,7 @@ Example:
                 "stat": "str",  # What stat to use for damage
                 "dmg_type": "Bludgeoning",  # Damage Type
                 "attk_stat": "str",  # What stat to use for the attack (probably str or dex)
+                "dmg_bonus"
                 "bonus": [
                     {
                         "damage": # Damage String
