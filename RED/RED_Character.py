@@ -237,35 +237,49 @@ class RED_Character(Character):
 
     async def damage_armor(self, amount: RED_Roll_Result, location: str):
         try:
-            sp = self.armor[location]["sp"]
-            if sp > amount.total:
-                return 0
+            if "cover" in self.armor.keys():
+                print("dmg_armor: cover")
+                cover_hp = int(self.armor["cover"]["sp"])
+                print(cover_hp, amount.total)
+                if cover_hp > amount.total:
+                    new_cover_hp = cover_hp - amount.total
+                    await self.set_cover(new_cover_hp)
+                    return 0
+                else:
+                    await self.set_cover(amount.total, remove=True)
+                    return 0
             else:
-                dmg = amount.total - sp
-                await self.ablate_armor(1, location)
-                await self.change_hp(dmg, False, False)
-                await self.update()
-                return int(dmg)
+                sp = self.armor[location]["sp"]
+                if sp > amount.total:
+                    return 0
+                else:
+                    dmg = amount.total - sp
+                    await self.ablate_armor(1, location)
+                    await self.change_hp(dmg, False, False)
+                    await self.update()
+                    return int(dmg)
         except Exception:
             return 0
 
     @property
     def armor_output_string(self):
-        # try:
-        body = int(self.armor["body"]["sp"])
-        head = int(self.armor["head"]["sp"])
-        output_string = f"B:{body} SP/ H:{head} SP\n"
-        print(self.armor.keys())
-        if "cover" in self.armor.keys():
-            print("COVER!!!!!!!!!!!!!!!!!!")
-            cover = int(self.armor["cover"]["sp"])
-            output_string += f"   Cover:{cover}\n"
-        return output_string
-        # except Exception:
-        #     return "ERROR!!!"
+        try:
+            body = int(self.armor["body"]["sp"])
+            head = int(self.armor["head"]["sp"])
+            output_string = f"B:{body} SP/ H:{head} SP\n"
+            # print(self.armor.keys())
+            if "cover" in self.armor.keys():
+                # print("COVER!!!!!!!!!!!!!!!!!!")
+                cover = int(self.armor["cover"]["sp"])
+                output_string += f"   Cover:{cover}\n"
+            return output_string
+        except Exception:
+            return "ERROR!!!"
 
     async def set_cover(self, amount, remove=False):
         try:
+            # print("set_armor")
+            amount = int(amount)
             RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
@@ -282,6 +296,7 @@ class RED_Character(Character):
                         new_armor["cover"] = {"sp": amount, "base": amount}
                 else:
                     new_armor["cover"] = {"sp": amount, "base": amount}
+                # print(new_armor)
                 character.armor = new_armor
                 await session.commit()
             await self.update()

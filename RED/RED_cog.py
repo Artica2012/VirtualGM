@@ -139,7 +139,7 @@ class REDCog(commands.Cog):
                         attack_modifer,
                         target_modifier,
                         damage_modifier,
-                        multi=True,
+                        multi=False,
                         range_value=range,
                         location=location,
                     )
@@ -157,11 +157,11 @@ class REDCog(commands.Cog):
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("amount", description="Cover HP")
     @option("remove", description="Remove Cover (True) or Add Cover (False)", choices=[True, False])
-    async def cover(self, ctx, character, amount, remove: bool = False):
+    async def cover(self, ctx, character, amount: int, remove: bool = False):
         await ctx.response.defer()
         try:
             Character_Model = await get_character(character, ctx)
-            response = await Character_Model.set_cover(amount, remove=remove)
+            response = await Character_Model.set_cover(int(amount), remove=remove)
             if response:
                 embed = discord.Embed(
                     title=Character_Model.char_name,

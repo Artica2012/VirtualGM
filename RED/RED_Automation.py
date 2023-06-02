@@ -36,25 +36,23 @@ class RED_Automation(Automation):
         # Attack
         roll_string = f"({await Character_Model.get_roll(attack)})"
         dice_result = RED_Roll_Result(d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}"))
-        print(dice_result.total)
+        # print(dice_result.total)
         if "(Autofire)" in attack:
             autofire = True
         else:
             autofire = False
-        print(f"Autofire: {autofire}")
+        # print(f"Autofire: {autofire}")
 
         weapon = await Character_Model.get_weapon(attack)
 
         goal_value = await Character_Model.red_get_auto_dv(weapon, range_value, Target_Model, autofire=autofire)
-        print(goal_value)
-        # try:
-        goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-        print(goal_string)
-        goal_result = RED_Roll_Result(d20.roll(goal_string))
-        print(goal_result.total)
-        # except Exception as e:
-        #     logging.warning(f"auto: {e}")
-        #     return "Error"
+        # print(goal_value)
+        try:
+            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+            goal_result = RED_Roll_Result(d20.roll(goal_string))
+        except Exception as e:
+            logging.warning(f"auto: {e}")
+            return "Error"
 
         # Format output string
 
@@ -81,7 +79,7 @@ class RED_Automation(Automation):
 
             amt = await Target_Model.damage_armor(dmg, location)
             color = color.green()
-            dmg_output_string = f"{character} damages {target} for: {dmg}"
+            dmg_output_string = f"{dmg}"
             if Target_Model.player:
                 output = (
                     f"{attk_output_string}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
@@ -103,7 +101,9 @@ class RED_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
+        print(multi)
         if not multi:
+            print("Updating")
             await Tracker_Model.update_pinned_tracker()
         return embed
 
