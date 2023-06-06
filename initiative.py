@@ -9,7 +9,7 @@ import d20
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
-from discord.ext import commands, tasks
+from discord.ext import commands
 from sqlalchemy import select
 from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
@@ -26,7 +26,7 @@ from auto_complete import (
     initiative,
     character_select_con,
 )
-from database_models import Global, get_tracker
+from database_models import get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
@@ -80,8 +80,16 @@ class InitiativeCog(commands.Cog):
     @option("player", description="Player or NPC", choices=["player", "npc"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=True, input_type=str)
     @option("image", description="Link to character portrait.")
+    @option("number", description="Number of Copies to create (Generic Tracker Only)")
     async def add(
-        self, ctx: discord.ApplicationContext, name: str, hp: str, player: str, initiative: str, image: str = None
+        self,
+        ctx: discord.ApplicationContext,
+        name: str,
+        hp: str,
+        player: str,
+        initiative: str,
+        image: str = None,
+        number: int = 1,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
@@ -91,32 +99,45 @@ class InitiativeCog(commands.Cog):
         elif player == "npc":
             player_bool = False
 
-        Utilities = await get_utilities(ctx, engine=engine)
-        try:
-            hp = d20.roll(f"{hp}").total
-            response = await Utilities.add_character(self.bot, name, hp, player_bool, initiative, image=image)
-        except Exception as e:
-            logging.warning(f"char add {e}")
-            report = ErrorReport(ctx, "/char add", e, self.bot)
-            await report.report()
+        if number > 26:
+            number = 26
+        embeds = []
 
-        if response:
-            success = discord.Embed(
-                title=name.title(),
-                fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
-                color=discord.Color.dark_gold(),
-            )
-            try:
-                Character_Model = await get_character(name, ctx, engine=engine)
-                success.set_thumbnail(url=Character_Model.pic)
-            except AttributeError:
-                pass
-            await ctx.respond(embed=success)
+        try:
+            Utilities = await get_utilities(ctx, engine=engine)
+            for x in range(0, number):
+                if number > 1:
+                    modifier = f" {utils.NPC_Iterator[x]}"
+                else:
+                    modifier = ""
+                try:
+                    new_hp = d20.roll(f"{hp}").total
+                    response = await Utilities.add_character(
+                        self.bot, f"{name}{modifier}", new_hp, player_bool, initiative, image=image
+                    )
+                except Exception as e:
+                    logging.warning(f"char add {e}")
+                    report = ErrorReport(ctx, "/char add", e, self.bot)
+                    await report.report()
+
+                if response:
+                    success = discord.Embed(
+                        title=f"{name}{modifier}".title(),
+                        fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
+                        color=discord.Color.dark_gold(),
+                    )
+                    try:
+                        Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
+                        success.set_thumbnail(url=Character_Model.pic)
+                        embeds.append(success)
+                    except AttributeError:
+                        pass
+            await ctx.respond(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:
                 await Utilities.add_to_vault(name)
-        else:
+        except Exception:
             await ctx.respond("Error Adding Character", ephemeral=True)
 
     @char.command(description="Edit PC on NPC")
@@ -391,23 +412,28 @@ class InitiativeCog(commands.Cog):
     )
     @option("name", description="Character Name", autocomplete=character_select)
     @option("mode", choices=["Damage", "Heal", "Temporary HP"])
-    async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
+    async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         await ctx.response.defer()
+        try:
+            rolled_amount = d20.roll(amount).total
+        except d20.RollSyntaxError:
+            await ctx.respond("Error, Invalid Roll")
+            return
         guild = await get_guild(ctx, None)
         try:
             model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
-                response = await model.add_thp(amount)
+                response = await model.add_thp(rolled_amount)
                 if response:
-                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
+                    await ctx.respond(f"{rolled_amount} Temporary HP added to {name}.")
             else:
                 if mode == "Heal":
                     heal = True
                 else:
                     heal = False
-                response = await model.change_hp(amount, heal)
+                response = await model.change_hp(rolled_amount, heal)
         except Exception as e:
             await ctx.respond("Error", ephemeral=True)
             logging.warning(f"/i hp: {e}")
