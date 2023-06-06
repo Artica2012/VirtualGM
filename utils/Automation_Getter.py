@@ -25,4 +25,4 @@ async def get_automation(ctx, guild=None, engine=None):
     elif guild.system == "STF":
         return STF_Automation(ctx, engine, guild)
     else:
-        return Automation
+        return Automation(ctx, engine, guild)
