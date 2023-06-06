@@ -391,23 +391,28 @@ class InitiativeCog(commands.Cog):
     )
     @option("name", description="Character Name", autocomplete=character_select)
     @option("mode", choices=["Damage", "Heal", "Temporary HP"])
-    async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: int):
+    async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: str):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         await ctx.response.defer()
+        try:
+            rolled_amount = d20.roll(amount).total
+        except d20.RollSyntaxError:
+            await ctx.respond("Error, Invalid Roll")
+            return
         guild = await get_guild(ctx, None)
         try:
             model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
-                response = await model.add_thp(amount)
+                response = await model.add_thp(rolled_amount)
                 if response:
-                    await ctx.respond(f"{amount} Temporary HP added to {name}.")
+                    await ctx.respond(f"{rolled_amount} Temporary HP added to {name}.")
             else:
                 if mode == "Heal":
                     heal = True
                 else:
                     heal = False
-                response = await model.change_hp(amount, heal)
+                response = await model.change_hp(rolled_amount, heal)
         except Exception as e:
             await ctx.respond("Error", ephemeral=True)
             logging.warning(f"/i hp: {e}")
