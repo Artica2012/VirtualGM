@@ -215,6 +215,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     print(skills)
 
     attacks = {}
+    net = {}
     for i in range(12, len(df.e)):
         print(df.e[i], df.f[i], df.g[i], df.h[i])
         if type(df.e[i]) == str:
@@ -246,9 +247,16 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
 
                 except Exception as e:
                     logging.error(f"red-g-sheet-import: {e}, {i}")
+            elif df.e[i] == "Program Name":
+                name = str(df.f[i])
+                dmg_string = f"{df.f[i + 1]}{df.g[i + 1]}"
+                attack = df.f[i + 2]
+                net_data = {"skill": "interface", "type": "net", "dmg": dmg_string, "attk_bonus": attack}
+                net[name] = net_data
 
     print(attacks)
     character["attacks"] = attacks
+    character["net"] = net
 
     armor = {}
     for i in range(12, 17):

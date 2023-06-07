@@ -181,6 +181,35 @@ class REDCog(commands.Cog):
         Tracker_Model = await get_tracker_model(ctx, self.bot)
         await Tracker_Model.update_pinned_tracker()
 
+    @red.command(description="Reset Armor to Undamaged Value")
+    @option("character", description="Character Attacking", autocomplete=character_select_gm)
+    async def reset_armor(self, ctx: discord.ApplicationContext, character: str):
+        await ctx.response.defer()
+        try:
+            Character_Model = await get_character(character, ctx)
+            response = await Character_Model.ablate_armor(1, "body", reset=True)
+            if response:
+                embed = discord.Embed(
+                    title=Character_Model.char_name,
+                    description=f"{'Armor Reset'}",
+                    color=discord.Color.dark_green(),
+                )
+                embed.set_thumbnail(url=Character_Model.pic)
+            else:
+                embed = discord.Embed(
+                    title=Character_Model.char_name,
+                    description="'Failed to Reset Armor",
+                    color=discord.Color.dark_red(),
+                )
+                embed.set_thumbnail(url=Character_Model.pic)
+
+        except Exception:
+            embed = discord.Embed(title="Error", description="'Failed to Reset Arnir", color=discord.Color.dark_red())
+
+        await ctx.send_followup(embed=embed)
+        Tracker_Model = await get_tracker_model(ctx, self.bot)
+        await Tracker_Model.update_pinned_tracker()
+
 
 def setup(bot):
     bot.add_cog(REDCog(bot))

@@ -208,6 +208,7 @@ class RED_Character(Character):
             attk_list.append(self.attacks[item]["dmg"])
         attk_string = "+".join(attk_list)
         dmg_str = f"{attk_string}{ParseModifiers(modifier)}"
+        # print(dmg_str)
         dmg = RED_Roll_Result(d20.roll(dmg_str))
         return dmg
 
@@ -216,19 +217,29 @@ class RED_Character(Character):
         logging.info(f"RED get weapon: {item}")
         return self.attacks[item]
 
-    async def ablate_armor(self, amount: int, location: str):
+    async def ablate_armor(self, amount: int, location: str, reset=False):
         try:
             RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            async with async_session() as session:
-                query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
-                character = query.scalars().one()
-                armor = character.armor
+            armor = self.armor
+            if reset:
+                for location in armor.keys():
+                    try:
+                        armor[location]["sp"] = armor[location]["base"]
+                    except KeyError:
+                        pass
+            else:
                 sp = armor[location]["sp"]
+                print("sp: ", sp)
                 new_sp = sp - amount
                 if new_sp < 0:
                     new_sp = 0
-                armor["location"][sp] = new_sp
+                armor[location]["sp"] = new_sp
+                print(armor)
+
+            async with async_session() as session:
+                query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
+                character = query.scalars().one()
                 character.armor = armor
                 await session.commit()
             return True
@@ -236,7 +247,10 @@ class RED_Character(Character):
             return False
 
     async def damage_armor(self, amount: RED_Roll_Result, location: str):
+        location = location.lower()
         try:
+            print(amount.total, location)
+            print(self.armor.keys())
             if "cover" in self.armor.keys():
                 print("dmg_armor: cover")
                 cover_hp = int(self.armor["cover"]["sp"])
@@ -250,6 +264,8 @@ class RED_Character(Character):
                     return 0
             else:
                 sp = self.armor[location]["sp"]
+                print("Damage_Armor")
+                print(sp, amount.total)
                 if sp > amount.total:
                     return 0
                 else:
@@ -258,7 +274,8 @@ class RED_Character(Character):
                     await self.change_hp(dmg, False, False)
                     await self.update()
                     return int(dmg)
-        except Exception:
+        except Exception as e:
+            print(e)
             return 0
 
     @property

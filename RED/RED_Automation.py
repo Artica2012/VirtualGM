@@ -76,6 +76,7 @@ class RED_Automation(Automation):
                 dmg = await Character_Model.weapon_damage(attack, dmg_modifier, iter=diff)
             else:
                 dmg = await Character_Model.weapon_damage(attack, dmg_modifier)
+            print("dmg: ", dmg)
 
             amt = await Target_Model.damage_armor(dmg, location)
             color = color.green()
