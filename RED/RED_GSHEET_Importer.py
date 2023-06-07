@@ -29,8 +29,11 @@ async def red_g_sheet_import(
     # print(parsed_url)
     sheet_id = parsed_url[5]
     logging.warning(f"G-sheet import: ID - {sheet_id}")
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
-    df = pd.read_csv(url, header=[0])
+    # url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    # df = pd.read_csv(url, header=[0])
+    df = pd.read_excel(url, header=[0])
+    print(df)
 
     guild = await get_guild(ctx, guild)
     if engine is None:
@@ -158,22 +161,24 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         return False
 
     character = {
-        "name": df.a[1],
+        "name": df.b[0],
         "level": int(df.d[0]),
         "active": True,
-        "role": df.a[3],
-        "hp": df.d[2],
-        "humanity": {"max_humanity": df.d[11], "current_humanity": df.d[11]},
+        "role": df.b[1],
+        "hp": df.d[1],
+        "humanity": {"max_humanity": df.d[9], "current_humanity": df.d[9]},
         "cyber": {},
         "net": {},
     }
     stats = {}
 
-    for i in range(4, 10):
+    for i in range(3, 10):
         try:
             title = str(df.a[i])
             title = title.split(" ")[0].lower()
             base = int(df.b[i])
+            if title == numpy.NaN or base == numpy.NaN:
+                raise ValueError
             stats[title] = {"value": base, "base": base}
         except Exception:
             pass
@@ -181,6 +186,8 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             title = str(df.c[i])
             title = title.split(" ")[0].lower()
             base = int(df.d[i])
+            if title == numpy.NaN or base == numpy.NaN:
+                raise ValueError
             stats[title] = {"value": base, "base": base}
         except Exception:
             pass
@@ -189,7 +196,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     character["stats"] = stats
 
     skills = {}
-    for i in range(11, len(df.a)):
+    for i in range(12, len(df.a)):
         print(df.a[i])
         if type(df.a[i]) == str:
             try:
@@ -208,7 +215,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     print(skills)
 
     attacks = {}
-    for i in range(11, len(df.e)):
+    for i in range(12, len(df.e)):
         print(df.e[i], df.f[i], df.g[i], df.h[i])
         if type(df.e[i]) == str:
             if df.e[i] == "Name:":
@@ -244,16 +251,19 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     character["attacks"] = attacks
 
     armor = {}
-    for i in range(14, 17):
-        if type(df.i[i]) == str:
-            location = str(df.i[i]).lower()
-            sp = int(df.j[i])
-            penalty = df.k[i]
-            armor[location] = {
-                "sp": sp,
-                "penalty": penalty,
-                "base": sp,
-            }
+    for i in range(12, 17):
+        try:
+            if type(df.i[i]) == str:
+                location = str(df.i[i]).lower()
+                sp = int(df.j[i])
+                penalty = df.k[i]
+                armor[location] = {
+                    "sp": sp,
+                    "penalty": penalty,
+                    "base": sp,
+                }
+        except Exception:
+            pass
     print(armor)
     character["armor"] = armor
     return character
