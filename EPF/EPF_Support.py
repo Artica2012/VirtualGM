@@ -237,6 +237,7 @@ EPF_DMG_Types_Inclusive = [
     "Silver",
     "All-Damage",
     "Critical-Hits",
+    "Physical",
 ]
 
 EPF_SKills = [
