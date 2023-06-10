@@ -1,6 +1,12 @@
 import logging
 
+from sqlalchemy import select, false, true
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
+
 from Base.Autocomplete import AutoComplete
+from database_models import get_tracker
 from utils.Char_Getter import get_character
 from RED.RED_Support import RED_SKills
 
@@ -102,4 +108,75 @@ class RED_Autocomplete(AutoComplete):
 
         except Exception as e:
             logging.warning(f"RED macro_select: {e}")
+            return []
+
+    async def character_select(self, **kwargs):
+        if "gm" in kwargs.keys():
+            gm = kwargs["gm"]
+        else:
+            gm = False
+
+        if "multi" in kwargs.keys():
+            multi = kwargs["multi"]
+        else:
+            multi = False
+
+        if "net" in kwargs.keys():
+            net = kwargs["net"]
+        else:
+            net = False
+
+        logging.info("character_select")
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine)
+            async with async_session() as session:
+                if net:
+                    if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
+                        # print("You are the GM")
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == true()).order_by(Tracker.name.asc())
+                        )
+                    elif not gm:
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == true()).order_by(Tracker.name.asc())
+                        )
+                    else:
+                        # print("Not the GM")
+                        char_result = await session.execute(
+                            select(Tracker.name)
+                            .where(Tracker.user == self.ctx.interaction.user.id)
+                            .where(Tracker.net_status == true())
+                            .order_by(Tracker.name.asc())
+                        )
+                else:
+                    if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
+                        # print("You are the GM")
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
+                        )
+                    elif not gm:
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
+                        )
+                    else:
+                        # print("Not the GM")
+                        char_result = await session.execute(
+                            select(Tracker.name)
+                            .where(Tracker.user == self.ctx.interaction.user.id)
+                            .where(Tracker.net_status == false())
+                            .order_by(Tracker.name.asc())
+                        )
+                character = char_result.scalars().all()
+                print(len(character))
+            if self.ctx.value != "":
+                val = self.ctx.value.lower()
+                if multi and val[-1] == ",":
+                    return [f"{val.title()} {option}" for option in character]
+                return [option for option in character if val in option.lower()]
+            return character
+        except NoResultFound:
+            return []
+        except Exception as e:
+            logging.warning(f"epf character_select: {e}")
             return []

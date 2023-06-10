@@ -106,6 +106,11 @@ class RED_Tracker(Tracker):
                 else:
                     init_num = f"{character.init}"
 
+                if character.net_status:
+                    net_mod = "(NET) "
+                else:
+                    net_mod = ""
+
                 if block:
                     for (
                         char
@@ -126,19 +131,19 @@ class RED_Tracker(Tracker):
                 if character.player or gm:
                     if character.temp_hp != 0:
                         string = (
-                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f"{selector}  {init_num} {net_mod}{str(character.char_name).title()}:"
                             f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp\n"
                             f"   {character.armor_output_string}"
                         )
                     else:
                         string = (
-                            f"{selector}  {init_num} {str(character.char_name).title()}:"
+                            f"{selector}  {init_num} {net_mod}{str(character.char_name).title()}:"
                             f" {character.current_hp}/{character.max_hp}\n"
                             f"   {character.armor_output_string}"
                         )
                 else:
                     string = (
-                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f"{selector}  {init_num} {net_mod}{str(character.char_name).title()}:"
                         f" {await character.calculate_hp()} \n"
                     )
                 output_string += string

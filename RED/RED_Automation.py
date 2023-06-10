@@ -157,3 +157,14 @@ class RED_Automation(Automation):
         embed.set_thumbnail(url=char_model.pic)
 
         return embed
+
+    async def net_auto(self, character, target, net, attack_modifier, target_modifier, damage_modifier, multi=False):
+        logging.info("/red net_auto")
+        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        color = discord.Color(value=125)
+
+        # Attack
+        roll_string = f"{await Character_Model.get_roll(net)}"
+        dice_result = RED_Roll_Result(d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}"))

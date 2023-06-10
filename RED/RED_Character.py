@@ -54,6 +54,7 @@ class RED_Character(Character):
         self.net = character.net
         self.macros = character.macros
         self.bonuses = character.bonuses
+        self.net_status = character.net_status
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
@@ -82,6 +83,7 @@ class RED_Character(Character):
         self.net = self.character_model.net
         self.macros = self.character_model.macros
         self.bonuses = self.character_model.bonuses
+        self.net_status = self.character_model.net_status
 
     async def get_roll(self, item: str):
         item = item.lower()
@@ -91,6 +93,8 @@ class RED_Character(Character):
             return f"1d10+{self.skills[item]['value']}"
         elif item in self.attacks.keys():
             return await self.weapon_attack(item)
+        elif item in self.net.keys():
+            return await self.net_attack(item)
         elif item in RED_SKills.keys():
             return f"1d10+{await self.get_skill(item)}"
         else:
@@ -216,6 +220,22 @@ class RED_Character(Character):
         item = item.lower()
         logging.info(f"RED get weapon: {item}")
         return self.attacks[item]
+
+    async def net_attack(self, item):
+        net_attack = self.net[item]
+        if net_attack["skill"] in self.skills.keys():
+            skill = self.skills[net_attack["skill"]]["value"]
+        else:
+            skill = 0
+        prgm_attk = int(net_attack["attk_bonus"])
+        return f"1d10+{skill}+{prgm_attk}"
+
+    async def get_net_defence_dv(self):
+        # TODO Need a variable character model for BLACK ICE
+        if self.net_status:
+            return 0
+        else:
+            return f"1d10+{self.skills['interface']}"
 
     async def ablate_armor(self, amount: int, location: str, reset=False):
         try:
