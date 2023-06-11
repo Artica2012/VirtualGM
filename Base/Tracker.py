@@ -734,13 +734,19 @@ class Tracker:
 
             if self.guild.tracker is not None:
                 channel = self.bot.get_channel(self.guild.tracker_channel)
-                message = await channel.fetch_message(self.guild.tracker)
-                await message.edit(content=tracker_string)
+                try:
+                    message = await channel.fetch_message(self.guild.tracker)
+                    await message.edit(content=tracker_string)
+                except discord.errors.NotFound:
+                    await self.set_pinned_tracker(channel, gm=False)
             if self.guild.gm_tracker is not None:
                 gm_tracker_display_string = await self.block_get_tracker(self.guild.initiative, gm=True)
                 gm_channel = self.bot.get_channel(self.guild.gm_tracker_channel)
-                gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
-                await gm_message.edit(content=gm_tracker_display_string)
+                try:
+                    gm_message = await gm_channel.fetch_message(self.guild.gm_tracker)
+                    await gm_message.edit(content=gm_tracker_display_string)
+                except discord.errors.NotFound:
+                    await self.set_pinned_tracker(gm_channel, gm=True)
 
             async with async_session() as session:
                 if self.ctx is None:

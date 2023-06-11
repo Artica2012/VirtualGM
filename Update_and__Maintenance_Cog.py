@@ -55,9 +55,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
     @tasks.loop(minutes=30)
     async def garbage_collect(self):
         collected = gc.collect()
-        uncollected = gc.garbage
 
-        logging.warning(f"Garbage Collection.... \nCollected: {collected}  \nUncollected: {len(uncollected)}")
+        logging.warning(f"GC: {collected}. Guilds: {len(self.bot.guilds)}")
 
     @commands.Cog.listener()
     async def on_ready(self):

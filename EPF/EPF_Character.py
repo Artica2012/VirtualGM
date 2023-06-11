@@ -1792,10 +1792,10 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                     # print(parsed[0], parsed[0][0])
                     if parsed[0][0] == '"':
                         # print("Opening Quote")
-                        for x, item in enumerate(parsed):
+                        for x, i in enumerate(parsed):
                             # print(x, item)
                             # print(item[-1])
-                            if item[-1] == '"':
+                            if i[-1] == '"':
                                 item_name = " ".join(parsed[0 : x + 1])
                                 item_name = item_name.strip('"')
                                 parsed = parsed[x + 1 :]
