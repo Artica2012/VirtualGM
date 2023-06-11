@@ -448,16 +448,16 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                         attack_two = edited_attack.copy()
                         trait_list = attack_one["traits"]
                         trait_copy = trait_list.copy()
-                        for x, i in enumerate(trait_list):
-                            if i == trait:
+                        for x, trait_item in enumerate(trait_list):
+                            if trait_item == trait:
                                 trait_copy[x] = f"fatal-{fatal_die}"
 
                         attack_one["traits"] = trait_copy
                         attack_one["display"] = f"{edited_attack['display']} (2H)"
 
                         trait_copy = []
-                        for i in trait_list:
-                            if i != trait:
+                        for trait_id in trait_list:
+                            if trait_id != trait:
                                 trait_copy.append(i)
 
                         attack_two["display"] = f"{edited_attack['display']} (1H)"
