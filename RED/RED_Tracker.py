@@ -3,16 +3,16 @@ import logging
 from datetime import datetime
 
 import discord
-from sqlalchemy import select, true
+from sqlalchemy import select, true, or_
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import database_operations
-from Base.Tracker import Tracker, get_init_list
-from database_models import get_condition
+from Base.Tracker import Tracker
+from database_models import get_condition, get_tracker, Global
 from error_handling_reporting import ErrorReport, error_not_initialized
-from time_keeping_functions import output_datetime, get_time
+from time_keeping_functions import output_datetime, get_time, advance_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 
@@ -21,13 +21,234 @@ async def get_RED_Tracker(ctx, engine, init_list, bot, guild=None):
     if engine is None:
         engine = database_operations.engine
     guild = await get_guild(ctx, guild)
+    init_list = await get_init_list(ctx, engine, guild=guild)
     return RED_Tracker(ctx, engine, init_list, bot, guild=guild)
+
+
+async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+    logging.info("get_init_list")
+    try:
+        if guild is not None:
+            try:
+                Tracker = await get_tracker(ctx, engine, id=guild.id)
+            except Exception:
+                Tracker = await get_tracker(ctx, engine)
+        else:
+            Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Tracker)
+                .where(Tracker.active == true())
+                .order_by(Tracker.init.desc())
+                .order_by(Tracker.tie_breaker.desc())
+                .order_by(Tracker.id.desc())
+            )
+            init_list = result.scalars().all()
+            logging.info("GIL: Init list gotten")
+            # print(init_list)
+        return init_list
+
+    except Exception:
+        logging.error("error in get_init_list")
+        return []
 
 
 class RED_Tracker(Tracker):
     def __int__(self, ctx, engine, init_list, bot, guild=None):
         super().__init__(ctx, engine, init_list, bot)
         self.guild = guild
+
+    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+        logging.info("get_init_list")
+        try:
+            if guild is not None:
+                try:
+                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                except Exception:
+                    Tracker = await get_tracker(ctx, engine)
+            else:
+                Tracker = await get_tracker(ctx, engine)
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Tracker)
+                    .where(Tracker.active == true())
+                    .order_by(Tracker.init.desc())
+                    .order_by(Tracker.tie_breaker.desc())
+                    .order_by(Tracker.id.desc())
+                )
+                init_list = result.scalars().all()
+                logging.info("GIL: Init list gotten")
+                # print(init_list)
+            return init_list
+
+        except Exception:
+            logging.error("error in get_init_list")
+            return []
+
+    async def block_advance_initiative(self):
+        logging.info("advance_initiative")
+
+        block_done = False
+        turn_list = []
+        first_pass = False
+        round = self.guild.round
+
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            logging.info(f"BAI1: guild: {self.guild.id}")
+
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                char_result = await session.execute(select(Tracker))
+                character = char_result.scalars().all()
+                logging.info("BAI2: characters")
+
+                # Roll initiative if this is the start of init
+                # print(f"guild.initiative: {guild.initiative}")
+                if self.guild.initiative is None:
+                    init_pos = -1
+                    round = 1
+                    first_pass = True
+                    for char in character:
+                        await asyncio.sleep(0)
+                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        # print(model.char_name, model.init)
+                        if model.init == 0:
+                            await asyncio.sleep(0)
+                            try:
+                                await model.set_init(None)
+                                # print(model.init, model.tie_breaker)
+                            except Exception:
+                                await model.set_init(0)
+
+                else:
+                    init_pos = int(self.guild.initiative)
+
+            await self.update()
+            logging.info("BAI3: updated")
+
+            if self.guild.saved_order == "":
+                current_character = await get_character(
+                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
+                )
+            else:
+                current_character = await get_character(
+                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
+                )
+
+            # Record the initial to break an infinite loop
+            iterations = 0
+            logging.info(f"BAI4: iteration: {iterations}")
+
+            while not block_done:
+                # make sure that the current character is at the same place in initiative as it was before
+                # decrement any conditions with the decrement flag
+
+                if self.guild.block:  # if in block initiative, decrement conditions at the beginning of the turn
+                    # if its not, set the init position to the position of the current character before advancing it
+                    # print("Yes guild.block")
+                    logging.info(f"BAI5: guild.block: {self.guild.block}")
+                    if not await self.init_integrity_check(init_pos, current_character.char_name) and not first_pass:
+                        logging.info("BAI6: init_itegrity failied")
+                        for pos, row in enumerate(self.init_list):
+                            await asyncio.sleep(0)
+                            if row.name == current_character.char_name:
+                                init_pos = pos
+                                break
+                    init_pos += 1  # increase the init position by 1
+
+                    if init_pos >= len(self.init_list):  # if it has reached the end, loop back to the beginning
+                        init_pos = 0
+                        round += 1
+                        if self.guild.timekeeping:  # if timekeeping is enable on the server
+                            logging.info("BAI7: timekeeping")
+                            # Advance time time by the number of seconds in the guild.time column. Default is 6
+                            # seconds ala D&D standard
+                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await current_character.check_time_cc(self.bot)
+                            logging.info("BAI8: cc checked")
+
+                # Decrement the conditions
+                await self.init_con(current_character, None)
+
+                if not self.guild.block:  # if not in block initiative, decrement the conditions at the end of the turn
+                    logging.info("BAI14: Not Block")
+                    # print("Not guild.block")
+                    # if its not, set the init position to the position of the current character before advancing it
+                    if not await self.init_integrity_check(init_pos, current_character.char_name) and not first_pass:
+                        logging.info("BAI15: Integrity check failed")
+                        # print(f"integrity check was false: init_pos: {init_pos}")
+                        for pos, row in enumerate(self.init_list):
+                            await asyncio.sleep(0)
+                            if row.name == current_character.char_name:
+                                init_pos = pos
+                                # print(f"integrity checked init_pos: {init_pos}")
+                    init_pos += 1  # increase the init position by 1
+                    # print(f"new init_pos: {init_pos}")
+                    if init_pos >= len(self.init_list):  # if it has reached the end, loop back to the beginning
+                        init_pos = 0
+                        round += 1
+                        if self.guild.timekeeping:  # if timekeeping is enable on the server
+                            # Advance time time by the number of seconds in the guild.time column. Default is 6
+                            # seconds ala D&D standard
+                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            # await current_character.check_time_cc(self.bot)
+                            logging.info("BAI16: cc checked")
+
+                            # block initiative loop
+                # check to see if the next character is player vs npc
+                # print(init_list)
+                # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
+                if init_pos >= len(self.init_list) - 1:
+                    # print(f"init_pos: {init_pos}")
+                    if self.init_list[init_pos].player != self.init_list[0].player:
+                        block_done = True
+                elif self.init_list[init_pos].player != self.init_list[init_pos + 1].player:
+                    block_done = True
+                if not self.guild.block:
+                    block_done = True
+
+                turn_list.append(self.init_list[init_pos].name)
+                current_character = await get_character(
+                    self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
+                )
+                iterations += 1
+                if iterations >= len(self.init_list):  # stop an infinite loop
+                    block_done = True
+
+                # print(turn_list)
+
+            async with async_session() as session:
+                if self.ctx is None:
+                    result = await session.execute(select(Global).where(Global.id == self.guild.id))
+                else:
+                    result = await session.execute(
+                        select(Global).where(
+                            or_(
+                                Global.tracker_channel == self.ctx.interaction.channel_id,
+                                Global.gm_tracker_channel == self.ctx.interaction.channel_id,
+                            )
+                        )
+                    )
+                guild = result.scalars().one()
+                logging.info(f"BAI17: guild updated: {guild.id}")
+                guild.initiative = init_pos  # set it
+                guild.round = round
+                guild.saved_order = str(self.init_list[init_pos].name)
+                logging.info(f"BAI18: saved order: {guild.saved_order}")
+                await session.commit()
+                logging.info("BAI19: Written")
+            await self.update()
+            return True
+        except Exception as e:
+            logging.error(f"block_advance_initiative: {e}")
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "block_advance_initiative", e, self.bot)
+                await report.report()
 
     async def block_get_tracker(self, selected: int, gm: bool = False):  # Probably should rename this eventually
         logging.info("generic_block_get_tracker")
@@ -101,6 +322,7 @@ class RED_Tracker(Tracker):
                 selector = ""
 
                 # don't show an init if not in combat
+                print(character.char_name, character.init)
                 if character.init == 0 or character.active is False:
                     init_num = ""
                 else:

@@ -1,6 +1,5 @@
 import logging
 
-import d20
 import discord
 import numpy
 import pandas as pd
@@ -63,14 +62,6 @@ async def red_g_sheet_import(
     init_string = f"1d10+{character['stats']['ref']['value']}"
 
     initiative_num = 0
-    if not overwrite:
-        if guild.initiative is not None:
-            # print("In initiative")
-            try:
-                roll = d20.roll(init_string)
-                initiative_num = roll.total
-            except Exception:
-                initiative_num = 0
 
     if overwrite:
         async with async_session() as session:
@@ -127,8 +118,16 @@ async def red_g_sheet_import(
 
     Character = await get_RED_Character(char_name, ctx, guild, engine)
     # Write the conditions
-    # await write_resitances(resistance, Character, ctx, guild, engine)
-    await Character.update()
+    # await write_resitances(resistance, Character, ctx, guild, engine)    if not overwrite:
+    if not overwrite:
+        if guild.initiative is not None:
+            # print("In initiative")
+            try:
+                await Character.roll_initiative()
+            except Exception:
+                pass
+
+    # await Character.update()
     return True
 
     # except Exception:
