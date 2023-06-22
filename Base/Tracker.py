@@ -415,14 +415,14 @@ class Tracker:
                         .where(Condition.auto_increment == true())
                     )
                 con_list = char_result.scalars().all()
-                print(len(con_list))
+                # print(len(con_list))
                 logging.info("BAI9: condition's retrieved")
                 # print("First Con List")
 
             for con_row in con_list:
-                print(con_row.title)
+                # print(con_row.title)
                 Con_Character = await self.get_char_from_id(con_row.character_id)
-                print(Con_Character.char_name)
+                # print(Con_Character.char_name)
                 logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
                 await asyncio.sleep(0)
                 if not con_row.time:
@@ -955,7 +955,7 @@ class Tracker:
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 Tracker_model = Tracker(
                     self.ctx,
                     self.engine,
@@ -965,7 +965,7 @@ class Tracker:
                 )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
             # await self.engine.dispose()
 
@@ -987,6 +987,6 @@ class Tracker:
                 await Tracker_Model.advance_initiative()
                 await Tracker_Model.block_post_init()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
             # await self.engine.dispose()
