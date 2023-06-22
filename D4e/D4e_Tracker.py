@@ -49,8 +49,8 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
                 .order_by(Tracker.init_string.desc())
             )
             init_list = result.scalars().all()
-            for item in init_list:
-                print(item.name, item.init_string)
+            # for item in init_list:
+            #     print(item.name, item.init_string)
             logging.info("GIL: Init list gotten (D4e")
             # print(init_list)
         return init_list
@@ -84,8 +84,8 @@ class D4e_Tracker(Tracker):
                     .order_by(Tracker.init_string.desc())
                 )
                 init_list = result.scalars().all()
-                for item in init_list:
-                    print(item.name, item.init_string)
+                # for item in init_list:
+                #     print(item.name, item.init_string)
                 logging.info("GIL: Init list gotten (D4e")
                 # print(init_list)
             return init_list
@@ -443,7 +443,7 @@ class D4e_Tracker(Tracker):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 Tracker_model = D4e_Tracker(
                     self.ctx,
                     self.engine,
@@ -453,7 +453,7 @@ class D4e_Tracker(Tracker):
                 )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
             # await self.engine.dispose()
 
@@ -477,13 +477,13 @@ class D4e_Tracker(Tracker):
                 )
                 await Tracker_Model.next()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
             # await self.engine.dispose()
 
 
 async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
-    print("D4e Tracker Buttons")
+    # print("D4e Tracker Buttons")
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     # print(guild.id)
@@ -507,7 +507,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
             select(Condition).where(Condition.character_id == char.id).where(Condition.flex == true())
         )
         conditions = result.scalars().all()
-        print(len(conditions))
+        # print(len(conditions))
     for con in conditions:
         new_button = D4eConditionButton(con, ctx, bot, char, guild=guild)
         view.add_item(new_button)
