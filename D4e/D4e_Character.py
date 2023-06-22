@@ -216,7 +216,7 @@ class D4e_Character(Character):
 
 
 async def edit_stats(ctx, engine, name: str, bot):
-    print("edit_stats")
+    # print("edit_stats")
     try:
         if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
