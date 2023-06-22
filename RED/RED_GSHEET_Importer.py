@@ -56,6 +56,8 @@ async def red_g_sheet_import(
 
     if decision_header == "CyberpunkRED:":
         character = await red_g_sheet_character_import(ctx, char_name, df, engine, guild)
+    elif decision_header == "CyberpunkRED ICE:":
+        character = await red_g_sheet_NET_import(ctx, char_name, df, engine, guild)
     else:
         return False
 
@@ -112,6 +114,7 @@ async def red_g_sheet_import(
                     macros={},
                     bonuses={},
                     pic=image,
+                    net_status=character["net_status"],
                 )
                 session.add(new_char)
             await session.commit()
@@ -168,6 +171,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "humanity": {"max_humanity": df.d[9], "current_humanity": df.d[9]},
         "cyber": {},
         "net": {},
+        "net_status": False,
     }
     stats = {}
 
@@ -185,6 +189,138 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             title = str(df.c[i])
             title = title.split(" ")[0].lower()
             base = int(df.d[i])
+            if title == numpy.NaN or base == numpy.NaN:
+                raise ValueError
+            stats[title] = {"value": base, "base": base}
+        except Exception:
+            pass
+
+    print(stats)
+    character["stats"] = stats
+
+    skills = {}
+    for i in range(12, len(df.a)):
+        print(df.a[i])
+        if type(df.a[i]) == str:
+            try:
+                skill_name = str(df.a[i]).lower()
+                skill_name = skill_name.strip()
+                level = int(df.b[i])
+                stat = str(df.c[i]).lower()
+                value = stats[stat]["value"] + level
+
+                item = {"value": value, "stat": stat, "base": level}
+                skills[skill_name] = item
+                print(item)
+            except Exception as e:
+                logging.error(f"red-g-sheet-import: {e}, {i}")
+    character["skills"] = skills
+    print(skills)
+
+    attacks = {}
+    net = {}
+    for i in range(12, len(df.e)):
+        print(df.e[i], df.f[i], df.g[i], df.h[i])
+        if type(df.e[i]) == str:
+            if df.e[i] == "Name:":
+                print(df.e[i], str(df.f[i]))
+                try:
+                    dmg_string = f"{df.f[i + 2]}{df.g[i + 2]}"
+                    name = str(df.f[i]).lower()
+                    attack_data = {
+                        "skill": str(df.f[i + 1]).lower(),
+                        "type": str(df.h[i + 1]).lower(),
+                        "category": str(df.h[i]).lower(),
+                        "dmg": dmg_string,
+                        "hands": int(df.f[i + 3]),
+                        "rof": int(df.f[i + 4]),
+                        "attk_bonus": int(df.f[i + 5]),
+                        "autofire": Interpreter[df.f[i + 6]],
+                        "autofire_ammt": int(df.h[i + 6]),
+                        "attach": str(df.f[i + 7]),
+                    }
+                    attacks[name] = attack_data
+                    print(attack_data)
+
+                    if attack_data["autofire"]:
+                        autofire_attack = attack_data.copy()
+                        autofire_attack["skill"] = "autofire"
+                        autofire_attack["dmg"] = "2d6"
+                        attacks[f"{name} (autofire)"] = autofire_attack
+
+                except Exception as e:
+                    logging.error(f"red-g-sheet-import: {e}, {i}")
+            elif df.e[i] == "Program Name":
+                name = str(df.f[i])
+                dmg_string = f"{df.f[i + 1]}{df.g[i + 1]}"
+                attack = df.f[i + 2]
+                net_data = {"skill": "interface", "type": "net", "dmg": dmg_string, "attk_bonus": attack}
+                net[name] = net_data
+
+    print(attacks)
+    character["attacks"] = attacks
+    character["net"] = net
+
+    armor = {}
+    for i in range(12, 17):
+        try:
+            if type(df.i[i]) == str:
+                location = str(df.i[i]).lower()
+                sp = int(df.j[i])
+                penalty = df.k[i]
+                armor[location] = {
+                    "sp": sp,
+                    "penalty": penalty,
+                    "base": sp,
+                }
+        except Exception:
+            pass
+    print(armor)
+    character["armor"] = armor
+    return character
+
+
+async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+    logging.info("g-sheet-char")
+    try:
+        df.rename(
+            columns={
+                "CyberpunkRED ICE:": "a",
+                "CyberpunkRED ICE: ": "a",
+                "Unnamed: 1": "b",
+                "Unnamed: 2": "c",
+                "Unnamed: 3": "d",
+                "Unnamed: 4": "e",
+                "Unnamed: 5": "f",
+                "Unnamed: 6": "g",
+                "Unnamed: 7": "h",
+                "Unnamed: 8": "i",
+                "Unnamed: 9": "j",
+                "Unnamed: 10": "k",
+            },
+            inplace=True,
+        )
+
+    except Exception:
+        return False
+
+    character = {
+        "name": df.b[0],
+        "level": 0,
+        "active": True,
+        "role": df.b[1],
+        "hp": df.d[0],
+        "cyber": {},
+        "net": {},
+        "net_status": True,
+    }
+    stats = {}
+
+    for i in range(3, 7):
+        try:
+            title = str(df.a[i])
+            title = title.split(" ")[0].lower()
+            base = int(df.b[i])
             if title == numpy.NaN or base == numpy.NaN:
                 raise ValueError
             stats[title] = {"value": base, "base": base}
