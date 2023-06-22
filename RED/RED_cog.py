@@ -11,7 +11,6 @@ from discord.ext import commands
 import RED.RED_GSHEET_Importer
 from auto_complete import (
     character_select_gm,
-    character_select_multi,
     auto_macro_select,
     red_no_net_character_select_multi,
     red_net_character_select_multi,
@@ -36,10 +35,19 @@ class REDCog(commands.Cog):
     @option("name", description="Character Name", required=True)
     # @option("pathbuilder_id", description="Pathbuilder Export ID")
     @option("url", description="Public Google Sheet URL", required=True)
-    async def import_character(self, ctx: discord.ApplicationContext, name: str, url: str, image: str = None):
+    @option("player", description="Player or NPC", choices=["player", "npc"], input_type=str)
+    async def import_character(
+        self, ctx: discord.ApplicationContext, name: str, url: str, player: str, image: str = None
+    ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
+        player_bool = False
+        if player == "player":
+            player_bool = True
+        elif player == "npc":
+            player_bool = False
+
         success = discord.Embed(
             title=name.title(),
             fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
@@ -49,7 +57,7 @@ class REDCog(commands.Cog):
             # try:
             guild = await get_guild(ctx, None)
             if guild.system == "RED":
-                response = await RED.RED_GSHEET_Importer.red_g_sheet_import(ctx, name, url, image=image)
+                response = await RED.RED_GSHEET_Importer.red_g_sheet_import(ctx, name, url, player_bool, image=image)
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 await Tracker_Model.update_pinned_tracker()
             else:

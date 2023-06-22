@@ -305,17 +305,20 @@ class RED_Character(Character):
     @property
     def armor_output_string(self):
         try:
-            body = int(self.armor["body"]["sp"])
-            head = int(self.armor["head"]["sp"])
-            output_string = f"B:{body} SP/ H:{head} SP\n"
-            # print(self.armor.keys())
-            if "cover" in self.armor.keys():
-                # print("COVER!!!!!!!!!!!!!!!!!!")
-                cover = int(self.armor["cover"]["sp"])
-                output_string += f"   Cover:{cover}\n"
-            return output_string
+            if not self.net_status:
+                body = int(self.armor["body"]["sp"])
+                head = int(self.armor["head"]["sp"])
+                output_string = f"       B:{body} SP/ H:{head} SP\n"
+                # print(self.armor.keys())
+                if "cover" in self.armor.keys():
+                    # print("COVER!!!!!!!!!!!!!!!!!!")
+                    cover = int(self.armor["cover"]["sp"])
+                    output_string += f"       Cover:{cover}\n"
+                return output_string
+            else:
+                return "\n"
         except Exception:
-            return "ERROR!!!"
+            return "ERROR!!!\n"
 
     async def set_cover(self, amount, remove=False):
         try:
@@ -361,10 +364,11 @@ class RED_Character(Character):
                 init_list = result.scalars().all()
                 first_init = init_list[0]
                 init = first_init + 1
+            tie_breaker = RED_Roll_Result(d20.roll("1d10")).total
         else:
             init = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
 
-        tie_breaker = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
+            tie_breaker = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.id == self.id))
@@ -374,6 +378,7 @@ class RED_Character(Character):
             await session.commit()
 
         await self.update()
+        return f"Initiative set to {init} for {self.char_name}"
 
     async def set_init(self, init, **kwargs):
         if "update" in kwargs.keys():
@@ -386,39 +391,38 @@ class RED_Character(Character):
             raise LookupError("No guild reference")
         # print("Init", init)
         if init is None:
-            roll = RED_Roll_Result(d20.roll(await self.get_roll("ref")))
-            # print(roll)
-            init = roll.total
+            # roll = RED_Roll_Result(d20.roll(await self.get_roll("ref")))
+            # # print(roll)
+            # init = roll.total
+            return await self.roll_initiative()
         elif type(init) == str:
             roll = RED_Roll_Result(d20.roll(init))
             init = roll.total
 
-        # print(init)
+            tie_breaker = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
+            # print("Tie Breaker", tie_breaker)
+            try:
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                if self.guild is None:
+                    Tracker = await get_tracker(
+                        self.ctx,
+                        self.engine,
+                    )
+                else:
+                    Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-        tie_breaker = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
-        # print("Tie Breaker", tie_breaker)
-        try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            if self.guild is None:
-                Tracker = await get_tracker(
-                    self.ctx,
-                    self.engine,
-                )
-            else:
-                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
-                character = char_result.scalars().one()
-                character.init = init
-                character.tie_breaker = tie_breaker
-                await session.commit()
-            if update:
-                await self.update()
-            return f"Initiative set to {init} for {self.char_name}"
-        except Exception as e:
-            logging.error(f"set_init: {e}")
-            return f"Failed to set initiative: {e}"
+                async with async_session() as session:
+                    char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                    character = char_result.scalars().one()
+                    character.init = init
+                    character.tie_breaker = tie_breaker
+                    await session.commit()
+                if update:
+                    await self.update()
+                return f"Initiative set to {init} for {self.char_name}"
+            except Exception as e:
+                logging.error(f"set_init: {e}")
+                return f"Failed to set initiative: {e}"
 
 
 async def calculate(ctx, engine, char_name, guild=None):

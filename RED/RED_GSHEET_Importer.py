@@ -21,7 +21,7 @@ Interpreter = {
 
 
 async def red_g_sheet_import(
-    ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
+    ctx: discord.ApplicationContext, char_name: str, base_url: str, player: bool, engine=None, guild=None, image=None
 ):
     # try:
     parsed_url = base_url.split("/")
@@ -61,8 +61,7 @@ async def red_g_sheet_import(
     else:
         return False
 
-    init_string = f"1d10+{character['stats']['ref']['value']}"
-
+    init_string = ""
     initiative_num = 0
 
     if overwrite:
@@ -93,7 +92,7 @@ async def red_g_sheet_import(
                 new_char = red_tracker(
                     name=char_name,
                     init=initiative_num,
-                    player=True if "npc" not in character.keys() else False,
+                    player=player,
                     user=ctx.user.id,
                     current_hp=character["hp"],
                     max_hp=character["hp"],
@@ -102,8 +101,8 @@ async def red_g_sheet_import(
                     active=character["active"],
                     char_class=character["role"],
                     level=character["level"],
-                    humanity=character["humanity"],
-                    current_luck=character["stats"]["luck"]["value"],
+                    humanity=0,
+                    current_luck=0,
                     stats=character["stats"],
                     skills=character["skills"],
                     attacks=character["attacks"],
@@ -331,83 +330,22 @@ async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str
     character["stats"] = stats
 
     skills = {}
-    for i in range(12, len(df.a)):
-        print(df.a[i])
-        if type(df.a[i]) == str:
-            try:
-                skill_name = str(df.a[i]).lower()
-                skill_name = skill_name.strip()
-                level = int(df.b[i])
-                stat = str(df.c[i]).lower()
-                value = stats[stat]["value"] + level
-
-                item = {"value": value, "stat": stat, "base": level}
-                skills[skill_name] = item
-                print(item)
-            except Exception as e:
-                logging.error(f"red-g-sheet-import: {e}, {i}")
     character["skills"] = skills
-    print(skills)
 
     attacks = {}
     net = {}
-    for i in range(12, len(df.e)):
-        print(df.e[i], df.f[i], df.g[i], df.h[i])
-        if type(df.e[i]) == str:
-            if df.e[i] == "Name:":
-                print(df.e[i], str(df.f[i]))
-                try:
-                    dmg_string = f"{df.f[i + 2]}{df.g[i + 2]}"
-                    name = str(df.f[i]).lower()
-                    attack_data = {
-                        "skill": str(df.f[i + 1]).lower(),
-                        "type": str(df.h[i + 1]).lower(),
-                        "category": str(df.h[i]).lower(),
-                        "dmg": dmg_string,
-                        "hands": int(df.f[i + 3]),
-                        "rof": int(df.f[i + 4]),
-                        "attk_bonus": int(df.f[i + 5]),
-                        "autofire": Interpreter[df.f[i + 6]],
-                        "autofire_ammt": int(df.h[i + 6]),
-                        "attach": str(df.f[i + 7]),
-                    }
-                    attacks[name] = attack_data
-                    print(attack_data)
 
-                    if attack_data["autofire"]:
-                        autofire_attack = attack_data.copy()
-                        autofire_attack["skill"] = "autofire"
-                        autofire_attack["dmg"] = "2d6"
-                        attacks[f"{name} (autofire)"] = autofire_attack
+    name = character["name"]
+    dmg_string = str(df.d[3])
+    attack = character["stats"]["atk"]
+    net_data = {"skill": None, "type": "net", "dmg": dmg_string, "attk_bonus": attack, "category": str(df.b[1])}
+    net[name] = net_data
 
-                except Exception as e:
-                    logging.error(f"red-g-sheet-import: {e}, {i}")
-            elif df.e[i] == "Program Name":
-                name = str(df.f[i])
-                dmg_string = f"{df.f[i + 1]}{df.g[i + 1]}"
-                attack = df.f[i + 2]
-                net_data = {"skill": "interface", "type": "net", "dmg": dmg_string, "attk_bonus": attack}
-                net[name] = net_data
-
-    print(attacks)
+    print(net)
     character["attacks"] = attacks
     character["net"] = net
 
     armor = {}
-    for i in range(12, 17):
-        try:
-            if type(df.i[i]) == str:
-                location = str(df.i[i]).lower()
-                sp = int(df.j[i])
-                penalty = df.k[i]
-                armor[location] = {
-                    "sp": sp,
-                    "penalty": penalty,
-                    "base": sp,
-                }
-        except Exception:
-            pass
-    print(armor)
     character["armor"] = armor
     return character
 

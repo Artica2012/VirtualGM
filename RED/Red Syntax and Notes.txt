@@ -87,6 +87,16 @@ Character Model
 				}
 		}
 
+		net : JSON = {
+		    name: {
+		    category: (Anti-Personnel, Anti-Program),
+		    dmg: String,
+		    skill: String,
+		    attk_bonus: Int
+		    type: String
+		    }
+		}
+
 		armor : JSON = {
 				location : {
 						sp: Integer
