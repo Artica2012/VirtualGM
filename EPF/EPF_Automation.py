@@ -208,7 +208,7 @@ class EPF_Automation(Automation):
         )
 
         # Damage
-        if success_string == "Critical Success":
+        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
             dmg_string, total_damage = await roll_dmg_resist(
                 Character_Model,
                 Target_Model,
@@ -218,7 +218,7 @@ class EPF_Automation(Automation):
                 dmg_type_override=dmg_type_override,
             )
             color = color.gold()
-        elif success_string == "Success":
+        elif success_string == "Success" or success_string == "Critical Success":
             dmg_string, total_damage = await roll_dmg_resist(
                 Character_Model,
                 Target_Model,
@@ -308,7 +308,7 @@ class EPF_Automation(Automation):
                     dmg_type_override=dmg_type_override,
                 )
                 color = color.gold()
-            elif success_string == "Success":
+            elif success_string == "Success" or success_string == "Critical Success":
                 dmg_string, total_damage = await roll_spell_dmg_resist(
                     Character_Model,
                     Target_Model,
@@ -414,8 +414,8 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     if target.resistance == {"resist": {}, "weak": {}, "immune": {}}:
         return dmg_roll
     dmg = dmg_roll
-    print(target.resistance)
-    print(dmg_type)
+    # print(target.resistance)
+    # print(dmg_type)
 
     if weapon is not None:
         if "traits" in weapon.keys():
@@ -439,7 +439,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         or "physical" in target.resistance["weak"]
         or "physical" in target.resistance["immune"]
     ):
-        print("Physical Resistance")
+        # print("Physical Resistance")
         if (
             dmg_type.lower() == "slashing"
             or dmg_type.lower() == "piercing"
@@ -447,7 +447,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
             or dmg_type.lower() == "precision"
         ):
             dmg_type = "physical"
-            print(dmg_type)
+            # print(dmg_type)
     if dmg_type.lower() in target.resistance["resist"]:
         dmg = dmg - target.resistance["resist"][dmg_type]
         if dmg < 0:
@@ -509,7 +509,7 @@ async def roll_dmg_resist(
             total_damage += bonus_damage
             output = {"dmg_output_string": bonus_roll, "dmg_type": item["dmg_type"]}
             dmg_output.append((output))
-    print(dmg_output_string, total_damage)
+    # print(dmg_output_string, total_damage)
     return dmg_output, total_damage
 
 
@@ -533,9 +533,10 @@ async def roll_spell_dmg_resist(
     logging.info("roll_dmg_spell_resist")
     # Roll the critical damage and apply resistances
     dmg_rolls = {}
+    # print(spell, crit)
     if crit and "critical-hits" not in Target_Model.resistance["immune"]:
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
-        print(spell_dmg)
+        # print(spell_dmg)
         for key in spell_dmg.keys():
             if dmg_type_override is not None:
                 dmg_type = dmg_type_override
@@ -548,6 +549,7 @@ async def roll_spell_dmg_resist(
             dmg_rolls[key]["damage_type"] = dmg_type
     else:
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
+        # print(spell_dmg)
 
         for key in spell_dmg.keys():
             if dmg_type_override is not None:
