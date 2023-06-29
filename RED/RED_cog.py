@@ -14,6 +14,7 @@ from auto_complete import (
     auto_macro_select,
     red_no_net_character_select_multi,
     red_net_character_select_multi,
+    net_macro_select,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -168,7 +169,7 @@ class REDCog(commands.Cog):
     @red.command(description="NET Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
     @option("target", description="Character to Target", autocomplete=red_net_character_select_multi)
-    @option("attack", description="NET Attack", autocomplete=auto_macro_select)
+    @option("attack", description="NET Attack", autocomplete=net_macro_select)
     @option("attack_modifier", description="Attack Modifier", required=False)
     @option("target_modifier", description="Target Modifier", required=False)
     @option("damage_modifier", description="Flat Bonus or Penalty to Damage", required=False)

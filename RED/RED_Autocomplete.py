@@ -23,6 +23,11 @@ class RED_Autocomplete(AutoComplete):
         else:
             auto = False
 
+        if "net" in kwargs.keys():
+            net = kwargs["net"]
+        else:
+            net = False
+
         try:
             character = self.ctx.options["character"]
             char_split = character.split(",")
@@ -44,6 +49,14 @@ class RED_Autocomplete(AutoComplete):
                     return [option.title() for option in attk_list if val in option.lower()]
                 else:
                     return [option.title() for option in attk_list]
+            elif net:
+                net_list = Character_Model.net.keys()
+                print(net_list)
+                if self.ctx.value != "":
+                    val = self.ctx.value.lower()
+                    return [option.title() for option in net_list if val in option.lower()]
+                else:
+                    return [option.title() for option in net_list]
 
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
@@ -164,7 +177,6 @@ class RED_Autocomplete(AutoComplete):
                         char_result = await session.execute(
                             select(Tracker.name)
                             .where(Tracker.user == self.ctx.interaction.user.id)
-                            .where(Tracker.net_status == false())
                             .order_by(Tracker.name.asc())
                         )
                 character = char_result.scalars().all()

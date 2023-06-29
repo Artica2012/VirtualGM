@@ -234,12 +234,14 @@ class RED_Character(Character):
         prgm_attk = int(net_attack["attk_bonus"])
         return f"1d10+{skill}+{prgm_attk}"
 
+    async def get_net_attack(self, item):
+        return self.net[item]
+
     async def get_net_defence_dv(self):
-        # TODO Need a variable character model for BLACK ICE
         if self.net_status:
-            return 0
+            return f"1d10+{self.stats['def']['value']}"
         else:
-            return f"1d10+{self.skills['interface']}"
+            return f"1d10+{self.skills['interface']['value']}"
 
     async def ablate_armor(self, amount: int, location: str, reset=False):
         try:

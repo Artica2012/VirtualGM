@@ -158,7 +158,9 @@ class RED_Automation(Automation):
 
         return embed
 
-    async def net_auto(self, character, target, net, attack_modifier, target_modifier, damage_modifier, multi=False):
+    async def net_auto(
+        self, bot, character, target, net, attack_modifier, target_modifier, damage_modifier, multi=False
+    ):
         logging.info("/red net_auto")
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -166,5 +168,45 @@ class RED_Automation(Automation):
         color = discord.Color(value=125)
 
         # Attack
-        roll_string = f"{await Character_Model.get_roll(net)}"
-        dice_result = RED_Roll_Result(d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}"))
+
+        dice_result = RED_Roll_Result(
+            d20.roll(f"{await Character_Model.get_roll(net)}{ParseModifiers(attack_modifier)}")
+        )
+        goal_result = RED_Roll_Result(
+            d20.roll(f"{await Target_Model.get_net_defence_dv()}{ParseModifiers(target_modifier)}")
+        )
+        success_string = RED_eval_success(dice_result, goal_result)
+
+        attk_output_string = (
+            f"NET ACTION\n{character} attacks {target} {'' if target_modifier == '' else f'( {target_modifier})'} with "
+            f" {net}:\n{dice_result}\n{success_string}"
+        )
+
+        if success_string == "Success":
+            attack_data = Character_Model.get_net_attack(net)
+            dmg = RED_Roll_Result(d20.roll(attack_data["dmg"]))
+            if attack_data["category"] == "Anti-Personnel" and not Target_Model.net_status:
+                Target_Model.change_hp(dmg, False, False)
+                dmg_str = "Damage Automatically Applied"
+            else:
+                dmg_str = "Damage Not Applied"
+
+            color = color.green()
+
+            output = f"{attk_output_string}\n{dmg}\n{dmg_str}"
+        else:
+            color = color.red()()
+            output = attk_output_string
+
+        embed = discord.Embed(
+            title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
+            fields=[discord.EmbedField(name=net, value=output)],
+            color=color,
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        print(multi)
+        if not multi:
+            print("Updating")
+            await Tracker_Model.update_pinned_tracker()
+        return embed
