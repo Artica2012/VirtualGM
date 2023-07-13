@@ -343,6 +343,8 @@ class EPF_Character(Character):
 
         if weapon["prof"] == "NPC":
             attack_mod = attk_stat + self.character_model.level + weapon["pot"]
+        elif weapon["prof"] == "NPC_C":
+            attack_mod = weapon["pot"]
         elif proficiency > 0:
             attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
         else:
@@ -383,6 +385,10 @@ class EPF_Character(Character):
                 dmg_mod = self.cha_mod
             case _:
                 dmg_mod = weapon["stat"]
+
+        # Applicable to NPCs
+        if "dmg_bonus" in weapon.keys():
+            dmg_mod = dmg_mod + weapon["dmg_bonus"]
 
         die = weapon["die"]
         if die[0] != "d":

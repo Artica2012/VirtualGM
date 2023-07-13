@@ -1015,7 +1015,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
             try:
                 # print(df.e[i])
                 try:
-                    potency = int(df.g[i + 2])
+                    potency = int(df.e[i + 1])
                 except Exception:
                     potency = 0
                 die_num = int(df.e[i + 2])
@@ -1057,7 +1057,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                 attack_data = {
                     "display_name": df.e[i],
                     "name": df.e[i],
-                    "prof": "NPC",
+                    "prof": "NPC_C",
                     "pot": potency,
                     "runes": [],
                     "die_num": die_num,
@@ -1067,6 +1067,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
                     "dmg_type": dmg_type,
                     "attk_stat": attk_stat,
                     "traits": parsed_traits,
+                    "dmg_bonus": int(df.g[i + 2]),
                 }
 
                 attacks[attack_data["display_name"]] = attack_data
