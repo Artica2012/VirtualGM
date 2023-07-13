@@ -79,7 +79,7 @@ class RED_Automation(Automation):
             print("dmg: ", dmg)
 
             amt = await Target_Model.damage_armor(dmg, location)
-            color = color.green()
+            color = discord.Color.green()
             dmg_output_string = f"{dmg}"
             if Target_Model.player:
                 output = (
@@ -92,7 +92,7 @@ class RED_Automation(Automation):
                     f" {await Target_Model.calculate_hp()}"
                 )
         else:
-            color = color.red()
+            color = discord.Color.red()
             output = attk_output_string
 
         embed = discord.Embed(
@@ -177,6 +177,8 @@ class RED_Automation(Automation):
         )
         success_string = RED_eval_success(dice_result, goal_result)
 
+        print(dice_result, goal_result, success_string)
+
         attk_output_string = (
             f"NET ACTION\n{character} attacks {target} {'' if target_modifier == '' else f'( {target_modifier})'} with "
             f" {net}:\n{dice_result}\n{success_string}"
@@ -191,11 +193,11 @@ class RED_Automation(Automation):
             else:
                 dmg_str = "Damage Not Applied"
 
-            color = color.green()
+            color = discord.Color.green()
 
             output = f"{attk_output_string}\n{dmg}\n{dmg_str}"
         else:
-            color = color.red()()
+            color = discord.Color.red()
             output = attk_output_string
 
         embed = discord.Embed(

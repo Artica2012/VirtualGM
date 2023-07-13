@@ -165,13 +165,9 @@ class RED_Autocomplete(AutoComplete):
                 else:
                     if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
                         # print("You are the GM")
-                        char_result = await session.execute(
-                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
-                        )
+                        char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                     elif not gm:
-                        char_result = await session.execute(
-                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
-                        )
+                        char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
                     else:
                         # print("Not the GM")
                         char_result = await session.execute(
