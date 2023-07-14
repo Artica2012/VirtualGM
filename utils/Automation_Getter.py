@@ -5,6 +5,7 @@ from D4e.D4e_Automation import D4e_Automation
 from EPF.EPF_Automation import EPF_Automation
 from PF2e.PF2_Automation import PF2_Automation
 from STF.STF_Automation import STF_Automation
+from RED.RED_Automation import RED_Automation
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild
@@ -24,5 +25,7 @@ async def get_automation(ctx, guild=None, engine=None):
         return D4e_Automation(ctx, engine, guild)
     elif guild.system == "STF":
         return STF_Automation(ctx, engine, guild)
+    elif guild.system == "RED":
+        return RED_Automation(ctx, engine, guild)
     else:
         return Automation(ctx, engine, guild)

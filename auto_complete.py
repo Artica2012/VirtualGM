@@ -71,6 +71,30 @@ async def character_select_multi(ctx: discord.AutocompleteContext):
         return []
 
 
+async def red_no_net_character_select_multi(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.character_select(multi=True, net=False)
+    except Exception:
+        return []
+
+
+async def red_net_character_select_multi(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.character_select(multi=True, net=True)
+    except Exception:
+        return []
+
+
+async def red_net_character_select_gm(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.character_select(gm=True, net=True)
+    except Exception:
+        return []
+
+
 # Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
     try:
@@ -192,6 +216,14 @@ async def auto_macro_select(ctx: discord.AutocompleteContext):
     try:
         AutoComplete = await get_autocomplete(ctx)
         return await AutoComplete.macro_select(attk=True, auto=True)
+    except Exception:
+        return []
+
+
+async def net_macro_select(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.macro_select(attk=False, auto=False, net=True)
     except Exception:
         return []
 

@@ -422,6 +422,7 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Error, Invalid Roll")
             return
         guild = await get_guild(ctx, None)
+        print(guild.id)
         try:
             model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
