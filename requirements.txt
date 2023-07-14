@@ -19,6 +19,7 @@ decorator==5.1.1
 dice==3.1.2
 distlib==0.3.6
 docopt==0.6.2
+et-xmlfile==1.1.0
 filelock==3.9.0
 flake8==6.0.0
 Flask==2.3.2
@@ -37,6 +38,7 @@ multidict==6.0.2
 mypy-extensions==1.0.0
 nodeenv==1.7.0
 numpy==1.23.2
+openpyxl==3.1.2
 packaging==23.0
 pandas==1.4.3
 pathspec==0.11.0
