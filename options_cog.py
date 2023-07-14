@@ -46,7 +46,11 @@ class OptionsCog(commands.Cog):
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
     @option("channel", description="Player Channel", required=True)
     @option("gm_channel", description="GM Channel", required=True)
-    @option("system", choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Starfinder"], required=False)
+    @option(
+        "system",
+        choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Cyberpunk RED", "Starfinder"],
+        required=False,
+    )
     async def start(
         self,
         ctx: discord.ApplicationContext,
@@ -191,6 +195,8 @@ class OptionsCog(commands.Cog):
                     pass
                 elif module == "Timekeeper":
                     if toggler and guild.time_year is None:
+                        if guild.system == "RED":
+                            time = 3
                         await set_datetime(
                             ctx, engine, self.bot, second=0, minute=0, hour=6, day=1, month=1, year=2001, time=time
                         )
@@ -214,6 +220,10 @@ class OptionsCog(commands.Cog):
                 system_str = "D&D 4th Edition"
             elif guild.system == "EPF":
                 system_str = "Enhanced Pathfinder 2e"
+            elif guild.system == "RED":
+                system_str = "Cyberpunk RED"
+            elif guild.system == "STF":
+                system_str = "Starfinder"
             else:
                 system_str = "Base"
 
@@ -258,6 +268,8 @@ async def setup_tracker(
         g_system = "D4e"
     elif system == "Enhanced PF2":
         g_system = "EPF"
+    elif system == "Cyberpunk RED":
+        g_system = "RED"
     elif system == "Starfinder":
         g_system = "STF"
     else:
@@ -333,7 +345,6 @@ async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, 
             guild.gm = str(new_gm.id)  # I accidentally stored the GM as a string instead of an int initially
             # if I ever have to wipe the database, this should be changed
             await session.commit()
-        # await engine.dispose()
 
         return True
     except Exception as e:

@@ -92,6 +92,7 @@ bot.load_extension("automation_cog")
 bot.load_extension("Update_and__Maintenance_Cog")
 bot.load_extension("reminder_cog")
 bot.load_extension("STF.stf_cog")
+bot.load_extension("RED.RED_cog")
 
 # run the bot
 bot.run(TOKEN)

@@ -72,7 +72,9 @@ class Character:
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
+                result = await session.execute(
+                    select(Tracker).where(func.lower(Tracker.name) == self.char_name.lower())
+                )
                 character = result.scalars().one()
             return character
 
@@ -121,7 +123,10 @@ class Character:
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            try:
+                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            except AttributeError:
+                Tracker = await get_tracker(self.ctx, self.engine)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
                 character = char_result.scalars().one()
