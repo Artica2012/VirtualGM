@@ -312,6 +312,8 @@ async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str
         "cyber": {},
         "net": {},
         "net_status": True,
+        "humanity": {},
+        "current_luck": 0,
     }
     stats = {}
 
@@ -337,7 +339,7 @@ async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str
 
     name = character["name"].lower()
     dmg_string = str(df.d[3])
-    attack = character["stats"]["atk"]
+    attack = character["stats"]["atk"]["value"]
     net_data = {"skill": None, "type": "net", "dmg": dmg_string, "attk_bonus": attack, "category": str(df.b[1])}
     net[name] = net_data
 

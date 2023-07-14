@@ -185,7 +185,7 @@ class RED_Automation(Automation):
         )
 
         if success_string == "Success":
-            attack_data = Character_Model.get_net_attack(net)
+            attack_data = await Character_Model.get_net_attack(net)
             dmg = RED_Roll_Result(d20.roll(attack_data["dmg"]))
             if attack_data["category"] == "Anti-Personnel" and not Target_Model.net_status:
                 Target_Model.change_hp(dmg, False, False)

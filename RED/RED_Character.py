@@ -235,6 +235,7 @@ class RED_Character(Character):
         return f"1d10+{skill}+{prgm_attk}"
 
     async def get_net_attack(self, item):
+        item = item.lower()
         return self.net[item]
 
     async def get_net_defence_dv(self):
