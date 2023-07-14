@@ -169,7 +169,6 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         "hp": df.d[1],
         "humanity": {"max_humanity": df.d[9], "current_humanity": df.d[9]},
         "cyber": {},
-        "net": {},
         "net_status": False,
     }
     stats = {}
@@ -206,8 +205,10 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 skill_name = skill_name.strip()
                 level = int(df.b[i])
                 stat = str(df.c[i]).lower()
-                value = stats[stat]["value"] + level
-
+                try:
+                    value = stats[stat]["value"] + level
+                except KeyError:
+                    value = level
                 item = {"value": value, "stat": stat, "base": level}
                 skills[skill_name] = item
                 print(item)
@@ -249,14 +250,22 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
 
                 except Exception as e:
                     logging.error(f"red-g-sheet-import: {e}, {i}")
-            elif df.e[i] == "Program Name":
-                name = str(df.f[i])
+            elif df.e[i] == "Program Name:":
+                name = str(df.f[i]).lower()
                 dmg_string = f"{df.f[i + 1]}{df.g[i + 1]}"
                 attack = df.f[i + 2]
-                net_data = {"skill": "interface", "type": "net", "dmg": dmg_string, "attk_bonus": attack}
+                category = str(df.f[i + 3])
+                net_data = {
+                    "skill": "interface",
+                    "type": "net",
+                    "dmg": dmg_string,
+                    "attk_bonus": attack,
+                    "category": category,
+                }
                 net[name] = net_data
 
     print(attacks)
+    print(net)
     character["attacks"] = attacks
     character["net"] = net
 

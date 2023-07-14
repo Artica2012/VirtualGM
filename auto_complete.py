@@ -87,6 +87,14 @@ async def red_net_character_select_multi(ctx: discord.AutocompleteContext):
         return []
 
 
+async def red_net_character_select_gm(ctx: discord.AutocompleteContext):
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.character_select(gm=True, net=True)
+    except Exception:
+        return []
+
+
 # Returns a list of all characters owned by the player, or all characters if the player is the GM
 async def character_select_gm(ctx: discord.AutocompleteContext):
     try:

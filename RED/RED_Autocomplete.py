@@ -1,14 +1,14 @@
 import logging
 
-from sqlalchemy import select, false, true
+from sqlalchemy import select, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Autocomplete import AutoComplete
+from RED.RED_Support import RED_SKills
 from database_models import get_tracker
 from utils.Char_Getter import get_character
-from RED.RED_Support import RED_SKills
 
 
 class RED_Autocomplete(AutoComplete):
@@ -147,36 +147,45 @@ class RED_Autocomplete(AutoComplete):
                 if net:
                     if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
                         # print("You are the GM")
-                        char_result = await session.execute(
-                            select(Tracker.name).where(Tracker.net_status == true()).order_by(Tracker.name.asc())
-                        )
+                        char_result = await session.execute(select(Tracker).order_by(Tracker.name.asc()))
                     elif not gm:
-                        char_result = await session.execute(
-                            select(Tracker.name).where(Tracker.net_status == true()).order_by(Tracker.name.asc())
-                        )
+                        char_result = await session.execute(select(Tracker).order_by(Tracker.name.asc()))
                     else:
                         # print("Not the GM")
                         char_result = await session.execute(
-                            select(Tracker.name)
+                            select(Tracker)
                             .where(Tracker.user == self.ctx.interaction.user.id)
-                            .where(Tracker.net_status == true())
                             .order_by(Tracker.name.asc())
                         )
+
+                    character_list = char_result.scalars().all()
+                    # print(len(character_list))
+                    character = []
+                    for item in character_list:
+                        # print(item.name)
+                        if item.net != {}:
+                            character.append(item.name)
+                    # print(character)
                 else:
                     if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
                         # print("You are the GM")
-                        char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
+                        )
                     elif not gm:
-                        char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+                        char_result = await session.execute(
+                            select(Tracker.name).where(Tracker.net_status == false()).order_by(Tracker.name.asc())
+                        )
                     else:
                         # print("Not the GM")
                         char_result = await session.execute(
                             select(Tracker.name)
                             .where(Tracker.user == self.ctx.interaction.user.id)
+                            .where(Tracker.net_status == false())
                             .order_by(Tracker.name.asc())
                         )
-                character = char_result.scalars().all()
-                print(len(character))
+                    character = char_result.scalars().all()
+                # print(len(character))
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 if multi and val[-1] == ",":

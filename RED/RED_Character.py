@@ -487,7 +487,10 @@ async def calc_stats(stat_name, stats, bonuses):
 
 async def calc_mods(stats: dict, skill_name: str, skills: dict, bonuses: dict):
     skill_base = skills[skill_name]["base"]
-    stat = stats[skills[skill_name]["stat"]]["value"]
+    if skill_name["stat"] in stats.keys():
+        stat = stats[skills[skill_name]["stat"]]["value"]
+    else:
+        stat = 0
     skills[skill_name]["value"] = skill_base + stat + await bonus_calc(skill_name, bonuses)
     return skills
 
