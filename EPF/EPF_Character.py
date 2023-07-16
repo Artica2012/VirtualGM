@@ -1021,6 +1021,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     bonus = i.split(" ")[0]
                     bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
 
+            if "mat" in item.keys():
+                if item["mat"] is None:
+                    mat = ""
+                else:
+                    material = str(item["mat"])
+                    parsed_mat = material.split("(")
+                    mat = parsed_mat[0]
+            else:
+                mat = ""
+
             attacks[item["display"]] = {
                 "display": item["display"],
                 "prof": item["prof"],
@@ -1035,6 +1045,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 "dmg_type": "Bludgeoning",
                 "attk_stat": "str",
                 "traits": [],
+                "mat": mat,
             }
 
             if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
