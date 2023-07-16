@@ -1027,7 +1027,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 else:
                     material = str(item["mat"])
                     parsed_mat = material.split("(")
-                    mat = parsed_mat[0]
+                    mat = parsed_mat[0].strip()
             else:
                 mat = ""
 

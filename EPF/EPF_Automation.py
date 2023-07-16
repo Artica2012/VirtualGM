@@ -414,8 +414,8 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     if target.resistance == {"resist": {}, "weak": {}, "immune": {}}:
         return dmg_roll
     dmg = dmg_roll
-    # print(target.resistance)
-    # print(dmg_type)
+    print(target.resistance)
+    print(dmg_type)
 
     if weapon is not None:
         if "traits" in weapon.keys():
@@ -433,6 +433,10 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                     dmg_type = "bludgeoning"
                 elif "bludgeoning" in target.resistance["resist"]:
                     dmg_type = "piercing"
+        mat = weapon["mat"].lower()
+    else:
+        mat = ""
+    print(f"Mat: {mat}")
 
     if (
         "physical" in target.resistance["resist"]
@@ -459,6 +463,19 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     elif "all_damage" in target.resistance["resist"]:
         dmg = dmg - target.resistance["resist"]["all-damage"]
     elif "all-damage" in target.resistance["immune"]:
+        dmg = 0
+
+    # material
+    if mat in target.resistance["resist"]:
+        dmg = dmg - target.resistance["resist"][mat]
+        if dmg < 0:
+            dmg = 0
+    elif mat in target.resistance["weak"]:
+        print("weak to material", dmg)
+        dmg = dmg + target.resistance["weak"][mat]
+        print(target.resistance["weak"][mat])
+        print(dmg)
+    elif mat in target.resistance["immune"]:
         dmg = 0
 
     return dmg
