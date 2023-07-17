@@ -1021,6 +1021,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     bonus = i.split(" ")[0]
                     bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
 
+            if "mat" in item.keys():
+                if item["mat"] is None:
+                    mat = ""
+                else:
+                    material = str(item["mat"])
+                    parsed_mat = material.split("(")
+                    mat = parsed_mat[0].strip()
+            else:
+                mat = ""
+
             attacks[item["display"]] = {
                 "display": item["display"],
                 "prof": item["prof"],
@@ -1035,6 +1045,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 "dmg_type": "Bludgeoning",
                 "attk_stat": "str",
                 "traits": [],
+                "mat": mat,
             }
 
             if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
@@ -1781,16 +1792,42 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                             num = 0
                         await Characte_Model.set_cc(parsed[0].title(), False, num, "Round", False)
                 elif parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
+                    parsed = item.strip().split(" ", 4)
+                    print(parsed)
                     if parsed[2][-1] == ";":
                         parsed[2] = parsed[2][:-1]
                     parsed[0] = parsed[0].lower()
                     match parsed[1]:
                         case "r":
-                            resistances["resist"][parsed[0]] = int(parsed[2])
+                            if len(parsed) > 3:
+                                exception_list = []
+                                for item in parsed[4].split(","):
+                                    exception_list.append(item.strip())
+
+                                resistances["resist"][parsed[0]] = {
+                                    "exceptions": exception_list,
+                                    "value": int(parsed[2]),
+                                }
+                            else:
+                                resistances["resist"][parsed[0]] = int(parsed[2])
                         case "w":
-                            resistances["weak"][parsed[0]] = int(parsed[2])
+                            if len(parsed) > 3:
+                                exception_list = []
+                                for item in parsed[4].split(","):
+                                    exception_list.append(item.strip())
+
+                                resistances["weak"][parsed[0]] = {"exceptions": exception_list, "value": int(parsed[2])}
+                            else:
+                                resistances["weak"][parsed[0]] = int(parsed[2])
                         case "i":
-                            resistances["immune"][parsed[0]] = 1
+                            if len(parsed) > 3:
+                                exception_list = []
+                                for item in parsed[4].split(","):
+                                    exception_list.append(item.strip())
+
+                                resistances["immune"][parsed[0]] = {"exceptions": exception_list, "value": 1}
+                            else:
+                                resistances["immune"][parsed[0]] = 1
                 else:
                     item_name = ""
                     specific_weapon = ""

@@ -23,118 +23,120 @@ Interpreter = {
 async def red_g_sheet_import(
     ctx: discord.ApplicationContext, char_name: str, base_url: str, player: bool, engine=None, guild=None, image=None
 ):
-    # try:
-    parsed_url = base_url.split("/")
-    # print(parsed_url)
-    sheet_id = parsed_url[5]
-    logging.warning(f"G-sheet import: ID - {sheet_id}")
-    # url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
-    # df = pd.read_csv(url, header=[0])
-    df = pd.read_excel(url, header=[0])
-    print(df)
+    try:
+        parsed_url = base_url.split("/")
+        # print(parsed_url)
+        sheet_id = parsed_url[5]
+        logging.warning(f"G-sheet import: ID - {sheet_id}")
+        # url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+        # df = pd.read_csv(url, header=[0])
+        df = pd.read_excel(url, header=[0])
+        print(df)
 
-    guild = await get_guild(ctx, guild)
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        guild = await get_guild(ctx, guild)
+        if engine is None:
+            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-    red_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        query = await session.execute(select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower()))
-        character = query.scalars().all()
-    if len(character) > 0:
-        overwrite = True
-    else:
-        overwrite = False
-    headers = list(df.columns.values)
-    # print(headers)
-    # print(headers[0])
-    print(df)
-
-    decision_header = headers[0].strip()
-
-    if decision_header == "CyberpunkRED:":
-        character = await red_g_sheet_character_import(ctx, char_name, df, engine, guild)
-    elif decision_header == "CyberpunkRED ICE:":
-        character = await red_g_sheet_NET_import(ctx, char_name, df, engine, guild)
-    else:
-        return False
-
-    init_string = ""
-    initiative_num = 0
-
-    if overwrite:
+        red_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             query = await session.execute(select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower()))
-            character_data = query.scalars().one()
+            character = query.scalars().all()
+        if len(character) > 0:
+            overwrite = True
+        else:
+            overwrite = False
+        headers = list(df.columns.values)
+        # print(headers)
+        # print(headers[0])
+        print(df)
 
-            character_data.max_hp = character["hp"]
-            character_data.char_class = character["role"]
-            character_data.init_string = init_string
-            character_data.level = character["level"]
-            character_data.humanity = character["humanity"]
-            character_data.stats = character["stats"]
-            character_data.skills = character["skills"]
-            character_data.attacks = character["attacks"]
-            character_data.armor = character["armor"]
-            character_data.cyber = character["cyber"]
-            character_data.net = character["net"]
+        decision_header = headers[0].strip()
 
-            if image is not None:
-                character.pic = image
+        if decision_header == "CyberpunkRED:":
+            character = await red_g_sheet_character_import(ctx, char_name, df, engine, guild)
+        elif decision_header == "CyberpunkRED ICE:":
+            character = await red_g_sheet_NET_import(ctx, char_name, df, engine, guild)
+        else:
+            return False
 
-            await session.commit()
+        init_string = ""
+        initiative_num = 0
 
-    else:
-        async with async_session() as session:
-            async with session.begin():
-                new_char = red_tracker(
-                    name=char_name,
-                    init=initiative_num,
-                    player=player,
-                    user=ctx.user.id,
-                    current_hp=character["hp"],
-                    max_hp=character["hp"],
-                    temp_hp=0,
-                    init_string=init_string,
-                    active=character["active"],
-                    char_class=character["role"],
-                    level=character["level"],
-                    humanity=0,
-                    current_luck=0,
-                    stats=character["stats"],
-                    skills=character["skills"],
-                    attacks=character["attacks"],
-                    armor=character["armor"],
-                    cyber=character["cyber"],
-                    net=character["net"],
-                    # Functional Stuff
-                    macros={},
-                    bonuses={},
-                    pic=image,
-                    net_status=character["net_status"],
+        if overwrite:
+            async with async_session() as session:
+                query = await session.execute(
+                    select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower())
                 )
-                session.add(new_char)
-            await session.commit()
+                character_data = query.scalars().one()
 
-    Character = await get_RED_Character(char_name, ctx, guild, engine)
-    # Write the conditions
-    # await write_resitances(resistance, Character, ctx, guild, engine)    if not overwrite:
-    if not overwrite:
-        if guild.initiative is not None:
-            # print("In initiative")
-            try:
-                await Character.roll_initiative()
-            except Exception:
-                pass
+                character_data.max_hp = character["hp"]
+                character_data.char_class = character["role"]
+                character_data.init_string = init_string
+                character_data.level = character["level"]
+                character_data.humanity = character["humanity"]
+                character_data.stats = character["stats"]
+                character_data.skills = character["skills"]
+                character_data.attacks = character["attacks"]
+                character_data.armor = character["armor"]
+                character_data.cyber = character["cyber"]
+                character_data.net = character["net"]
 
-    # await Character.update()
-    return True
+                if image is not None:
+                    character.pic = image
 
-    # except Exception:
-    #     logging.warning("epf_g_sheet_import")
-    #     return False
+                await session.commit()
+
+        else:
+            async with async_session() as session:
+                async with session.begin():
+                    new_char = red_tracker(
+                        name=char_name,
+                        init=initiative_num,
+                        player=player,
+                        user=ctx.user.id,
+                        current_hp=character["hp"],
+                        max_hp=character["hp"],
+                        temp_hp=0,
+                        init_string=init_string,
+                        active=character["active"],
+                        char_class=character["role"],
+                        level=character["level"],
+                        humanity=0,
+                        current_luck=0,
+                        stats=character["stats"],
+                        skills=character["skills"],
+                        attacks=character["attacks"],
+                        armor=character["armor"],
+                        cyber=character["cyber"],
+                        net=character["net"],
+                        # Functional Stuff
+                        macros={},
+                        bonuses={},
+                        pic=image,
+                        net_status=character["net_status"],
+                    )
+                    session.add(new_char)
+                await session.commit()
+
+        Character = await get_RED_Character(char_name, ctx, guild, engine)
+        # Write the conditions
+        # await write_resitances(resistance, Character, ctx, guild, engine)    if not overwrite:
+        if not overwrite:
+            if guild.initiative is not None:
+                # print("In initiative")
+                try:
+                    await Character.roll_initiative()
+                except Exception:
+                    pass
+
+        # await Character.update()
+        return True
+
+    except Exception:
+        logging.warning("epf_g_sheet_import")
+        return False
 
 
 async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
