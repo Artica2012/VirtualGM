@@ -245,19 +245,43 @@ async def write_resitances(
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             for key, value in resistance["resist"].items():
-                condition_string = f"{key} r {value};"
+                print(key)
+                print(type(value))
+                if type(value) == dict:
+                    exceptions = ""
+                    for item in value["exceptions"]:
+                        exceptions += item
+                    condition_string = f"{key} r {value['value']} e {exceptions}"
+                    value = value["value"]
+                else:
+                    condition_string = f"{key} r {value};"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
                     )
             for key, value in resistance["weak"].items():
-                condition_string = f"{key} w {value};"
+                print(key)
+                if type(value) == dict:
+                    exceptions = ""
+                    for item in value["exceptions"]:
+                        exceptions += item
+                    condition_string = f"{key} w {value['value']} e {exceptions}"
+                    value = value["value"]
+                else:
+                    condition_string = f"{key} w {value};"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
                     )
             for key in resistance["immune"].keys():
-                condition_string = f"{key} i ;"
+                print(key)
+                if type(value) == dict:
+                    exceptions = ""
+                    for item in value["exceptions"]:
+                        exceptions += item
+                    condition_string = f"{key} i {exceptions};"
+                else:
+                    condition_string = f"{key} i ;"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, 1, "Round", False, data=condition_string, visible=False, update=False

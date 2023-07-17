@@ -7,6 +7,7 @@ import logging
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
+from sqlalchemy.exc import NoResultFound
 
 import RED.RED_GSHEET_Importer
 from auto_complete import (
@@ -56,30 +57,32 @@ class REDCog(commands.Cog):
             color=discord.Color.dark_gold(),
         )
         if url is not None:
-            # try:
-            guild = await get_guild(ctx, None)
-            if guild.system == "RED":
-                response = await RED.RED_GSHEET_Importer.red_g_sheet_import(ctx, name, url, player_bool, image=image)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
-            else:
-                response = False
-            if response:
-                Character_Model = await get_character(name, ctx, engine=engine)
-                success.set_thumbnail(url=Character_Model.pic)
-                await ctx.send_followup(embed=success)
-            else:
-                await ctx.send_followup("Error importing character.")
-            # except NoResultFound:
-            #     await ctx.send_followup(
-            #         "No active tracker set up in this channel. Please make sure that you are in the "
-            #         "correct channel before trying again."
-            #     )
-            # except Exception as e:
-            #     await ctx.send_followup("Error importing character")
-            #     logging.info(f"pb_import: {e}")
-            #     report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
-            #     await report.report()
+            try:
+                guild = await get_guild(ctx, None)
+                if guild.system == "RED":
+                    response = await RED.RED_GSHEET_Importer.red_g_sheet_import(
+                        ctx, name, url, player_bool, image=image
+                    )
+                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
+                else:
+                    response = False
+                if response:
+                    Character_Model = await get_character(name, ctx, engine=engine)
+                    success.set_thumbnail(url=Character_Model.pic)
+                    await ctx.send_followup(embed=success)
+                else:
+                    await ctx.send_followup("Error importing character.")
+            except NoResultFound:
+                await ctx.send_followup(
+                    "No active tracker set up in this channel. Please make sure that you are in the "
+                    "correct channel before trying again."
+                )
+            except Exception as e:
+                await ctx.send_followup("Error importing character")
+                logging.info(f"pb_import: {e}")
+                report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
+                await report.report()
         try:
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
@@ -187,52 +190,52 @@ class REDCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        # try:
-        Automation = await get_automation(ctx, engine=engine)
-        embeds = []
-        if "," in target:
-            multi_target = target.split(",")
-            for char in multi_target:
-                try:
-                    embeds.append(
-                        await Automation.net_auto(
-                            self.bot,
-                            character,
-                            char.strip(),
-                            attack,
-                            attack_modifer,
-                            target_modifier,
-                            damage_modifier,
-                            multi=True,
+        try:
+            Automation = await get_automation(ctx, engine=engine)
+            embeds = []
+            if "," in target:
+                multi_target = target.split(",")
+                for char in multi_target:
+                    try:
+                        embeds.append(
+                            await Automation.net_auto(
+                                self.bot,
+                                character,
+                                char.strip(),
+                                attack,
+                                attack_modifer,
+                                target_modifier,
+                                damage_modifier,
+                                multi=True,
+                            )
                         )
+                    except Exception:
+                        embeds.append(
+                            discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
+                        )
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
+            else:
+                embeds.append(
+                    await Automation.net_auto(
+                        self.bot,
+                        character,
+                        target,
+                        attack,
+                        attack_modifer,
+                        target_modifier,
+                        damage_modifier,
+                        multi=False,
                     )
-                except Exception:
-                    embeds.append(
-                        discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
-                    )
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-        else:
-            embeds.append(
-                await Automation.net_auto(
-                    self.bot,
-                    character,
-                    target,
-                    attack,
-                    attack_modifer,
-                    target_modifier,
-                    damage_modifier,
-                    multi=False,
                 )
-            )
-        await ctx.send_followup(embeds=embeds)
-        # except KeyError:
-        #     await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
-        # except Exception as e:
-        #     logging.warning(f"red net_auto {e}")
-        #     report = ErrorReport(ctx, "/red net_auto", e, self.bot)
-        #     await report.report()
-        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
+            await ctx.send_followup(embeds=embeds)
+        except KeyError:
+            await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
+        except Exception as e:
+            logging.warning(f"red net_auto {e}")
+            report = ErrorReport(ctx, "/red net_auto", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
 
     @red.command(description="Add or Remove Cover")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
