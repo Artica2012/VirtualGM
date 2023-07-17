@@ -419,6 +419,11 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 else:
                     dmg_type = "Bludgeoning"
 
+                if type(df.g[i + 9]) == str:
+                    mat = str(df.g[i + 9]).lower()
+                else:
+                    mat = ""
+
                 attack_data = {
                     "display": df.f[i],
                     "name": df.f[i + 1],
@@ -433,6 +438,7 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     "dmg_type": dmg_type,
                     "attk_stat": Interpreter[df.f[i + 6]],
                     "traits": parsed_traits,
+                    "mat": mat,
                 }
                 edited_attack = await attack_lookup(attack_data, character)
 
