@@ -55,7 +55,7 @@ class D4e_Automation(Automation):
 
         # Format output string
         success_string = D4e_eval_success(dice_result, goal_result)
-        output_string = f"{character} rolls {roll}vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
+        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
         embed = discord.Embed(
             title=f"{char_model.char_name} vs {Target_Model.char_name}",
