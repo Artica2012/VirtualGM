@@ -56,6 +56,8 @@ class Global(Base):
     time_day = Column(Integer(), nullable=True)
     time_month = Column(Integer(), nullable=True)
     time_year = Column(Integer(), nullable=True)
+    # Extra
+    block_data = Column(JSON(), nullable=True)
 
 
 #########################################

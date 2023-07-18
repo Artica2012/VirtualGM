@@ -60,6 +60,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        # remove on next load
+        await asyncio.sleep(15)
         logging.warning("U&M Cog Loaded")
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)

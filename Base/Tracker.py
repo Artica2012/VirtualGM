@@ -980,7 +980,7 @@ class Tracker:
 
         async def callback(self, interaction: discord.Interaction):
             try:
-                await interaction.response.send_message("Initiatve Advanced", ephemeral=True)
+                await interaction.response.send_message("Initiative Advanced", ephemeral=True)
                 Tracker_Model = Tracker(
                     None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
                 )
