@@ -996,8 +996,8 @@ class Tracker:
                 advance = True
                 if self.guild.block:
                     advance = False
-                    print("Block")
-                    print(self.guild.block_data)
+                    # print("Block")
+                    # print(self.guild.block_data)
                     if interaction.user.id in self.guild.block_data:
                         new_block = self.guild.block_data.copy()
                         new_block.remove(interaction.user.id)
