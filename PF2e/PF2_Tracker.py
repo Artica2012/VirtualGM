@@ -118,7 +118,7 @@ class PF2_Tracker(Tracker):
                     if row.temp_hp != 0:
                         string = (
                             f"{selector}  {init_num} {str(character.char_name).title()}:"
-                            f" {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp"
+                            f" {character.current_hp}/{character.max_hp} ({character.temp_hp} Temp)"
                             f" AC:{character.ac}\n "
                         )
                     else:

@@ -354,7 +354,7 @@ class RED_Tracker(Tracker):
                     if character.temp_hp != 0:
                         string = (
                             f"{selector}  {init_num} {net_mod}{str(character.char_name).title()}:"
-                            f"     {character.current_hp}/{character.max_hp} ({character.temp_hp}) Temp\n"
+                            f"     {character.current_hp}/{character.max_hp} ({character.temp_hp} Temp)\n"
                             f"{character.armor_output_string if not  character.net_status else ''}"
                         )
                     else:
