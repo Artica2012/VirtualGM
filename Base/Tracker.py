@@ -352,7 +352,10 @@ class Tracker:
                 if not self.guild.block:
                     block_done = True
 
-                turn_list.append(self.init_list[init_pos].name)
+                # turn_list.append(self.init_list[init_pos].name)
+                if self.init_list[init_pos].user not in turn_list:
+                    turn_list.append(self.init_list[init_pos].user)
+
                 current_character = await get_character(
                     self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
                 )
@@ -379,6 +382,7 @@ class Tracker:
                 guild.initiative = init_pos  # set it
                 guild.round = round
                 guild.saved_order = str(self.init_list[init_pos].name)
+                guild.block_data = turn_list
                 logging.info(f"BAI18: saved order: {guild.saved_order}")
                 await session.commit()
                 logging.info("BAI19: Written")
@@ -476,7 +480,7 @@ class Tracker:
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative
-        if self.guild.block and self.guild.initiative is None:  # Should this be initiative is not None?
+        if self.guild.block and self.guild.initiative is not None:  # Should this be initiative is not None?
             turn_list = await self.get_turn_list()
             block = True
         else:
@@ -684,12 +688,10 @@ class Tracker:
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild.block:
-                turn_list = await self.get_turn_list()
                 block = True
                 # print(f"block_post_init: \n {turn_list}")
             else:
                 block = False
-                turn_list = []
 
             # print(init_list)
             tracker_string = await self.block_get_tracker(self.guild.initiative)
@@ -698,10 +700,19 @@ class Tracker:
                 logging.info("BPI2")
                 ping_string = ""
                 if block:
-                    for character in turn_list:
-                        await asyncio.sleep(0)
-                        user = self.bot.get_user(character.user)
-                        ping_string += f"{user.mention}, it's your turn.\n"
+                    for player in self.guild.block_data:
+                        try:
+                            user = self.bot.get_user(player)
+                            ping_string += f"{user.mention}, "
+                        except Exception:
+                            ping_string += "Unknown User, "
+                    ping_string += "it's your turn.\n"
+
+                    # for character in turn_list:
+                    #     await asyncio.sleep(0)
+                    #     user = self.bot.get_user(character.user)
+                    #     ping_string += f"{user.mention}, "
+                    # ping_string += "it's your turn.\n"
                 else:
                     user = self.bot.get_user(self.init_list[self.guild.initiative].user)
                     ping_string += f"{user.mention}, it's your turn.\n"
@@ -790,12 +801,10 @@ class Tracker:
 
             if self.guild.block:
                 # print(guild.id)
-                turn_list = await self.get_turn_list()
                 block = True
                 # print(f"block_post_init: \n {turn_list}")
             else:
                 block = False
-                turn_list = []
 
             # Fix the Tracker if needed, then refresh the guild
             await self.init_integrity()
@@ -806,10 +815,14 @@ class Tracker:
                 logging.info("BPI2")
                 ping_string = ""
                 if block:
-                    for character in turn_list:
-                        await asyncio.sleep(0)
-                        user = self.bot.get_user(character.user)
-                        ping_string += f"{user.mention}, it's your turn.\n"
+                    for player in self.guild.block_data:
+                        try:
+                            user = self.bot.get_user(player)
+                            ping_string += f"{user.mention}, "
+                        except Exception:
+                            ping_string += "Unknown User, "
+                    ping_string += "it's your turn.\n"
+
                 else:
                     user = self.bot.get_user(self.init_list[self.guild.initiative].user)
                     ping_string += f"{user.mention}, it's your turn.\n"
@@ -980,12 +993,57 @@ class Tracker:
 
         async def callback(self, interaction: discord.Interaction):
             try:
-                await interaction.response.send_message("Initiative Advanced", ephemeral=True)
-                Tracker_Model = Tracker(
-                    None, self.engine, await get_init_list(None, self.engine, self.guild), self.bot, guild=self.guild
-                )
-                await Tracker_Model.advance_initiative()
-                await Tracker_Model.block_post_init()
+                advance = True
+                if self.guild.block:
+                    advance = False
+                    # print("Block")
+                    # print(self.guild.block_data)
+                    if interaction.user.id in self.guild.block_data:
+                        new_block = self.guild.block_data.copy()
+                        new_block.remove(interaction.user.id)
+
+                        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                        async with async_session() as session:
+                            result = await session.execute(select(Global).where(Global.id == self.guild.id))
+                            guild = result.scalars().one()
+                            guild.block_data = new_block
+                            await session.commit()
+                        if len(new_block) == 0:
+                            advance = True
+                        else:
+                            await interaction.response.send_message(
+                                (
+                                    "Turn Marked Complete. Initiative Will Advance once all players have marked"
+                                    " themselves complete"
+                                ),
+                                ephemeral=True,
+                            )
+                        if interaction.user.id == int(self.guild.gm):
+                            advance = True
+                    else:
+                        advance = False
+                        await interaction.response.send_message(
+                            "Either it is not your turn, or you have already marked yourself complete", ephemeral=True
+                        )
+                if advance:
+                    await interaction.response.send_message("Initiative Advanced", ephemeral=True)
+                    Tracker_Model = Tracker(
+                        None,
+                        self.engine,
+                        await get_init_list(None, self.engine, self.guild),
+                        self.bot,
+                        guild=self.guild,
+                    )
+                    await Tracker_Model.next()
+                else:
+                    Tracker_Model = Tracker(
+                        None,
+                        self.engine,
+                        await get_init_list(None, self.engine, self.guild),
+                        self.bot,
+                        guild=self.guild,
+                    )
+                    await Tracker_Model.update_pinned_tracker()
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
