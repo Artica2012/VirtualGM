@@ -63,6 +63,45 @@ class Tracker:
         await self.advance_initiative()
         await self.block_post_init()
 
+    async def block_next(self, interaction: discord.Interaction):
+        advance = True
+        if self.guild.block:
+            advance = False
+            # print("Block")
+            # print(self.guild.block_data)
+            if interaction.user.id in self.guild.block_data:
+                new_block = self.guild.block_data.copy()
+                new_block.remove(interaction.user.id)
+
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                async with async_session() as session:
+                    result = await session.execute(select(Global).where(Global.id == self.guild.id))
+                    guild = result.scalars().one()
+                    guild.block_data = new_block
+                    await session.commit()
+                await self.update()
+                if len(new_block) == 0:
+                    advance = True
+                else:
+                    await interaction.response.send_message(
+                        (
+                            "Turn Marked Complete. Initiative Will Advance once all players have marked"
+                            " themselves complete"
+                        ),
+                        ephemeral=True,
+                    )
+                    await self.block_post_init()
+                if interaction.user.id == int(self.guild.gm):
+                    advance = True
+            else:
+                advance = False
+                await interaction.response.send_message(
+                    "Either it is not your turn, or you have already marked yourself complete", ephemeral=True
+                )
+        if advance:
+            await interaction.response.send_message("Initiative Advanced", ephemeral=True)
+            await self.next()
+
     async def reroll_init(self):
         await self.end(clean=False)
         await self.update()
@@ -993,58 +1032,14 @@ class Tracker:
 
         async def callback(self, interaction: discord.Interaction):
             try:
-                advance = True
-                if self.guild.block:
-                    advance = False
-                    # print("Block")
-                    # print(self.guild.block_data)
-                    if interaction.user.id in self.guild.block_data:
-                        new_block = self.guild.block_data.copy()
-                        new_block.remove(interaction.user.id)
-
-                        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-                        async with async_session() as session:
-                            result = await session.execute(select(Global).where(Global.id == self.guild.id))
-                            guild = result.scalars().one()
-                            guild.block_data = new_block
-                            await session.commit()
-                        if len(new_block) == 0:
-                            advance = True
-                        else:
-                            await interaction.response.send_message(
-                                (
-                                    "Turn Marked Complete. Initiative Will Advance once all players have marked"
-                                    " themselves complete"
-                                ),
-                                ephemeral=True,
-                            )
-                        if interaction.user.id == int(self.guild.gm):
-                            advance = True
-                    else:
-                        advance = False
-                        await interaction.response.send_message(
-                            "Either it is not your turn, or you have already marked yourself complete", ephemeral=True
-                        )
-                if advance:
-                    await interaction.response.send_message("Initiative Advanced", ephemeral=True)
-                    Tracker_Model = Tracker(
-                        None,
-                        self.engine,
-                        await get_init_list(None, self.engine, self.guild),
-                        self.bot,
-                        guild=self.guild,
-                    )
-                    await Tracker_Model.next()
-                else:
-                    Tracker_Model = Tracker(
-                        None,
-                        self.engine,
-                        await get_init_list(None, self.engine, self.guild),
-                        self.bot,
-                        guild=self.guild,
-                    )
-                    await Tracker_Model.update_pinned_tracker()
+                Tracker_Model = Tracker(
+                    None,
+                    self.engine,
+                    await get_init_list(None, self.engine, self.guild),
+                    self.bot,
+                    guild=self.guild,
+                )
+                await Tracker_Model.block_next(interaction)
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
-            # await self.engine.dispose()
