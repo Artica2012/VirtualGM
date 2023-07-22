@@ -79,6 +79,7 @@ class Tracker:
                     guild = result.scalars().one()
                     guild.block_data = new_block
                     await session.commit()
+                await self.update()
                 if len(new_block) == 0:
                     advance = True
                 else:
@@ -89,6 +90,7 @@ class Tracker:
                         ),
                         ephemeral=True,
                     )
+                    await self.block_post_init()
                 if interaction.user.id == int(self.guild.gm):
                     advance = True
             else:
@@ -99,8 +101,6 @@ class Tracker:
         if advance:
             await interaction.response.send_message("Initiative Advanced", ephemeral=True)
             await self.next()
-        else:
-            await self.update_pinned_tracker()
 
     async def reroll_init(self):
         await self.end(clean=False)
