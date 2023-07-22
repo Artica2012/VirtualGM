@@ -987,7 +987,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         # Check to see if character already exists, if it does, update instead of creating
 
         async with async_session() as session:
-            query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+            query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = query.scalars().all()
         if len(character) > 0:
             overwrite = True
@@ -1219,7 +1219,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
         if overwrite:
             async with async_session() as session:
-                query = await session.execute(select(EPF_tracker).where(EPF_tracker.name == char_name))
+                query = await session.execute(
+                    select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower())
+                )
                 character = query.scalars().one()
 
                 # Write the data from the JSON
@@ -1302,7 +1304,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             async with async_session() as session:
                 async with session.begin():
                     new_char = EPF_tracker(
-                        name=char_name,
+                        name=char_name.lower,
                         player=True,
                         user=ctx.user.id,
                         current_hp=(
@@ -2018,7 +2020,9 @@ async def delete_intested_items(character, ctx, guild, engine):
     EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     async with async_session() as session:
-        char_result = await session.execute(select(EPF_Tracker.id).where(EPF_Tracker.name == character))
+        char_result = await session.execute(
+            select(EPF_Tracker.id).where(func.lower(EPF_Tracker.name) == character.lower())
+        )
         id = char_result.scalars().one()
     async with async_session() as session:
         results = await session.execute(
