@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoResultFound
 
 from Base.Autocomplete import AutoComplete
 from utils.Char_Getter import get_character
-from D4e.d4e_functions import D4e_attributes
+from D4e.d4e_functions import D4e_attributes, D4e_Conditions
 
 
 class D4e_Autocmplete(AutoComplete):
@@ -50,3 +50,10 @@ class D4e_Autocmplete(AutoComplete):
 
     async def flex(self, **kwargs):
         return ["Ends with Save", "Ends after set time"]
+
+    async def add_condition_select(self, **kwargs):
+        if self.ctx.value != "":
+            val = self.ctx.value.lower()
+            return [option for option in D4e_Conditions if val in option.lower()]
+        else:
+            return D4e_Conditions

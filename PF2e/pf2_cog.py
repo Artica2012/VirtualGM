@@ -72,6 +72,7 @@ class PF2Cog(commands.Cog):
                     logging.info("Beginning PF2-Enhanced import")
                     response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild, image=image)
                     logging.info("Imported")
+                    print(response)
                     if response:
                         await Tracker_Model.update_pinned_tracker()
                         Character_Model = await get_character(name, ctx, engine=engine)
@@ -130,8 +131,8 @@ class PF2Cog(commands.Cog):
                 await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"pb_import: {e}")
-            # report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
-            # await report.report()
+            report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
+            await report.report()
 
     @pf2.command(description="NPC Import")
     @option("lookup", description="Search for a stat-block", autocomplete=npc_search)

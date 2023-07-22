@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import d20
-from sqlalchemy import select, false
+from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -203,13 +203,16 @@ class Utilities:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
             async with async_session() as tracker_session:
-                result = await tracker_session.execute(select(Tracker).where(Tracker.name == char_name))
+                result = await tracker_session.execute(
+                    select(Tracker).where(func.lower(Tracker.name) == char_name.lower())
+                )
                 character = result.scalars().one()
+                print(character.name)
                 try:
                     async with async_session() as write_session:
                         query = await write_session.execute(
                             select(Character_Vault)
-                            .where(Character_Vault.name == character.name)
+                            .where(func.lower(Character_Vault.name) == character.name.lower())
                             .where(Character_Vault.guild_id == self.guild.id)
                         )
                         character_data = query.scalars().one()
@@ -221,6 +224,7 @@ class Utilities:
                         character_data.user = character.user
 
                         await write_session.commit()
+                        print("success old")
                 except Exception:
                     async with write_session.begin():
                         new_char = Character_Vault(
@@ -232,6 +236,7 @@ class Utilities:
                         )
                         write_session.add(new_char)
                     await write_session.commit()
+                    print("success new")
             return True
         except Exception:
             return False
