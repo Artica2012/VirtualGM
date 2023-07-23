@@ -5,7 +5,6 @@ from datetime import datetime
 import discord
 from sqlalchemy.exc import NoResultFound
 
-import database_operations
 from Base.Tracker import Tracker, get_init_list
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import engine
@@ -230,11 +229,3 @@ class STF_Tracker(Tracker):
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
-
-
-class Ship_Combat:
-    def __init__(self, ctx, bot, guild):
-        self.ctx = ctx
-        self.bot = bot
-        self.guild = guild
-        self.engine = database_operations.engine
