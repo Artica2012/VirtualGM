@@ -1,0 +1,33 @@
+Starship Combat
+
+Ship Model
+
+    Name: Str
+    Player: Bool
+    Stats: {
+        ac: {
+            base:
+            value:
+        }
+        tl: {
+            base:
+            value
+        }
+    }
+    health: {
+        hp: #
+        dt: #
+        ct: #
+        shields: {
+            total: #
+            forward: #
+            port: #
+            starbord: #
+            aft: #
+        }
+    }
+    attacks: {
+        name: {
+            dmg: ""
+        }
+    }

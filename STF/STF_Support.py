@@ -195,3 +195,33 @@ def STF_eval_success(dice_result: d20.RollResult, goal: d20.RollResult):
             success_string = "Success" if dice_result.total >= goal.total else "Failure"
 
     return success_string
+
+
+class STF_Ship_Model:
+    def __init__(self, ctx, metadata, id):
+        self.guild = ctx.interaction.guild_id
+        self.channel = ctx.interaction.channel_id
+        self.metadata = metadata
+        self.id = id
+
+    def stf_character_model_table(self):
+        tablename = f"Tracker_{self.id}"
+
+        emp = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("name", db.String(255), nullable=False, unique=True),
+            db.Column("init", db.INTEGER(), default=0),
+            db.Column("player", db.BOOLEAN, default=False),
+            db.Column("stats", db.JSON()),
+            db.Column("health", db.JSON()),
+            db.Column("macros", db.JSON()),
+            db.Column("attacks", db.JSON()),
+            db.Column("bonuses", db.JSON()),
+            db.Column("resistance", db.JSON()),
+            db.Column("pic", db.String(), nullable=True),
+        )
+
+        logging.info("stf_character_model_table")
+        return emp
