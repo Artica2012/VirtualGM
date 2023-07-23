@@ -1304,7 +1304,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             async with async_session() as session:
                 async with session.begin():
                     new_char = EPF_tracker(
-                        name=char_name.lower,
+                        name=char_name.lower(),
                         player=True,
                         user=ctx.user.id,
                         current_hp=(
