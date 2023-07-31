@@ -1304,7 +1304,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             async with async_session() as session:
                 async with session.begin():
                     new_char = EPF_tracker(
-                        name=char_name.lower(),
+                        name=char_name,
                         player=True,
                         user=ctx.user.id,
                         current_hp=(
@@ -1421,7 +1421,7 @@ async def calculate(ctx, engine, char_name, guild=None):
 
     async with async_session() as session:
         try:
-            query = await session.execute(select(PF2_tracker).where(PF2_tracker.name == char_name))
+            query = await session.execute(select(PF2_tracker).where(func.lower(PF2_tracker.name) == char_name.lower()))
             character = query.scalars().one()
             if "Untrained Improvisation" in character.feats:
                 ui = True
