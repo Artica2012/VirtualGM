@@ -7,6 +7,7 @@ from sqlalchemy import select, or_, Column, Integer, String, Boolean, JSON, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_session
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+from Base.Character import default_pic
 from database_models import Global
 from database_operations import engine
 from utils.utils import get_guild
@@ -78,6 +79,44 @@ class StarShip:
         self.ctx = ctx
         self.guild = guild
         self.data = data
+        self.stats = data.stats
+        self.health = data.health
+        self.bonuses = data.bonuses
+        self.resistance = data.resistance
+        self.pic = data.pic if data.pic is not None else default_pic
+
+    async def update(self):
+        Tracker = await get_stf_starship_tracker(self.ctx, self.guild)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
+            starship = result.scalars().one()
+        self.data = starship
+        self.stats = starship.stats
+        self.health = starship.health
+        self.bonuses = starship.bonuses
+        self.resistance = starship.resistance
+
+    async def gunnery_check(self, character):
+        # Gunnery Check = 1d20 + the gunner’s base attack bonus
+        # or the gunner’s ranks in the Piloting skill + the gunner’s Dexterity modifier + bonuses from computer systems
+        # + bonuses from the captain and science officers + range penalty
+        bab_chk = character.character_model.bab
+        piloting_chk = (
+            character.character_model.piloting_mod
+            + await self.bonus_calc("computer")
+            + await self.bonus_calc("captain")
+            + await self.bonus_calc("science")
+        )
+        if bab_chk > piloting_chk:
+            return bab_chk
+        else:
+            return piloting_chk
+
+    async def bonus_calc(self, item):
+        if item in self.bonuses.keys():
+            return int(self.bonuses[item])
+        else:
+            return 0
 
 
 class Ship_Combat:

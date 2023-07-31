@@ -666,7 +666,7 @@ async def save_mod_calc(stat_mod, item: str, base_save, bonuses):
     return mod
 
 
-async def skill_mod_calc(item: str, base_save, bonuses):
+async def skill_mod_calc(item: str, base_save, bonuses, stat, character_model):
     mod = base_save
 
     if item in bonuses["ability"]:
@@ -687,6 +687,15 @@ async def skill_mod_calc(item: str, base_save, bonuses):
         mod += bonuses["morale"][item]
     if item in bonuses["penalty"]:
         mod -= bonuses["penalty"][item]
+
+    # match stat:
+    #     case "str":
+    #         stat_mod = character_model.str
+    #     case "dex":
+    #         stat_mod = character_model.dex
+    #     case "con":
+    #         stat_mod = character_model.con
+    #     case ""
 
     return mod
 
