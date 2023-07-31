@@ -51,14 +51,12 @@ class AutoComplete:
                 val = self.ctx.value.lower()
                 if multi and val[-1] == ",":
                     return [f"{val.title()} {option}" for option in character]
-                return [option for option in character if val in option.lower()]
+                return [option.title() for option in character if val in option.lower()]
             return character
         except NoResultFound:
-            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"epf character_select: {e}")
-            # await self.engine.dispose()
             return []
 
     async def npc_select(self, **kwargs):
@@ -71,17 +69,15 @@ class AutoComplete:
                     select(Tracker.name).where(Tracker.player == false()).order_by(Tracker.name.asc())
                 )
                 character = char_result.scalars().all()
-            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in character if val in option.lower()]
             return character
         except NoResultFound:
-            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"character_select: {e}")
-            # await self.engine.dispose()
+
             return []
 
     async def add_condition_select(self, **kwargs):
