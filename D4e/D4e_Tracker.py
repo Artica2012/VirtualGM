@@ -464,7 +464,9 @@ class D4e_Tracker(Tracker):
             )
             self.bot = bot
             self.guild = guild
-            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+            super().__init__(
+                style=discord.ButtonStyle.primary, emoji="➡️" if not guild.block or len(guild.block_data) < 2 else "✔"
+            )
 
         async def callback(self, interaction: discord.Interaction):
             try:
