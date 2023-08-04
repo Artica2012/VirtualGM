@@ -581,7 +581,7 @@ class Tracker:
 
                 await asyncio.sleep(0)  # ensure the loop doesn't lock the bot in case of an error
                 sel_bool = False
-                selector = ""
+                selector = "  "
 
                 # don't show an init if not in combat
                 if character.init == 0 or character.active is False:

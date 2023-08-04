@@ -337,7 +337,7 @@ class D4e_Tracker(Tracker):
 
                 await asyncio.sleep(0)
                 sel_bool = False
-                selector = ""
+                selector = "  "
 
                 # don't show an init if not in combat
                 if character.init == 0 or character.active is False:

@@ -200,7 +200,7 @@ class EPF_Tracker(Tracker):
 
                 await asyncio.sleep(0)
                 sel_bool = False
-                selector = ""
+                selector = "  "
 
                 # don't show an init if not in combat
                 if row.init == 0 or row.active is False:
