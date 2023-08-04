@@ -94,7 +94,7 @@ class PF2_Tracker(Tracker):
 
                 await asyncio.sleep(0)
                 sel_bool = False
-                selector = ""
+                selector = "  "
 
                 # don't show an init if not in combat
                 if row.init == 0 or row.active is False:
@@ -344,7 +344,9 @@ class PF2_Tracker(Tracker):
             )
             self.bot = bot
             self.guild = guild
-            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+            super().__init__(
+                style=discord.ButtonStyle.primary, emoji="➡️" if not guild.block or len(guild.block_data) < 2 else "✔"
+            )
 
         async def callback(self, interaction: discord.Interaction):
             try:

@@ -319,7 +319,7 @@ class RED_Tracker(Tracker):
 
                 await asyncio.sleep(0)  # ensure the loop doesn't lock the bot in case of an error
                 sel_bool = False
-                selector = ""
+                selector = "  "
 
                 # don't show an init if not in combat
                 print(character.char_name, character.init)
@@ -453,11 +453,13 @@ class RED_Tracker(Tracker):
             self.engine = database_operations.engine
             self.bot = bot
             self.guild = guild
-            super().__init__(style=discord.ButtonStyle.primary, emoji="➡️")
+            super().__init__(
+                style=discord.ButtonStyle.primary, emoji="➡️" if not guild.block or len(guild.block_data) < 2 else "✔"
+            )
 
         async def callback(self, interaction: discord.Interaction):
             try:
-                Tracker_Model = Tracker(
+                Tracker_Model = RED_Tracker(
                     None,
                     self.engine,
                     await get_init_list(None, self.engine, self.guild),
