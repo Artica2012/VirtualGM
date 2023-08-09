@@ -134,6 +134,13 @@ class STFCog(commands.Cog):
         else:
             await ctx.send_followup("Failed")
 
+    @stf.command(description="Edit Character Resistances")
+    @option("mode", choices=["Start", "Stop", "Add_Starship"])
+    async def starship(self, ctx: discord.ApplicationContext, mode: str, data: str = None):
+        await ctx.response.defer()
+        Tracker = await get_tracker_model(ctx, self.bot)
+        await Tracker.start_starship_combat()
+
 
 def setup(bot):
     bot.add_cog(STFCog(bot))

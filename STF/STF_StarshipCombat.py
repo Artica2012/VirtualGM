@@ -2,9 +2,10 @@
 import logging
 
 import discord
+import sqlalchemy as db
 import sqlalchemy.exc
 from sqlalchemy import select, or_, Column, Integer, String, Boolean, JSON, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from Base.Character import default_pic
@@ -31,7 +32,7 @@ async def get_stf_starship_tracker(ctx: discord.ApplicationContext, guild):
     else:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Global).where(Global.id == id))
+            result = await session.execute(select(Global).where(Global.id == guild.id))
             guild = result.scalars().one()
 
     if guild.system != "STF":
@@ -62,9 +63,35 @@ async def get_stf_starship_tracker(ctx: discord.ApplicationContext, guild):
         return STF_SS_Tracker
 
 
+class STS_SS_Tracker:
+    def __init__(self, metadata, id):
+        self.metadata = metadata
+        self.id = id
+
+    def SS_Tracker(self):
+        tablename = f"STF_SS_Tracker_{self.id}"
+        con = db.Table(
+            tablename,
+            self.metadata,
+            db.Column("id", db.INTEGER(), autoincrement=True, primary_key=True),
+            db.Column("name", db.String(255)),
+            db.Column("init", db.INTEGER(), default=0),
+            db.Column("player", db.BOOLEAN(), nullable=False),
+            db.Column("stats", db.JSON()),
+            db.Column("health", db.JSON()),
+            db.Column("macros", db.JSON()),
+            db.Column("attacks", db.JSON()),
+            db.Column("bonuses", db.JSON()),
+            db.Column("resistance", db.JSON()),
+            db.Column("pic", db.String(1024), nullable=True),
+        )
+        return con
+
+
 async def get_STF_Starship(ctx, name, guild=None):
     guild = await get_guild(ctx, guild)
     Tracker = await get_stf_starship_tracker(ctx, guild)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
@@ -79,6 +106,7 @@ class StarShip:
         self.ctx = ctx
         self.guild = guild
         self.data = data
+        self.name = data.name
         self.stats = data.stats
         self.health = data.health
         self.bonuses = data.bonuses
@@ -87,8 +115,9 @@ class StarShip:
 
     async def update(self):
         Tracker = await get_stf_starship_tracker(self.ctx, self.guild)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
-            result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
+            result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == self.name.lower()))
             starship = result.scalars().one()
         self.data = starship
         self.stats = starship.stats
@@ -119,8 +148,17 @@ class StarShip:
             return 0
 
 
+async def get_STF_SS_Combat(ctx, bot, guild=None):
+    guild = await get_guild(ctx, guild)
+
+    return Ship_Combat(ctx, bot, guild)
+
+
 class Ship_Combat:
     def __init__(self, ctx, bot, guild):
         self.ctx = ctx
         self.bot = bot
         self.guild = guild
+        self.data = guild.block_data
+
+    phases = ["Engineering", "Helm", "Gunnery"]

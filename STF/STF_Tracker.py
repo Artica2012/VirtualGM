@@ -3,9 +3,15 @@ import logging
 from datetime import datetime
 
 import discord
+import sqlalchemy as db
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from Base.Tracker import Tracker, get_init_list
+from STF.STF_StarshipCombat import STS_SS_Tracker
+from database_models import Global
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import engine
 from database_operations import get_asyncio_db_engine
@@ -25,6 +31,21 @@ async def get_STF_Tracker(ctx, engine, init_list, bot, guild=None):
 class STF_Tracker(Tracker):
     def __init__(self, ctx, engine, init_list, bot, guild=None):
         super().__init__(ctx, engine, init_list, bot, guild)
+
+    async def start_starship_combat(self):
+        await self.end()
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global).where(Global.id == self.guild.id))
+            guild = result.scalars().one()
+            guild.explode = True
+            guild.block_data = {}
+            await session.commit()
+
+        metadata = db.MetaData()
+        async with engine.begin() as conn:
+            SS_Tracker = STS_SS_Tracker(metadata, guild.id).SS_Tracker()  # noqa
+            await conn.run_sync(metadata.create_all)
 
     async def block_get_tracker(self, selected: int, gm: bool = False):
         # print("PF2 Get Tracker")
