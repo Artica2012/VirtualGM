@@ -27,6 +27,11 @@ class AutoComplete:
         else:
             multi = False
 
+        if "all" in kwargs.keys():
+            allnone = kwargs["all"]
+        else:
+            allnone = False
+
         logging.info("character_select")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -45,7 +50,9 @@ class AutoComplete:
                         .order_by(Tracker.name.asc())
                     )
                 character = char_result.scalars().all()
-                print(len(character))
+                if allnone:
+                    character.extend(["All PCs", "All NPCs", "All Characters"])
+                # print(len(character))
             # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
@@ -53,6 +60,7 @@ class AutoComplete:
                     return [f"{val.title()} {option}" for option in character]
                 return [option.title() for option in character if val in option.lower()]
             return character
+
         except NoResultFound:
             return []
         except Exception as e:

@@ -111,7 +111,7 @@ async def character_select_player(ctx: discord.AutocompleteContext):
             guild = await get_guild(ctx, None)
             AutoComplete = await get_autocomplete(ctx, guild=guild)
             # await engine.dispose()
-            return await AutoComplete.character_select(gm=True)
+            return await AutoComplete.character_select(gm=True, all=True)
         except NoResultFound:
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
