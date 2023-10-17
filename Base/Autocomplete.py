@@ -45,14 +45,14 @@ class AutoComplete:
                         .order_by(Tracker.name.asc())
                     )
                 character = char_result.scalars().all()
-                print(len(character))
-            # await self.engine.dispose()
+
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 if multi and val[-1] == ",":
                     return [f"{val.title()} {option}" for option in character]
                 return [option.title() for option in character if val in option.lower()]
             return character
+
         except NoResultFound:
             return []
         except Exception as e:

@@ -3,21 +3,74 @@ from math import ceil
 
 import discord
 from sqlalchemy import select, func
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import database_operations
 from Base.Autocomplete import AutoComplete
+from EPF import EPF_Support
 from EPF.EPF_Character import get_EPF_Character
 from EPF.EPF_NPC_Importer import EPF_NPC
 from EPF.EPF_Support import EPF_Conditions, EPF_Stats, EPF_DMG_Types, EPF_SKills, EPF_SKills_NO_SAVE, EPF_attributes
 from PF2e.pf2_functions import PF2_saves
+from database_models import get_tracker
 from utils.Char_Getter import get_character
 
 
 class EPF_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
+
+    async def character_select(self, **kwargs):
+        if "all" in kwargs.keys():
+            allnone = kwargs["all"]
+        else:
+            allnone = False
+
+        if "gm" in kwargs.keys():
+            gm = kwargs["gm"]
+        else:
+            gm = False
+
+        if "multi" in kwargs.keys():
+            multi = kwargs["multi"]
+        else:
+            multi = False
+
+        logging.info("character_select")
+        try:
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx, self.engine)
+            async with async_session() as session:
+                if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
+                    # print("You are the GM")
+                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+                elif not gm:
+                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+                else:
+                    # print("Not the GM")
+                    char_result = await session.execute(
+                        select(Tracker.name)
+                        .where(Tracker.user == self.ctx.interaction.user.id)
+                        .order_by(Tracker.name.asc())
+                    )
+                character = char_result.scalars().all()
+                if allnone:
+                    character.extend(["All PCs", "All NPCs", "All Characters"])
+
+            if self.ctx.value != "":
+                val = self.ctx.value.lower()
+                if multi and val[-1] == ",":
+                    return [f"{val.title()} {option}" for option in character]
+                return [option.title() for option in character if val in option.lower()]
+            return character
+
+        except NoResultFound:
+            return []
+        except Exception as e:
+            logging.warning(f"epf character_select: {e}")
+            return []
 
     async def add_condition_select(self, **kwargs):
         key_list = list(EPF_Conditions.keys())
@@ -54,6 +107,9 @@ class EPF_Autocmplete(AutoComplete):
         except Exception:
             # await self.engine.dispose()
             return []
+
+        if character.lower() in ["all pcs", "all npcs", "all characters"]:
+            return [item.title() for item in EPF_Support.EPF_SKills]
 
         try:
             EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
