@@ -172,19 +172,26 @@ class MacroCog(commands.Cog):
             guild = await get_guild(ctx, None)
         Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
         try:
+            output = await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
+            if type(output) != list:
+                output = [output]
+            output_list = []
+            while len(output) > 0:
+                output_list.append(output[:10])
+                output = output[10:]
+
             if secret == "Open":
-                await ctx.send_followup(embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild))
+                for item in output_list:
+                    await ctx.send_followup(embeds=item)
             else:
                 if guild.gm_tracker_channel is not None:
                     await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
-                    await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
-                        "Secret Roll:", embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
-                    )
+                    for item in output_list:
+                        await self.bot.get_channel(int(guild.gm_tracker_channel)).send("Secret Roll:", embeds=item)
                 else:
                     await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
-                    await ctx.channel.send(
-                        embed=await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
-                    )
+                    for item in output_list:
+                        await ctx.channel.send(embeds=item)
         except Exception as e:
             logging.error(f"roll_macro: {e}")
             report = ErrorReport(ctx, "roll_macro", e, self.bot)
