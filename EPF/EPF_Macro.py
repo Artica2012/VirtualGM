@@ -3,11 +3,16 @@ import logging
 
 import d20
 import discord
+from sqlalchemy import select, true, false
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 import EPF.EPF_Support
 import PF2e.pf2_functions
 from Base.Macro import Macro
 from EPF.EPF_Character import get_EPF_Character, EPF_Character
+from database_models import get_EPF_tracker
 from utils.Char_Getter import get_character
 
 
@@ -29,28 +34,52 @@ class EPF_Macro(Macro):
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info("EPF roll_macro")
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-        dice_result = await Character_Model.roll_macro(macro_name, modifier)
-        # print(dice_result)
-        if dice_result == 0:
-            embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
+        if character.lower() in ["all pcs", "all npcs", "all characters"]:
+            EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            try:
+                if character.lower() == "all pcs":
+                    async with async_session() as session:
+                        result = await session.execute(select(EPF_tracker.name).where(EPF_tracker.player == true()))
+                        character_list = result.scalars().all()
+                elif character.lower() == "all npcs":
+                    async with async_session() as session:
+                        result = await session.execute(select(EPF_tracker.name).where(EPF_tracker.player == false()))
+                        character_list = result.scalars().all()
+                elif character.lower() == "all characters":
+                    async with async_session() as session:
+                        result = await session.execute(select(EPF_tracker.name))
+                        character_list = result.scalars().all()
+            except NoResultFound:
+                return None
         else:
-            if dc != 0:
-                roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
-                output_string = f"{roll_str[0]}"
-                color = roll_str[1]
+            character_list = [character]
+        embed_list = []
+        for item in character_list:
+            print(character)
+            Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
+            dice_result = await Character_Model.roll_macro(macro_name, modifier)
+            # print(dice_result)
+            if dice_result == 0:
+                embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
             else:
-                output_string = str(dice_result)
-                color = discord.Color.dark_grey()
+                if dc != 0:
+                    roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+                    output_string = f"{roll_str[0]}"
+                    color = roll_str[1]
+                else:
+                    output_string = str(dice_result)
+                    color = discord.Color.dark_grey()
 
-            embed = discord.Embed(
-                title=Character_Model.char_name,
-                fields=[discord.EmbedField(name=macro_name, value=output_string)],
-                color=color,
-            )
-            embed.set_thumbnail(url=Character_Model.pic)
+                embed = discord.Embed(
+                    title=Character_Model.char_name,
+                    fields=[discord.EmbedField(name=macro_name, value=output_string)],
+                    color=color,
+                )
+                embed.set_thumbnail(url=Character_Model.pic)
+                embed_list.append(embed)
 
-        return embed
+        return embed_list
 
     async def show(self, character):
         Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
