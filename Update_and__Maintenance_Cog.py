@@ -73,9 +73,12 @@ class Update_and_Maintenance_Cog(commands.Cog):
             guild_list = result.scalars().all()
 
             for guild in guild_list:
-                Tracker_Object = await get_tracker_model(None, self.bot, engine=engine, guild=guild)
-                Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
-                Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
+                try:
+                    Tracker_Object = await get_tracker_model(None, self.bot, engine=engine, guild=guild)
+                    Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
+                    Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
+                except Exception as e:
+                    logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
 
                 try:  # Error handling to avoid locking on a bad message
                     view.clear_items()
