@@ -890,7 +890,8 @@ class Tracker:
                 except Exception:
                     logging.warning(f"Invalid Tracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.tracker_channel)
-                    await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
+                    await self.set_pinned_tracker(channel)
+                    # await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
 
             if self.guild.gm_tracker is not None:
                 try:
@@ -901,7 +902,8 @@ class Tracker:
                 except Exception:
                     logging.warning(f"Invalid GMTracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.gm_tracker_channel)
-                    await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
+                    await self.set_pinned_tracker(channel, gm=True)
+                    # await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
