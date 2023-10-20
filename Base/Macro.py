@@ -11,7 +11,7 @@ import Base.Character
 from database_models import get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
-from utils.utils import relabel_roll
+from utils.utils import relabel_roll, get_guild
 
 
 class Macro:
@@ -274,7 +274,14 @@ class Macro:
 
         async def callback(self, interaction: discord.Interaction):
             print(self.macro.macro)
-            dice_result = d20.roll(self.macro.macro)
-            output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
+            guild = await get_guild(self.ctx, None)
+            MacroClass = Macro(self.ctx, self.engine, guild)
+            output = await MacroClass.roll_macro(self.character.char_name, self.macro.name, 0, "", guild=guild)
+            if type(output) != list:
+                output = [output]
 
-            await interaction.response.send_message(output_string)
+            await interaction.response.send_message(embeds=output)
+
+            # dice_result = d20.roll(self.macro.macro)
+            # output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
+            # await interaction.response.send_message(output_string)
