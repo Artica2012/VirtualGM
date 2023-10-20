@@ -15,9 +15,8 @@ from sqlalchemy.orm import sessionmaker
 import D4e.D4e_Tracker
 import D4e.d4e_functions
 from database_models import Global, Character_Vault, Base, get_tracker
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from database_operations import get_asyncio_db_engine
 from utils.Tracker_Getter import get_tracker_model
+from database_operations import engine
 
 
 # ---------------------------------------------------------------
@@ -33,7 +32,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
     # Update the bot's status periodically
     @tasks.loop(minutes=1)
     async def update_status(self):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
@@ -57,6 +55,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
         collected = gc.collect()
 
         logging.warning(f"GC: {collected}. Guilds: {len(self.bot.guilds)}")
+        logging.warning(await self.get_stats())
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -66,7 +65,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.last_tracker.isnot(None)))
@@ -130,19 +128,63 @@ class Update_and_Maintenance_Cog(commands.Cog):
                             await write_session.commit()
 
                     except Exception:
-                        async with write_session.begin():
-                            new_char = Character_Vault(
-                                guild_id=guild.id,
-                                system=guild.system,
-                                name=character.name,
-                                user=character.user,
-                                disc_guild_id=guild.guild_id,
-                            )
-                            write_session.add(new_char)
-                        await write_session.commit()
+                        try:
+                            async with write_session.begin():
+                                new_char = Character_Vault(
+                                    guild_id=guild.id,
+                                    system=guild.system,
+                                    name=character.name,
+                                    user=character.user,
+                                    disc_guild_id=guild.guild_id,
+                                )
+                                write_session.add(new_char)
+                            await write_session.commit()
+                        except Exception:
+                            pass
 
         logging.warning("U&M Complete")
-        # await engine.dispose()
+        logging.warning(await self.get_stats())
+
+    async def get_stats(self):
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            guild = await session.execute(select(Global))
+            result = guild.scalars().all()
+            total = len(result)
+
+        # counts
+        block = 0
+        time = 0
+        base = 0
+        EPF = 0
+        PF2 = 0
+        STF = 0
+        RED = 0
+        D4e = 0
+
+        for item in result:
+            if item.block:
+                block += 1
+            if item.time:
+                time += 1
+            if item.system is None:
+                base += 1
+            if item.system == "EPF":
+                EPF += 1
+            if item.system == "PF2":
+                PF2 += 1
+            if item.system == "STF":
+                STF += 1
+            if item.system == "RED":
+                RED += 1
+            if item.system == "D4e":
+                D4e += 1
+        output = (
+            f"Total Tables: {total}\n"
+            f"Block: {block}, Time: {time} "
+            f"Base: {base}, EPF: {EPF}, PF2: {PF2}, STF: {STF}, RED: {RED}, D4e: {D4e}"
+        )
+        return output
 
 
 def setup(bot):

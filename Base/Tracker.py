@@ -797,6 +797,15 @@ class Tracker:
     # Note: Works backwards
     # This is the turn list, a list of all of characters that are part of the turn in block initiative
     async def get_turn_list(self):
+        """
+        Generates a list of characters in the initiative block.  Starts at the end (as this is where it has ended up via
+        the advance turn function,0 and works backwards.
+        :return: list of character models in the given turn in block initiative
+        """
+
+        # Note, this could be updated to only show characters who haven't passed their turn yet. Not sure if its a
+        # benefit from a gameplay usability perspective though.
+
         logging.info("get_turn_list")
         turn_list = []
         block_done = False
@@ -837,6 +846,11 @@ class Tracker:
 
     # Post a new initiative tracker and updates the pinned trackers
     async def block_post_init(self):
+        """
+        Post the initiatve tracker in the active player channel. This is used for when turns advance.
+
+        :return: No return value
+        """
         logging.info("base block_post_init")
         # Query the initiative position for the tracker and post it
 
