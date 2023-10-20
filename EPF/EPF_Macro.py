@@ -127,5 +127,7 @@ class EPF_Macro(Macro):
 
             # print(self.macro)
             output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)
+            if type(output) != list:
+                output = [output]
 
-            await interaction.response.send_message(embed=output)
+            await interaction.response.send_message(embeds=output)
