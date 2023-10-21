@@ -19,6 +19,14 @@ from utils.utils import get_guild
 
 
 async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+    """
+    Returns the list of characters in initiative, in descending order
+    :param ctx:
+    :param engine:
+    :param guild:
+    :return: init_list (list of Tracker Objects)
+    """
+
     logging.info("get_init_list")
     try:
         if guild is not None:
@@ -49,6 +57,16 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 class Tracker:
     def __init__(self, ctx, engine, init_list, bot, guild=None):
+        """
+        The Tracker Class. Contains the methods for manipulating and advancing initiative.
+
+        :param ctx:
+        :param engine:
+        :param init_list: (output of function get_init_list)
+        :param bot:
+        :param guild:
+        """
+
         self.ctx = ctx
         self.engine = engine
         self.init_list = init_list
@@ -59,17 +77,29 @@ class Tracker:
     #     print("Destroying Tracker")
 
     async def next(self):
-        # print("next")
+        """
+        Advances the turn and updates the tracker.
+
+        :return: No return value
+        """
+
         await self.advance_initiative()
         await self.block_post_init()
 
     async def block_next(self, interaction: discord.Interaction):
+        """
+        Intelligent next command for the next button on the block tracker. Should only be by a button.
+
+        :param interaction: (discord.Interaction from a button press)
+        :return: No return value
+        """
+
         advance = True
         if self.guild.block:
             advance = False
-            # print("Block")
-            # print(self.guild.block_data)
             if interaction.user.id in self.guild.block_data:
+                # If the player has not yet pressed the button this block, and they are in the block list, then remove
+                # their name from the list of players that still need to go.
                 new_block = self.guild.block_data.copy()
                 new_block.remove(interaction.user.id)
 
@@ -77,11 +107,11 @@ class Tracker:
                 async with async_session() as session:
                     result = await session.execute(select(Global).where(Global.id == self.guild.id))
                     guild = result.scalars().one()
-                    guild.block_data = new_block
+                    guild.block_data = new_block  # Update the block list in the database.
                     await session.commit()
                 await self.update()
                 if len(new_block) == 0:
-                    advance = True
+                    advance = True  # If the block list is now empty, advance the turn
                 else:
                     await interaction.response.send_message(
                         (
@@ -92,6 +122,7 @@ class Tracker:
                     )
                     await self.block_post_init()
                 if interaction.user.id == int(self.guild.gm):
+                    # If the player is the gm, automatically advance the turn even if the block list isn't empty
                     advance = True
             else:
                 advance = False
@@ -103,11 +134,28 @@ class Tracker:
             await self.next()
 
     async def reroll_init(self):
+        """
+        Convenience method that seamlessly ends initiative and restarts it without cleaning up, to effectively reroll
+        initiative.
+
+        :return: No return value
+        """
+
         await self.end(clean=False)
         await self.update()
         await self.next()
 
     async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+        """
+        This is a copy of the get_init_list function as a class method. This is here to allow overrides of the
+        initiative order in subclasses.  The default is unchanged from the function.
+
+        :param ctx:
+        :param engine:
+        :param guild:
+        :return: init_list (list of tracker objects) - Returns an empty list on error.
+        """
+
         logging.info("get_init_list")
         try:
             if guild is not None:
@@ -128,7 +176,6 @@ class Tracker:
                 )
                 init_list = result.scalars().all()
                 logging.info("GIL: Init list gotten")
-                # print(init_list)
             return init_list
 
         except Exception:
@@ -136,6 +183,14 @@ class Tracker:
             return []
 
     async def get_char_from_id(self, char_id: int):
+        """
+        Returns a character model from the reference id. This is used primarily (at the moment) to get the character
+         model for conditions that decrement on another character's turn.
+
+        :param char_id: (Integer)
+        :return: Character Model (Character Class) or appropriate subclass
+        """
+
         Char_Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
@@ -144,6 +199,14 @@ class Tracker:
         return await get_character(character.name, self.ctx, guild=self.guild, engine=self.engine)
 
     async def end(self, clean=True):
+        """
+        Method that ends initiative. Resets variables to their neutral state. If clean = True, it will delete conditions
+        that are round based on time, and delete all NPCs with 0 or less HP.
+
+        :param clean: bool (Default = True)
+        :return: No return value
+        """
+
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
@@ -165,7 +228,6 @@ class Tracker:
         # Update the tables
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-        # Utilies = await get_utilities(self.ctx, guild=self.guild, engine=self.engine)
 
         # tracker cleanup
         # Delete condition with round timers
@@ -229,13 +291,26 @@ class Tracker:
         await self.update_pinned_tracker()
 
     async def update(self):
+        """
+        Method which updates the tracker object with updated initiative list. Needs to be called after changes to
+         initiative position, order or adding or removing characters.
+
+        :return: No return value
+        """
+
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
         self.init_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
 
     async def init_integrity_check(self, init_pos: int, current_character: str):
+        """
+        Method which check to see if the initiative position is correct. Compares the initiative position in the
+        database to the name of the current character in the database to ensure the initiative order has not changed.
+        :param: init_pos (integer)
+        :param: current_character (string)
+        :return: Bool: True if initiative is correct, and false if it is incorrect.
+        """
+
         logging.info("init_integrity_check")
-        # print(guild.id)
-        # print(init_list)
         try:
             if self.init_list[init_pos].name == current_character:
                 return True
@@ -248,9 +323,15 @@ class Tracker:
             return False
 
     async def init_integrity(self):
+        """
+        Checks for initiative integrity (via the init_itegrity_check method). If it is not correct, it searches for the
+        proper position in the initiative list and updates the position accordingly.
+        :return: No return value
+        """
+
         logging.info("Checking Initiative Integrity")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
+        async with async_session() as session:  # Pull the most updated data for the initiative
             result = await session.execute(select(Global).where(Global.id == self.guild.id))
             guild = result.scalars().one()
 
@@ -258,19 +339,32 @@ class Tracker:
                 if not await self.init_integrity_check(guild.initiative, guild.saved_order):
                     logging.info("Integrity Check Failed")
                     logging.info(f"Integrity Info: Saved_Order {guild.saved_order}, Init Pos={guild.initiative}")
-                    for pos, row in enumerate(self.init_list):
+                    for pos, row in enumerate(self.init_list):  # Iterate through the list to find the correct position
                         if row.name == guild.saved_order:
                             logging.info(f"name: {row.name}, saved_order: {guild.saved_order}")
-                            guild.initiative = pos
+                            guild.initiative = pos  # update the initiative number in the db to the correct position
                             logging.info(f"Pos: {pos}")
                             logging.info(f"New Init_pos: {guild.initiative}")
                             break  # once its fixed, stop the loop because its done
             await session.commit()
 
     async def advance_initiative(self):
+        """
+        This is a switcher function. In the base class it simply calls the block_advance_initiative method. In
+        subclasses it may call different methods depending on particular parameters. This is for future-proofing.
+
+        :return:boolean output of the  block_advance_initiative method.
+        """
+
         return await self.block_advance_initiative()
 
     async def block_advance_initiative(self):
+        """
+        Advances initiative. This is an internal method and should be called by via the advance_initiative method.
+        This particular method takes block initiative into account.
+
+        :return:Boolean: True for success and false for failure
+        """
         logging.info("advance_initiative")
 
         block_done = False
@@ -365,9 +459,8 @@ class Tracker:
                             await asyncio.sleep(0)
                             if row.name == current_character.char_name:
                                 init_pos = pos
-                                # print(f"integrity checked init_pos: {init_pos}")
+
                     init_pos += 1  # increase the init position by 1
-                    # print(f"new init_pos: {init_pos}")
                     if init_pos >= len(self.init_list):  # if it has reached the end, loop back to the beginning
                         init_pos = 0
                         round += 1
@@ -380,8 +473,7 @@ class Tracker:
 
                             # block initiative loop
                 # check to see if the next character is player vs npc
-                # print(init_list)
-                # print(f"init_pos: {init_pos}, len(init_list): {len(init_list)}")
+
                 if init_pos >= len(self.init_list) - 1:
                     # print(f"init_pos: {init_pos}")
                     if self.init_list[init_pos].player != self.init_list[0].player:
@@ -435,6 +527,17 @@ class Tracker:
 
     # This is the code which check, decrements and removes conditions for the init next turn.
     async def init_con(self, current_character, before: bool):
+        """
+        This method checks conditions as initiative advances and decrements or removes them as appropriate. Internal
+        method that should be called during the initiative advancement.
+
+        :param current_character: (character model of the Character class)
+        :param before: (bool - This determines if its being called at the beginning or ending of the turn, to allow for
+            conditions that decrement at a specific portion. Pass None to decrement all appropriate conditions or for
+            subclasses (systems) that don't differentiate eg D&D 4e.
+        :return: No return value
+        """
+
         logging.info(f"{current_character.char_name}, {before}")
         logging.info("Decrementing Conditions")
 
@@ -493,6 +596,12 @@ class Tracker:
                 await report.report()
 
     async def get_inactive_list(self):
+        """
+        Method which pulls the list of inactive characters from the database and returns it.
+
+        :return: list of character models
+        """
+
         logging.info("get_inactive_list")
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -513,13 +622,20 @@ class Tracker:
             return []
 
     async def block_get_tracker(self, selected: int, gm: bool = False):  # Probably should rename this eventually
+        """
+        This method formats the tracker as a complex string. This is the base tracker, with each subclass having a
+        version specific to that RPG system.
+        :param selected: (integer id of the current character)
+        :param gm: bool True for GM tracker, false for player tracker
+        :return: output string
+        """
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-        # Get the turn List for Block Initiative
-        if self.guild.block and self.guild.initiative is not None:  # Should this be initiative is not None?
+        # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
+        if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
             block = True
         else:
@@ -681,6 +797,16 @@ class Tracker:
     # Note: Works backwards
     # This is the turn list, a list of all of characters that are part of the turn in block initiative
     async def get_turn_list(self):
+        """
+        Generates a list of characters in the initiative block.  Starts at the end (as this is where it has ended up via
+        the advance turn function,0 and works backwards.
+        :return: list of character models in the given turn in block initiative
+        """
+
+        # Note, this could be updated to only show characters who haven't passed their turn yet. Not sure if its a
+        # benefit from a gameplay usability perspective though.
+        # Implimented on a trial basis
+
         logging.info("get_turn_list")
         turn_list = []
         block_done = False
@@ -694,8 +820,11 @@ class Tracker:
             # print(init_pos)
             length = len(self.init_list)
             while not block_done:
-                turn_list.append(self.init_list[init_pos])
-                # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
+                # This removes characters which have finished their turn
+                char = self.init_list[init_pos]
+                if int(char.user) in self.guild.block_data:
+                    turn_list.append(self.init_list[init_pos])
+
                 player_status = self.init_list[init_pos].player
                 if init_pos == 0:
                     if player_status != self.init_list[length - 1].player:
@@ -721,6 +850,11 @@ class Tracker:
 
     # Post a new initiative tracker and updates the pinned trackers
     async def block_post_init(self):
+        """
+        Post the initiatve tracker in the active player channel. This is used for when turns advance.
+
+        :return: No return value
+        """
         logging.info("base block_post_init")
         # Query the initiative position for the tracker and post it
 
