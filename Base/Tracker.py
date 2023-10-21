@@ -851,7 +851,7 @@ class Tracker:
     # Post a new initiative tracker and updates the pinned trackers
     async def block_post_init(self):
         """
-        Post the initiatve tracker in the active player channel. This is used for when turns advance.
+        Post the initiative tracker in the active player channel. This is used for when turns advance.
 
         :return: No return value
         """
@@ -966,6 +966,11 @@ class Tracker:
 
     # Updates the active initiative tracker (not the pinned tracker)
     async def update_pinned_tracker(self):
+        """
+        Updates the pinned trackers. Pulls a new, updated tracker and edits the pinned trackers.
+
+        :return: No return value
+        """
         logging.info("update_pinned_tracker")
 
         # Query the initiative position for the tracker and post it
@@ -973,9 +978,7 @@ class Tracker:
             logging.info(f"BPI1: guild: {self.guild.id}")
 
             if self.guild.block:
-                # print(guild.id)
                 block = True
-                # print(f"block_post_init: \n {turn_list}")
             else:
                 block = False
 
@@ -1025,7 +1028,6 @@ class Tracker:
                     logging.warning(f"Invalid Tracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.tracker_channel)
                     await self.set_pinned_tracker(channel)
-                    # await channel.send("Error updating the tracker. Please run `/admin tracker reset trackers`.")
 
             if self.guild.gm_tracker is not None:
                 try:
@@ -1037,7 +1039,6 @@ class Tracker:
                     logging.warning(f"Invalid GMTracker: {self.guild.id}")
                     channel = self.bot.get_channel(self.guild.gm_tracker_channel)
                     await self.set_pinned_tracker(channel, gm=True)
-                    # await channel.send("Error updating the gm_tracker. Please run `/admin tracker reset trackers`.")
 
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
@@ -1047,6 +1048,11 @@ class Tracker:
             await report.report()
 
     async def repost_trackers(self):
+        """
+        Posts new trackers in the player and gm channel and then pins them.
+
+        :return: bool. True if succssful, false if unsuccessful
+        """
         logging.info("repost_trackers")
         try:
             channel = self.bot.get_channel(self.guild.tracker_channel)
@@ -1065,6 +1071,13 @@ class Tracker:
 
     # Function sets the pinned trackers and records their position in the Global table.
     async def set_pinned_tracker(self, channel: discord.TextChannel, gm=False):
+        """
+        Posts a tracker and then pins it
+        :param channel: Discord channel
+        :param gm: bool. Default false. If true, posts a gm tracker.
+        :return: bool. True for success, false for failure
+        """
+
         logging.info("set_pinned_tracker")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -1102,6 +1115,13 @@ class Tracker:
             return False
 
     async def check_cc(self):
+        """
+        Checks to see if any of the conditions have expired due to time and clears them out.
+        Not for use while in initiative.
+        Called by advancing time.
+
+        :return: No return value
+        """
         logging.info("check_cc")
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -1131,6 +1151,10 @@ class Tracker:
                     tracker_channel.send(f"{row.title} removed from {character.name}")
 
     class InitRefreshButton(discord.ui.Button):
+        """
+        Refresh button for the tracker
+        """
+
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
             self.engine = get_asyncio_db_engine(
@@ -1143,7 +1167,7 @@ class Tracker:
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                # print(interaction.message.id)
+
                 Tracker_model = Tracker(
                     self.ctx,
                     self.engine,
@@ -1155,9 +1179,12 @@ class Tracker:
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
-            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
+        """
+        Next button for the tracker
+        """
+
         def __init__(self, bot, guild=None):
             self.engine = get_asyncio_db_engine(
                 user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
