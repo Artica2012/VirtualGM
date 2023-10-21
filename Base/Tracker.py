@@ -805,6 +805,7 @@ class Tracker:
 
         # Note, this could be updated to only show characters who haven't passed their turn yet. Not sure if its a
         # benefit from a gameplay usability perspective though.
+        # Implimented on a trial basis
 
         logging.info("get_turn_list")
         turn_list = []
@@ -819,8 +820,11 @@ class Tracker:
             # print(init_pos)
             length = len(self.init_list)
             while not block_done:
-                turn_list.append(self.init_list[init_pos])
-                # print(f"init_pos: {init_pos}, turn_list: {turn_list}")
+                # This removes characters which have finished their turn
+                char = self.init_list[init_pos]
+                if int(char.user) in self.guild.block_data:
+                    turn_list.append(self.init_list[init_pos])
+
                 player_status = self.init_list[init_pos].player
                 if init_pos == 0:
                     if player_status != self.init_list[length - 1].player:
