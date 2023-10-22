@@ -703,7 +703,10 @@ class Tracker:
                 if character.init == 0 or character.active is False:
                     init_num = ""
                 else:
-                    init_num = f"{character.init}"
+                    if character.init <= 9:
+                        init_num = f" {character.init}"
+                    else:
+                        init_num = f"{character.init}"
 
                 if block:
                     for (
