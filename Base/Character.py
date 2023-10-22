@@ -134,7 +134,7 @@ class Character:
 
     async def set_hp(self, amount: int):
         """
-        Sets the hp property of the character and writes it to the database
+        Sets the hp property of the character to the specified value and writes it to the database.
         :param amount: integer
         :return: No return value
         """
@@ -148,6 +148,15 @@ class Character:
             await self.update()
 
     async def change_hp(self, amount: int, heal: bool, post=True):
+        """
+        Changes the health value by the set amount and writes it to the database.
+        If post == True, then it sends a message with the hp change. Intelligently avoids taking HP below 0 or above the
+        maximum.
+        :param amount: integer
+        :param heal: boolean. True adds the amount to health, false subtracts it
+        :param post: boolean. Default is True. If false, does not send a message with the result.
+        :return: boolean. True for success, False for failure.
+        """
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -165,7 +174,6 @@ class Character:
                 thp = character.temp_hp
                 new_thp = 0
 
-                # If its D4e, let the HP go below 0, but start healing form 0.
                 # Bottom out at 0 for everyone else
                 if heal:
                     new_hp = chp + amount
@@ -211,6 +219,10 @@ class Character:
             return False
 
     async def calculate_hp(self):
+        """
+        Takes the current hp vs max hp and calculates injured, critical etc.
+        :return: String with the interpreted health value.
+        """
         logging.info("Calculate hp")
         hp = self.current_hp / self.max_hp
         if hp == 1:
@@ -227,6 +239,12 @@ class Character:
         return hp_string
 
     async def add_thp(self, amount: int):
+        """
+        Adds to the tHP parameter and writes it to the database
+        :param amount: integer
+        :return: boolean. True if successful, false for failure
+        """
+
         logging.info(f"add_thp {amount}")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -245,6 +263,12 @@ class Character:
 
     # Set the initiative
     async def set_init(self, init, **kwargs):
+        """
+        Sets the initiative parameter.
+        :param init: integer or string. If string, it will roll the string, if integer, will use the integer.
+        :param update: If true, updates the medel afterwards.
+        :return: String
+        """
         if "update" in kwargs.keys():
             update = kwargs["update"]
         else:
