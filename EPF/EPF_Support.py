@@ -182,6 +182,7 @@ EPF_Conditions = {
     "Lesser Cover": "ac +1 c",
     "Standard Cover": "ac +2 c, reflex +2 c, stealth +2 c",
     "Greater Cover": "ac +4 c, reflex +4 c, stealth +4 c",
+    "Exploration Avoid Notice": "init-skill stealth",
 }
 
 EPF_Stats = ["str", "dex", "con", "itl", "wis", "cha", "None"]

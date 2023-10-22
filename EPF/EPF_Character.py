@@ -1537,7 +1537,47 @@ async def calculate(ctx, engine, char_name, guild=None):
                 key_ability, "class_dc", character.class_prof, character.level, bonuses, False
             )
 
-            character.init_string = f"1d20+{await bonus_calc(character.perception_mod, 'init', bonuses)}"
+            init_skill = character.perception_mod
+            if "init_skill" in bonuses["circumstances_pos"].keys():
+                match bonuses["circumstances_pos"]["init_skill"]:
+                    case "perception":
+                        init_skill = character.perception_mod
+                    case "acrobatics":
+                        init_skill = character.acrobatics_mod
+                    case "arcana":
+                        init_skill = character.arcana_mod
+                    case "athletics":
+                        init_skill = character.athletics_mod
+                    case "crafting":
+                        init_skill = character.crafting_mod
+                    case "deception":
+                        init_skill = character.deception_mod
+                    case "diplomacy":
+                        init_skill = character.diplomacy_mod
+                    case "intimidation":
+                        init_skill = character.intimidation_mod
+                    case "medicine":
+                        init_skill = character.medicine_mod
+                    case "nature":
+                        init_skill = character.nature_mod
+                    case "occultism":
+                        init_skill = character.occultism_mod
+                    case "performance":
+                        init_skill = character.performance_mod
+                    case "religion":
+                        init_skill = character.religion_mod
+                    case "society":
+                        init_skill = character.society_mod
+                    case "stealth":
+                        init_skill = character.stealth_mod
+                    case "survival":
+                        init_skill = character.survival_mod
+                    case "thievery":
+                        init_skill = character.thievery_mod
+                    case _:
+                        init_skill = character.perception_mod
+
+            character.init_string = f"1d20+{await bonus_calc(init_skill, 'init', bonuses)}"
 
             character.bonuses = bonuses
             character.resistance = resistance
@@ -1782,6 +1822,20 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         for item in data_list:
             try:
                 parsed = item.strip().split(" ")
+                # initiative stat
+                print(parsed)
+                print(parsed[0])
+                # if parsed[0] == 'init-skill':
+                #     print(parsed[0].lower())
+                #     print(True)
+                # else:
+                #     print(False)
+
+                if parsed[0] == "init-skill":
+                    # print("init skill found")
+                    bonuses["circumstances_pos"]["init_skill"] = parsed[1].lower()
+                    # print(bonuses)
+
                 # Conditions adding conditions? Crazy
                 # print(parsed[0].title())
                 if parsed[0].title() in EPF_Conditions.keys():
