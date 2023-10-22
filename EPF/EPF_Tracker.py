@@ -206,7 +206,10 @@ class EPF_Tracker(Tracker):
                 if row.init == 0 or row.active is False:
                     init_num = ""
                 else:
-                    init_num = f"{character.init}"
+                    if character.init <= 9:
+                        init_num = f" {character.init}"
+                    else:
+                        init_num = f"{character.init}"
 
                 if block:
                     for char in turn_list:

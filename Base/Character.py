@@ -43,6 +43,18 @@ default_pic = (
 
 class Character:
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
+        """
+        Character Class. This is the character model. The base class contains the basic character model which each
+        individual system subclasses from.
+
+        This class should not be invoked directly, but should be called via the utils.get_character function as this
+        will asynchronously query the database and then feed the data into the character model.
+        :param char_name: string
+        :param ctx: discord application context
+        :param engine:
+        :param character: character data from the database via get_character function output
+        :param guild:
+        """
         self.char_name = char_name
         self.ctx = ctx
         self.guild = guild
@@ -58,12 +70,17 @@ class Character:
         self.init = character.init
         self.active = character.active
         self.character_model = character
-        self.pic = character.pic if character.pic is not None else default_pic
-
-    # def __del__(self):
-    #     print(f"Destroying {self.char_name}")
+        self.pic = character.pic if character.pic is not None else default_pic  # uses the default picture if none is
+        # supplied
 
     async def character(self):
+        """
+        Queries the database and returns the character model. Used for the update method, as this data is usually stored
+        in self.character_model
+
+        :return: Database Tracker object
+        """
+
         logging.info("Loading Character")
         if self.guild is not None:
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
@@ -82,6 +99,12 @@ class Character:
             return None
 
     async def conditions(self, no_time=False):
+        """
+        Returns conditions from the condition database associated with the character.
+
+        :param no_time: bool - Default false. If true, excludes time based conditions
+        :return: List of condition objects
+        """
         logging.info("Returning PF2 Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
@@ -110,6 +133,11 @@ class Character:
             return []
 
     async def set_hp(self, amount: int):
+        """
+        Sets the hp property of the character to the specified value and writes it to the database.
+        :param amount: integer
+        :return: No return value
+        """
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         async with async_session() as session:
@@ -120,6 +148,15 @@ class Character:
             await self.update()
 
     async def change_hp(self, amount: int, heal: bool, post=True):
+        """
+        Changes the health value by the set amount and writes it to the database.
+        If post == True, then it sends a message with the hp change. Intelligently avoids taking HP below 0 or above the
+        maximum.
+        :param amount: integer
+        :param heal: boolean. True adds the amount to health, false subtracts it
+        :param post: boolean. Default is True. If false, does not send a message with the result.
+        :return: boolean. True for success, False for failure.
+        """
         logging.info("Edit HP")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -137,7 +174,6 @@ class Character:
                 thp = character.temp_hp
                 new_thp = 0
 
-                # If its D4e, let the HP go below 0, but start healing form 0.
                 # Bottom out at 0 for everyone else
                 if heal:
                     new_hp = chp + amount
@@ -183,6 +219,10 @@ class Character:
             return False
 
     async def calculate_hp(self):
+        """
+        Takes the current hp vs max hp and calculates injured, critical etc.
+        :return: String with the interpreted health value.
+        """
         logging.info("Calculate hp")
         hp = self.current_hp / self.max_hp
         if hp == 1:
@@ -199,6 +239,12 @@ class Character:
         return hp_string
 
     async def add_thp(self, amount: int):
+        """
+        Adds to the tHP parameter and writes it to the database
+        :param amount: integer
+        :return: boolean. True if successful, false for failure
+        """
+
         logging.info(f"add_thp {amount}")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -217,6 +263,12 @@ class Character:
 
     # Set the initiative
     async def set_init(self, init, **kwargs):
+        """
+        Sets the initiative parameter.
+        :param init: integer or string. If string, it will roll the string, if integer, will use the integer.
+        :param update: If true, updates the medel afterwards.
+        :return: String
+        """
         if "update" in kwargs.keys():
             update = kwargs["update"]
         else:
