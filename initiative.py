@@ -421,9 +421,9 @@ class InitiativeCog(commands.Cog):
         except d20.RollSyntaxError:
             await ctx.respond("Error, Invalid Roll")
             return
-        guild = await get_guild(ctx, None)
-        print(guild.id)
+
         try:
+            guild = await get_guild(ctx, None)
             model = await get_character(name, ctx, guild=guild, engine=engine)
             if mode == "Temporary HP":
                 response = await model.add_thp(rolled_amount)

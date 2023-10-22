@@ -43,6 +43,18 @@ default_pic = (
 
 class Character:
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
+        """
+        Character Class. This is the character model. The base class contains the basic character model which each
+        individual system subclasses from.
+
+        This class should not be invoked directly, but should be called via the utils.get_character function as this
+        will asynchronously query the database and then feed the data into the character model.
+        :param char_name: string
+        :param ctx: discord application context
+        :param engine:
+        :param character: character data from the database via get_character function output
+        :param guild:
+        """
         self.char_name = char_name
         self.ctx = ctx
         self.guild = guild
@@ -58,12 +70,17 @@ class Character:
         self.init = character.init
         self.active = character.active
         self.character_model = character
-        self.pic = character.pic if character.pic is not None else default_pic
-
-    # def __del__(self):
-    #     print(f"Destroying {self.char_name}")
+        self.pic = character.pic if character.pic is not None else default_pic  # uses the default picture if none is
+        # supplied
 
     async def character(self):
+        """
+        Queries the database and returns the character model. Used for the update method, as this data is usually stored
+        in self.character_model
+
+        :return: Database Tracker object
+        """
+
         logging.info("Loading Character")
         if self.guild is not None:
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
@@ -82,6 +99,12 @@ class Character:
             return None
 
     async def conditions(self, no_time=False):
+        """
+        Returns conditions from the condition database associated with the character.
+
+        :param no_time: bool - Default false. If true, excludes time based conditions
+        :return: List of condition objects
+        """
         logging.info("Returning PF2 Character Conditions")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
@@ -110,6 +133,11 @@ class Character:
             return []
 
     async def set_hp(self, amount: int):
+        """
+        Sets the hp property of the character and writes it to the database
+        :param amount: integer
+        :return: No return value
+        """
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         async with async_session() as session:
