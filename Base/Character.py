@@ -332,6 +332,19 @@ class Character:
         data: str = "",
         target: str = None,
     ):
+        """
+        Writes a condition to the condition database attached to the character's ID.
+        :param title: string - Condition Name
+        :param counter: boolean
+        :param number: integer
+        :param unit: string "Minute", "Hour", or "Days"
+        :param auto_decrement: boolean
+        :param flex: boolean - Usage varies depending on the system. In the base system it is used for determining if a
+        condition will decrement at the beginning or end of the turn.
+        :param data: string - used fors scripting in certain systems
+        :param target: string - Default None . Name of a character to decrement on their turn
+        :return: boolean - True for success, False for failure.
+        """
         logging.info("set_cc")
         # Get the Character's data
 
@@ -339,7 +352,6 @@ class Character:
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
 
         if target is None:
-            target = self.char_name
             target_id = self.character_model.id
         else:
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
@@ -372,7 +384,6 @@ class Character:
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
@@ -398,7 +409,6 @@ class Character:
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
         except NoResultFound:
@@ -410,6 +420,11 @@ class Character:
 
     # Delete CC
     async def delete_cc(self, condition):
+        """
+        Deletes a condition associated with the character
+        :param condition: string - Conditin name
+        :return: boolean - True for success, False for failure
+        """
         logging.info("delete_Cc")
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -439,6 +454,12 @@ class Character:
             return False
 
     async def edit_cc(self, condition: str, value: int):
+        """
+        Edits the value of a condition associated with the character
+        :param condition: string - Condition name
+        :param value: integer - Value to set
+        :return: boolean - True for success, False for failure
+        """
         logging.info("edit_cc")
 
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
@@ -468,6 +489,12 @@ class Character:
             return False
 
     async def check_time_cc(self, bot=None):
+        """
+        Checks each time based condition associated with the character and checks to see if the time has expired. If it
+        has, it cleanly deletes it.  Used during initiative.
+        :param bot: Default= None. If present, this can be used outside of a tracked channel.
+        :return: No returned value
+        """
         logging.info("Clean CC")
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

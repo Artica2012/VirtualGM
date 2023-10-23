@@ -2,6 +2,7 @@ import logging
 
 import discord
 
+import Bot
 from RED.RED_Tracker import get_RED_Tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Base.Tracker import get_init_list, Tracker
@@ -23,6 +24,7 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
     :param engine:
     :return: Tracker Model of the appropriate type
     """
+    bot = Bot.bot
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
