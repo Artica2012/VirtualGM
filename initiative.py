@@ -524,44 +524,52 @@ class InitiativeCog(commands.Cog):
         else:
             char_list = [character]
 
-        for char in char_list:
-            try:
-                model = await get_character(char, ctx, guild=guild, engine=engine)
-                response = await model.set_cc(
-                    title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
-                )
-                if response:
-                    success = discord.Embed(
-                        title=model.char_name.title(),
+        char_list_of_lists = []
+        while len(char_list) > 0:
+            char_list_of_lists.append(char_list[:10])
+            char_list = char_list[10:]
+        for item in char_list_of_lists:
+            embeds = []
+            for char in item:
+                try:
+                    model = await get_character(char, ctx, guild=guild, engine=engine)
+                    response = await model.set_cc(
+                        title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
+                    )
+                    if response:
+                        success = discord.Embed(
+                            title=model.char_name.title(),
+                            fields=[
+                                discord.EmbedField(
+                                    name="Success", value=f"{title} {number if number != None else ''} added."
+                                )
+                            ],
+                            color=discord.Color.blurple(),
+                        )
+                        success.set_thumbnail(url=model.pic)
+                        embeds.append(success)
+                        success_string += f"\n{char}"
+                    else:
+                        raise KeyError
+
+                except Exception as e:
+                    failure = discord.Embed(
+                        title=char.title(),
                         fields=[
                             discord.EmbedField(
-                                name="Success", value=f"{title} {number if number != None else ''} added."
+                                name="Failure", value=f"{title} {number if number != None else ''} not added."
                             )
                         ],
-                        color=discord.Color.blurple(),
+                        color=discord.Color.greyple(),
                     )
-                    success.set_thumbnail(url=model.pic)
-                    embeds.append(success)
-                    success_string += f"\n{char}"
-                else:
-                    raise KeyError
-
-            except Exception as e:
-                failure = discord.Embed(
-                    title=char.title(),
-                    fields=[
-                        discord.EmbedField(
-                            name="Failure", value=f"{title} {number if number != None else ''} not added."
-                        )
-                    ],
-                    color=discord.Color.greyple(),
-                )
-                embeds.append(failure)
-                logging.warning(f"/cc new: {e}")
-                report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
-                await report.report()
-
-        await ctx.send_followup(embeds=embeds)
+                    embeds.append(failure)
+                    logging.warning(f"/cc new: {e}")
+                    report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
+                    await report.report()
+            try:
+                await ctx.send_followup(embeds=embeds)
+            except Exception:
+                await ctx.channel.send(embeds=embeds)
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Object.update_pinned_tracker()
 
