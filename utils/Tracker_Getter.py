@@ -14,6 +14,15 @@ from STF.STF_Tracker import get_STF_Tracker
 
 
 async def get_tracker_model(ctx, bot, guild=None, engine=None):
+    """
+    Function to asychronously query the database and then populate the tracker model intelligently
+    with the appropriate model.
+    :param ctx:
+    :param bot:
+    :param guild:
+    :param engine:
+    :return: Tracker Model of the appropriate type
+    """
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)

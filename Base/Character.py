@@ -303,6 +303,11 @@ class Character:
             return f"Failed to set initiative: {e}"
 
     async def update(self):
+        """
+        Updates the character model by requerying the database and replacing the properities with updated values.  Needs
+        to be called after each update to the database entry.
+        :return: No return value
+        """
         logging.info(f"Updating character: {self.char_name}")
         self.character_model = await self.character()
         self.char_name = self.character_model.name
