@@ -24,7 +24,8 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
     :param engine:
     :return: Tracker Model of the appropriate type
     """
-    bot = Bot.bot
+    if bot is None:
+        bot = Bot.bot
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)

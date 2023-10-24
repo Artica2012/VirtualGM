@@ -107,7 +107,7 @@ class EPF_Tracker(Tracker):
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
                     await advance_time(self.ctx, self.engine, self.bot, second=self.guild.time, guild=self.guild)
-                    await current_character.check_time_cc(self.bot)
+                    await current_character.check_time_cc()
                     logging.info("BAI8: cc checked")
 
             current_character = await get_character(

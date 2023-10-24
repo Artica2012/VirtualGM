@@ -12,6 +12,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import Bot
 import time_keeping_functions
 from database_models import get_tracker, get_condition
 from error_handling_reporting import error_not_initialized
@@ -496,6 +497,8 @@ class Character:
         :return: No returned value
         """
         logging.info("Clean CC")
+        if bot is None:
+            bot = Bot.bot
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, self.guild.id)
@@ -520,6 +523,8 @@ class Character:
                     await tracker_channel.send(f"{row.title} removed from {self.char_name}")
 
     async def get_char_sheet(self, bot):
+        if bot is None:
+            bot = Bot.bot
         try:
             if self.character_model.player:
                 status = "PC:"
