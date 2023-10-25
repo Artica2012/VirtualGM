@@ -12,6 +12,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import Bot
 import time_keeping_functions
 from database_models import get_tracker, get_condition
 from error_handling_reporting import error_not_initialized
@@ -147,6 +148,15 @@ class Character:
             await session.commit()
             await self.update()
 
+    async def roll_initiative(self):
+        """
+        Rolls the initiative string and sets it in the database.
+        :return: integer (Initiative Value)
+        """
+        init = d20.roll(self.init_string).total
+        await self.set_init(init)
+        return init
+
     async def change_hp(self, amount: int, heal: bool, post=True):
         """
         Changes the health value by the set amount and writes it to the database.
@@ -224,17 +234,20 @@ class Character:
         :return: String with the interpreted health value.
         """
         logging.info("Calculate hp")
-        hp = self.current_hp / self.max_hp
-        if hp == 1:
-            hp_string = "Uninjured"
-        elif hp > 0.5:
-            hp_string = "Injured"
-        elif hp >= 0.1:
-            hp_string = "Bloodied"
-        elif hp > 0:
-            hp_string = "Critical"
-        else:
-            hp_string = "Dead"
+        try:
+            hp = self.current_hp / self.max_hp
+            if hp == 1:
+                hp_string = "Uninjured"
+            elif hp > 0.5:
+                hp_string = "Injured"
+            elif hp >= 0.1:
+                hp_string = "Bloodied"
+            elif hp > 0:
+                hp_string = "Critical"
+            else:
+                hp_string = "Dead"
+        except Exception:
+            hp_string = ""
 
         return hp_string
 
@@ -303,6 +316,11 @@ class Character:
             return f"Failed to set initiative: {e}"
 
     async def update(self):
+        """
+        Updates the character model by requerying the database and replacing the properities with updated values.  Needs
+        to be called after each update to the database entry.
+        :return: No return value
+        """
         logging.info(f"Updating character: {self.char_name}")
         self.character_model = await self.character()
         self.char_name = self.character_model.name
@@ -327,6 +345,19 @@ class Character:
         data: str = "",
         target: str = None,
     ):
+        """
+        Writes a condition to the condition database attached to the character's ID.
+        :param title: string - Condition Name
+        :param counter: boolean
+        :param number: integer
+        :param unit: string "Minute", "Hour", or "Days"
+        :param auto_decrement: boolean
+        :param flex: boolean - Usage varies depending on the system. In the base system it is used for determining if a
+        condition will decrement at the beginning or end of the turn.
+        :param data: string - used fors scripting in certain systems
+        :param target: string - Default None . Name of a character to decrement on their turn
+        :return: boolean - True for success, False for failure.
+        """
         logging.info("set_cc")
         # Get the Character's data
 
@@ -334,7 +365,6 @@ class Character:
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
 
         if target is None:
-            target = self.char_name
             target_id = self.character_model.id
         else:
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
@@ -367,7 +397,6 @@ class Character:
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
@@ -393,7 +422,6 @@ class Character:
                     )
                     session.add(condition)
                 await session.commit()
-                # await update_pinned_tracker(ctx, engine, bot)
                 return True
 
         except NoResultFound:
@@ -405,6 +433,11 @@ class Character:
 
     # Delete CC
     async def delete_cc(self, condition):
+        """
+        Deletes a condition associated with the character
+        :param condition: string - Conditin name
+        :return: boolean - True for success, False for failure
+        """
         logging.info("delete_Cc")
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -434,6 +467,12 @@ class Character:
             return False
 
     async def edit_cc(self, condition: str, value: int):
+        """
+        Edits the value of a condition associated with the character
+        :param condition: string - Condition name
+        :param value: integer - Value to set
+        :return: boolean - True for success, False for failure
+        """
         logging.info("edit_cc")
 
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
@@ -463,7 +502,15 @@ class Character:
             return False
 
     async def check_time_cc(self, bot=None):
+        """
+        Checks each time based condition associated with the character and checks to see if the time has expired. If it
+        has, it cleanly deletes it.  Used during initiative.
+        :param bot: Default= None. If present, this can be used outside of a tracked channel.
+        :return: No returned value
+        """
         logging.info("Clean CC")
+        if bot is None:
+            bot = Bot.bot
         current_time = await get_time(self.ctx, self.engine, guild=self.guild)
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Condition = await get_condition(self.ctx, self.engine, self.guild.id)
@@ -488,6 +535,8 @@ class Character:
                     await tracker_channel.send(f"{row.title} removed from {self.char_name}")
 
     async def get_char_sheet(self, bot):
+        if bot is None:
+            bot = Bot.bot
         try:
             if self.character_model.player:
                 status = "PC:"

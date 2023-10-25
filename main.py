@@ -7,10 +7,10 @@ import logging
 # imports
 import os
 import sys
+from Bot import bot
 
 # import tracemalloc
 
-import discord
 from dotenv import load_dotenv
 
 # Set up logging
@@ -43,15 +43,15 @@ DATABASE = os.getenv("DATABASE")
 # tracemalloc.start()
 
 # set up the bot/intents
-intents = discord.Intents.default()
-intents.members = True
-# intents.messages = True
-# intents = discord.Intents.all()
-bot = discord.Bot(
-    intents=intents,
-    allowed_mention=discord.AllowedMentions.all()
-    # debug_guilds=[GUILD]
-)
+# intents = discord.Intents.default()
+# intents.members = True
+# # intents.messages = True
+# # intents = discord.Intents.all()
+# bot = discord.Bot(
+#     intents=intents,
+#     allowed_mention=discord.AllowedMentions.all()
+#     # debug_guilds=[GUILD]
+# )
 
 
 # Print Status on Connected - Outputs to server log

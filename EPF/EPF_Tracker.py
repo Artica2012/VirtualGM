@@ -3,7 +3,6 @@ import asyncio
 import logging
 from datetime import datetime
 
-import d20
 import discord
 from sqlalchemy import select, or_
 from sqlalchemy.exc import NoResultFound
@@ -62,8 +61,7 @@ class EPF_Tracker(Tracker):
                             await asyncio.sleep(0)
                             model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
                             try:
-                                roll = d20.roll(char.init_string)
-                                await model.set_init(roll)
+                                await model.roll_initiative()
                             except ValueError:
                                 model.set_init(0)
             else:
@@ -107,7 +105,7 @@ class EPF_Tracker(Tracker):
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
                     await advance_time(self.ctx, self.engine, self.bot, second=self.guild.time, guild=self.guild)
-                    await current_character.check_time_cc(self.bot)
+                    await current_character.check_time_cc()
                     logging.info("BAI8: cc checked")
 
             current_character = await get_character(
