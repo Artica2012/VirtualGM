@@ -148,6 +148,15 @@ class Character:
             await session.commit()
             await self.update()
 
+    async def roll_initiative(self):
+        """
+        Rolls the initiative string and sets it in the database.
+        :return: integer (Initiative Value)
+        """
+        init = d20.roll(self.init_string).total
+        await self.set_init(init)
+        return init
+
     async def change_hp(self, amount: int, heal: bool, post=True):
         """
         Changes the health value by the set amount and writes it to the database.
@@ -225,17 +234,20 @@ class Character:
         :return: String with the interpreted health value.
         """
         logging.info("Calculate hp")
-        hp = self.current_hp / self.max_hp
-        if hp == 1:
-            hp_string = "Uninjured"
-        elif hp > 0.5:
-            hp_string = "Injured"
-        elif hp >= 0.1:
-            hp_string = "Bloodied"
-        elif hp > 0:
-            hp_string = "Critical"
-        else:
-            hp_string = "Dead"
+        try:
+            hp = self.current_hp / self.max_hp
+            if hp == 1:
+                hp_string = "Uninjured"
+            elif hp > 0.5:
+                hp_string = "Injured"
+            elif hp >= 0.1:
+                hp_string = "Bloodied"
+            elif hp > 0:
+                hp_string = "Critical"
+            else:
+                hp_string = "Dead"
+        except Exception:
+            hp_string = ""
 
         return hp_string
 

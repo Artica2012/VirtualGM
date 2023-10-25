@@ -3,7 +3,6 @@ import asyncio
 import logging
 from datetime import datetime
 
-import d20
 import discord
 from sqlalchemy import select, true, or_, false
 from sqlalchemy.exc import NoResultFound
@@ -394,8 +393,8 @@ class Tracker:
                         if model.init == 0:
                             await asyncio.sleep(0)
                             try:
-                                roll = d20.roll(char.init_string)
-                                await model.set_init(roll)
+                                # roll = d20.roll(char.init_string)
+                                await model.roll_initiative()
                             except Exception:
                                 await model.set_init(0)
                 else:

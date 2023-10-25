@@ -1,4 +1,5 @@
-import d20
+import logging
+
 import discord
 from sqlalchemy import Column, Integer, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -109,15 +110,6 @@ async def epf_npc_lookup(
         guild = await get_guild(ctx, None)
         initiative_num = 0
         perception = 0
-        if guild.initiative is not None:
-            try:
-                # print(f"Init: {init}")
-                perception = int(data.perception_prof) + data.level + stat_mod
-                roll = d20.roll(f"1d20+{perception}")
-                initiative_num = roll.total
-                print(initiative_num)
-            except Exception:
-                initiative_num = 0
 
         if data.class_dc is None:
             class_dc = 0
@@ -217,7 +209,11 @@ async def epf_npc_lookup(
                 visible=False,
                 update=False,
             )
-        # print(f"Elite/Weak Result: {result}")
+        print(data.type)
+        if "hazard" in data.type.lower():
+            await Charater_Model.set_cc(
+                "Hazard", True, 0, "Round", False, data="init-skill stealth", visible=False, update=False
+            )
 
         await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
@@ -227,6 +223,12 @@ async def epf_npc_lookup(
         # output_string = f"{data.name} added as {name}"
 
         # await ctx.send_followup(output_string)
+        if guild.initiative is not None:
+            try:
+                await Charater_Model.roll_initiative()
+            except Exception:
+                logging.error("Error Rolling initiative")
+
         return True
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)

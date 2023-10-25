@@ -970,18 +970,6 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         initiative_num = 0
-        if guild.initiative is not None:
-            # print("In initiative")
-            try:
-                perception = (
-                    int(pb["build"]["proficiencies"]["perception"])
-                    + pb["build"]["level"]
-                    + floor((pb["build"]["abilities"]["wis"] - 10) / 2)
-                )
-                roll = d20.roll(f"1d20+{perception}")
-                initiative_num = roll.total
-            except Exception:
-                initiative_num = 0
 
         # print(initiative_num)
         # Check to see if character already exists, if it does, update instead of creating
@@ -1399,8 +1387,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
         await calculate(ctx, engine, char_name, guild=guild)
-        # Character = await get_EPF_Character(char_name, ctx, guild, engine)
+        Character = await get_EPF_Character(char_name, ctx, guild, engine)
         # await Character.update()
+
+        if guild.initiative is not None:
+            # print("In initiative")
+            try:
+                await Character.roll_initiative()
+            except Exception:
+                logging.error("Error Rolling Initiative")
+
         return True
     except Exception:
         return False
@@ -1538,6 +1534,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             )
 
             init_skill = character.perception_mod
+
             if "init_skill" in bonuses["circumstances_pos"].keys():
                 match bonuses["circumstances_pos"]["init_skill"]:
                     case "perception":
