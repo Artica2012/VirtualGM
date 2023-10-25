@@ -18,6 +18,16 @@ from utils.utils import get_guild
 
 
 async def get_character(char_name, ctx, guild=None, engine=None):
+    """
+    Function to asynchronously query the database and then populate a character model. Intelligently supplies the proper
+    model depending on the system.
+
+    :param char_name: string
+    :param ctx:
+    :param guild:
+    :param engine:
+    :return: Character model of the appropriate subclass
+    """
     logging.info("get_character")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)

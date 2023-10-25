@@ -3,7 +3,6 @@ import asyncio
 import logging
 from datetime import datetime
 
-import d20
 import discord
 from sqlalchemy import select, true, or_, false
 from sqlalchemy.exc import NoResultFound
@@ -394,8 +393,8 @@ class Tracker:
                         if model.init == 0:
                             await asyncio.sleep(0)
                             try:
-                                roll = d20.roll(char.init_string)
-                                await model.set_init(roll)
+                                # roll = d20.roll(char.init_string)
+                                await model.roll_initiative()
                             except Exception:
                                 await model.set_init(0)
                 else:
@@ -442,7 +441,7 @@ class Tracker:
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
                             await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
-                            await current_character.check_time_cc(self.bot)
+                            await current_character.check_time_cc()
                             logging.info("BAI8: cc checked")
 
                 # Decrement the conditions
@@ -587,7 +586,7 @@ class Tracker:
                             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
                             await tracker_channel.send(embed=del_embed)
                 else:
-                    await Con_Character.check_time_cc(bot=self.bot)
+                    await Con_Character.check_time_cc()
 
         except Exception as e:
             logging.error(f"block_advance_initiative: {e}")

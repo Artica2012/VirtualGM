@@ -1,4 +1,5 @@
-import d20
+import logging
+
 import discord
 from sqlalchemy import Column, Integer, String, JSON, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,7 +79,8 @@ async def epf_npc_lookup(
     async with async_session() as session:
         result = await session.execute(select(EPF_NPC).where(EPF_NPC.name == lookup))
         data = result.scalars().one()
-    # await lookup_engine.dispose()
+
+    print(data.resistance)
 
     # elite/weak adjustments
     hp_mod = 0
@@ -109,15 +111,6 @@ async def epf_npc_lookup(
         guild = await get_guild(ctx, None)
         initiative_num = 0
         perception = 0
-        if guild.initiative is not None:
-            try:
-                # print(f"Init: {init}")
-                perception = int(data.perception_prof) + data.level + stat_mod
-                roll = d20.roll(f"1d20+{perception}")
-                initiative_num = roll.total
-                print(initiative_num)
-            except Exception:
-                initiative_num = 0
 
         if data.class_dc is None:
             class_dc = 0
@@ -217,7 +210,11 @@ async def epf_npc_lookup(
                 visible=False,
                 update=False,
             )
-        # print(f"Elite/Weak Result: {result}")
+        print(data.type)
+        if "hazard" in data.type.lower():
+            await Charater_Model.set_cc(
+                "Hazard", True, 0, "Round", False, data="init-skill stealth", visible=False, update=False
+            )
 
         await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
@@ -227,6 +224,12 @@ async def epf_npc_lookup(
         # output_string = f"{data.name} added as {name}"
 
         # await ctx.send_followup(output_string)
+        if guild.initiative is not None:
+            try:
+                await Charater_Model.roll_initiative()
+            except Exception:
+                logging.error("Error Rolling initiative")
+
         return True
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)
@@ -241,12 +244,13 @@ async def write_resitances(
         await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
 
     # Then write the new ones
+    # print(resistance)
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             for key, value in resistance["resist"].items():
-                print(key)
-                print(type(value))
+                # print(key)
+                # print(type(value))
                 if type(value) == dict:
                     exceptions = ""
                     for item in value["exceptions"]:
@@ -260,7 +264,7 @@ async def write_resitances(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
                     )
             for key, value in resistance["weak"].items():
-                print(key)
+                # print(key)
                 if type(value) == dict:
                     exceptions = ""
                     for item in value["exceptions"]:
@@ -274,7 +278,7 @@ async def write_resitances(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
                     )
             for key in resistance["immune"].keys():
-                print(key)
+                # print(key)
                 if type(value) == dict:
                     exceptions = ""
                     for item in value["exceptions"]:
@@ -286,6 +290,21 @@ async def write_resitances(
                     await Character_Model.set_cc(
                         key, True, 1, "Round", False, data=condition_string, visible=False, update=False
                     )
+            if "other" in resistance.keys():
+                # print("other")
+                if "init-skill" in resistance["other"].keys():
+                    # print("init-skill")
+                    await Character_Model.set_cc(
+                        "init-skill",
+                        True,
+                        1,
+                        "Round",
+                        False,
+                        data=f"init-skill {resistance['other']['init-skill']}",
+                        visible=False,
+                        update=False,
+                    )
+
         return True
     except Exception:
         return False

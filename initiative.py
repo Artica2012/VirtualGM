@@ -285,7 +285,7 @@ class InitiativeCog(commands.Cog):
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx, engine=engine)
-                embed = await Character_Model.get_char_sheet(self.bot)
+                embed = await Character_Model.get_char_sheet(bot=self.bot)
                 await ctx.send_followup(embeds=embed)
             except Exception as e:
                 logging.warning(f"char sheet {e}")

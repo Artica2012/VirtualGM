@@ -283,7 +283,7 @@ class D4eEditCharacterModal(discord.ui.Modal):
         # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
         # await Tracker_Model.update_pinned_tracker()
         # print('Tracker Updated')
-        await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(self.bot))
+        await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(bot=self.bot))
         return True
 
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
