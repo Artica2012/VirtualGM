@@ -535,6 +535,11 @@ class Character:
                     await tracker_channel.send(f"{row.title} removed from {self.char_name}")
 
     async def get_char_sheet(self, bot):
+        """
+        Intelligently generates a list of embeds which act as a pseudo-character sheet
+        :param bot: if None, will use the Bot.bot.  Exists for legacy purposes.
+        :return: [embeds] - list of embeds
+        """
         if bot is None:
             bot = Bot.bot
         try:
@@ -611,18 +616,34 @@ class Character:
             await self.ctx.respond("Failed")
 
     async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
+        """
+        Takes a series of values and applies any or all of them to the character in the database.
+        :param name: string
+        :param hp: integer - max hp
+        :param init: string
+        :param active: boolean - if false, will move to the inactive list
+        :param player: discord.User
+        :param img: string (link)
+        :param bot:
+        :return: boolean - True if successful, false for failure
+        """
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
-            # Give an error message if the character is the active character and making them inactive
-            if self.guild.saved_order == name:
+            # Give an error message if the character is the active character and making them inactive. Allow other
+            # changes, but don't inactivate them
+
+            # This might cause problems if its a character in the block, but not the last member of the block, but we'll
+            # need to see
+            if self.guild.saved_order == name and active is not None:
                 await self.ctx.channel.send(
                     "Unable to inactivate a character while they are the active character in initiative.  Please"
                     " advance turn and try again."
                 )
+                active = None
 
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))
@@ -660,6 +681,11 @@ class Character:
             return False
 
     async def set_pic(self, url):
+        """
+        Sets the picture link.
+        :param url: string
+        :return: boolean - True for success, false for failure
+        """
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
         try:
@@ -673,4 +699,8 @@ class Character:
             return False
 
     async def get_pic(self):
+        """
+        Getter for the picture property
+        :return: string (Picture link)
+        """
         return self.character_model.pic
