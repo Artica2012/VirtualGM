@@ -56,7 +56,7 @@ class Character:
         :param character: character data from the database via get_character function output
         :param guild:
         """
-        self.char_name = char_name
+        self.char_name = character.name
         self.ctx = ctx
         self.guild = guild
         self.engine = engine
