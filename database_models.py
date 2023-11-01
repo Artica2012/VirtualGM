@@ -622,6 +622,8 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
         flex = Column(Boolean(), default=False)
         action = Column(String(), default="")
         target = Column(Integer(), nullable=False)
+        stable = Column(Boolean(), default=False)
+        value = Column(Integer())
 
     logging.info("get_condition: returning condition")
     return Condition

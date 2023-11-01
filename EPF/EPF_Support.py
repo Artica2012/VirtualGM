@@ -142,6 +142,8 @@ class EPF_ConditionTable:
             db.Column("flex", db.BOOLEAN, default=False),
             db.Column("action", db.String(), default=""),
             db.Column("target", db.INTEGER()),
+            db.Column("stable", db.BOOLEAN(), default=False),
+            db.Column("value", db.INTEGER()),
         )
         return con
 

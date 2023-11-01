@@ -100,11 +100,14 @@ async def update_con_table():
 
     for row in guild:
         try:
-            print(f"Updating {row.id}")
-            alter_string = text(f'ALTER TABLE "Condition_{row.id}" ADD target INTEGER')
-            async with async_session() as session:
-                await session.execute(alter_string)
-                await session.commit()
+            if row.system == "EPF":
+                print(f"Updating {row.id}")
+                alter_string = text(f'ALTER TABLE "Condition_{row.id}" ADD stable BOOLEAN')
+                alter_string_2 = text(f'ALTER TABLE "Condition_{row.id}" ADD value INTEGER')
+                async with async_session() as session:
+                    await session.execute(alter_string)
+                    await session.execute(alter_string_2)
+                    await session.commit()
         except Exception as e:
             print(f"{row.id}, {e}")
 
