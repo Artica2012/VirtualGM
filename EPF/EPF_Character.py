@@ -476,7 +476,7 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
 
-        spell_attack_bonus = await bonus_calc(0, "spell_attack", self.character_model.bonuses)
+        spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
         if spell_data["tradition"] == "NPC":
             if mod:
@@ -491,7 +491,7 @@ class EPF_Character(Character):
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
-        spell_dmg_bonus = await bonus_calc(0, "spell_dmg", self.character_model.bonuses)
+        spell_dmg_bonus = await bonus_calc(0, "spelldmg", self.character_model.bonuses)
         if spell_dmg_bonus != 0:
             flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
         dmg_dict = {}
@@ -2017,13 +2017,16 @@ async def process_condition_tree(
                         bonus_data["value"] = int(item.value)
                     elif item.type == "VARIABLE":
                         if condition.value is not None:
-                            bonus_data["value"] = condition.value
+                            bonus_data["value"] = int(f"{item.value[0]}{condition.value}")
                         else:
-                            bonus_data["value"] = condition.number
+                            bonus_data["value"] = int(f"{item.value[0]}{condition.number}")
                     elif item.type == "SPECIFIER":
                         bonus_data["specifier"] = item.value
+
             if bonus_data["skill"] not in bonuses.keys():
-                bonuses[bonus_data["skill"]] = {bonus_data["specifier"]: bonus_data["value"]}
+                bonuses[bonus_data["skill"]] = {
+                    f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}": bonus_data["value"]
+                }
             else:
                 if (
                     f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"

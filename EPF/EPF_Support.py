@@ -173,7 +173,7 @@ EPF_Conditions = {
     "Paralyzed": "ac -2 c",
     "Prone": "ac -2 s, attack -2 c",
     "Sickened": "str -X s, dex -X s, con -X s, itl -X s, wis -X s, cha -X s, ac -X s",
-    "Stupefied": "itl -X s, wis -X s, cha -X s",
+    "Stupefied": "itl -X s, wis -X s, cha -X s, spelldmg +X i",
     "Unconscious": "ac -4 s, perception -4 s, reflex -4 s",
     "Magic Weapon": "dmg_die +1 s, attack +1 s",
     "Shield Raised +1": "ac +1 c",
