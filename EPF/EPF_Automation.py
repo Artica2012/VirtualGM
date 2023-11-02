@@ -208,7 +208,7 @@ class EPF_Automation(Automation):
         )
 
         # Damage
-        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
+        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
             dmg_string, total_damage = await roll_dmg_resist(
                 Character_Model,
                 Target_Model,
@@ -442,11 +442,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         mat = ""
     print(f"Mat: {mat}")
 
-    if (
-        "physical" in target.resistance["resist"]
-        or "physical" in target.resistance["weak"]
-        or "physical" in target.resistance["immune"]
-    ):
+    if "physical" in target.resistance.keys():
         # print("Physical Resistance")
         if (
             dmg_type.lower() == "slashing"
@@ -456,61 +452,39 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         ):
             dmg_type = "physical"
             # print(dmg_type)
-    if dmg_type.lower() in target.resistance["resist"]:
-        if type(target.resistance["resist"][dmg_type]) == dict:
-            if mat in target.resistance["resist"][dmg_type]["exceptions"]:
-                pass
-            else:
-                dmg = dmg - target.resistance["resist"][dmg_type]["value"]
-        else:
-            dmg = dmg - target.resistance["resist"][dmg_type]
-        if dmg < 0:
-            dmg = 0
-    elif dmg_type.lower() in target.resistance["weak"]:
-        if type(target.resistance["weak"][dmg_type]) == dict:
-            if mat in target.resistance["weak"][dmg_type]["exceptions"]:
-                pass
-            else:
-                dmg = dmg + target.resistance["weak"][dmg_type]["value"]
-        else:
-            dmg = dmg + target.resistance["weak"][dmg_type]
-    elif dmg_type.lower() in target.resistance["immune"]:
-        if type(target.resistance["immune"][dmg_type]) == dict:
-            if mat in target.resistance["immune"][dmg_type]["exceptions"]:
-                pass
-            else:
-                dmg = 0
-        else:
-            dmg = 0
-    elif "all_damage" in target.resistance["resist"]:
-        if type(target.resistance["resist"][dmg_type]) == dict:
-            if mat in target.resistance["resist"][dmg_type]["exceptions"]:
-                pass
-            else:
-                dmg = dmg - target.resistance["resist"]["all-damage"]
-        else:
-            dmg = dmg - target.resistance["resist"]["all-damage"]
-    elif "all-damage" in target.resistance["immune"]:
-        if type(target.resistance["immune"][dmg_type]) == dict:
-            if mat in target.resistance["immune"][dmg_type]["exceptions"]:
-                pass
-            else:
-                dmg = 0
-        else:
-            dmg = 0
 
-    # material
-    if mat in target.resistance["resist"]:
-        dmg = dmg - target.resistance["resist"][mat]
-        if dmg < 0:
-            dmg = 0
-    elif mat in target.resistance["weak"]:
-        print("weak to material", dmg)
-        dmg = dmg + target.resistance["weak"][mat]
-        print(target.resistance["weak"][mat])
-        print(dmg)
-    elif mat in target.resistance["immune"]:
-        dmg = 0
+    dmg_list = [dmg_type.lower(), "all-damage", mat]
+
+    for item in dmg_list:  # This is completely rewritten. It might be broken
+        if item in target.resistance.keys():
+            if "r" in target.resistance[item]:
+                if type(target.resistance[item]["r"]) == dict:
+                    if mat in target.resistance[item]["r"]["except"]:
+                        pass
+                    else:
+                        dmg = dmg - target.resistance[item]["r"]["value"]
+                else:
+                    dmg = dmg - target.resistance[item]["r"]
+                if dmg < 0:
+                    dmg = 0
+
+            if "w" in target.resistance[item]:
+                if type(target.resistance[item]["w"]) == dict:
+                    if mat in target.resistance[item]["w"]["except"]:
+                        pass
+                    else:
+                        dmg = dmg + target.resistance[item]["w"]["value"]
+                else:
+                    dmg = dmg + target.resistance[item]["w"]
+
+            if "i" in target.resistance[item]:
+                if type(target.resistance[item]["i"]) == dict:
+                    if mat in target.resistance[item]["i"]["except"]:
+                        pass
+                    else:
+                        dmg = 0
+                else:
+                    dmg = 0
 
     return dmg
 

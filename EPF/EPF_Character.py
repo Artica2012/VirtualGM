@@ -725,67 +725,67 @@ class EPF_Character(Character):
                     stable = item["stable"]
 
         # Write the condition to the table
-        # try:
-        if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
-            # print(f"Writing Condition: {title}")
-            async with session.begin():
-                condition = Condition(
-                    character_id=self.id,
-                    title=title,
-                    number=number,
-                    counter=counter,
-                    auto_increment=auto_decrement,
-                    time=False,
-                    flex=flex,
-                    action=data,
-                    visible=visible,
-                    target=target_id,
-                    stable=stable,
-                    value=value,
-                )
-                session.add(condition)
-            await session.commit()
-            if update:
-                await self.update()
-            return True
+        try:
+            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+                # print(f"Writing Condition: {title}")
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=number,
+                        counter=counter,
+                        auto_increment=auto_decrement,
+                        time=False,
+                        flex=flex,
+                        action=data,
+                        visible=visible,
+                        target=target_id,
+                        stable=stable,
+                        value=value,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
 
-        else:  # If its time based, then calculate the end time, before writing it
-            current_time = await get_time(self.ctx, self.engine)
-            if unit == "Minute":
-                end_time = current_time + datetime.timedelta(minutes=number)
-            elif unit == "Hour":
-                end_time = current_time + datetime.timedelta(hours=number)
-            else:
-                end_time = current_time + datetime.timedelta(days=number)
+            else:  # If its time based, then calculate the end time, before writing it
+                current_time = await get_time(self.ctx, self.engine)
+                if unit == "Minute":
+                    end_time = current_time + datetime.timedelta(minutes=number)
+                elif unit == "Hour":
+                    end_time = current_time + datetime.timedelta(hours=number)
+                else:
+                    end_time = current_time + datetime.timedelta(days=number)
 
-            timestamp = end_time.timestamp()
+                timestamp = end_time.timestamp()
 
-            async with session.begin():
-                condition = Condition(
-                    character_id=self.id,
-                    title=title,
-                    number=timestamp,
-                    counter=counter,
-                    auto_increment=True,
-                    time=True,
-                    action=data,
-                    visible=visible,
-                    target=target_id,
-                    stable=stable,
-                    value=value,
-                )
-                session.add(condition)
-            await session.commit()
-            if update:
-                await self.update()
-            return True
+                async with session.begin():
+                    condition = Condition(
+                        character_id=self.id,
+                        title=title,
+                        number=timestamp,
+                        counter=counter,
+                        auto_increment=True,
+                        time=True,
+                        action=data,
+                        visible=visible,
+                        target=target_id,
+                        stable=stable,
+                        value=value,
+                    )
+                    session.add(condition)
+                await session.commit()
+                if update:
+                    await self.update()
+                return True
 
-        # except NoResultFound:
-        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
-        #     return False
-        # except Exception as e:
-        #     logging.warning(f"set_cc: {e}")
-        #     return False
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"set_cc: {e}")
+            return False
 
     # Delete CC
     async def delete_cc(self, condition):
@@ -834,7 +834,6 @@ class EPF_Character(Character):
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         try:
             updated_resistance = self.resistance
-            # print(updated_resistance)
             if amount == 0:
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
@@ -848,7 +847,7 @@ class EPF_Character(Character):
                 result = await self.set_cc(item, True, amount, "Round", False, data=condition_string, visible=False)
 
             await self.update()
-            # print(self.resistance)
+
             return True
         except Exception:
             return False
@@ -856,32 +855,25 @@ class EPF_Character(Character):
     async def show_resistance(self):
         embeds = []
 
-        resists = ""
-        for key, value in self.resistance["resist"].items():
-            resists += f"{key.title()}: {value}\n"
-        resist_embed = discord.Embed(
-            title="Resistances",
-            description=resists,
-        )
-        embeds.append(resist_embed)
+        for key in self.resistance.keys():
+            try:
+                resist_string = ""
+                for type in self.resistance[key].keys():
+                    if type == "r":
+                        resist_string += f"Resistance: {self.resistance[key][type]}\n"
+                    elif type == "w":
+                        resist_string += f"Weakness: {self.resistance[key][type]}\n"
+                    elif type == "i":
+                        resist_string += f"Immune\n"
 
-        weak = ""
-        for key, value in self.resistance["weak"].items():
-            weak += f"{key.title()}: {value}\n"
-        weak_embed = discord.Embed(
-            title="Weaknesses",
-            description=weak,
-        )
-        embeds.append(weak_embed)
+                resist_embed = discord.Embed(
+                    title=key.title(),
+                    description=resist_string,
+                )
+                embeds.append(resist_embed)
+            except Exception:
+                pass
 
-        immune = ""
-        for key, value in self.resistance["immune"].items():
-            immune += f"{key.title()}\n"
-        immune_embed = discord.Embed(
-            title="Immunities",
-            description=immune,
-        )
-        embeds.append(immune_embed)
         return embeds
 
     async def change_hp(self, amount: int, heal: bool, post=True):
@@ -1967,11 +1959,12 @@ start: phrase+
 
 phrase: value+ break
 
-value: WORD [SIGNED_INT | VARIABLE ]  SPECIFIER         -> skill_bonus
+value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                 -> init_skill
     | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                      -> temp_hp
-    | WORD SPECIFIER NUMBER                             -> resistance
+    | WORD SPECIFIER NUMBER? ";"?                        -> resistance
+    | WORD SPECIFIER NUMBER? "e" WORD ";"?               -> resistance_w_exception
     | "stable" NUMBER?                                  -> stable
     | "value" NUMBER                                    -> set_value
     | WORD NUMBER?                                      -> new_condition
@@ -2141,7 +2134,7 @@ async def process_condition_tree(
             pass
 
         elif branch.data == "resistance":
-            temp = {}
+            temp = {"value": 0}
             resistance_data = {}
 
             for item in branch.children:
@@ -2150,7 +2143,8 @@ async def process_condition_tree(
                 elif item.type == "SPECIFIER":
                     temp["specifier"] = item.value
                 elif item.type == "NUMBER":
-                    temp["value"] = item.value
+                    temp["value"] = int(item.value)
+
             resistance_data[temp["word"]] = {temp["specifier"]: temp["value"]}
 
             if temp["word"] in resistances.keys():
@@ -2161,6 +2155,38 @@ async def process_condition_tree(
                     resistances[temp["word"]][temp["specifier"]] = temp["value"]
             else:
                 resistances[temp["word"]] = {temp["specifier"]: temp["value"]}
+
+        elif branch.data == "resistance_w_exception":
+            temp = {"value": 0}
+            resistance_data = {}
+            for x, item in enumerate(branch.children):
+                if item.type == "WORD":
+                    if x == 0:
+                        temp["word"] = item.value
+                    else:
+                        temp["exception"] = item.value
+                elif item.type == "SPECIFIER":
+                    temp["specifier"] = item.value
+                elif item.type == "NUMBER":
+                    temp["value"] = int(item.value)
+
+            resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
+            print("resistance data", resistance_data)
+
+            if temp["word"] in resistances.keys():
+                if temp["specifier"] in resistances[temp["word"]].keys():
+                    if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
+                        resistances[temp["word"]][temp["specifier"]] = {
+                            "value": temp["value"],
+                            "except": temp["exception"],
+                        }
+                else:
+                    resistances[temp["word"]][temp["specifier"]] = {"value": temp["value"], "except": temp["exception"]}
+            else:
+                resistances[temp["word"]] = resistance_data[temp["word"]]
+        print(bonuses)
+        print(resistances)
+
     return bonuses, resistances
 
 
