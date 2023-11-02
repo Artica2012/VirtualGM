@@ -75,8 +75,7 @@ class TimekeeperCog(commands.Cog):
 
             if result:
                 await ctx.respond(
-                    f"Time advanced to by {amount} {unit}(s). New time is:"
-                    f" {await output_datetime(ctx, engine, self.bot)}"
+                    f"Time advanced by {amount} {unit}(s). New time is: {await output_datetime(ctx, engine, self.bot)}"
                 )
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 await Tracker_Model.check_cc()

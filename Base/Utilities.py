@@ -12,12 +12,27 @@ from error_handling_reporting import error_not_initialized, ErrorReport
 
 
 class Utilities:
+    """
+    Utilites Class. Contains methods for adding and copying characters.
+    """
+
     def __init__(self, ctx, guild, engine):
         self.ctx = ctx
         self.guild = guild
         self.engine = engine
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
+        """
+        Adds a character into the database.
+
+        :param bot:
+        :param name: string - Needs to be unique
+        :param hp: - Integer
+        :param player_bool: boolean
+        :param init: string
+        :param image: string - Link
+        :return: boolean - True for sucess, false for failure
+        """
         logging.info("add_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
