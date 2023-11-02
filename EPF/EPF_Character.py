@@ -1963,8 +1963,8 @@ value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                 -> init_skill
     | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                      -> temp_hp
-    | WORD SPECIFIER NUMBER? ";"?                        -> resistance
-    | WORD SPECIFIER NUMBER? "e" WORD ";"?               -> resistance_w_exception
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                        -> resistance
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?               -> resistance_w_exception
     | "stable" NUMBER?                                  -> stable
     | "value" NUMBER                                    -> set_value
     | WORD NUMBER?                                      -> new_condition
@@ -2141,7 +2141,7 @@ async def process_condition_tree(
             resistance_data = {}
 
             for item in branch.children:
-                if item.type == "WORD":
+                if item.type == "WORD" or item.type == "COMBO_WORD":
                     temp["word"] = item.value
                 elif item.type == "SPECIFIER":
                     temp["specifier"] = item.value
@@ -2163,7 +2163,7 @@ async def process_condition_tree(
             temp = {"value": 0}
             resistance_data = {}
             for x, item in enumerate(branch.children):
-                if item.type == "WORD":
+                if item.type == "WORD" or item.type == "COMBO_WORD":
                     if x == 0:
                         temp["word"] = item.value
                     else:

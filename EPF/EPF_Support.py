@@ -144,6 +144,7 @@ class EPF_ConditionTable:
             db.Column("target", db.INTEGER()),
             db.Column("stable", db.BOOLEAN(), default=False),
             db.Column("value", db.INTEGER()),
+            db.Column("eot_parse", db.BOOLEAN(), default=False),
         )
         return con
 

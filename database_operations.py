@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Base, get_condition
+from database_models import Global, Base
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -100,33 +100,35 @@ async def update_con_table():
 
     for row in guild:
         try:
-            if row.system == "EPF":
+            if row.system == "EPF" or row.system == "STF" or row.system == "RED":
                 print(f"Updating {row.id}")
                 alter_string = text(f'ALTER TABLE "Condition_{row.id}" ADD stable BOOLEAN')
                 alter_string_2 = text(f'ALTER TABLE "Condition_{row.id}" ADD value INTEGER')
+                alter_string_3 = text(f'ALTER TABLE "Condition_{row.id}" ADD eot_parse BOOLEAN')
                 async with async_session() as session:
-                    await session.execute(alter_string)
-                    await session.execute(alter_string_2)
-                    await session.commit()
+                    try:
+                        await session.execute(alter_string)
+                        await session.commit()
+                    except Exception as e:
+                        print("#1 fail", e)
+
+                async with async_session() as session:
+                    try:
+                        await session.execute(alter_string_2)
+                        await session.commit()
+                    except Exception as e:
+                        print("#2 fail", e)
+
+                async with async_session() as session:
+                    try:
+                        await session.execute(alter_string_3)
+                        await session.commit()
+                    except Exception as e:
+                        print("#3 fail", e)
+                    # await session.commit()
         except Exception as e:
             print(f"{row.id}, {e}")
 
-    for row in guild:
-        try:
-            Condition = await get_condition(None, engine, id=row.id)
-            async with async_session() as session:
-                result = await session.execute(select(Condition))
-                con_list = result.scalars().all()
-            for condition_row in con_list:
-                async with async_session() as session:
-                    result = await session.execute(select(Condition).where(Condition.id == condition_row.id))
-                    working_con = result.scalars().one()
-                    if working_con.target is None:
-                        working_con.target = working_con.character_id
-                        await session.commit()
-                        total += 1
-        except Exception as e:
-            logging.error(f"{row.id}: {e}")
     logging.warning(f"Update Complete. {total} conditions updated")
 
 
