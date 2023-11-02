@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -48,7 +48,7 @@ async def get_character(char_name, ctx, guild=None, engine=None):
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         try:
             async with async_session() as session:
-                result = await session.execute(select(tracker).where(tracker.name == char_name))
+                result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
                 character = result.scalars().one()
             return Character(char_name, ctx, engine, character, guild=guild)
         except NoResultFound:
