@@ -360,10 +360,9 @@ class EPF_Character(Character):
         weapon = self.character_model.attacks[item]
 
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
-        # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
-        print(f"dmg die. {weapon['die_num']}")
+        # print(f"dmg die. {weapon['die_num']}")
         die_mod = await bonus_calc(int(weapon["die_num"]), "dmg_die", self.character_model.bonuses, item_name=item)
-        print(die_mod)
+        # print(die_mod)
 
         dmg_mod = 0
         match weapon["stat"]:
@@ -477,22 +476,24 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
 
+        spell_attack_bonus = await bonus_calc(0, "spell_attack", self.character_model.bonuses)
+
         if spell_data["tradition"] == "NPC":
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"]
+                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
-                return attk_stat + self.character_model.level + spell_data["dc"]
+                return attk_stat + self.character_model.level + spell_data["dc"] + spell_attack_bonus
         else:
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"]
+                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
-                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
+                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
-        # print(f"Flat Bonus: {flat_bonus}!")
-        # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
-        # print(spell_data)
+        spell_dmg_bonus = await bonus_calc(0, "spell_dmg", self.character_model.bonuses)
+        if spell_dmg_bonus != 0:
+            flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
         dmg_dict = {}
         dmg_string = ""
         for x, key in enumerate(spell_data["damage"]):
@@ -518,7 +519,9 @@ class EPF_Character(Character):
                         mod_stat = 0
 
                 dmg_dict[key] = {
-                    "dmg_string": f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}",
+                    "dmg_string": (
+                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                    ),
                     "dmg_type": dmg_type,
                 }
 
@@ -688,93 +691,144 @@ class EPF_Character(Character):
                 return False
 
         # Process Data
-        # print(data)
-        if data == "":
-            # print(title)
-            if title in EPF_Conditions:
-                data = EPF_Conditions[title]
-                # print(data)
-        # print(data)
 
+        if title in EPF_Conditions:
+            if data != "":
+                if data[-1] != ",":
+                    data = data + ","
+            data = data + " " + EPF_Conditions[title]
+
+        value = number
+        stable = False
         if data != "":
             action = data.strip()
             action = action.lower()
+            data_list = []
+
             try:
                 tree = await condition_parser(action)
-                await first_pass_process(self.ctx, tree, self.char_name)
+                data_list.append(await first_pass_process(self.ctx, tree, self.char_name))
             except Exception:
                 processed_input = action.split(",")
+
                 for item in processed_input:
                     try:
                         tree = await condition_parser(item)
-                        await first_pass_process(self.ctx, tree, self.char_name)
+                        data_list.append(await first_pass_process(self.ctx, tree, self.char_name))
                     except Exception as e:
                         print(f"Bad input: {item}: {e}")
+            for item in data_list:
+                if "value" in item.keys():
+                    value = item["value"]
+
+                if "stable" in item.keys():
+                    stable = item["stable"]
 
         # Write the condition to the table
-        try:
-            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
-                # print(f"Writing Condition: {title}")
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=number,
-                        counter=counter,
-                        auto_increment=auto_decrement,
-                        time=False,
-                        flex=flex,
-                        action=data,
-                        visible=visible,
-                        target=target_id,
-                    )
-                    session.add(condition)
-                await session.commit()
-                if update:
-                    await self.update()
-                return True
+        # try:
+        if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+            # print(f"Writing Condition: {title}")
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_decrement,
+                    time=False,
+                    flex=flex,
+                    action=data,
+                    visible=visible,
+                    target=target_id,
+                    stable=stable,
+                    value=value,
+                )
+                session.add(condition)
+            await session.commit()
+            if update:
+                await self.update()
+            return True
 
-            else:  # If its time based, then calculate the end time, before writing it
-                current_time = await get_time(self.ctx, self.engine)
-                if unit == "Minute":
-                    end_time = current_time + datetime.timedelta(minutes=number)
-                elif unit == "Hour":
-                    end_time = current_time + datetime.timedelta(hours=number)
-                else:
-                    end_time = current_time + datetime.timedelta(days=number)
+        else:  # If its time based, then calculate the end time, before writing it
+            current_time = await get_time(self.ctx, self.engine)
+            if unit == "Minute":
+                end_time = current_time + datetime.timedelta(minutes=number)
+            elif unit == "Hour":
+                end_time = current_time + datetime.timedelta(hours=number)
+            else:
+                end_time = current_time + datetime.timedelta(days=number)
 
-                timestamp = end_time.timestamp()
+            timestamp = end_time.timestamp()
 
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=timestamp,
-                        counter=counter,
-                        auto_increment=True,
-                        time=True,
-                        action=data,
-                        visible=visible,
-                        target=target_id,
-                    )
-                    session.add(condition)
-                await session.commit()
-                if update:
-                    await self.update()
-                return True
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=timestamp,
+                    counter=counter,
+                    auto_increment=True,
+                    time=True,
+                    action=data,
+                    visible=visible,
+                    target=target_id,
+                    stable=stable,
+                    value=value,
+                )
+                session.add(condition)
+            await session.commit()
+            if update:
+                await self.update()
+            return True
 
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"set_cc: {e}")
-            return False
+        # except NoResultFound:
+        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        #     return False
+        # except Exception as e:
+        #     logging.warning(f"set_cc: {e}")
+        #     return False
 
     # Delete CC
     async def delete_cc(self, condition):
         result = await super().delete_cc(condition)
         await self.update()
         return result
+
+    async def edit_cc(self, condition: str, value: int, **kwargs):
+        """
+        Edits the value of a condition associated with the character
+        :param condition: string - Condition name
+        :param value: integer - Value to set
+        :return: boolean - True for success, False for failure
+        """
+        logging.info("edit_cc")
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition).where(Condition.character_id == self.id).where(Condition.title == condition)
+                )
+                condition = result.scalars().one()
+
+                if condition.time:
+                    await self.ctx.send_followup(
+                        "Unable to edit time based conditions. Try again in a future update.", ephemeral=True
+                    )
+                    return False
+                else:
+                    condition.number = value
+                    if condition.stable is not True:
+                        condition.value = value
+
+                    await session.commit()
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"edit_cc: {e}")
+            return False
 
     async def update_resistance(self, weak, item, amount):
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
@@ -1419,204 +1473,204 @@ async def calculate(ctx, engine, char_name, guild=None):
     # print(bonuses)
 
     async with async_session() as session:
-        # try:
-        query = await session.execute(select(PF2_tracker).where(func.lower(PF2_tracker.name) == char_name.lower()))
-        character = query.scalars().one()
-        if "Untrained Improvisation" in character.feats:
-            ui = True
-        else:
-            ui = False
+        try:
+            query = await session.execute(select(PF2_tracker).where(func.lower(PF2_tracker.name) == char_name.lower()))
+            character = query.scalars().one()
+            if "Untrained Improvisation" in character.feats:
+                ui = True
+            else:
+                ui = False
 
-        # Go through each of the items.
+            # Go through each of the items.
 
-        # Stat Mods - Do this first, because they are used in later calculations
-        character.str_mod = await ability_mod_calc(character.str, "str", bonuses)
-        character.dex_mod = await ability_mod_calc(character.dex, "dex", bonuses)
-        character.con_mod = await ability_mod_calc(character.con, "con", bonuses)
-        character.itl_mod = await ability_mod_calc(character.itl, "itl", bonuses)
-        character.wis_mod = await ability_mod_calc(character.wis, "wis", bonuses)
-        character.cha_mod = await ability_mod_calc(character.cha, "cha", bonuses)
+            # Stat Mods - Do this first, because they are used in later calculations
+            character.str_mod = await ability_mod_calc(character.str, "str", bonuses)
+            character.dex_mod = await ability_mod_calc(character.dex, "dex", bonuses)
+            character.con_mod = await ability_mod_calc(character.con, "con", bonuses)
+            character.itl_mod = await ability_mod_calc(character.itl, "itl", bonuses)
+            character.wis_mod = await ability_mod_calc(character.wis, "wis", bonuses)
+            character.cha_mod = await ability_mod_calc(character.cha, "cha", bonuses)
 
-        # Saves
-        character.fort_mod = await save_mod_calc(
-            character.con_mod, "fort", character.fort_prof, character.level, bonuses
-        )
-        character.reflex_mod = await save_mod_calc(
-            character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
-        )
-        character.will_mod = await save_mod_calc(
-            character.wis_mod, "wis", character.will_prof, character.level, bonuses
-        )
+            # Saves
+            character.fort_mod = await save_mod_calc(
+                character.con_mod, "fort", character.fort_prof, character.level, bonuses
+            )
+            character.reflex_mod = await save_mod_calc(
+                character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
+            )
+            character.will_mod = await save_mod_calc(
+                character.wis_mod, "wis", character.will_prof, character.level, bonuses
+            )
 
-        # Skills
-        character.athletics_mod = await skill_mod_calc(
-            character.str_mod, "athletics", character.athletics_prof, character.level, bonuses, ui
-        )
-        character.acrobatics_mod = await skill_mod_calc(
-            character.dex_mod, "acrobatics", character.acrobatics_prof, character.level, bonuses, ui
-        )
-        character.arcana_mod = await skill_mod_calc(
-            character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
-        )
-        character.crafting_mod = await skill_mod_calc(
-            character.itl_mod, "crafting", character.crafting_prof, character.level, bonuses, ui
-        )
-        character.deception_mod = await skill_mod_calc(
-            character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
-        )
-        character.diplomacy_mod = await skill_mod_calc(
-            character.cha_mod, "diplomacy", character.diplomacy_prof, character.level, bonuses, ui
-        )
-        character.intimidation_mod = await skill_mod_calc(
-            character.cha_mod, "intimidation", character.intimidation_prof, character.level, bonuses, ui
-        )
-        character.medicine_mod = await skill_mod_calc(
-            character.wis_mod, "medicine", character.medicine_prof, character.level, bonuses, ui
-        )
-        character.nature_mod = await skill_mod_calc(
-            character.wis_mod, "nature", character.nature_prof, character.level, bonuses, ui
-        )
-        character.occultism_mod = await skill_mod_calc(
-            character.itl_mod, "occultism", character.occultism_prof, character.level, bonuses, ui
-        )
-        character.perception_mod = await skill_mod_calc(
-            character.wis_mod, "perception", character.perception_prof, character.level, bonuses, ui
-        )
-        character.performance_mod = await skill_mod_calc(
-            character.cha_mod, "performance", character.performance_prof, character.level, bonuses, ui
-        )
-        character.religion_mod = await skill_mod_calc(
-            character.wis_mod, "religion", character.religion_prof, character.level, bonuses, ui
-        )
-        character.society_mod = await skill_mod_calc(
-            character.itl_mod, "society", character.society_prof, character.level, bonuses, ui
-        )
-        character.stealth_mod = await skill_mod_calc(
-            character.dex_mod, "stealth", character.stealth_prof, character.level, bonuses, ui
-        )
-        character.survival_mod = await skill_mod_calc(
-            character.wis_mod, "survival", character.survival_prof, character.level, bonuses, ui
-        )
-        character.thievery_mod = await skill_mod_calc(
-            character.dex_mod, "thievery", character.thievery_prof, character.level, bonuses, ui
-        )
+            # Skills
+            character.athletics_mod = await skill_mod_calc(
+                character.str_mod, "athletics", character.athletics_prof, character.level, bonuses, ui
+            )
+            character.acrobatics_mod = await skill_mod_calc(
+                character.dex_mod, "acrobatics", character.acrobatics_prof, character.level, bonuses, ui
+            )
+            character.arcana_mod = await skill_mod_calc(
+                character.itl_mod, "arcana", character.arcana_prof, character.level, bonuses, ui
+            )
+            character.crafting_mod = await skill_mod_calc(
+                character.itl_mod, "crafting", character.crafting_prof, character.level, bonuses, ui
+            )
+            character.deception_mod = await skill_mod_calc(
+                character.cha_mod, "deception", character.deception_prof, character.level, bonuses, ui
+            )
+            character.diplomacy_mod = await skill_mod_calc(
+                character.cha_mod, "diplomacy", character.diplomacy_prof, character.level, bonuses, ui
+            )
+            character.intimidation_mod = await skill_mod_calc(
+                character.cha_mod, "intimidation", character.intimidation_prof, character.level, bonuses, ui
+            )
+            character.medicine_mod = await skill_mod_calc(
+                character.wis_mod, "medicine", character.medicine_prof, character.level, bonuses, ui
+            )
+            character.nature_mod = await skill_mod_calc(
+                character.wis_mod, "nature", character.nature_prof, character.level, bonuses, ui
+            )
+            character.occultism_mod = await skill_mod_calc(
+                character.itl_mod, "occultism", character.occultism_prof, character.level, bonuses, ui
+            )
+            character.perception_mod = await skill_mod_calc(
+                character.wis_mod, "perception", character.perception_prof, character.level, bonuses, ui
+            )
+            character.performance_mod = await skill_mod_calc(
+                character.cha_mod, "performance", character.performance_prof, character.level, bonuses, ui
+            )
+            character.religion_mod = await skill_mod_calc(
+                character.wis_mod, "religion", character.religion_prof, character.level, bonuses, ui
+            )
+            character.society_mod = await skill_mod_calc(
+                character.itl_mod, "society", character.society_prof, character.level, bonuses, ui
+            )
+            character.stealth_mod = await skill_mod_calc(
+                character.dex_mod, "stealth", character.stealth_prof, character.level, bonuses, ui
+            )
+            character.survival_mod = await skill_mod_calc(
+                character.wis_mod, "survival", character.survival_prof, character.level, bonuses, ui
+            )
+            character.thievery_mod = await skill_mod_calc(
+                character.dex_mod, "thievery", character.thievery_prof, character.level, bonuses, ui
+            )
 
-        # Casting, Armor and Attacks
-        key_ability = 0
+            # Casting, Armor and Attacks
+            key_ability = 0
 
-        match character.key_ability:
-            case "str":
-                key_ability = character.str_mod
-            case "dex":
-                key_ability = character.dex_mod
-            case "con":
-                key_ability = character.con_mod
-            case "int":
-                key_ability = character.itl_mod
-            case "wis":
-                key_ability = character.wis_mod
-            case "cha":
-                key_ability = character.cha_mod
+            match character.key_ability:
+                case "str":
+                    key_ability = character.str_mod
+                case "dex":
+                    key_ability = character.dex_mod
+                case "con":
+                    key_ability = character.con_mod
+                case "int":
+                    key_ability = character.itl_mod
+                case "wis":
+                    key_ability = character.wis_mod
+                case "cha":
+                    key_ability = character.cha_mod
 
-        character.arcane_mod = await skill_mod_calc(
-            key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
-        )
-        character.divine_mod = await skill_mod_calc(
-            key_ability, "divine", character.divine_prof, character.level, bonuses, False
-        )
-        character.occult_mod = await skill_mod_calc(
-            key_ability, "occult", character.arcane_prof, character.level, bonuses, False
-        )
-        character.primal_mod = await skill_mod_calc(
-            key_ability, "primal", character.arcane_prof, character.level, bonuses, False
-        )
+            character.arcane_mod = await skill_mod_calc(
+                key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
+            )
+            character.divine_mod = await skill_mod_calc(
+                key_ability, "divine", character.divine_prof, character.level, bonuses, False
+            )
+            character.occult_mod = await skill_mod_calc(
+                key_ability, "occult", character.arcane_prof, character.level, bonuses, False
+            )
+            character.primal_mod = await skill_mod_calc(
+                key_ability, "primal", character.arcane_prof, character.level, bonuses, False
+            )
 
-        character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
-        character.class_dc = await skill_mod_calc(
-            key_ability, "class_dc", character.class_prof, character.level, bonuses, False
-        )
+            character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
+            character.class_dc = await skill_mod_calc(
+                key_ability, "class_dc", character.class_prof, character.level, bonuses, False
+            )
 
-        init_skill = character.perception_mod
+            init_skill = character.perception_mod
 
-        if "other" in bonuses.keys():
-            if "init_skill" in bonuses["other"].keys():
-                match bonuses["other"]["init_skill"]:
-                    case "perception":
-                        init_skill = character.perception_mod
-                    case "acrobatics":
-                        init_skill = character.acrobatics_mod
-                    case "arcana":
-                        init_skill = character.arcana_mod
-                    case "athletics":
-                        init_skill = character.athletics_mod
-                    case "crafting":
-                        init_skill = character.crafting_mod
-                    case "deception":
-                        init_skill = character.deception_mod
-                    case "diplomacy":
-                        init_skill = character.diplomacy_mod
-                    case "intimidation":
-                        init_skill = character.intimidation_mod
-                    case "medicine":
-                        init_skill = character.medicine_mod
-                    case "nature":
-                        init_skill = character.nature_mod
-                    case "occultism":
-                        init_skill = character.occultism_mod
-                    case "performance":
-                        init_skill = character.performance_mod
-                    case "religion":
-                        init_skill = character.religion_mod
-                    case "society":
-                        init_skill = character.society_mod
-                    case "stealth":
-                        init_skill = character.stealth_mod
-                    case "survival":
-                        init_skill = character.survival_mod
-                    case "thievery":
-                        init_skill = character.thievery_mod
-                    case _:
-                        init_skill = character.perception_mod
+            if "other" in bonuses.keys():
+                if "init_skill" in bonuses["other"].keys():
+                    match bonuses["other"]["init_skill"]:
+                        case "perception":
+                            init_skill = character.perception_mod
+                        case "acrobatics":
+                            init_skill = character.acrobatics_mod
+                        case "arcana":
+                            init_skill = character.arcana_mod
+                        case "athletics":
+                            init_skill = character.athletics_mod
+                        case "crafting":
+                            init_skill = character.crafting_mod
+                        case "deception":
+                            init_skill = character.deception_mod
+                        case "diplomacy":
+                            init_skill = character.diplomacy_mod
+                        case "intimidation":
+                            init_skill = character.intimidation_mod
+                        case "medicine":
+                            init_skill = character.medicine_mod
+                        case "nature":
+                            init_skill = character.nature_mod
+                        case "occultism":
+                            init_skill = character.occultism_mod
+                        case "performance":
+                            init_skill = character.performance_mod
+                        case "religion":
+                            init_skill = character.religion_mod
+                        case "society":
+                            init_skill = character.society_mod
+                        case "stealth":
+                            init_skill = character.stealth_mod
+                        case "survival":
+                            init_skill = character.survival_mod
+                        case "thievery":
+                            init_skill = character.thievery_mod
+                        case _:
+                            init_skill = character.perception_mod
 
-        character.init_string = f"1d20+{await bonus_calc(init_skill, 'init', bonuses)}"
+            character.init_string = f"1d20+{await bonus_calc(init_skill, 'init', bonuses)}"
 
-        character.bonuses = bonuses
-        character.resistance = resistance
-        print(character.bonuses)
+            character.bonuses = bonuses
+            character.resistance = resistance
+            # print(character.bonuses)
 
-        macros = []
-        for item in character.attacks.keys():
-            # print(item)
-            macros.append(item)
-        # for item in character.spells.keys():
-        #     macros.append(f"Spell Attack: {item['name']}")
-        macros.extend(PF2_skills)
+            macros = []
+            for item in character.attacks.keys():
+                # print(item)
+                macros.append(item)
+            # for item in character.spells.keys():
+            #     macros.append(f"Spell Attack: {item['name']}")
+            macros.extend(PF2_skills)
 
-        lore_list = character.lores.split(";")
-        # print(lore_list)
-        for item in lore_list:
-            parsed_item = item.split(",")
-            # print(parsed_item)
-            if len(parsed_item) > 1:
-                # print(parsed_item[0])
-                macros.append(f"Lore: {parsed_item[0]}")
+            lore_list = character.lores.split(";")
+            # print(lore_list)
+            for item in lore_list:
+                parsed_item = item.split(",")
+                # print(parsed_item)
+                if len(parsed_item) > 1:
+                    # print(parsed_item[0])
+                    macros.append(f"Lore: {parsed_item[0]}")
 
-        Macro = await get_macro(ctx, engine, id=guild.id)
-        async with async_session() as macro_session:
-            result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
-            macro_list = result.scalars().all()
-        macros.extend(macro_list)
+            Macro = await get_macro(ctx, engine, id=guild.id)
+            async with async_session() as macro_session:
+                result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
+                macro_list = result.scalars().all()
+            macros.extend(macro_list)
 
-        macro_string = ""
-        for item in macros:
-            macro_string += f"{item},"
-        character.macros = macro_string
-        # print(macro_string)
+            macro_string = ""
+            for item in macros:
+                macro_string += f"{item},"
+            character.macros = macro_string
+            # print(macro_string)
 
-        await session.commit()
+            await session.commit()
 
-        # except Exception as e:
-        #     logging.warning(f"pf2 - enchanced character importer: {e}")
+        except Exception as e:
+            logging.warning(f"pf2 - enchanced character importer: {e}")
 
 
 async def ability_mod_calc(base: int, item: str, bonuses):
@@ -1685,195 +1739,6 @@ async def bonus_calc(base, skill, bonuses, item_name=""):
                 mod = mod + bonuses[skill][key]
 
     return mod
-
-
-async def parse_bonuses(ctx, engine, char_name: str, guild=None):
-    guild = await get_guild(ctx, guild=guild)
-    Characte_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
-    # Database boilerplate
-    if guild is not None:
-        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-    else:
-        PF2_tracker = await get_EPF_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    try:
-        async with async_session() as session:
-            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
-            char = result.scalars().one()
-
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == char))
-            conditions = result.scalars().all()
-    except NoResultFound:
-        conditions = []
-
-    bonuses = {
-        "circumstances_pos": {},
-        "status_pos": {},
-        "item_pos": {},
-        "circumstances_neg": {},
-        "status_neg": {},
-        "item_neg": {},
-    }
-    resistances = {"resist": {}, "weak": {}, "immune": {}}
-
-    for condition in conditions:
-        await asyncio.sleep(0)
-        # Get the data from the conditions
-        # Write the bonuses into the two dictionaries
-        # print(f"{condition.title}, {condition.action}")
-
-        data: str = condition.action
-        data_list = data.split(",")
-        for item in data_list:
-            try:
-                parsed = item.strip().split(" ")
-                # initiative stat
-                print(parsed)
-                print(parsed[0])
-                # if parsed[0] == 'init-skill':
-                #     print(parsed[0].lower())
-                #     print(True)
-                # else:
-                #     print(False)
-
-                if parsed[0] == "init-skill":
-                    # print("init skill found")
-                    bonuses["circumstances_pos"]["init_skill"] = parsed[1].lower()
-                    # print(bonuses)
-
-                # Conditions adding conditions? Crazy
-                # print(parsed[0].title())
-                if parsed[0].title() in EPF_Conditions.keys():
-                    # print("Condition recognized")
-                    if parsed[0].title() not in await Characte_Model.conditions():
-                        # print(f"Parsed: {parsed}")
-                        if len(parsed) > 1:
-                            num = int(parsed[1])
-                        else:
-                            num = 0
-                        await Characte_Model.set_cc(parsed[0].title(), False, num, "Round", False)
-                elif parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                    parsed = item.strip().split(" ", 4)
-                    print(parsed)
-                    if parsed[2][-1] == ";":
-                        parsed[2] = parsed[2][:-1]
-                    parsed[0] = parsed[0].lower()
-                    match parsed[1]:
-                        case "r":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["resist"][parsed[0]] = {
-                                    "exceptions": exception_list,
-                                    "value": int(parsed[2]),
-                                }
-                            else:
-                                resistances["resist"][parsed[0]] = int(parsed[2])
-                        case "w":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["weak"][parsed[0]] = {"exceptions": exception_list, "value": int(parsed[2])}
-                            else:
-                                resistances["weak"][parsed[0]] = int(parsed[2])
-                        case "i":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["immune"][parsed[0]] = {"exceptions": exception_list, "value": 1}
-                            else:
-                                resistances["immune"][parsed[0]] = 1
-                else:
-                    item_name = ""
-                    specific_weapon = ""
-
-                    # print(parsed[0], parsed[0][0])
-                    if parsed[0][0] == '"':
-                        # print("Opening Quote")
-                        for x, i in enumerate(parsed):
-                            # print(x, item)
-                            # print(item[-1])
-                            if i[-1] == '"':
-                                item_name = " ".join(parsed[0 : x + 1])
-                                item_name = item_name.strip('"')
-                                parsed = parsed[x + 1 :]
-                                break
-                    # print(item_name)
-                    # print(parsed)
-                    if item_name != "":
-                        print(item_name)
-                        if item_name.title() in await Characte_Model.attack_list():
-                            print("Match!")
-                            specific_weapon = f"{item_name},"
-                        else:
-                            parsed = []
-                    # print(specific_weapon)
-
-                    key = f"{specific_weapon}{parsed[0]}".lower()
-                    if parsed[1][1:] == "X":
-                        value = int(condition.number)
-                    else:
-                        try:
-                            value = int(parsed[1][1:])
-                        except ValueError:
-                            value = int(parsed[1])
-
-                    if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                        if key in bonuses["status_pos"]:
-                            if value > bonuses["status_pos"][key]:
-                                bonuses["status_pos"][key] = value
-                        else:
-                            bonuses["status_pos"][key] = value
-                    elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                        if key in bonuses["status_neg"]:
-                            if value > bonuses["status_neg"][key]:
-                                bonuses["status_neg"][key] = value
-                        else:
-                            bonuses["status_neg"][key] = value
-                            # print(f"{key}: {bonuses['status_neg'][key]}")
-                    elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
-                        if key in bonuses["circumstances_pos"]:
-                            if value > bonuses["circumstances_pos"][key]:
-                                bonuses["circumstances_pos"][key] = value
-                        else:
-                            bonuses["circumstances_pos"][key] = value
-                    elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
-                        if key in bonuses["circumstances_neg"]:
-                            if value > bonuses["circumstances_neg"][key]:
-                                bonuses["circumstances_neg"][key] = value
-                        else:
-                            bonuses["circumstances_neg"][key] = value
-                            # print(f"{key}: {bonuses['circumstances_neg'][key]}")
-                    elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                        if key in bonuses["item_pos"]:
-                            if value > bonuses["item_pos"][key]:
-                                bonuses["item_pos"][key] = value
-                        else:
-                            bonuses["item_pos"][key] = value
-                            # print(f"{key}: {bonuses['item_pos'][key]}")
-                    elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                        if key in bonuses["item_neg"]:
-                            if value > bonuses["item_neg"][key]:
-                                bonuses["item_neg"][key] = value
-                        else:
-                            bonuses["item_neg"][key] = value
-
-            except Exception:
-                pass
-
-    # print(bonuses)
-    # print(resistances)
-    return bonuses, resistances
 
 
 class EPF_Weapon(LookupBase):
@@ -2108,6 +1973,7 @@ value: WORD [SIGNED_INT | VARIABLE ]  SPECIFIER         -> skill_bonus
     | "thp" NUMBER                                      -> temp_hp
     | WORD SPECIFIER NUMBER                             -> resistance
     | "stable" NUMBER?                                  -> stable
+    | "value" NUMBER                                    -> set_value
     | WORD NUMBER?                                      -> new_condition
 
 modifier: SIGNED_INT
@@ -2157,7 +2023,10 @@ async def process_condition_tree(
                     elif item.type == "SIGNED_INT":
                         bonus_data["value"] = int(item.value)
                     elif item.type == "VARIABLE":
-                        bonus_data["value"] = condition.number
+                        if condition.value is not None:
+                            bonus_data["value"] = condition.value
+                        else:
+                            bonus_data["value"] = condition.number
                     elif item.type == "SPECIFIER":
                         bonus_data["specifier"] = item.value
             if bonus_data["skill"] not in bonuses.keys():
@@ -2246,8 +2115,8 @@ async def process_condition_tree(
             for item in branch.children:
                 if type(item) == lark.Token:
                     if item.type == "NUMBER":
-                        number = int(item.value)
-            print(f"output: stable {stable_value}")
+                        stable_value = int(item.value)
+            # print(f"output: stable {stable_value}")
 
             if not condition.stable:
                 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -2297,6 +2166,7 @@ async def process_condition_tree(
 
 async def first_pass_process(ctx: discord.ApplicationContext, tree, character_name):
     character_model = await get_EPF_Character(character_name, ctx)
+    data = {}
     t = tree.iter_subtrees_topdown()
     for branch in t:
         if branch.data == "skill_bonus":
@@ -2308,7 +2178,18 @@ async def first_pass_process(ctx: discord.ApplicationContext, tree, character_na
         elif branch.data == "item_bonus":
             pass
         elif branch.data == "stable":
-            pass
+            stable_value = None
+            for item in branch.children:
+                if type(item) == lark.Token:
+                    if item.type == "NUMBER":
+                        stable_value = int(item.value)
+            data["stable"] = True
+            data["value"] = stable_value
+
+        elif branch.data == "set_value":
+            for item in branch.children:
+                if item.type == "NUMBER":
+                    data["value"] = int(item.value)
 
         elif branch.data == "temp_hp":
             for item in branch.children:
@@ -2316,6 +2197,7 @@ async def first_pass_process(ctx: discord.ApplicationContext, tree, character_na
 
         elif branch.data == "resistance":
             pass
+    return data
 
 
 async def parse(ctx, engine, char_name: str, guild=None):

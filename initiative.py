@@ -422,24 +422,24 @@ class InitiativeCog(commands.Cog):
             await ctx.respond("Error, Invalid Roll")
             return
 
-        # try:
-        guild = await get_guild(ctx, None)
-        model = await get_character(name, ctx, guild=guild, engine=engine)
-        if mode == "Temporary HP":
-            response = await model.add_thp(rolled_amount)
-            if response:
-                await ctx.respond(f"{rolled_amount} Temporary HP added to {name}.")
-        else:
-            if mode == "Heal":
-                heal = True
+        try:
+            guild = await get_guild(ctx, None)
+            model = await get_character(name, ctx, guild=guild, engine=engine)
+            if mode == "Temporary HP":
+                response = await model.add_thp(rolled_amount)
+                if response:
+                    await ctx.respond(f"{rolled_amount} Temporary HP added to {name}.")
             else:
-                heal = False
-            response = await model.change_hp(rolled_amount, heal)
-        # except Exception as e:
-        #     await ctx.respond("Error", ephemeral=True)
-        #     logging.warning(f"/i hp: {e}")
-        #     report = ErrorReport(ctx, "slash command /i hp", e, self.bot)
-        #     await report.report()
+                if mode == "Heal":
+                    heal = True
+                else:
+                    heal = False
+                response = await model.change_hp(rolled_amount, heal)
+        except Exception as e:
+            await ctx.respond("Error", ephemeral=True)
+            logging.warning(f"/i hp: {e}")
+            report = ErrorReport(ctx, "slash command /i hp", e, self.bot)
+            await report.report()
 
         if not response:
             await ctx.respond("Failed", ephemeral=True)
@@ -531,45 +531,45 @@ class InitiativeCog(commands.Cog):
         for item in char_list_of_lists:
             embeds = []
             for char in item:
-                try:
-                    model = await get_character(char, ctx, guild=guild, engine=engine)
-                    response = await model.set_cc(
-                        title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
-                    )
-                    if response:
-                        success = discord.Embed(
-                            title=model.char_name.title(),
-                            fields=[
-                                discord.EmbedField(
-                                    name="Success", value=f"{title} {number if number != None else ''} added."
-                                )
-                            ],
-                            color=discord.Color.blurple(),
-                        )
-                        success.set_thumbnail(url=model.pic)
-                        embeds.append(success)
-                        success_string += f"\n{char}"
-                    else:
-                        raise KeyError
-
-                except Exception as e:
-                    failure = discord.Embed(
-                        title=char.title(),
+                # try:
+                model = await get_character(char, ctx, guild=guild, engine=engine)
+                response = await model.set_cc(
+                    title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
+                )
+                if response:
+                    success = discord.Embed(
+                        title=model.char_name.title(),
                         fields=[
                             discord.EmbedField(
-                                name="Failure", value=f"{title} {number if number != None else ''} not added."
+                                name="Success", value=f"{title} {number if number != None else ''} added."
                             )
                         ],
-                        color=discord.Color.greyple(),
+                        color=discord.Color.blurple(),
                     )
-                    embeds.append(failure)
-                    logging.warning(f"/cc new: {e}")
-                    report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
-                    await report.report()
-            try:
-                await ctx.send_followup(embeds=embeds)
-            except Exception:
-                await ctx.channel.send(embeds=embeds)
+                    success.set_thumbnail(url=model.pic)
+                    embeds.append(success)
+                    success_string += f"\n{char}"
+                else:
+                    raise KeyError
+
+                # except Exception as e:
+                #     failure = discord.Embed(
+                #         title=char.title(),
+                #         fields=[
+                #             discord.EmbedField(
+                #                 name="Failure", value=f"{title} {number if number != None else ''} not added."
+                #             )
+                #         ],
+                #         color=discord.Color.greyple(),
+                #     )
+                #     embeds.append(failure)
+                #     logging.warning(f"/cc new: {e}")
+                #     report = ErrorReport(ctx, f"slash command /cc new {char}", e, self.bot)
+                #     await report.report()
+            # try:
+            await ctx.send_followup(embeds=embeds)
+            # except Exception:
+            #     await ctx.channel.send(embeds=embeds)
         Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Object.update_pinned_tracker()
 

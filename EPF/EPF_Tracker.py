@@ -4,13 +4,13 @@ import logging
 from datetime import datetime
 
 import discord
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Tracker import Tracker, get_init_list
-from database_models import get_tracker, Global
+from database_models import get_tracker, Global, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -35,6 +35,75 @@ class EPF_Tracker(Tracker):
             await super().block_advance_initiative()
         else:
             await self.EPF_advance_initiative()
+
+    async def init_con(self, current_character, before: bool):
+        """
+        This method checks conditions as initiative advances and decrements or removes them as appropriate. Internal
+        method that should be called during the initiative advancement.
+
+        :param current_character: (character model of the Character class)
+        :param before: (bool - This determines if its being called at the beginning or ending of the turn, to allow for
+            conditions that decrement at a specific portion. Pass None to decrement all appropriate conditions or for
+            subclasses (systems) that don't differentiate eg D&D 4e.
+        :return: No return value
+        """
+
+        logging.info(f"{current_character.char_name}, {before}")
+        logging.info("Decrementing Conditions")
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        # Run through the conditions on the current character
+
+        try:
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                if before is not None:
+                    char_result = await session.execute(
+                        select(Condition)
+                        .where(Condition.target == current_character.id)
+                        .where(Condition.flex == before)
+                        .where(Condition.auto_increment == true())
+                    )
+                else:
+                    char_result = await session.execute(
+                        select(Condition)
+                        .where(Condition.target == current_character.id)
+                        .where(Condition.auto_increment == true())
+                    )
+                con_list = char_result.scalars().all()
+                # print(len(con_list))
+                logging.info("BAI9: condition's retrieved")
+                # print("First Con List")
+
+            for con_row in con_list:
+                # print(con_row.title)
+                Con_Character = await self.get_char_from_id(con_row.character_id)
+                # print(Con_Character.char_name)
+                logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
+                await asyncio.sleep(0)
+                if not con_row.time:
+                    if con_row.number >= 2:
+                        await Con_Character.edit_cc(con_row.title, con_row.number - 1)
+                    else:
+                        await Con_Character.delete_cc(con_row.title)
+                        del_embed = discord.Embed(
+                            title=Con_Character.char_name,
+                            description=f"{con_row.title} removed from {Con_Character.char_name}",
+                        )
+                        del_embed.set_thumbnail(url=Con_Character.pic)
+                        if self.ctx is not None:
+                            await self.ctx.channel.send(embed=del_embed)
+                        elif self.bot is not None:
+                            tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+                            await tracker_channel.send(embed=del_embed)
+                else:
+                    await Con_Character.check_time_cc()
+
+        except Exception as e:
+            logging.error(f"block_advance_initiative: {e}")
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "init_con", e, self.bot)
+                await report.report()
 
     async def EPF_advance_initiative(self):
         logging.info("EPF_advance_initiative")
@@ -261,24 +330,33 @@ class EPF_Tracker(Tracker):
                                     processed_minutes_left = f"0{processed_minutes_left}"
                                 if days_left != 0:
                                     con_string = (
-                                        f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}:"
                                         f" {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
                                     )
                                 else:
                                     if processed_hours_left != 0:
                                         con_string = (
-                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                            "      "
+                                            f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                            f"{con_row.value if con_row.value is not None else ''}:"
                                             f" {processed_hours_left}:{processed_minutes_left}:"
                                             f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
-                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                            "      "
+                                            f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                            f"{con_row.value if con_row.value is not None else ''}:"
                                             f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
                                 con_string = (
-                                    f"       {con_row.title}{'*' if con_row.action != '' else ''}: {con_row.number}\n"
+                                    "      "
+                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                    f"{con_row.value if con_row.value is not None else ''}:"
+                                    f" {con_row.number} Rounds\n"
                                 )
                         else:
                             con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
