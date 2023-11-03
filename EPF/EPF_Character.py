@@ -700,6 +700,7 @@ class EPF_Character(Character):
 
         value = number
         stable = False
+        eot = False
         if data != "":
             action = data.strip()
             action = action.lower()
@@ -723,6 +724,9 @@ class EPF_Character(Character):
 
                 if "stable" in item.keys():
                     stable = item["stable"]
+                if "persist" in item.keys():
+                    if item["persist"]:
+                        eot = True
 
         # Write the condition to the table
         try:
@@ -742,6 +746,7 @@ class EPF_Character(Character):
                         target=target_id,
                         stable=stable,
                         value=value,
+                        eot_parse=eot,
                     )
                     session.add(condition)
                 await session.commit()
@@ -773,6 +778,7 @@ class EPF_Character(Character):
                         target=target_id,
                         stable=stable,
                         value=value,
+                        eot_parse=eot,
                     )
                     session.add(condition)
                 await session.commit()
@@ -930,6 +936,48 @@ class EPF_Character(Character):
         except Exception as e:
             logging.error(f"set_init: {e}")
             return f"Failed to set initiative: {e}"
+
+    async def eot_parse(self, data):
+        t = data.iter_subtrees_topdown()
+        for branch in t:
+            if branch.data == "skill_bonus":
+                pass
+            elif branch.data == "init_skill":
+                pass
+            elif branch.data == "new_condition":
+                pass
+            elif branch.data == "item_bonus":
+                pass
+            elif branch.data == "stable":
+                pass
+            elif branch.data == "set_value":
+                pass
+            elif branch.data == "temp_hp":
+                pass
+
+            elif branch.data == "resistance":
+                pass
+            elif branch.data == "persist_dmg":
+                data = {}
+                for item in branch.children:
+                    if type(item) == lark.Tree:
+                        if item.data == "roll_string":
+                            roll_string = ""
+                            for sub in item.children:
+                                if sub is not None:
+                                    roll_string = roll_string + sub.value
+
+                            data["roll_string"] = roll_string
+                        elif item.data == "save_string":
+                            for sub in item.children:
+                                data["save"] = sub.value
+                    elif type(item) == lark.Token:
+                        if item.type == "WORD":
+                            data["dmg_type"] = item.value
+                        elif item.type == "NUMBER":
+                            data["save_value"] = item.value
+
+        return data
 
     async def get_char_sheet(self, bot):
         try:
@@ -1959,15 +2007,17 @@ start: phrase+
 
 phrase: value+ break
 
-value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
+value: WORD [SIGNED_INT | VARIABLE ]  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                 -> init_skill
     | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                      -> temp_hp
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                        -> resistance
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?               -> resistance_w_exception
+    | WORD SPECIFIER NUMBER ";"?                            -> resistance
+    | WORD SPECIFIER NUMBER "e" WORD ";"?                    -> resistance_w_exception
     | "stable" NUMBER?                                  -> stable
-    | "value" NUMBER                                    -> set_value
+    | persist_dmg                       
     | WORD NUMBER?                                      -> new_condition
+
+persist_dmg : "persistent dmg" roll_string WORD* ["/" "dc" NUMBER save_string]
 
 modifier: SIGNED_INT
 
@@ -1975,6 +2025,14 @@ quoted: SINGLE_QUOTED_STRING
     | DOUBLE_QUOTED_STRING
 
 break: ","
+
+
+roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
+!save_string: "reflex" | "fort" | "will" | "flat"
+
+ROLL: NUMBER "d" NUMBER 
+
+POS_NEG : ("+" | "-")
 
 DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
@@ -2187,6 +2245,7 @@ async def process_condition_tree(
                     resistances[temp["word"]][temp["specifier"]] = {"value": temp["value"], "except": temp["exception"]}
             else:
                 resistances[temp["word"]] = resistance_data[temp["word"]]
+
         print(bonuses)
         print(resistances)
 
@@ -2226,6 +2285,9 @@ async def first_pass_process(ctx: discord.ApplicationContext, tree, character_na
 
         elif branch.data == "resistance":
             pass
+        elif branch.data == "persist_dmg":
+            data["persist"] = True
+
     return data
 
 

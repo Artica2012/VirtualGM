@@ -3,6 +3,7 @@ import asyncio
 import logging
 from datetime import datetime
 
+import d20
 import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
@@ -17,6 +18,7 @@ from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
+from EPF.EPF_resists import roll_persist_dmg
 
 
 async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -75,9 +77,55 @@ class EPF_Tracker(Tracker):
                 logging.info("BAI9: condition's retrieved")
                 # print("First Con List")
 
+            # Persistent Data:
+            if not before:
+                async with async_session() as session:
+                    if before is not None:
+                        char_result = await session.execute(
+                            select(Condition)
+                            .where(Condition.target == current_character.id)
+                            .where(Condition.eot_parse == true())
+                        )
+
+                    persist_list = char_result.scalars().all()
+
+                for item in persist_list:
+                    Con_Character = await self.get_char_from_id(item.character_id)
+                    persist_data = Con_Character.eot_parse(item.action)
+                    dmg_roll = d20.roll(persist_data["roll_string"])
+
+                    dmg_output, total_damage = await roll_persist_dmg(
+                        Con_Character, dmg_roll, dmg_type_override=persist_data["dmg_type"]
+                    )
+                    roll_string = ""
+                    for i in dmg_output:
+                        roll_string += f"{i['dmg_output_string']} {i['dmg_type'].title()}"
+
+                    Con_Character.change_hp(total_damage, False, post=False)
+
+                    if "save" in persist_data.keys():
+                        match persist_data["save"]:  # noqa
+                            case "reflex":
+                                save_roll = d20.roll(await Con_Character.get_roll("Reflex"))
+                            case "will":
+                                save_roll = d20.roll(await Con_Character.get_roll("Will"))
+                            case "fort":
+                                save_roll = d20.roll(await Con_Character.get_roll("Fort"))
+                            case "flat":
+                                save_roll = d20.roll("1d20")
+                            case _:
+                                save_roll = d20.roll("1d20")
+
+                        if save_roll.total >= persist_data["save_vale"]:
+                            await Con_Character.delete_cc(item.title)
+
+                    print(roll_string)
+                    print(save_roll)
+
             for con_row in con_list:
                 # print(con_row.title)
                 Con_Character = await self.get_char_from_id(con_row.character_id)
+
                 # print(Con_Character.char_name)
                 logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
                 await asyncio.sleep(0)
