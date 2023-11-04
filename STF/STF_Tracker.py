@@ -39,7 +39,7 @@ class STF_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = self.init_list
+        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
