@@ -14,7 +14,8 @@ from sqlalchemy.orm import sessionmaker
 
 import D4e.D4e_Tracker
 import D4e.d4e_functions
-from database_models import Global, Character_Vault, Base, get_tracker
+from database_models import Global, Character_Vault, Base, get_tracker, get_condition
+from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from database_operations import engine
 
@@ -143,6 +144,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
                             pass
 
         logging.warning("U&M Complete")
+        await self.force_refresh()
+
         logging.warning(await self.get_stats())
 
     async def get_stats(self):
@@ -185,6 +188,41 @@ class Update_and_Maintenance_Cog(commands.Cog):
             f"Base: {base}, EPF: {EPF}, PF2: {PF2}, STF: {STF}, RED: {RED}, D4e: {D4e}"
         )
         return output
+
+    async def force_refresh(self):
+        print("Forcing Refresh")
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Global))
+            all_guilds = result.scalars().all()
+
+        for guild in all_guilds:
+            Tracker = await get_tracker(None, engine, id=guild.id)
+            Condition = await get_condition(None, engine, id=guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker))
+            char_list = result.scalars().all()
+
+            for char in char_list:
+                Character_Model = await get_character(char.name, None, engine=engine, guild=guild)
+                await Character_Model.update()
+
+                if guild.system == "EPF":
+                    con_list = await Character_Model.conditions()
+                    for item in con_list:
+                        if item.number != 0 and item.time is False and item.value is None:
+                            async with async_session() as session:
+                                result = await session.execute(select(Condition).where(Condition.id == item.id))
+                                mod_con = result.scalars().one()
+
+                                mod_con.value = mod_con.number
+
+                                await session.commit()
+
+                print(Character_Model.char_name, "updated.")
+
+            Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
 
 
 def setup(bot):
