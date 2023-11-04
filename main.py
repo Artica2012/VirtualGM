@@ -8,12 +8,11 @@ import logging
 import os
 import sys
 
-import database_operations
+from dotenv import load_dotenv
+
 from Bot import bot
 
 # import tracemalloc
-
-from dotenv import load_dotenv
 
 # Set up logging
 # warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
@@ -59,12 +58,12 @@ DATABASE = os.getenv("DATABASE")
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    logging.warning("Updating tables...")
+    # logging.warning("Updating tables...")
     # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
-    await database_operations.update_con_table()
+    # await database_operations.update_con_table()
     # database_operations.create_reminder_table()
-    logging.warning("Tables updated")
+    # logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
 

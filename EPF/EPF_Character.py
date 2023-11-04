@@ -2007,15 +2007,15 @@ start: phrase+
 
 phrase: value+ break
 
-value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
-    | "init-skill" WORD                                 -> init_skill
-    | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
-    | "thp" NUMBER                                      -> temp_hp
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                            -> resistance
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?                    -> resistance_w_exception
-    | "stable" NUMBER?                                  -> stable
+value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
+    | "init-skill" WORD                                                -> init_skill
+    | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
+    | "thp" NUMBER                                                     -> temp_hp
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?              -> resistance_w_exception
+    | "stable" NUMBER?                                                 -> stable
     | persist_dmg                       
-    | WORD NUMBER?                                      -> new_condition
+    | WORD NUMBER?                                                     -> new_condition
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
 
@@ -2041,7 +2041,7 @@ SPECIFIER : "c" | "s" | "i" | "r" | "w"
 VARIABLE : "+x" | "-x"
 
 
-COMBO_WORD : WORD "-" WORD
+COMBO_WORD : WORD ("-" |"_") WORD
 %import common.ESCAPED_STRING
 %import common.WORD
 %import common.SIGNED_INT
