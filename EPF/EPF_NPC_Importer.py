@@ -258,7 +258,7 @@ async def write_resitances(
                     condition_string = f"{key} r {value['value']} e {exceptions}"
                     value = value["value"]
                 else:
-                    condition_string = f"{key} r {value};"
+                    condition_string = f"{key} r {value}"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
@@ -272,7 +272,7 @@ async def write_resitances(
                     condition_string = f"{key} w {value['value']} e {exceptions}"
                     value = value["value"]
                 else:
-                    condition_string = f"{key} w {value};"
+                    condition_string = f"{key} w {value}"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, value, "Round", False, data=condition_string, visible=False, update=False
@@ -283,9 +283,9 @@ async def write_resitances(
                     exceptions = ""
                     for item in value["exceptions"]:
                         exceptions += item
-                    condition_string = f"{key} i {exceptions};"
+                    condition_string = f"{key} i {exceptions}"
                 else:
-                    condition_string = f"{key} i ;"
+                    condition_string = f"{key} i"
                 async with session.begin():
                     await Character_Model.set_cc(
                         key, True, 1, "Round", False, data=condition_string, visible=False, update=False

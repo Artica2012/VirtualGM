@@ -844,7 +844,7 @@ class Tracker:
                 iteration += 1
                 if iteration >= length:
                     block_done = True
-            logging.info(f"GTL2 {turn_list}")
+            logging.info("GTL2")
             return turn_list
         except Exception as e:
             logging.warning(f"get_turn_list: {e}")

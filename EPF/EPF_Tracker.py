@@ -3,20 +3,25 @@ import asyncio
 import logging
 from datetime import datetime
 
+import d20
 import discord
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Tracker import Tracker, get_init_list
-from database_models import get_tracker, Global
+from EPF import EPF_Character
+from PF2e.pf2_functions import PF2_eval_succss
+from database_models import get_tracker, Global, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
+from EPF.EPF_resists import roll_persist_dmg
+from EPF.EPF_Support import EPF_Success_colors
 
 
 async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -35,6 +40,175 @@ class EPF_Tracker(Tracker):
             await super().block_advance_initiative()
         else:
             await self.EPF_advance_initiative()
+
+    async def init_con(self, current_character, before: bool):
+        """
+        This method checks conditions as initiative advances and decrements or removes them as appropriate. Internal
+        method that should be called during the initiative advancement.
+
+        :param current_character: (character model of the Character class)
+        :param before: (bool - This determines if its being called at the beginning or ending of the turn, to allow for
+            conditions that decrement at a specific portion. Pass None to decrement all appropriate conditions or for
+            subclasses (systems) that don't differentiate eg D&D 4e.
+        :return: No return value
+        """
+
+        logging.info(f"{current_character.char_name}, {before}")
+        logging.info("Decrementing Conditions")
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        # Run through the conditions on the current character
+
+        try:
+            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            async with async_session() as session:
+                if before is not None:
+                    char_result = await session.execute(
+                        select(Condition)
+                        .where(Condition.target == current_character.id)
+                        .where(Condition.flex == before)
+                        .where(Condition.auto_increment == true())
+                    )
+                else:
+                    char_result = await session.execute(
+                        select(Condition)
+                        .where(Condition.target == current_character.id)
+                        .where(Condition.auto_increment == true())
+                    )
+                con_list = char_result.scalars().all()
+                # print(len(con_list))
+                logging.info("BAI9: condition's retrieved")
+                # print("First Con List")
+
+            # Persistent Data:
+            if not before:
+                async with async_session() as session:
+                    if before is not None:
+                        char_result = await session.execute(
+                            select(Condition)
+                            .where(Condition.target == current_character.id)
+                            .where(Condition.eot_parse == true())
+                        )
+
+                    persist_list = char_result.scalars().all()
+
+                for item in persist_list:
+                    result = await self.persist_dmg_handler(item)
+                    # print(result)
+
+            for con_row in con_list:
+                # print(con_row.title)
+                Con_Character = await self.get_char_from_id(con_row.character_id)
+
+                # print(Con_Character.char_name)
+                logging.info(f"BAI10: con_row: {con_row.title} {con_row.id}")
+                await asyncio.sleep(0)
+                if not con_row.time:
+                    if con_row.number >= 2:
+                        await Con_Character.edit_cc(con_row.title, con_row.number - 1)
+                    else:
+                        await Con_Character.delete_cc(con_row.title)
+                        del_embed = discord.Embed(
+                            title=Con_Character.char_name,
+                            description=f"{con_row.title} removed from {Con_Character.char_name}",
+                        )
+                        del_embed.set_thumbnail(url=Con_Character.pic)
+                        if self.ctx is not None:
+                            await self.ctx.channel.send(embed=del_embed)
+                        elif self.bot is not None:
+                            tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
+                            await tracker_channel.send(embed=del_embed)
+                else:
+                    await Con_Character.check_time_cc()
+
+        except Exception as e:
+            logging.error(f"block_advance_initiative: {e}")
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "init_con", e, self.bot)
+                await report.report()
+
+    async def persist_dmg_handler(self, condition):
+        logging.warning("HANDLING PERSISTENT DAMAGE")
+        Con_Character = await self.get_char_from_id(condition.character_id)
+        action_data = condition.action.lower()
+        action_data = action_data.strip()
+        try:
+            parsed_data = await EPF_Character.condition_parser(action_data)
+            # print(parsed_data.pretty())
+            persist_data = await Con_Character.eot_parse(parsed_data)
+            # print(persist_data)
+
+        except Exception:
+            return False
+
+        dmg_roll = persist_data["roll_string"]
+
+        try:
+            dmg_output, total_damage = await roll_persist_dmg(
+                Con_Character, dmg_roll, dmg_type_override=persist_data["dmg_type"]
+            )
+        except KeyError:
+            dmg_output, total_damage = await roll_persist_dmg(Con_Character, dmg_roll)
+        # print(dmg_output, total_damage)
+
+        roll_string = ""
+        for i in dmg_output:
+            roll_string += f"{i['dmg_output_string']} {'' if i['dmg_type'] is None else i['dmg_type'].title()}"
+
+        await Con_Character.change_hp(total_damage, False, post=False)
+        save_roll = None
+        success_string = "Failure"
+        if "save" in persist_data.keys():
+            match persist_data["save"]:  # noqa
+                case "reflex":
+                    save_roll = d20.roll(await Con_Character.get_roll("Reflex"))
+                case "will":
+                    save_roll = d20.roll(await Con_Character.get_roll("Will"))
+                case "fort":
+                    save_roll = d20.roll(await Con_Character.get_roll("Fort"))
+                case "flat":
+                    save_roll = d20.roll("1d20")
+                case _:
+                    save_roll = d20.roll("1d20")
+
+            success_string = PF2_eval_succss(save_roll, d20.roll(persist_data["save_value"]))
+            if success_string == "Critical Success" or success_string == "Success":
+                await Con_Character.delete_cc(condition.title)
+
+        output_string = f"Persistent Damage: {roll_string}"
+
+        if "save" not in persist_data.keys():
+            embed = discord.Embed(
+                title=f"{Con_Character.char_name.title()}: {condition.title.title()}",
+                fields=[
+                    discord.EmbedField(
+                        name=(
+                            f"{'Persistent' if 'dmg_type' not in persist_data.keys() else persist_data['dmg_type'].title()} Damage"
+                        ),
+                        value=output_string,
+                    )
+                ],
+                color=EPF_Success_colors(success_string),
+            )
+        else:
+            if save_roll is not None:
+                output_string += f"\nSave Rolled: {save_roll} vs DC{persist_data['save_value']}\n{success_string}"
+            embed = discord.Embed(
+                title=f"{Con_Character.char_name.title()}: {condition.title.title()}",
+                fields=[
+                    discord.EmbedField(
+                        name=f"{persist_data['save'].title()} {'Save' if persist_data['save'] != 'flat' else 'Check'}",
+                        value=output_string,
+                    )
+                ],
+                color=EPF_Success_colors(success_string),
+            )
+
+        embed.set_thumbnail(url=Con_Character.pic)
+
+        channel = self.bot.get_channel(self.guild.tracker_channel)
+        await channel.send(embed=embed)
+        return True
 
     async def EPF_advance_initiative(self):
         logging.info("EPF_advance_initiative")
@@ -261,24 +435,33 @@ class EPF_Tracker(Tracker):
                                     processed_minutes_left = f"0{processed_minutes_left}"
                                 if days_left != 0:
                                     con_string = (
-                                        f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}:"
                                         f" {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
                                     )
                                 else:
                                     if processed_hours_left != 0:
                                         con_string = (
-                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                            "      "
+                                            f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                            f"{con_row.value if con_row.value is not None else ''}:"
                                             f" {processed_hours_left}:{processed_minutes_left}:"
                                             f"{processed_seconds_left}\n"
                                         )
                                     else:
                                         con_string = (
-                                            f"       {con_row.title}{'*' if con_row.action != '' else ''}:"
+                                            "      "
+                                            f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                            f"{con_row.value if con_row.value is not None else ''}:"
                                             f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
                                 con_string = (
-                                    f"       {con_row.title}{'*' if con_row.action != '' else ''}: {con_row.number}\n"
+                                    "      "
+                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                    f"{con_row.value if con_row.value is not None else ''}:"
+                                    f" {con_row.number} Rounds\n"
                                 )
                         else:
                             con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
@@ -314,7 +497,7 @@ class EPF_Tracker(Tracker):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 init_list = await get_init_list(self.ctx, self.engine, self.guild)
                 for char in init_list:
                     Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)

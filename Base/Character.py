@@ -466,7 +466,7 @@ class Character:
             logging.warning(f"delete_cc: {e}")
             return False
 
-    async def edit_cc(self, condition: str, value: int):
+    async def edit_cc(self, condition: str, value: int, **kwargs):
         """
         Edits the value of a condition associated with the character
         :param condition: string - Condition name

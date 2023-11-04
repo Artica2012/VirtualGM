@@ -4,6 +4,8 @@ import datetime
 import logging
 import math
 from math import floor
+import lark
+from lark import Lark
 
 import aiohttp
 import d20
@@ -26,7 +28,7 @@ from database_models import (
     get_macro,
     get_tracker,
 )
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, engine
 from database_operations import get_asyncio_db_engine, DATABASE
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
@@ -358,10 +360,9 @@ class EPF_Character(Character):
         weapon = self.character_model.attacks[item]
 
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
-        # bonus_mod = await bonus_calc(bonus_mod, f"{item},dmg", self.character_model.bonuses)
-        print(f"dmg die. {weapon['die_num']}")
+        # print(f"dmg die. {weapon['die_num']}")
         die_mod = await bonus_calc(int(weapon["die_num"]), "dmg_die", self.character_model.bonuses, item_name=item)
-        print(die_mod)
+        # print(die_mod)
 
         dmg_mod = 0
         match weapon["stat"]:
@@ -475,22 +476,24 @@ class EPF_Character(Character):
             case "None":
                 attk_stat = 0
 
+        spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
+
         if spell_data["tradition"] == "NPC":
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"]
+                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
-                return attk_stat + self.character_model.level + spell_data["dc"]
+                return attk_stat + self.character_model.level + spell_data["dc"] + spell_attack_bonus
         else:
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"]
+                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
-                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"]
+                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
-        # print(f"Flat Bonus: {flat_bonus}!")
-        # print(self.character_model.spells)
         spell_data = self.character_model.spells[spell]
-        # print(spell_data)
+        spell_dmg_bonus = await bonus_calc(0, "spelldmg", self.character_model.bonuses)
+        if spell_dmg_bonus != 0:
+            flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
         dmg_dict = {}
         dmg_string = ""
         for x, key in enumerate(spell_data["damage"]):
@@ -516,7 +519,9 @@ class EPF_Character(Character):
                         mod_stat = 0
 
                 dmg_dict[key] = {
-                    "dmg_string": f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus)}",
+                    "dmg_string": (
+                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                    ),
                     "dmg_type": dmg_type,
                 }
 
@@ -686,28 +691,42 @@ class EPF_Character(Character):
                 return False
 
         # Process Data
-        # print(data)
-        if data == "":
-            # print(title)
-            if title in EPF_Conditions:
-                data = EPF_Conditions[title]
-                # print(data)
-        # print(data)
-        if "thp" in data:
-            data_list = data.split(",")
-            final_list = data_list.copy()
-            for x, item in enumerate(data_list):
-                parsed = item.strip().split(" ")
-                if parsed[0].lower() == "thp":
+
+        if title in EPF_Conditions:
+            if data != "":
+                if data[-1] != ",":
+                    data = data + ","
+            data = data + " " + EPF_Conditions[title]
+
+        value = number
+        stable = False
+        eot = False
+        if data != "":
+            action = data.strip()
+            action = action.lower()
+            data_list = []
+
+            try:
+                tree = await condition_parser(action)
+                data_list.append(await first_pass_process(self.ctx, tree, self.char_name))
+            except Exception:
+                processed_input = action.split(",")
+
+                for item in processed_input:
                     try:
-                        thp_num = int(parsed[1])
-                        await self.add_thp(thp_num)
-                        final_list.pop(x)
-                    except Exception:
-                        pass
-            # print(final_list)
-            data = ", ".join(final_list)
-            # print(data)
+                        tree = await condition_parser(item)
+                        data_list.append(await first_pass_process(self.ctx, tree, self.char_name))
+                    except Exception as e:
+                        print(f"Bad input: {item}: {e}")
+            for item in data_list:
+                if "value" in item.keys():
+                    value = item["value"]
+
+                if "stable" in item.keys():
+                    stable = item["stable"]
+                if "persist" in item.keys():
+                    if item["persist"]:
+                        eot = True
 
         # Write the condition to the table
         try:
@@ -725,6 +744,9 @@ class EPF_Character(Character):
                         action=data,
                         visible=visible,
                         target=target_id,
+                        stable=stable,
+                        value=value,
+                        eot_parse=eot,
                     )
                     session.add(condition)
                 await session.commit()
@@ -754,6 +776,9 @@ class EPF_Character(Character):
                         action=data,
                         visible=visible,
                         target=target_id,
+                        stable=stable,
+                        value=value,
+                        eot_parse=eot,
                     )
                     session.add(condition)
                 await session.commit()
@@ -774,11 +799,47 @@ class EPF_Character(Character):
         await self.update()
         return result
 
+    async def edit_cc(self, condition: str, value: int, **kwargs):
+        """
+        Edits the value of a condition associated with the character
+        :param condition: string - Condition name
+        :param value: integer - Value to set
+        :return: boolean - True for success, False for failure
+        """
+        logging.info("edit_cc")
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition).where(Condition.character_id == self.id).where(Condition.title == condition)
+                )
+                condition = result.scalars().one()
+
+                if condition.time:
+                    await self.ctx.send_followup(
+                        "Unable to edit time based conditions. Try again in a future update.", ephemeral=True
+                    )
+                    return False
+                else:
+                    condition.number = value
+                    if condition.stable is not True:
+                        condition.value = value
+
+                    await session.commit()
+            return True
+        except NoResultFound:
+            await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            return False
+        except Exception as e:
+            logging.warning(f"edit_cc: {e}")
+            return False
+
     async def update_resistance(self, weak, item, amount):
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         try:
             updated_resistance = self.resistance
-            # print(updated_resistance)
             if amount == 0:
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
@@ -788,11 +849,11 @@ class EPF_Character(Character):
                     await session.commit()
                 return True
             else:
-                condition_string = f"{item} {weak} {amount};"
+                condition_string = f"{item} {weak} {amount},"
                 result = await self.set_cc(item, True, amount, "Round", False, data=condition_string, visible=False)
 
             await self.update()
-            # print(self.resistance)
+
             return True
         except Exception:
             return False
@@ -800,32 +861,25 @@ class EPF_Character(Character):
     async def show_resistance(self):
         embeds = []
 
-        resists = ""
-        for key, value in self.resistance["resist"].items():
-            resists += f"{key.title()}: {value}\n"
-        resist_embed = discord.Embed(
-            title="Resistances",
-            description=resists,
-        )
-        embeds.append(resist_embed)
+        for key in self.resistance.keys():
+            try:
+                resist_string = ""
+                for type in self.resistance[key].keys():
+                    if type == "r":
+                        resist_string += f"Resistance: {self.resistance[key][type]}\n"
+                    elif type == "w":
+                        resist_string += f"Weakness: {self.resistance[key][type]}\n"
+                    elif type == "i":
+                        resist_string += f"Immune\n"
 
-        weak = ""
-        for key, value in self.resistance["weak"].items():
-            weak += f"{key.title()}: {value}\n"
-        weak_embed = discord.Embed(
-            title="Weaknesses",
-            description=weak,
-        )
-        embeds.append(weak_embed)
+                resist_embed = discord.Embed(
+                    title=key.title(),
+                    description=resist_string,
+                )
+                embeds.append(resist_embed)
+            except Exception:
+                pass
 
-        immune = ""
-        for key, value in self.resistance["immune"].items():
-            immune += f"{key.title()}\n"
-        immune_embed = discord.Embed(
-            title="Immunities",
-            description=immune,
-        )
-        embeds.append(immune_embed)
         return embeds
 
     async def change_hp(self, amount: int, heal: bool, post=True):
@@ -882,6 +936,48 @@ class EPF_Character(Character):
         except Exception as e:
             logging.error(f"set_init: {e}")
             return f"Failed to set initiative: {e}"
+
+    async def eot_parse(self, data):
+        t = data.iter_subtrees_topdown()
+        for branch in t:
+            if branch.data == "skill_bonus":
+                pass
+            elif branch.data == "init_skill":
+                pass
+            elif branch.data == "new_condition":
+                pass
+            elif branch.data == "item_bonus":
+                pass
+            elif branch.data == "stable":
+                pass
+            elif branch.data == "set_value":
+                pass
+            elif branch.data == "temp_hp":
+                pass
+
+            elif branch.data == "resistance":
+                pass
+            elif branch.data == "persist_dmg":
+                data = {}
+                for item in branch.children:
+                    if type(item) == lark.Tree:
+                        if item.data == "roll_string":
+                            roll_string = ""
+                            for sub in item.children:
+                                if sub is not None:
+                                    roll_string = roll_string + sub.value
+
+                            data["roll_string"] = roll_string
+                        elif item.data == "save_string":
+                            for sub in item.children:
+                                data["save"] = sub.value
+                    elif type(item) == lark.Token:
+                        if item.type == "WORD":
+                            data["dmg_type"] = item.value
+                        elif item.type == "NUMBER":
+                            data["save_value"] = item.value
+
+        return data
 
     async def get_char_sheet(self, bot):
         try:
@@ -1412,7 +1508,8 @@ async def calculate(ctx, engine, char_name, guild=None):
         PF2_tracker = await get_EPF_tracker(ctx, engine)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     # print(char_name)
-    bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    # bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    bonuses, resistance = await parse(ctx, engine, char_name, guild=guild)
     # print(bonuses)
 
     async with async_session() as session:
@@ -1535,49 +1632,51 @@ async def calculate(ctx, engine, char_name, guild=None):
 
             init_skill = character.perception_mod
 
-            if "init_skill" in bonuses["circumstances_pos"].keys():
-                match bonuses["circumstances_pos"]["init_skill"]:
-                    case "perception":
-                        init_skill = character.perception_mod
-                    case "acrobatics":
-                        init_skill = character.acrobatics_mod
-                    case "arcana":
-                        init_skill = character.arcana_mod
-                    case "athletics":
-                        init_skill = character.athletics_mod
-                    case "crafting":
-                        init_skill = character.crafting_mod
-                    case "deception":
-                        init_skill = character.deception_mod
-                    case "diplomacy":
-                        init_skill = character.diplomacy_mod
-                    case "intimidation":
-                        init_skill = character.intimidation_mod
-                    case "medicine":
-                        init_skill = character.medicine_mod
-                    case "nature":
-                        init_skill = character.nature_mod
-                    case "occultism":
-                        init_skill = character.occultism_mod
-                    case "performance":
-                        init_skill = character.performance_mod
-                    case "religion":
-                        init_skill = character.religion_mod
-                    case "society":
-                        init_skill = character.society_mod
-                    case "stealth":
-                        init_skill = character.stealth_mod
-                    case "survival":
-                        init_skill = character.survival_mod
-                    case "thievery":
-                        init_skill = character.thievery_mod
-                    case _:
-                        init_skill = character.perception_mod
+            if "other" in bonuses.keys():
+                if "init_skill" in bonuses["other"].keys():
+                    match bonuses["other"]["init_skill"]:
+                        case "perception":
+                            init_skill = character.perception_mod
+                        case "acrobatics":
+                            init_skill = character.acrobatics_mod
+                        case "arcana":
+                            init_skill = character.arcana_mod
+                        case "athletics":
+                            init_skill = character.athletics_mod
+                        case "crafting":
+                            init_skill = character.crafting_mod
+                        case "deception":
+                            init_skill = character.deception_mod
+                        case "diplomacy":
+                            init_skill = character.diplomacy_mod
+                        case "intimidation":
+                            init_skill = character.intimidation_mod
+                        case "medicine":
+                            init_skill = character.medicine_mod
+                        case "nature":
+                            init_skill = character.nature_mod
+                        case "occultism":
+                            init_skill = character.occultism_mod
+                        case "performance":
+                            init_skill = character.performance_mod
+                        case "religion":
+                            init_skill = character.religion_mod
+                        case "society":
+                            init_skill = character.society_mod
+                        case "stealth":
+                            init_skill = character.stealth_mod
+                        case "survival":
+                            init_skill = character.survival_mod
+                        case "thievery":
+                            init_skill = character.thievery_mod
+                        case _:
+                            init_skill = character.perception_mod
 
             character.init_string = f"1d20+{await bonus_calc(init_skill, 'init', bonuses)}"
 
             character.bonuses = bonuses
             character.resistance = resistance
+            # print(character.bonuses)
 
             macros = []
             for item in character.attacks.keys():
@@ -1616,41 +1715,18 @@ async def calculate(ctx, engine, char_name, guild=None):
 
 async def ability_mod_calc(base: int, item: str, bonuses):
     mod = floor((base - 10) / 2)
-    if item in bonuses["circumstances_pos"]:
-        mod += bonuses["circumstances_pos"][item]
-    if item in bonuses["circumstances_neg"]:
-        mod -= bonuses["circumstances_neg"][item]
-
-    if item in bonuses["status_pos"]:
-        mod += bonuses["status_pos"][item]
-    if item in bonuses["status_neg"]:
-        mod -= bonuses["status_neg"][item]
-
-    if item in bonuses["item_pos"]:
-        mod += bonuses["item_pos"][item]
-    if item in bonuses["item_neg"]:
-        mod -= bonuses["item_neg"][item]
+    if item in bonuses.keys():
+        for key in bonuses[item].keys():
+            mod = mod + bonuses[item][key]
 
     return mod
 
 
 async def save_mod_calc(stat_mod, save: str, save_prof, level, bonuses):
     mod = stat_mod + save_prof + level
-    if save in bonuses["circumstances_pos"]:
-        mod += bonuses["circumstances_pos"][save]
-    if save in bonuses["circumstances_neg"]:
-        mod -= bonuses["circumstances_neg"][save]
-
-    if save in bonuses["status_pos"]:
-        mod += bonuses["status_pos"][save]
-    if save in bonuses["status_neg"]:
-        mod -= bonuses["status_neg"][save]
-
-    if save in bonuses["item_pos"]:
-        mod += bonuses["item_pos"][save]
-    if save in bonuses["item_neg"]:
-        mod -= bonuses["item_neg"][save]
-
+    if save in bonuses.keys():
+        for key in bonuses[save].keys():
+            mod = mod + bonuses[save][key]
     return mod
 
 
@@ -1665,21 +1741,9 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
     else:
         mod = stat_mod + skill_prof + level
 
-    if skill in bonuses["circumstances_pos"]:
-        mod += bonuses["circumstances_pos"][skill]
-    if skill in bonuses["circumstances_neg"]:
-        mod -= bonuses["circumstances_neg"][skill]
-
-    if skill in bonuses["status_pos"]:
-        mod += bonuses["status_pos"][skill]
-    if skill in bonuses["status_neg"]:
-        mod -= bonuses["status_neg"][skill]
-
-    if skill in bonuses["item_pos"]:
-        mod += bonuses["item_pos"][skill]
-    if skill in bonuses["item_neg"]:
-        mod -= bonuses["item_neg"][skill]
-    # print(f"{skill}, {stat_mod} {skill_prof} {level}: {mod}")
+    if skill in bonuses.keys():
+        for key in bonuses[skill].keys():
+            mod = mod + bonuses[skill][key]
     return mod
 
 
@@ -1690,278 +1754,31 @@ async def bonus_calc(base, skill, bonuses, item_name=""):
     if item_name != "":
         specific_skill = f"{item_name},{skill}".lower()
 
-        c_pos = 0
-        s_c_pos = 0
-        if skill in bonuses["circumstances_pos"]:
-            c_pos = bonuses["circumstances_pos"][skill]
-        if specific_skill in bonuses["circumstances_pos"]:
-            s_c_pos = bonuses["circumstances_pos"][specific_skill]
-        if c_pos > s_c_pos:
-            mod += c_pos
-        else:
-            mod += s_c_pos
+        if specific_skill in bonuses.keys():
+            if skill in bonuses.keys():
+                common_keys = bonuses[specific_skill].items() & bonuses[skill].items()
 
-        c_neg = 0
-        s_c_neg = 0
-        if skill in bonuses["circumstances_neg"]:
-            c_neg = bonuses["circumstances_neg"][skill]
-        if specific_skill in bonuses["circumstances_neg"]:
-            s_c_neg = bonuses["circumstances_neg"][specific_skill]
-        if c_neg > s_c_neg:
-            mod -= c_neg
-        else:
-            mod -= s_c_neg
+                for key in common_keys:
+                    if abs(bonuses[specific_skill][key]) > abs(bonuses[skill][key]):
+                        mod = mod + bonuses[specific_skill][key]
 
-        s_pos = 0
-        s_s_pos = 0
-        if skill in bonuses["status_pos"]:
-            s_pos = bonuses["status_pos"][skill]
-        if specific_skill in bonuses["status_pos"]:
-            s_s_pos = bonuses["status_pos"][specific_skill]
-        if s_pos > s_s_pos:
-            mod += s_pos
-        else:
-            mod += s_s_pos
+                for key in bonuses[specific_skill].keys():
+                    if key not in common_keys:
+                        mod = mod + bonuses[specific_skill][key]
+                for key in bonuses[skill].keys():
+                    if key not in common_keys:
+                        mod = mod + bonuses[skill][key]
 
-        s_neg = 0
-        s_s_neg = 0
-        if skill in bonuses["status_neg"]:
-            s_neg = bonuses["status_neg"][skill]
-        if specific_skill in bonuses["status_neg"]:
-            s_s_neg = bonuses["status_neg"][specific_skill]
-        if s_neg > s_s_neg:
-            mod -= s_neg
-        else:
-            mod -= s_s_neg
-
-        i_pos = 0
-        s_i_pos = 0
-        if skill in bonuses["item_pos"]:
-            i_pos = bonuses["item_pos"][skill]
-        if specific_skill in bonuses["item_pos"]:
-            s_i_pos = bonuses["item_pos"][specific_skill]
-        if i_pos > s_i_pos:
-            mod += i_pos
-        else:
-            mod += s_i_pos
-
-        i_neg = 0
-        s_i_neg = 0
-        if skill in bonuses["item_neg"]:
-            i_neg = bonuses["item_neg"][skill]
-        if specific_skill in bonuses["item_neg"]:
-            s_i_neg = bonuses["item_neg"][specific_skill]
-        if i_neg > s_i_neg:
-            mod -= i_neg
-        else:
-            mod -= s_i_neg
+            else:
+                for key in bonuses[specific_skill].keys():
+                    mod = mod + bonuses[specific_skill][key]
 
     else:
-        if skill in bonuses["circumstances_pos"]:
-            mod += bonuses["circumstances_pos"][skill]
-        if skill in bonuses["circumstances_neg"]:
-            mod -= bonuses["circumstances_neg"][skill]
-
-        if skill in bonuses["status_pos"]:
-            mod += bonuses["status_pos"][skill]
-        if skill in bonuses["status_neg"]:
-            mod -= bonuses["status_neg"][skill]
-
-        if skill in bonuses["item_pos"]:
-            mod += bonuses["item_pos"][skill]
-        if skill in bonuses["item_neg"]:
-            mod -= bonuses["item_neg"][skill]
+        if skill in bonuses.keys():
+            for key in bonuses[skill].keys():
+                mod = mod + bonuses[skill][key]
 
     return mod
-
-
-async def parse_bonuses(ctx, engine, char_name: str, guild=None):
-    guild = await get_guild(ctx, guild=guild)
-    Characte_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
-    # Database boilerplate
-    if guild is not None:
-        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-    else:
-        PF2_tracker = await get_EPF_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-    try:
-        async with async_session() as session:
-            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
-            char = result.scalars().one()
-
-        async with async_session() as session:
-            result = await session.execute(select(Condition).where(Condition.character_id == char))
-            conditions = result.scalars().all()
-    except NoResultFound:
-        conditions = []
-
-    bonuses = {
-        "circumstances_pos": {},
-        "status_pos": {},
-        "item_pos": {},
-        "circumstances_neg": {},
-        "status_neg": {},
-        "item_neg": {},
-    }
-    resistances = {"resist": {}, "weak": {}, "immune": {}}
-
-    for condition in conditions:
-        await asyncio.sleep(0)
-        # Get the data from the conditions
-        # Write the bonuses into the two dictionaries
-        # print(f"{condition.title}, {condition.action}")
-
-        data: str = condition.action
-        data_list = data.split(",")
-        for item in data_list:
-            try:
-                parsed = item.strip().split(" ")
-                # initiative stat
-                print(parsed)
-                print(parsed[0])
-                # if parsed[0] == 'init-skill':
-                #     print(parsed[0].lower())
-                #     print(True)
-                # else:
-                #     print(False)
-
-                if parsed[0] == "init-skill":
-                    # print("init skill found")
-                    bonuses["circumstances_pos"]["init_skill"] = parsed[1].lower()
-                    # print(bonuses)
-
-                # Conditions adding conditions? Crazy
-                # print(parsed[0].title())
-                if parsed[0].title() in EPF_Conditions.keys():
-                    # print("Condition recognized")
-                    if parsed[0].title() not in await Characte_Model.conditions():
-                        # print(f"Parsed: {parsed}")
-                        if len(parsed) > 1:
-                            num = int(parsed[1])
-                        else:
-                            num = 0
-                        await Characte_Model.set_cc(parsed[0].title(), False, num, "Round", False)
-                elif parsed[0].title() in EPF.EPF_Support.EPF_DMG_Types_Inclusive:
-                    parsed = item.strip().split(" ", 4)
-                    print(parsed)
-                    if parsed[2][-1] == ";":
-                        parsed[2] = parsed[2][:-1]
-                    parsed[0] = parsed[0].lower()
-                    match parsed[1]:
-                        case "r":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["resist"][parsed[0]] = {
-                                    "exceptions": exception_list,
-                                    "value": int(parsed[2]),
-                                }
-                            else:
-                                resistances["resist"][parsed[0]] = int(parsed[2])
-                        case "w":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["weak"][parsed[0]] = {"exceptions": exception_list, "value": int(parsed[2])}
-                            else:
-                                resistances["weak"][parsed[0]] = int(parsed[2])
-                        case "i":
-                            if len(parsed) > 3:
-                                exception_list = []
-                                for item in parsed[4].split(","):
-                                    exception_list.append(item.strip())
-
-                                resistances["immune"][parsed[0]] = {"exceptions": exception_list, "value": 1}
-                            else:
-                                resistances["immune"][parsed[0]] = 1
-                else:
-                    item_name = ""
-                    specific_weapon = ""
-
-                    # print(parsed[0], parsed[0][0])
-                    if parsed[0][0] == '"':
-                        # print("Opening Quote")
-                        for x, i in enumerate(parsed):
-                            # print(x, item)
-                            # print(item[-1])
-                            if i[-1] == '"':
-                                item_name = " ".join(parsed[0 : x + 1])
-                                item_name = item_name.strip('"')
-                                parsed = parsed[x + 1 :]
-                                break
-                    # print(item_name)
-                    # print(parsed)
-                    if item_name != "":
-                        print(item_name)
-                        if item_name.title() in await Characte_Model.attack_list():
-                            print("Match!")
-                            specific_weapon = f"{item_name},"
-                        else:
-                            parsed = []
-                    # print(specific_weapon)
-
-                    key = f"{specific_weapon}{parsed[0]}".lower()
-                    if parsed[1][1:] == "X":
-                        value = int(condition.number)
-                    else:
-                        try:
-                            value = int(parsed[1][1:])
-                        except ValueError:
-                            value = int(parsed[1])
-
-                    if parsed[2] == "s" and parsed[1][0] == "+":  # Status Positive
-                        if key in bonuses["status_pos"]:
-                            if value > bonuses["status_pos"][key]:
-                                bonuses["status_pos"][key] = value
-                        else:
-                            bonuses["status_pos"][key] = value
-                    elif parsed[2] == "s" and parsed[1][0] == "-":  # Status Negative
-                        if key in bonuses["status_neg"]:
-                            if value > bonuses["status_neg"][key]:
-                                bonuses["status_neg"][key] = value
-                        else:
-                            bonuses["status_neg"][key] = value
-                            # print(f"{key}: {bonuses['status_neg'][key]}")
-                    elif parsed[2] == "c" and parsed[1][0] == "+":  # Circumstances Positive
-                        if key in bonuses["circumstances_pos"]:
-                            if value > bonuses["circumstances_pos"][key]:
-                                bonuses["circumstances_pos"][key] = value
-                        else:
-                            bonuses["circumstances_pos"][key] = value
-                    elif parsed[2] == "c" and parsed[1][0] == "-":  # Circumstances Positive
-                        if key in bonuses["circumstances_neg"]:
-                            if value > bonuses["circumstances_neg"][key]:
-                                bonuses["circumstances_neg"][key] = value
-                        else:
-                            bonuses["circumstances_neg"][key] = value
-                            # print(f"{key}: {bonuses['circumstances_neg'][key]}")
-                    elif parsed[2] == "i" and parsed[1][0] == "+":  # Item Positive
-                        if key in bonuses["item_pos"]:
-                            if value > bonuses["item_pos"][key]:
-                                bonuses["item_pos"][key] = value
-                        else:
-                            bonuses["item_pos"][key] = value
-                            # print(f"{key}: {bonuses['item_pos'][key]}")
-                    elif parsed[2] == "i" and parsed[1][0] == "-":  # Item Negative
-                        if key in bonuses["item_neg"]:
-                            if value > bonuses["item_neg"][key]:
-                                bonuses["item_neg"][key] = value
-                        else:
-                            bonuses["item_neg"][key] = value
-
-            except Exception:
-                pass
-
-    # print(bonuses)
-    # print(resistances)
-    return bonuses, resistances
 
 
 class EPF_Weapon(LookupBase):
@@ -2183,3 +2000,346 @@ async def spell_lookup(spell: str):
         return True, spell_data
     except Exception:
         return False, {}
+
+
+grammer = """
+start: phrase+
+
+phrase: value+ break
+
+value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
+    | "init-skill" WORD                                 -> init_skill
+    | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
+    | "thp" NUMBER                                      -> temp_hp
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                            -> resistance
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?                    -> resistance_w_exception
+    | "stable" NUMBER?                                  -> stable
+    | persist_dmg                       
+    | WORD NUMBER?                                      -> new_condition
+
+persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
+
+modifier: SIGNED_INT
+
+quoted: SINGLE_QUOTED_STRING
+    | DOUBLE_QUOTED_STRING
+
+break: ","
+
+
+roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
+!save_string: "reflex" | "fort" | "will" | "flat"
+
+ROLL: NUMBER "d" NUMBER 
+
+POS_NEG : ("+" | "-")
+
+DOUBLE_QUOTED_STRING  : /"[^"]*"/
+SINGLE_QUOTED_STRING  : /'[^']*'/
+
+SPECIFIER : "c" | "s" | "i" | "r" | "w"
+VARIABLE : "+x" | "-x"
+
+
+COMBO_WORD : WORD "-" WORD
+%import common.ESCAPED_STRING
+%import common.WORD
+%import common.SIGNED_INT
+%import common.NUMBER
+%import common.WS
+%ignore WS
+"""
+
+
+async def condition_parser(data: str):
+    # print(data)
+    if data[-1:] != ",":
+        data = data + ","
+
+    parser = Lark(grammer)
+    return parser.parse(data)
+
+
+async def process_condition_tree(
+    ctx: discord.ApplicationContext, tree, character_model, condition, bonuses: dict, resistances: dict
+):
+    t = tree.iter_subtrees_topdown()
+    for branch in t:
+        if branch.data == "skill_bonus":
+            bonus_data = {}
+            for item in branch.children:
+                if type(item) == lark.Token:
+                    if item.type == "WORD":
+                        bonus_data["skill"] = item.value
+                    elif item.type == "SIGNED_INT":
+                        bonus_data["value"] = int(item.value)
+                    elif item.type == "VARIABLE":
+                        if condition.value is not None:
+                            bonus_data["value"] = int(f"{item.value[0]}{condition.value}")
+                        else:
+                            bonus_data["value"] = int(f"{item.value[0]}{condition.number}")
+                    elif item.type == "SPECIFIER":
+                        bonus_data["specifier"] = item.value
+
+            if bonus_data["skill"] not in bonuses.keys():
+                bonuses[bonus_data["skill"]] = {
+                    f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}": bonus_data["value"]
+                }
+            else:
+                if (
+                    f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                    in bonuses[bonus_data["skill"]].keys()
+                ):
+                    if abs(bonus_data["value"]) > abs(
+                        bonuses[bonus_data["skill"]][
+                            f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                        ]
+                    ):
+                        bonuses[bonus_data["skill"]][
+                            f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                        ] = bonus_data["value"]
+                else:
+                    bonuses[bonus_data["skill"]][
+                        f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                    ] = bonus_data["value"]
+            # print(bonuses)
+
+        elif branch.data == "init_skill":
+            if "other" in bonuses.keys():
+                bonuses["other"]["init_skill"] = branch.children[0].value
+            else:
+                bonuses["other"] = {"init_skill": branch.children[0].value}
+            # print(bonuses)
+
+        elif branch.data == "new_condition":
+            new_con_name = ""
+            num = 0
+            for item in branch.children:
+                if item.type == "WORD":
+                    new_con_name = item.value
+                elif item.type == "NUMBER":
+                    num = item.value
+
+            if new_con_name.title() in EPF_Conditions.keys():
+                if new_con_name.title() not in await character_model.conditions():
+                    await character_model.set_cc(new_con_name.title(), False, num, "Round", False)
+
+        elif branch.data == "item_bonus":
+            bonus_data = {}
+            for item in branch.children:
+                if type(item) == lark.Token:
+                    if item.type == "quoted":
+                        bonus_data["item"] = item.value.strip('"')
+                    if item.type == "WORD":
+                        bonus_data["skill"] = item.value
+                    elif item.type == "SIGNED_INT":
+                        bonus_data["value"] = int(item.value)
+                    elif item.type == "VARIABLE":
+                        bonus_data["value"] = condition.number
+                    elif item.type == "SPECIFIER":
+                        bonus_data["specifier"] = item.value
+                elif type(item) == lark.Tree:
+                    bonus_data["item"] = item.children[0].value
+
+            if f"{bonus_data['item']},{bonus_data['skill']}" not in bonuses.keys():
+                bonuses[f"{bonus_data['item']},{bonus_data['skill']}"] = {
+                    f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}": bonus_data["value"]
+                }
+            else:
+                if (
+                    f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                    in bonuses[f"{bonus_data['item']},{bonus_data['skill']}"].keys()
+                ):
+                    if abs(bonus_data["value"]) > abs(
+                        bonuses[f"{bonus_data['item']},{bonus_data['skill']}"][
+                            f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                        ]
+                    ):
+                        bonuses[f"{bonus_data['item']},{bonus_data['skill']}"][
+                            f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                        ] = bonus_data["value"]
+                else:
+                    bonuses[f"{bonus_data['item']},{bonus_data['skill']}"][
+                        f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
+                    ] = bonus_data["value"]
+            # print(bonuses)
+
+        elif branch.data == "stable":
+            stable_value = None
+            for item in branch.children:
+                if type(item) == lark.Token:
+                    if item.type == "NUMBER":
+                        stable_value = int(item.value)
+            # print(f"output: stable {stable_value}")
+
+            if not condition.stable:
+                async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+                Condition = await get_condition(ctx, engine, id=None)
+
+                async with async_session() as session:
+                    result = await session.execute(select(Condition).where(Condition.id == condition.id))
+                    this_condition = result.scalars().one()
+
+                    this_condition.stable = True
+                    if stable_value is not None:
+                        this_condition.value = stable_value
+                    else:
+                        this_condition.value = this_condition.number
+
+                    await session.commit()
+
+        # Will be addressed on the first pass interpreter
+        elif branch.data == "temp_hp":
+            # for item in branch.children:
+            #     print("temp hp", item.value)
+            pass
+
+        elif branch.data == "resistance":
+            temp = {"value": 0}
+            resistance_data = {}
+
+            for item in branch.children:
+                if item.type == "WORD" or item.type == "COMBO_WORD":
+                    temp["word"] = item.value
+                elif item.type == "SPECIFIER":
+                    temp["specifier"] = item.value
+                elif item.type == "NUMBER":
+                    temp["value"] = int(item.value)
+
+            resistance_data[temp["word"]] = {temp["specifier"]: temp["value"]}
+
+            if temp["word"] in resistances.keys():
+                if temp["specifier"] in resistances[temp["word"]].keys():
+                    if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
+                        resistances[temp["word"]][temp["specifier"]] = temp["value"]
+                else:
+                    resistances[temp["word"]][temp["specifier"]] = temp["value"]
+            else:
+                resistances[temp["word"]] = {temp["specifier"]: temp["value"]}
+
+        elif branch.data == "resistance_w_exception":
+            temp = {"value": 0}
+            resistance_data = {}
+            for x, item in enumerate(branch.children):
+                if item.type == "WORD" or item.type == "COMBO_WORD":
+                    if x == 0:
+                        temp["word"] = item.value
+                    else:
+                        temp["exception"] = item.value
+                elif item.type == "SPECIFIER":
+                    temp["specifier"] = item.value
+                elif item.type == "NUMBER":
+                    temp["value"] = int(item.value)
+
+            resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
+            # print("resistance data", resistance_data)
+
+            if temp["word"] in resistances.keys():
+                if temp["specifier"] in resistances[temp["word"]].keys():
+                    if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
+                        resistances[temp["word"]][temp["specifier"]] = {
+                            "value": temp["value"],
+                            "except": temp["exception"],
+                        }
+                else:
+                    resistances[temp["word"]][temp["specifier"]] = {"value": temp["value"], "except": temp["exception"]}
+            else:
+                resistances[temp["word"]] = resistance_data[temp["word"]]
+
+        # print(bonuses)
+        # print(resistances)
+
+    return bonuses, resistances
+
+
+async def first_pass_process(ctx: discord.ApplicationContext, tree, character_name):
+    character_model = await get_EPF_Character(character_name, ctx)
+    data = {}
+    t = tree.iter_subtrees_topdown()
+    for branch in t:
+        if branch.data == "skill_bonus":
+            pass
+        elif branch.data == "init_skill":
+            pass
+        elif branch.data == "new_condition":
+            pass
+        elif branch.data == "item_bonus":
+            pass
+        elif branch.data == "stable":
+            stable_value = None
+            for item in branch.children:
+                if type(item) == lark.Token:
+                    if item.type == "NUMBER":
+                        stable_value = int(item.value)
+            data["stable"] = True
+            data["value"] = stable_value
+
+        elif branch.data == "set_value":
+            for item in branch.children:
+                if item.type == "NUMBER":
+                    data["value"] = int(item.value)
+
+        elif branch.data == "temp_hp":
+            for item in branch.children:
+                await character_model.add_thp(item.value)
+
+        elif branch.data == "resistance":
+            pass
+        elif branch.data == "persist_dmg":
+            data["persist"] = True
+
+    return data
+
+
+async def parse(ctx, engine, char_name: str, guild=None):
+    bonuses = {}
+    resistances = {}
+    guild = await get_guild(ctx, guild=guild)
+    Character_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
+
+    # Database boilerplate
+    if guild is not None:
+        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+    else:
+        PF2_tracker = await get_EPF_tracker(ctx, engine)
+        Condition = await get_condition(ctx, engine)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(PF2_tracker.id).where(PF2_tracker.name == char_name))
+            char = result.scalars().one()
+
+        async with async_session() as session:
+            result = await session.execute(select(Condition).where(Condition.character_id == char))
+            conditions = result.scalars().all()
+    except NoResultFound:
+        conditions = []
+
+    for condition in conditions:
+        await asyncio.sleep(0)
+        # print(condition.action)
+        if condition.action != "":
+            action = condition.action
+            action = action.strip()
+            action = action.lower()
+            try:
+                tree = await condition_parser(action)
+                # print(tree.pretty())
+                bonuses, resistances = await process_condition_tree(
+                    ctx, tree, Character_Model, condition, bonuses, resistances
+                )
+            except Exception:
+                processed_input = action.split(",")
+                for item in processed_input:
+                    try:
+                        tree = await condition_parser(item)
+                        bonuses, resistances = await process_condition_tree(
+                            ctx, tree, Character_Model, condition, bonuses, resistances
+                        )
+                    except Exception as e:
+                        logging.error(f"Bad input: {item}: {e}")
+
+    # print(bonuses, "\n", resistances)
+    return bonuses, resistances
