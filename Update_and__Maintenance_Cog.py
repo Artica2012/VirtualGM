@@ -197,37 +197,40 @@ class Update_and_Maintenance_Cog(commands.Cog):
             all_guilds = result.scalars().all()
 
         for guild in all_guilds:
-            Tracker = await get_tracker(None, engine, id=guild.id)
-            Condition = await get_condition(None, engine, id=guild.id)
-            async with async_session() as session:
-                result = await session.execute(select(Tracker))
-            char_list = result.scalars().all()
-
-            for char in char_list:
-                Character_Model = await get_character(char.name, None, engine=engine, guild=guild)
-                await Character_Model.update()
-
-                if guild.system == "EPF":
-                    con_list = await Character_Model.conditions()
-                    for item in con_list:
-                        try:
-                            if item.number != 0 and item.time is False and item.value is None:
-                                async with async_session() as session:
-                                    result = await session.execute(select(Condition).where(Condition.id == item.id))
-                                    mod_con = result.scalars().one()
-
-                                    mod_con.value = mod_con.number
-
-                                    await session.commit()
-                        except Exception:
-                            pass
-                print(Character_Model.char_name, "updated.")
-
             try:
-                Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
-            except Exception:
-                pass
+                Tracker = await get_tracker(None, engine, id=guild.id)
+                Condition = await get_condition(None, engine, id=guild.id)
+                async with async_session() as session:
+                    result = await session.execute(select(Tracker))
+                char_list = result.scalars().all()
+
+                for char in char_list:
+                    Character_Model = await get_character(char.name, None, engine=engine, guild=guild)
+                    await Character_Model.update()
+
+                    if guild.system == "EPF":
+                        con_list = await Character_Model.conditions()
+                        for item in con_list:
+                            try:
+                                if item.number != 0 and item.time is False and item.value is None:
+                                    async with async_session() as session:
+                                        result = await session.execute(select(Condition).where(Condition.id == item.id))
+                                        mod_con = result.scalars().one()
+
+                                        mod_con.value = mod_con.number
+
+                                        await session.commit()
+                            except Exception:
+                                pass
+                    print(Character_Model.char_name, "updated.")
+
+                try:
+                    Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
+                except Exception:
+                    pass
+            except Exception as e:
+                logging.error(f"{guild.guild_id}: {e}")
 
 
 def setup(bot):
