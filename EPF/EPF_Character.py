@@ -2007,12 +2007,12 @@ start: phrase+
 
 phrase: value+ break
 
-value: WORD [SIGNED_INT | VARIABLE ]  SPECIFIER         -> skill_bonus
+value: WORD (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                 -> init_skill
     | quoted WORD SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                      -> temp_hp
-    | WORD SPECIFIER NUMBER ";"?                            -> resistance
-    | WORD SPECIFIER NUMBER "e" WORD ";"?                    -> resistance_w_exception
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                            -> resistance
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?                    -> resistance_w_exception
     | "stable" NUMBER?                                  -> stable
     | persist_dmg                       
     | WORD NUMBER?                                      -> new_condition
@@ -2052,7 +2052,7 @@ COMBO_WORD : WORD "-" WORD
 
 
 async def condition_parser(data: str):
-    print(data)
+    # print(data)
     if data[-1:] != ",":
         data = data + ","
 
@@ -2232,7 +2232,7 @@ async def process_condition_tree(
                     temp["value"] = int(item.value)
 
             resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
-            print("resistance data", resistance_data)
+            # print("resistance data", resistance_data)
 
             if temp["word"] in resistances.keys():
                 if temp["specifier"] in resistances[temp["word"]].keys():
@@ -2246,8 +2246,8 @@ async def process_condition_tree(
             else:
                 resistances[temp["word"]] = resistance_data[temp["word"]]
 
-        print(bonuses)
-        print(resistances)
+        # print(bonuses)
+        # print(resistances)
 
     return bonuses, resistances
 
@@ -2319,7 +2319,7 @@ async def parse(ctx, engine, char_name: str, guild=None):
 
     for condition in conditions:
         await asyncio.sleep(0)
-        print(condition.action)
+        # print(condition.action)
         if condition.action != "":
             action = condition.action
             action = action.strip()
@@ -2339,7 +2339,7 @@ async def parse(ctx, engine, char_name: str, guild=None):
                             ctx, tree, Character_Model, condition, bonuses, resistances
                         )
                     except Exception as e:
-                        print(f"Bad input: {item}: {e}")
+                        logging.error(f"Bad input: {item}: {e}")
 
-    print(bonuses, "\n", resistances)
+    # print(bonuses, "\n", resistances)
     return bonuses, resistances

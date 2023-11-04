@@ -94,7 +94,7 @@ class EPF_Tracker(Tracker):
 
                 for item in persist_list:
                     result = await self.persist_dmg_handler(item)
-                    print(result)
+                    # print(result)
 
             for con_row in con_list:
                 # print(con_row.title)
@@ -128,15 +128,15 @@ class EPF_Tracker(Tracker):
                 await report.report()
 
     async def persist_dmg_handler(self, condition):
-        print("HANDLING PERSISTENT DAMAGE")
+        logging.warning("HANDLING PERSISTENT DAMAGE")
         Con_Character = await self.get_char_from_id(condition.character_id)
         action_data = condition.action.lower()
         action_data = action_data.strip()
         try:
             parsed_data = await EPF_Character.condition_parser(action_data)
-            print(parsed_data.pretty())
+            # print(parsed_data.pretty())
             persist_data = await Con_Character.eot_parse(parsed_data)
-            print(persist_data)
+            # print(persist_data)
 
         except Exception:
             return False
@@ -149,7 +149,7 @@ class EPF_Tracker(Tracker):
             )
         except KeyError:
             dmg_output, total_damage = await roll_persist_dmg(Con_Character, dmg_roll)
-        print(dmg_output, total_damage)
+        # print(dmg_output, total_damage)
 
         roll_string = ""
         for i in dmg_output:
