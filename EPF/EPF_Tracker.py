@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Tracker import Tracker, get_init_list
+from EPF import EPF_Character
+from PF2e.pf2_functions import PF2_eval_succss
 from database_models import get_tracker, Global, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
@@ -19,6 +21,7 @@ from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.Char_Getter import get_character
 from utils.utils import get_guild
 from EPF.EPF_resists import roll_persist_dmg
+from EPF.EPF_Support import EPF_Success_colors
 
 
 async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
@@ -90,37 +93,8 @@ class EPF_Tracker(Tracker):
                     persist_list = char_result.scalars().all()
 
                 for item in persist_list:
-                    Con_Character = await self.get_char_from_id(item.character_id)
-                    persist_data = Con_Character.eot_parse(item.action)
-                    dmg_roll = d20.roll(persist_data["roll_string"])
-
-                    dmg_output, total_damage = await roll_persist_dmg(
-                        Con_Character, dmg_roll, dmg_type_override=persist_data["dmg_type"]
-                    )
-                    roll_string = ""
-                    for i in dmg_output:
-                        roll_string += f"{i['dmg_output_string']} {i['dmg_type'].title()}"
-
-                    Con_Character.change_hp(total_damage, False, post=False)
-
-                    if "save" in persist_data.keys():
-                        match persist_data["save"]:  # noqa
-                            case "reflex":
-                                save_roll = d20.roll(await Con_Character.get_roll("Reflex"))
-                            case "will":
-                                save_roll = d20.roll(await Con_Character.get_roll("Will"))
-                            case "fort":
-                                save_roll = d20.roll(await Con_Character.get_roll("Fort"))
-                            case "flat":
-                                save_roll = d20.roll("1d20")
-                            case _:
-                                save_roll = d20.roll("1d20")
-
-                        if save_roll.total >= persist_data["save_vale"]:
-                            await Con_Character.delete_cc(item.title)
-
-                    print(roll_string)
-                    print(save_roll)
+                    result = await self.persist_dmg_handler(item)
+                    print(result)
 
             for con_row in con_list:
                 # print(con_row.title)
@@ -152,6 +126,89 @@ class EPF_Tracker(Tracker):
             if self.ctx is not None and self.bot is not None:
                 report = ErrorReport(self.ctx, "init_con", e, self.bot)
                 await report.report()
+
+    async def persist_dmg_handler(self, condition):
+        print("HANDLING PERSISTENT DAMAGE")
+        Con_Character = await self.get_char_from_id(condition.character_id)
+        action_data = condition.action.lower()
+        action_data = action_data.strip()
+        try:
+            parsed_data = await EPF_Character.condition_parser(action_data)
+            print(parsed_data.pretty())
+            persist_data = await Con_Character.eot_parse(parsed_data)
+            print(persist_data)
+
+        except Exception:
+            return False
+
+        dmg_roll = persist_data["roll_string"]
+
+        try:
+            dmg_output, total_damage = await roll_persist_dmg(
+                Con_Character, dmg_roll, dmg_type_override=persist_data["dmg_type"]
+            )
+        except KeyError:
+            dmg_output, total_damage = await roll_persist_dmg(Con_Character, dmg_roll)
+        print(dmg_output, total_damage)
+
+        roll_string = ""
+        for i in dmg_output:
+            roll_string += f"{i['dmg_output_string']} {'' if i['dmg_type'] is None else i['dmg_type'].title()}"
+
+        await Con_Character.change_hp(total_damage, False, post=False)
+        save_roll = None
+        success_string = "Failure"
+        if "save" in persist_data.keys():
+            match persist_data["save"]:  # noqa
+                case "reflex":
+                    save_roll = d20.roll(await Con_Character.get_roll("Reflex"))
+                case "will":
+                    save_roll = d20.roll(await Con_Character.get_roll("Will"))
+                case "fort":
+                    save_roll = d20.roll(await Con_Character.get_roll("Fort"))
+                case "flat":
+                    save_roll = d20.roll("1d20")
+                case _:
+                    save_roll = d20.roll("1d20")
+
+            success_string = PF2_eval_succss(save_roll, d20.roll(persist_data["save_value"]))
+            if success_string == "Critical Success" or success_string == "Success":
+                await Con_Character.delete_cc(condition.title)
+
+        output_string = f"Persistent Damage: {roll_string}"
+
+        if "save" not in persist_data.keys():
+            embed = discord.Embed(
+                title=f"{Con_Character.char_name.title()}: {condition.title.title()}",
+                fields=[
+                    discord.EmbedField(
+                        name=(
+                            f"{'Persistent' if 'dmg_type' not in persist_data.keys() else persist_data['dmg_type'].title()} Damage"
+                        ),
+                        value=output_string,
+                    )
+                ],
+                color=EPF_Success_colors(success_string),
+            )
+        else:
+            if save_roll is not None:
+                output_string += f"\nSave Rolled: {save_roll} vs DC{persist_data['save_value']}\n{success_string}"
+            embed = discord.Embed(
+                title=f"{Con_Character.char_name.title()}: {condition.title.title()}",
+                fields=[
+                    discord.EmbedField(
+                        name=f"{persist_data['save'].title()} {'Save' if persist_data['save'] != 'flat' else 'Check'}",
+                        value=output_string,
+                    )
+                ],
+                color=EPF_Success_colors(success_string),
+            )
+
+        embed.set_thumbnail(url=Con_Character.pic)
+
+        channel = self.bot.get_channel(self.guild.tracker_channel)
+        await channel.send(embed=embed)
+        return True
 
     async def EPF_advance_initiative(self):
         logging.info("EPF_advance_initiative")

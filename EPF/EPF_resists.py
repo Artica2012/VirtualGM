@@ -10,6 +10,8 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     if target.resistance == {}:
         return dmg_roll
     dmg = dmg_roll
+    if dmg_type is None:
+        return dmg_roll
     dmg_type = dmg_type.lower()
     print(target.resistance)
     print(dmg_type)

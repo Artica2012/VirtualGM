@@ -2017,7 +2017,7 @@ value: WORD [SIGNED_INT | VARIABLE ]  SPECIFIER         -> skill_bonus
     | persist_dmg                       
     | WORD NUMBER?                                      -> new_condition
 
-persist_dmg : "persistent dmg" roll_string WORD* ["/" "dc" NUMBER save_string]
+persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
 
 modifier: SIGNED_INT
 
