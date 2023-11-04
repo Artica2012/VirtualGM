@@ -331,7 +331,9 @@ class EPF_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = self.init_list
+        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        # for item in total_list:
+        #     print(item.name)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -457,12 +459,19 @@ class EPF_Tracker(Tracker):
                                             f" {processed_minutes_left}:{processed_seconds_left}\n"
                                         )
                             else:
-                                con_string = (
-                                    "      "
-                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
-                                    f"{con_row.value if con_row.value is not None else ''}:"
-                                    f" {con_row.number} Rounds\n"
-                                )
+                                if con_row.auto_increment:
+                                    con_string = (
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}:"
+                                        f" {con_row.number} Rounds\n"
+                                    )
+                                else:
+                                    con_string = (
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}\n"
+                                    )
                         else:
                             con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
 

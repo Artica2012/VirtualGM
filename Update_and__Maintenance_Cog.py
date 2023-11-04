@@ -226,11 +226,11 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     #             pass
                     print(Character_Model.char_name, "updated.")
 
-                # try:
-                #     Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
-                #     await Tracker_Model.update_pinned_tracker()
-                # except Exception:
-                #     pass
+                try:
+                    Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
+                    await Tracker_Model.update_pinned_tracker()
+                except Exception:
+                    pass
             except Exception as e:
                 logging.error(f"{guild.guild_id}: {e}")
 
