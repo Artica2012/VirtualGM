@@ -265,7 +265,7 @@ class RED_Tracker(Tracker):
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = self.init_list
+        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
