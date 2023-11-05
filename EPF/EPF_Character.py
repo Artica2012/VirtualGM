@@ -755,6 +755,9 @@ class EPF_Character(Character):
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
+                if not stable:
+                    value = None
+
                 current_time = await get_time(self.ctx, self.engine)
                 if unit == "Minute":
                     end_time = current_time + datetime.timedelta(minutes=number)
@@ -2038,7 +2041,7 @@ DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
 
 SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x"
+VARIABLE : "+x" | "-x" | POS_NEG? "lvl" | (POS_NEG?  ROLL)
 
 
 COMBO_WORD : WORD ("-" |"_") WORD
