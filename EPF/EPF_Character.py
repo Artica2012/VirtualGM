@@ -2041,7 +2041,7 @@ DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
 
 SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x" | POS_NEG? "lvl" | (POS_NEG?  ROLL)
+VARIABLE : "+x" | "-x" 
 
 
 COMBO_WORD : WORD ("-" |"_") WORD
