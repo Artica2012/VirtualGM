@@ -145,7 +145,9 @@ class Update_and_Maintenance_Cog(commands.Cog):
                             pass
 
         logging.warning("U&M Complete")
-        await self.force_refresh()
+
+        # Commented out until needed again
+        # await self.force_refresh()
 
         logging.warning(await self.get_stats())
 
