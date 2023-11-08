@@ -35,6 +35,8 @@ from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
+from EPF.Kineticist_DB import Kineticist_DB
+
 # define global variables
 
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
@@ -100,6 +102,7 @@ class EPF_Character(Character):
         self.fort_mod = character.fort_mod
         self.reflex_mod = character.reflex_mod
         self.will_mod = character.will_mod
+        self.class_dc - character.class_dc
 
         self.acrobatics_mod = character.acrobatics_mod
         self.arcana_mod = character.arcana_mod
@@ -175,6 +178,7 @@ class EPF_Character(Character):
         self.fort_mod = self.character_model.fort_mod
         self.reflex_mod = self.character_model.reflex_mod
         self.will_mod = self.character_model.will_mod
+        self.class_dc = self.character_model.class_dc
 
         self.acrobatics_mod = self.character_model.acrobatics_mod
         self.arcana_mod = self.character_model.arcana_mod
@@ -214,6 +218,8 @@ class EPF_Character(Character):
         elif item == "Will":
             # print("c")
             return f"1d20+{self.will_mod}"
+        elif item == "class_dc":
+            return f"1d20+{self.class_dc}"
         elif item == "Acrobatics":
             # print("d")
             return f"1d20+{self.acrobatics_mod}"
@@ -315,6 +321,10 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
+
+        if "kineticist" in weapon.keys():
+            return await self.kineticist_attack(item)
+
         attk_stat = self.str_mod
         match weapon["attk_stat"]:
             case "dex":
@@ -417,6 +427,20 @@ class EPF_Character(Character):
 
     async def get_weapon(self, item):
         return self.character_model.attacks[item]
+
+    async def kineticist_attack(self, item):
+        # Work in progress - Placeholder
+        return None
+
+    async def is_complex_attack(self, item):
+        try:
+            if "kineticist" in self.character_model.attacks(item).keys():
+                if self.character_model.attacks(item)["kineticist"]:
+                    return True
+            else:
+                return False
+        except KeyError:
+            return False
 
     async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
         try:
@@ -1086,8 +1110,13 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             lores += output
 
         feats = ""
+        feat_list = []
+
         for item in pb["build"]["feats"]:
+            print(item)
             feats += f"{item[0]}, "
+            feat_list.append(item[0].strip())
+        print(feat_list)
 
         bonus_dmg_list = []
         attacks = {}
@@ -1303,6 +1332,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
             except Exception as e:
                 pass
+
+        # Kineticist Specific Code (at least for now:
+        print(Kineticist_DB.keys())
+        for feat in feat_list:
+            feat = feat.lower()
+            print(feat)
+            if feat in Kineticist_DB.keys():
+                print(Kineticist_DB[feat])
+                attacks[feat.lower()] = Kineticist_DB[feat]
+                print(Kineticist_DB[feat])
 
         if overwrite:
             async with async_session() as session:

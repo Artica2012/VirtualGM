@@ -188,54 +188,62 @@ class EPF_Automation(Automation):
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
         color = discord.Color(value=125)
 
-        # Attack
-        roll_string = f"({await Character_Model.get_roll(attack)})"
-        dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
+        if Character_Model.is_complex_attack(attack):
+            # Kineticist Specific Code here (Could be more in the future)
+            attack_data = Character_Model.character_model.attacks(attack)
+            if attack_data["type"]["value"] == "attack":
+                roll_string = f"({await Character_Model.get_roll('class_dc')})"
+                dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
 
-        goal_value = Target_Model.ac_total
-        try:
-            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-            goal_result = d20.roll(goal_string)
-        except Exception as e:
-            logging.warning(f"auto: {e}")
-            return "Error"
-
-        # Format output string
-
-        success_string = PF2_eval_succss(dice_result, goal_result)
-        attk_output_string = (
-            f"{character} attacks {target} {'' if target_modifier == '' else f'(AC {target_modifier})' } with their"
-            f" {attack}:\n{dice_result}\n{success_string}"
-        )
-
-        # Damage
-        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
-            dmg_string, total_damage = await roll_dmg_resist(
-                Character_Model,
-                Target_Model,
-                attack,
-                True,
-                flat_bonus=dmg_modifier,
-                dmg_type_override=dmg_type_override,
-            )
-            color = color.gold()
-        elif success_string == "Success" or success_string == "Critical Success":
-            dmg_string, total_damage = await roll_dmg_resist(
-                Character_Model,
-                Target_Model,
-                attack,
-                False,
-                flat_bonus=dmg_modifier,
-                dmg_type_override=dmg_type_override,
-            )
-            color = color.green()
         else:
-            if success_string == "Failure":
-                color = color.red()
+            # Attack
+            roll_string = f"({await Character_Model.get_roll(attack)})"
+            dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
+
+            goal_value = Target_Model.ac_total
+            try:
+                goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+                goal_result = d20.roll(goal_string)
+            except Exception as e:
+                logging.warning(f"auto: {e}")
+                return "Error"
+
+            # Format output string
+
+            success_string = PF2_eval_succss(dice_result, goal_result)
+            attk_output_string = (
+                f"{character} attacks {target} {'' if target_modifier == '' else f'(AC {target_modifier})' } with their"
+                f" {attack}:\n{dice_result}\n{success_string}"
+            )
+
+            # Damage
+            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
+                dmg_string, total_damage = await roll_dmg_resist(
+                    Character_Model,
+                    Target_Model,
+                    attack,
+                    True,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                )
+                color = color.gold()
+            elif success_string == "Success" or success_string == "Critical Success":
+                dmg_string, total_damage = await roll_dmg_resist(
+                    Character_Model,
+                    Target_Model,
+                    attack,
+                    False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                )
+                color = color.green()
             else:
-                color = color.dark_red()
-            dmg_string = None
-            total_damage = 0
+                if success_string == "Failure":
+                    color = color.red()
+                else:
+                    color = color.dark_red()
+                dmg_string = None
+                total_damage = 0
 
         if dmg_string is not None:
             dmg_output_string = f"{character} damages {target} for:"
