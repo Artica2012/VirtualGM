@@ -3,11 +3,14 @@ from math import floor
 
 import d20
 import discord
+import lark
+from lark import Lark
 from sqlalchemy.exc import NoResultFound
 
 import EPF.EPF_Character
 from Base.Automation import Automation
 from EPF.EPF_Character import get_EPF_Character
+from EPF.EPF_Support import EPF_Conditions
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from PF2e.pf2_functions import PF2_eval_succss
 from error_handling_reporting import error_not_initialized
@@ -194,6 +197,25 @@ class EPF_Automation(Automation):
             if attack_data["type"]["value"] == "attack":
                 roll_string = f"({await Character_Model.get_roll('class_dc')})"
                 dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
+
+                goal_value = Target_Model.ac_total
+
+                try:
+                    goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+                    goal_result = d20.roll(goal_string)
+                except Exception as e:
+                    logging.warning(f"auto: {e}")
+                    return "Error"
+
+                success_string = PF2_eval_succss(dice_result, goal_result)
+
+                if success_string == "Critical Success":
+                    if "critical success" in attack_data['effect'].keys():
+                        data = await automation_parse(attack_data['effect']['critical success'], Target_Model)
+                    else:
+                        data = await automation_parse(attack_data['effect']['success'], Target_Model)
+                elif success_string == "Success":
+                    data = await automation_parse(attack_data['effect']['success'], Target_Model)
 
         else:
             # Attack
@@ -561,3 +583,144 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
     embed.set_thumbnail(url=Character_Model.pic)
 
     return embed
+
+
+attack_grammer = """
+start: phrase+
+
+phrase: value+ break
+
+value: roll_string WORD                                                -> damage_string
+    | persist_dmg
+    | WORD NUMBER?                                                     -> new_condition 
+
+
+persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
+
+modifier: SIGNED_INT
+
+quoted: SINGLE_QUOTED_STRING
+    | DOUBLE_QUOTED_STRING
+
+break: ","
+
+
+roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
+!save_string: "reflex" | "fort" | "will" | "flat"
+
+ROLL: NUMBER "d" NUMBER 
+
+POS_NEG : ("+" | "-")
+
+DOUBLE_QUOTED_STRING  : /"[^"]*"/
+SINGLE_QUOTED_STRING  : /'[^']*'/
+
+SPECIFIER : "c" | "s" | "i" | "r" | "w"
+VARIABLE : "+x" | "-x" 
+
+
+COMBO_WORD : WORD ("-" |"_") WORD
+%import common.ESCAPED_STRING
+%import common.WORD
+%import common.SIGNED_INT
+%import common.NUMBER
+%import common.WS
+%ignore WS
+"""
+
+
+async def automation_parse(data, target_model):
+    processed_data = {}
+    try:
+        if data[-1:] != ",":
+            data = data + ","
+
+        tree = Lark(attack_grammer).parse(data)
+        print(tree.pretty())
+        processed_data = await parse_automation_tree(tree, processed_data, target_model)
+    except Exception:
+        processed_input = data.split(",")
+        for item in processed_input:
+            try:
+                if data[-1:] != ",":
+                    data = data + ","
+
+                tree = Lark(attack_grammer).parse(data)
+                print(tree.pretty())
+                processed_data = await parse_automation_tree(tree, processed_data)
+            except Exception as e:
+                logging.error(f"Bad input: {item}: {e}")
+
+    return processed_data
+
+async def parse_automation_tree(
+    ctx: discord.ApplicationContext, tree, data: dict, target_model):
+    t = tree.iter_subtrees_topdown()
+    for branch in t:
+        if branch.data == "new_condition":
+            #TODO Update syntax to allow duration and data etc in new conditions. This can then be put back into the condition parser
+            new_con_name = ""
+            num = 0
+            for item in branch.children:
+                if item.type == "WORD":
+                    new_con_name = item.value
+                elif item.type == "NUMBER":
+                    num = item.value
+
+            if new_con_name.title() in EPF_Conditions.keys():
+                if new_con_name.title() not in await target_model.conditions():
+                    await target_model.set_cc(new_con_name.title(), False, num, "Round", False)
+
+        elif branch.data == "persist_dmg":
+            data = {}
+            for item in branch.children:
+                if type(item) == lark.Tree:
+                    if item.data == "roll_string":
+                        roll_string = ""
+                        for sub in item.children:
+                            if sub is not None:
+                                roll_string = roll_string + sub.value
+
+                        data["roll_string"] = roll_string
+                    elif item.data == "save_string":
+                        for sub in item.children:
+                            data["save"] = sub.value
+                elif type(item) == lark.Token:
+                    if item.type == "WORD":
+                        data["dmg_type"] = item.value
+                    elif item.type == "NUMBER":
+                        data["save_value"] = item.value
+
+        elif branch.data == "damage_string":
+            temp = {"value": 0}
+            resistance_data = {}
+            for x, item in enumerate(branch.children):
+                if item.type == "WORD" or item.type == "COMBO_WORD":
+                    if x == 0:
+                        temp["word"] = item.value
+                    else:
+                        temp["exception"] = item.value
+                elif item.type == "SPECIFIER":
+                    temp["specifier"] = item.value
+                elif item.type == "NUMBER":
+                    temp["value"] = int(item.value)
+
+            resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
+            # print("resistance data", resistance_data)
+
+            if temp["word"] in resistances.keys():
+                if temp["specifier"] in resistances[temp["word"]].keys():
+                    if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
+                        resistances[temp["word"]][temp["specifier"]] = {
+                            "value": temp["value"],
+                            "except": temp["exception"],
+                        }
+                else:
+                    resistances[temp["word"]][temp["specifier"]] = {"value": temp["value"], "except": temp["exception"]}
+            else:
+                resistances[temp["word"]] = resistance_data[temp["word"]]
+
+        # print(bonuses)
+        # print(resistances)
+
+    return bonuses, resistances

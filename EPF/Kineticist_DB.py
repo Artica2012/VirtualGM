@@ -1,6 +1,7 @@
 Kineticist_DB = {
     "aerial boomerang": {
-        "kineticist": True,
+        "complex": True,
+        "category": "kineticist",
         "title": "aerial boomerang",
         "lvl": 1,
         "traits": ["air", "impulse", "kineticist", "primal"],
@@ -9,7 +10,8 @@ Kineticist_DB = {
         "heighten": {"interval": 2, "effect": "1d4"},
     },
     "flying flame": {
-        "kineticist": True,
+        "complex": True,
+        "category": "kineticist",
         "title": "flying flame",
         "lvl": 1,
         "traits": ["fire", "impulse", "kineticist", "primal"],
@@ -18,7 +20,8 @@ Kineticist_DB = {
         "heighten": {"interval": 2, "effect": "1d6"},
     },
     "hail of splinters": {
-        "kineticist": True,
+        "complex": True,
+        "category": "kineticist",
         "title": "hail of splinters",
         "lvl": 1,
         "traits": ["overflow", "impulse", "kineticist", "primal", "wood"],
@@ -32,7 +35,8 @@ Kineticist_DB = {
         "heighten": {"interval": 2, "effect": "1d4"},
     },
     "magnetic pinions": {
-        "kineticist": True,
+        "complex": True,
+        "category": "kineticist",
         "title": "magnetic pinions",
         "lvl": 1,
         "traits": ["overflow", "impulse", "kineticist", "primal", "metal"],
