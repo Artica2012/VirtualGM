@@ -191,7 +191,7 @@ class EPF_Automation(Automation):
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
         color = discord.Color(value=125)
 
-        if Character_Model.is_complex_attack(attack):
+        if await Character_Model.is_complex_attack(attack):
             # Kineticist Specific Code here (Could be more in the future)
             attack_data = Character_Model.character_model.attacks(attack)
             if attack_data["type"]["value"] == "attack":
@@ -209,13 +209,57 @@ class EPF_Automation(Automation):
 
                 success_string = PF2_eval_succss(dice_result, goal_result)
 
-                if success_string == "Critical Success":
-                    if "critical success" in attack_data['effect'].keys():
-                        data = await automation_parse(attack_data['effect']['critical success'], Target_Model)
+                attk_output_string = (
+                    f"{character} attacks {target} {'' if target_modifier == '' else f'(AC {target_modifier})'} with"
+                    f" their {attack}:\n{dice_result}\n{success_string}"
+                )
+
+                # heightening code
+                if "heighten" in attack_data.keys():
+                    if Character_Model.level > attack_data["lvl"]:
+                        heighten = floor(
+                            (Character_Model.level - attack_data["lvl"]) / attack_data["heighten"]["interval"]
+                        )
                     else:
-                        data = await automation_parse(attack_data['effect']['success'], Target_Model)
+                        heighten = 0
+
+                    if heighten > 0:
+                        heighten_data = await automation_parse(attack_data["heighten"]["effect"])
+                else:
+                    heighten = 0
+
+                if success_string == "Critical Success":
+                    if "critical success" in attack_data["effect"].keys():
+                        data = await automation_parse(attack_data["effect"]["critical success"], Target_Model)
+
+                        if heighten > 0:
+                            for i in heighten_data.keys():
+                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data[i]}"
+
+                        dmg_string, total_damage = await scripted_damage_roll_resists(
+                            data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                        )
+                    else:
+                        data = await automation_parse(attack_data["effect"]["success"], Target_Model)
+                        dmg_string, total_damage = await scripted_damage_roll_resists(
+                            data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                        )
+                    color = color.gold()
+
                 elif success_string == "Success":
-                    data = await automation_parse(attack_data['effect']['success'], Target_Model)
+                    data = await automation_parse(attack_data["effect"]["success"], Target_Model)
+                    dmg_string, total_damage = await scripted_damage_roll_resists(
+                        data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                    )
+                    color = color.green()
+
+                else:
+                    if success_string == "Failure":
+                        color = color.red()
+                    else:
+                        color = color.dark_red()
+                    dmg_string = None
+                    total_damage = 0
 
         else:
             # Attack
@@ -653,12 +697,12 @@ async def automation_parse(data, target_model):
 
     return processed_data
 
-async def parse_automation_tree(
-    ctx: discord.ApplicationContext, tree, data: dict, target_model):
+
+async def parse_automation_tree(ctx: discord.ApplicationContext, tree, data: dict, target_model):
     t = tree.iter_subtrees_topdown()
     for branch in t:
         if branch.data == "new_condition":
-            #TODO Update syntax to allow duration and data etc in new conditions. This can then be put back into the condition parser
+            # TODO Update syntax to allow duration and data etc in new conditions. This can then be put back into the condition parser
             new_con_name = ""
             num = 0
             for item in branch.children:
@@ -671,8 +715,10 @@ async def parse_automation_tree(
                 if new_con_name.title() not in await target_model.conditions():
                     await target_model.set_cc(new_con_name.title(), False, num, "Round", False)
 
+                data["condition"] = new_con_name
+
         elif branch.data == "persist_dmg":
-            data = {}
+            temp = {}
             for item in branch.children:
                 if type(item) == lark.Tree:
                     if item.data == "roll_string":
@@ -681,46 +727,60 @@ async def parse_automation_tree(
                             if sub is not None:
                                 roll_string = roll_string + sub.value
 
-                        data["roll_string"] = roll_string
+                        temp["roll_string"] = roll_string
                     elif item.data == "save_string":
                         for sub in item.children:
-                            data["save"] = sub.value
+                            temp["save"] = sub.value
                 elif type(item) == lark.Token:
                     if item.type == "WORD":
-                        data["dmg_type"] = item.value
+                        temp["dmg_type"] = item.value
                     elif item.type == "NUMBER":
-                        data["save_value"] = item.value
+                        temp["save_value"] = item.value
+            data["pd"] = temp
 
         elif branch.data == "damage_string":
-            temp = {"value": 0}
-            resistance_data = {}
-            for x, item in enumerate(branch.children):
-                if item.type == "WORD" or item.type == "COMBO_WORD":
-                    if x == 0:
-                        temp["word"] = item.value
-                    else:
-                        temp["exception"] = item.value
-                elif item.type == "SPECIFIER":
-                    temp["specifier"] = item.value
-                elif item.type == "NUMBER":
-                    temp["value"] = int(item.value)
+            if "dmg" not in data.keys():
+                data["dmg"] = {}
 
-            resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
-            # print("resistance data", resistance_data)
+            temp = {}
+            for item in branch.children:
+                # print(item)
+                if type(item) == lark.Tree:
+                    if item.data == "roll_string":
+                        roll_string = ""
+                        for sub in item.children:
+                            if sub is not None:
+                                roll_string = roll_string + sub.value
 
-            if temp["word"] in resistances.keys():
-                if temp["specifier"] in resistances[temp["word"]].keys():
-                    if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
-                        resistances[temp["word"]][temp["specifier"]] = {
-                            "value": temp["value"],
-                            "except": temp["exception"],
-                        }
-                else:
-                    resistances[temp["word"]][temp["specifier"]] = {"value": temp["value"], "except": temp["exception"]}
-            else:
-                resistances[temp["word"]] = resistance_data[temp["word"]]
+                        temp["roll_string"] = roll_string
+                elif type(item) == lark.Token:
+                    if item.type == "WORD":
+                        temp["dmg_type"] = item.value
 
-        # print(bonuses)
-        # print(resistances)
+                if temp["dmg_type"] is not None and temp["roll_string"] is not None:
+                    data["dmg"][temp["dmg_type"]] = temp["roll_string"]
 
-    return bonuses, resistances
+    return data
+
+
+async def scripted_damage_roll_resists(
+    data: dict, Target_Model: EPF.EPF_Character.EPF_Character, crit: bool, flat_bonus="", dmg_type_override=None
+):
+    dmg_output = []
+    total_damage = 0
+    for x, key in enumerate(data["dmg"]):
+        dmg_string = f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''}){'*2' if crit else ''}"
+        damage_roll = d20.roll(dmg_string)
+
+        if dmg_type_override == "":
+            dmg_type_override = None
+        if dmg_type_override is not None:
+            base_dmg_type = dmg_type_override
+        else:
+            base_dmg_type = key
+        total_damage += await damage_calc_resist(damage_roll.total, base_dmg_type, Target_Model)
+        dmg_output_string = f"{damage_roll}"
+        output = {"dmg_output_string": dmg_output_string, "dmg_type": base_dmg_type}
+        dmg_output.append(output)
+
+    return dmg_output, total_damage

@@ -102,7 +102,7 @@ class EPF_Character(Character):
         self.fort_mod = character.fort_mod
         self.reflex_mod = character.reflex_mod
         self.will_mod = character.will_mod
-        self.class_dc - character.class_dc
+        self.class_dc = character.class_dc
 
         self.acrobatics_mod = character.acrobatics_mod
         self.arcana_mod = character.arcana_mod
@@ -323,7 +323,7 @@ class EPF_Character(Character):
         weapon = self.character_model.attacks[item]
 
         if "complex" in weapon.keys():
-            if weapon['complex'] == True:
+            if weapon["complex"] == True:
                 return await self.kineticist_attack(item)
 
         attk_stat = self.str_mod
@@ -435,8 +435,8 @@ class EPF_Character(Character):
 
     async def is_complex_attack(self, item):
         try:
-            if "complex" in self.character_model.attacks(item).keys():
-                if self.character_model.attacks(item)["complex"]:
+            if "complex" in self.character_model.attacks[item].keys():
+                if self.character_model.attacks[item]["complex"]:
                     return True
             else:
                 return False

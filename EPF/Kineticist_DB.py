@@ -32,7 +32,7 @@ Kineticist_DB = {
             "failure": "1d4 piercing, pd 1d4 piercing / dc15 flat",
             "critical failure": "(1d4)*2 piercing / pd (1d4)*2 piercing / dc15 flat ",
         },
-        "heighten": {"interval": 2, "effect": "1d4"},
+        "heighten": {"interval": 2, "effect": "1d4 piercing"},
     },
     "magnetic pinions": {
         "complex": True,
@@ -44,6 +44,7 @@ Kineticist_DB = {
             "value": "attack",
         },
         "effect": {"success": "1d4 piercing, 1d4 bludgeoning"},
-        "heighten": {"interval": 2, "effect": "1d4"},
+        "heighten": {"interval": 2, "effect": "1d4 piercing, 1d4 bludgeoning"},
     },
+    # TODO Utility Skill format
 }
