@@ -190,14 +190,19 @@ class EPF_Automation(Automation):
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
         color = discord.Color(value=125)
+        print(await Character_Model.is_complex_attack(attack))
+        print(Character_Model.character_model.attacks[attack])
 
         if await Character_Model.is_complex_attack(attack):
+            print("Complex Attack")
             # Kineticist Specific Code here (Could be more in the future)
-            attack_data = Character_Model.character_model.attacks(attack)
+            attack_data = await Character_Model.get_weapon(attack)
+            print(attack_data)
             if attack_data["type"]["value"] == "attack":
                 roll_string = f"({await Character_Model.get_roll('class_dc')})"
+                print(roll_string)
                 dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
-
+                print(dice_result)
                 goal_value = Target_Model.ac_total
 
                 try:
@@ -216,31 +221,45 @@ class EPF_Automation(Automation):
 
                 # heightening code
                 if "heighten" in attack_data.keys():
-                    if Character_Model.level > attack_data["lvl"]:
+                    print("Heightening")
+                    print(Character_Model.character_model.level)
+                    print(attack_data["lvl"])
+                    if Character_Model.character_model.level > attack_data["lvl"]:
                         heighten = floor(
-                            (Character_Model.level - attack_data["lvl"]) / attack_data["heighten"]["interval"]
+                            (Character_Model.character_model.level - attack_data["lvl"])
+                            / attack_data["heighten"]["interval"]
                         )
                     else:
                         heighten = 0
 
+                    print(heighten)
+
                     if heighten > 0:
-                        heighten_data = await automation_parse(attack_data["heighten"]["effect"])
+                        heighten_data = await automation_parse(attack_data["heighten"]["effect"], Target_Model)
+                        print(heighten_data)
                 else:
                     heighten = 0
 
                 if success_string == "Critical Success":
                     if "critical success" in attack_data["effect"].keys():
                         data = await automation_parse(attack_data["effect"]["critical success"], Target_Model)
-
+                        print(data)
                         if heighten > 0:
-                            for i in heighten_data.keys():
-                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data[i]}"
+                            for i in heighten_data["dmg"].keys():
+                                print(i)
+                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
 
                         dmg_string, total_damage = await scripted_damage_roll_resists(
                             data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                         )
                     else:
                         data = await automation_parse(attack_data["effect"]["success"], Target_Model)
+                        print(data)
+                        if heighten > 0:
+                            for i in heighten_data["dmg"].keys():
+                                print(i)
+                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+
                         dmg_string, total_damage = await scripted_damage_roll_resists(
                             data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                         )
@@ -248,6 +267,12 @@ class EPF_Automation(Automation):
 
                 elif success_string == "Success":
                     data = await automation_parse(attack_data["effect"]["success"], Target_Model)
+                    print(data)
+                    if heighten > 0:
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                    print(data)
                     dmg_string, total_damage = await scripted_damage_roll_resists(
                         data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                     )
@@ -685,20 +710,20 @@ async def automation_parse(data, target_model):
     except Exception:
         processed_input = data.split(",")
         for item in processed_input:
-            try:
-                if data[-1:] != ",":
-                    data = data + ","
+            # try:
+            if data[-1:] != ",":
+                data = data + ","
 
-                tree = Lark(attack_grammer).parse(data)
-                print(tree.pretty())
-                processed_data = await parse_automation_tree(tree, processed_data)
-            except Exception as e:
-                logging.error(f"Bad input: {item}: {e}")
+            tree = Lark(attack_grammer).parse(data)
+            print(tree.pretty())
+            processed_data = await parse_automation_tree(tree, processed_data, target_model)
+            # except Exception as e:
+            #     logging.error(f"Bad input: {item}: {e}")
 
     return processed_data
 
 
-async def parse_automation_tree(ctx: discord.ApplicationContext, tree, data: dict, target_model):
+async def parse_automation_tree(tree, data: dict, target_model):
     t = tree.iter_subtrees_topdown()
     for branch in t:
         if branch.data == "new_condition":
@@ -757,8 +782,8 @@ async def parse_automation_tree(ctx: discord.ApplicationContext, tree, data: dic
                     if item.type == "WORD":
                         temp["dmg_type"] = item.value
 
-                if temp["dmg_type"] is not None and temp["roll_string"] is not None:
-                    data["dmg"][temp["dmg_type"]] = temp["roll_string"]
+            if temp["dmg_type"] is not None and temp["roll_string"] is not None:
+                data["dmg"][temp["dmg_type"]] = temp["roll_string"]
 
     return data
 

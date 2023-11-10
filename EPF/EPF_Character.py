@@ -427,21 +427,20 @@ class EPF_Character(Character):
             return f"{die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
-        return self.character_model.attacks[item]
-
-    async def kineticist_attack(self, item):
-        # Work in progress - Placeholder
-        return None
+        try:
+            return self.character_model.attacks[item]
+        except KeyError:
+            return None
 
     async def is_complex_attack(self, item):
-        try:
-            if "complex" in self.character_model.attacks[item].keys():
-                if self.character_model.attacks[item]["complex"]:
-                    return True
-            else:
-                return False
-        except KeyError:
+        # try:
+        if "complex" in self.character_model.attacks[item].keys():
+            if self.character_model.attacks[item]["complex"]:
+                return True
+        else:
             return False
+        # except KeyError:
+        #     return False
 
     async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
         try:
