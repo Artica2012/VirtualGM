@@ -216,7 +216,7 @@ class EPF_Automation(Automation):
 
                 attk_output_string = (
                     f"{character} attacks {target} {'' if target_modifier == '' else f'(AC {target_modifier})'} with"
-                    f" their {attack}:\n{dice_result}\n{success_string}"
+                    f" their {attack.title()}:\n{dice_result}\n{success_string}"
                 )
 
                 # heightening code
@@ -245,9 +245,10 @@ class EPF_Automation(Automation):
                         data = await automation_parse(attack_data["effect"]["critical success"], Target_Model)
                         print(data)
                         if heighten > 0:
-                            for i in heighten_data["dmg"].keys():
-                                print(i)
-                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                            for x in range(0, heighten + 1):
+                                for i in heighten_data["dmg"].keys():
+                                    print(i)
+                                    data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
 
                         dmg_string, total_damage = await scripted_damage_roll_resists(
                             data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -256,9 +257,10 @@ class EPF_Automation(Automation):
                         data = await automation_parse(attack_data["effect"]["success"], Target_Model)
                         print(data)
                         if heighten > 0:
-                            for i in heighten_data["dmg"].keys():
-                                print(i)
-                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                            for x in range(0, heighten + 1):
+                                for i in heighten_data["dmg"].keys():
+                                    print(i)
+                                    data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
 
                         dmg_string, total_damage = await scripted_damage_roll_resists(
                             data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -269,9 +271,10 @@ class EPF_Automation(Automation):
                     data = await automation_parse(attack_data["effect"]["success"], Target_Model)
                     print(data)
                     if heighten > 0:
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                        for x in range(0, heighten):
+                            for i in heighten_data["dmg"].keys():
+                                print(i)
+                                data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
                     print(data)
                     dmg_string, total_damage = await scripted_damage_roll_resists(
                         data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -357,7 +360,7 @@ class EPF_Automation(Automation):
 
         embed = discord.Embed(
             title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
-            fields=[discord.EmbedField(name=attack, value=output)],
+            fields=[discord.EmbedField(name=attack.title(), value=output)],
             color=color,
         )
         embed.set_thumbnail(url=Character_Model.pic)
