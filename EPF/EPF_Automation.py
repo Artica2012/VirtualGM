@@ -5,15 +5,14 @@ import d20
 import discord
 import lark
 from lark import Lark
-from sqlalchemy.exc import NoResultFound
 
 import EPF.EPF_Character
 from Base.Automation import Automation
+from EPF.Attack_Class import get_attack
 from EPF.EPF_Character import get_EPF_Character
 from EPF.EPF_Support import EPF_Conditions
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from PF2e.pf2_functions import PF2_eval_succss
-from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
@@ -25,149 +24,22 @@ class EPF_Automation(Automation):
         super().__init__(ctx, engine, guild)
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
-        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-        try:
-            roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
-            dice_result = d20.roll(roll_string)
-        except Exception:
-            roll_string = f"({await char_model.get_roll(roll)}){ParseModifiers(attack_modifier)}"
-            dice_result = d20.roll(roll_string)
-
-        opponent = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
-        goal_value = await opponent.get_dc(vs)
-
-        try:
-            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-            goal_result = d20.roll(goal_string)
-        except Exception as e:
-            logging.warning(f"attack: {e}")
-            return "Error"
-
-        # Format output string
-        success_string = PF2_eval_succss(dice_result, goal_result)
-        if success_string == "Critical Success":
-            color = discord.Color.gold()
-        elif success_string == "Success":
-            color = discord.Color.green()
-        elif success_string == "Failure":
-            color = discord.Color.red()
-        else:
-            color = discord.Color.dark_red()
-        output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
-
-        embed = discord.Embed(
-            title=f"{char_model.char_name} vs {opponent.char_name}",
-            fields=[discord.EmbedField(name=roll, value=output_string)],
-            color=color,
-        )
-        embed.set_thumbnail(url=char_model.pic)
-
-        return embed
+        Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
+        return await Attack.roll_attack(target, vs, attack_modifier, target_modifier)
 
     async def save(self, character, target, save, dc, modifier):
-        if target is None:
-            embed = discord.Embed(title=character, fields=[discord.EmbedField(name=save, value="Invalid Target")])
-
-            return embed
-        attacker = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
-        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
-
-        orig_dc = dc
-
-        if dc is None:
-            dc = await attacker.get_dc("DC")
-        try:
-            dice_result = d20.roll(f"{await opponent.get_roll(save)}{ParseModifiers(modifier)}")
-            goal_result = d20.roll(f"{dc}")
-        except Exception as e:
-            logging.warning(f"attack: {e}")
-            return False
-        try:
-            success_string = PF2_eval_succss(dice_result, goal_result)
-
-            if success_string == "Critical Success":
-                color = discord.Color.gold()
-            elif success_string == "Success":
-                color = discord.Color.green()
-            elif success_string == "Failure":
-                color = discord.Color.red()
-            else:
-                color = discord.Color.dark_red()
-
-            # Format output string
-            if character == target:
-                output_string = f"{character} makes a {save} save!\n{dice_result}\n{success_string if orig_dc else ''}"
-            else:
-                output_string = (
-                    f"{target} makes a {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
-                )
-
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"attack: {e}")
-            return False
-
-        embed = discord.Embed(
-            title=f"{attacker.char_name} vs {opponent.char_name}" if character != target else f"{attacker.char_name}",
-            fields=[discord.EmbedField(name=save, value=output_string)],
-            color=color,
-        )
-        embed.set_thumbnail(url=attacker.pic)
-
-        return embed
+        Attack = await get_attack(character, save, self.ctx, guild=self.guild)
+        return await Attack.save(target, dc, modifier)
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
-        weapon = None
-        # print(roll)
         if roll == "Treat Wounds":
             return await treat_wounds(
                 self.ctx, character, target, damage_type, modifier, engine=self.engine, guild=self.guild
             )
 
-        try:
-            roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
-            dmg = roll_result.total
-            if not healing:
-                dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-            roll_string = f"{roll_result} {damage_type}"
-        except Exception:
-            try:
-                dmg_output, total_damage = await roll_dmg_resist(
-                    Character_Model, Target_Model, roll, crit, modifier, dmg_type_override=damage_type
-                )
-                roll_string = ""
-                for item in dmg_output:
-                    roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
-                dmg = total_damage
-            except Exception:
-                try:
-                    roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
-                    dmg = roll_result.total
-                    if not healing:
-                        dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-                    roll_string = f"{roll_result} {damage_type}"
-                except Exception:
-                    roll_result = d20.roll("0 [Error]")
-                    dmg = roll_result.total
-                    roll_string = roll_result
-
-        await Target_Model.change_hp(dmg, healing, post=False)
-        output_string = (
-            f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_string}"
-            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
-            f"{await Target_Model.calculate_hp()}"
-        )
-
-        embed = discord.Embed(
-            title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
-            fields=[discord.EmbedField(name=roll, value=output_string)],
-        )
-        embed.set_thumbnail(url=Character_Model.pic)
+        Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
+        embed = await Attack.damage(target, modifier, healing, damage_type, crit)
 
         if not multi:
             await Tracker_Model.update_pinned_tracker()
@@ -664,8 +536,7 @@ phrase: value+ break
 
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
-    | WORD NUMBER?                                                     -> new_condition 
-
+    | WORD NUMBER?                                                     -> new_condition
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
 
@@ -680,7 +551,7 @@ break: ","
 roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
 !save_string: "reflex" | "fort" | "will" | "flat"
 
-ROLL: NUMBER "d" NUMBER 
+ROLL: NUMBER "d" NUMBER
 
 POS_NEG : ("+" | "-")
 
@@ -688,7 +559,7 @@ DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
 
 SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x" 
+VARIABLE : "+x" | "-x"
 
 
 COMBO_WORD : WORD ("-" |"_") WORD
@@ -730,7 +601,8 @@ async def parse_automation_tree(tree, data: dict, target_model):
     t = tree.iter_subtrees_topdown()
     for branch in t:
         if branch.data == "new_condition":
-            # TODO Update syntax to allow duration and data etc in new conditions. This can then be put back into the condition parser
+            # TODO Update syntax to allow duration and data etc in new conditions.
+            #  This can then be put back into the condition parser
             new_con_name = ""
             num = 0
             for item in branch.children:

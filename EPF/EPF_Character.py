@@ -322,10 +322,6 @@ class EPF_Character(Character):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
 
-        if "complex" in weapon.keys():
-            if weapon["complex"] == True:
-                return await self.kineticist_attack(item)
-
         attk_stat = self.str_mod
         match weapon["attk_stat"]:
             case "dex":

@@ -64,38 +64,38 @@ class AutomationCog(commands.Cog):
     ):
         logging.info("attack_cog attack")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        try:
-            await ctx.response.defer()
-            Automation = await get_automation(ctx, engine=engine)
-            embeds = []
-            if "," in target:
-                multi_target = target.split(",")
-                for char in multi_target:
-                    try:
-                        embeds.append(
-                            await Automation.attack(
-                                character, char.strip(), roll, vs, attack_modifier, target_modifier, multi=True
-                            )
+        # try:
+        await ctx.response.defer()
+        Automation = await get_automation(ctx, engine=engine)
+        embeds = []
+        if "," in target:
+            multi_target = target.split(",")
+            for char in multi_target:
+                try:
+                    embeds.append(
+                        await Automation.attack(
+                            character, char.strip(), roll, vs, attack_modifier, target_modifier, multi=True
                         )
+                    )
 
-                    except Exception:
-                        embeds.append(
-                            discord.Embed(title=char, fields=[discord.EmbedField(name=roll, value="Invalid Target")])
-                        )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
-            else:
-                embeds.append(await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier))
-            await ctx.send_followup(embeds=embeds)
-        except Exception as e:
-            logging.warning(f"attack_cog attack {e}")
-            report = ErrorReport(ctx, "/a attack", e, self.bot)
-            await report.report()
-            await ctx.send_followup(
-                "Error. Ensure that you selected valid targets and attack rolls.  Ensure that if "
-                "you used a non-macro roll that it conforms to the XdY+Z format without any "
-                "labels."
-            )
+                except Exception:
+                    embeds.append(
+                        discord.Embed(title=char, fields=[discord.EmbedField(name=roll, value="Invalid Target")])
+                    )
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
+        else:
+            embeds.append(await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier))
+        await ctx.send_followup(embeds=embeds)
+        # except Exception as e:
+        #     logging.warning(f"attack_cog attack {e}")
+        #     report = ErrorReport(ctx, "/a attack", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup(
+        #         "Error. Ensure that you selected valid targets and attack rolls.  Ensure that if "
+        #         "you used a non-macro roll that it conforms to the XdY+Z format without any "
+        #         "labels."
+        #     )
 
     @att.command(description="Saving Throw")
     @option("character", description="Character forcing the save", autocomplete=character_select_gm)
