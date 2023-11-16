@@ -209,13 +209,13 @@ class EPF_Character(Character):
     async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
-        if item == "Fortitude" or item == "Fort":
+        if item == "Fortitude" or item == "Fort" or item == "fort":
             # print("a")
             return f"1d20+{self.fort_mod}"
-        elif item == "Reflex":
+        elif item == "Reflex" or item == "reflex":
             # print("b")
             return f"1d20+{self.reflex_mod}"
-        elif item == "Will":
+        elif item == "Will" or item == "reflex":
             # print("c")
             return f"1d20+{self.will_mod}"
         elif item == "class_dc":
@@ -604,13 +604,13 @@ class EPF_Character(Character):
     async def get_dc(self, item):
         if item == "AC":
             return self.ac_total
-        elif item == "Fort":
+        elif item == "Fort" or item == "fort":
             return 10 + self.fort_mod
-        elif item == "Reflex":
+        elif item == "Reflex" or item == "reflex":
             return 10 + self.reflex_mod
-        elif item == "Will":
+        elif item == "Will" or item == "will":
             return 10 + self.will_mod
-        elif item == "DC":
+        elif item == "DC" or item == "dc":
             return 10 + self.character_model.class_dc
         elif item.lower() == "acrobatics":
             return 10 + self.acrobatics_mod

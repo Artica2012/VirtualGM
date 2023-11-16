@@ -301,13 +301,18 @@ class Attack:
         print("Complex Attack")
         print(self.attack)
 
-        if self.attack_type == "attack":
-            return await self.auto_complex_attack(
-                target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override
-            )
-
-    async def auto_complex_attack(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
         Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+
+        if self.attack_type == "attack":
+            Attk_Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
+            Dmg_Data = await self.auto_complex_attack_dmg(
+                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
+            )
+            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
+        elif self.attack_type == "complex":
+            pass
+
+    async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         roll_string = f"({await self.character.get_roll('class_dc')})"
         print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
@@ -325,10 +330,15 @@ class Attack:
 
         attk_output_string = (
             f"{self.character.char_name} attacks"
-            f" {target} {'' if target_modifier == '' else f'(AC {target_modifier})'} with their"
+            f" {Target_Model.char_name} {'' if target_modifier == '' else f'(AC {target_modifier})'} with their"
             f" {self.attack_name.title()}:\n{dice_result}\n{success_string}"
         )
 
+        return Attack_Data(None, 0, success_string, attk_output_string)
+
+    async def auto_complex_attack_dmg(
+        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
+    ):
         # heightening code
         if "heighten" in self.attack.keys():
             print("Heightening")
@@ -392,7 +402,34 @@ class Attack:
             dmg_string = None
             total_damage = 0
 
-        return Attack_Data(dmg_string, total_damage, success_string, attk_output_string)
+        return Attack_Data(dmg_string, total_damage, success_string, "")
+
+    async def auto_complex_save_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
+        # Roll the save
+        save = self.attack["type"]["save"]
+        roll_string = f"({await Target_Model.get_roll(save)})"
+        print(roll_string)
+        dice_result = d20.roll(f"{roll_string}{ParseModifiers(target_modifier)}")
+        print(dice_result)
+
+        try:
+            # Get the DC
+            goal_string = f"{self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
+            goal_result = d20.roll(goal_string)
+        except Exception as e:
+            logging.warning(f"auto: {e}")
+            return "Error"
+
+        success_string = PF2_eval_succss(dice_result, goal_result)
+
+        attk_output_string = (
+            f"{self.character.char_name} attacks"
+            f" {Target_Model.char_name} {'' if target_modifier == '' else f'({save.title()} {target_modifier})'} with"
+            f" their {self.attack_name.title()}:\n{self.character.char_name} forced a"
+            f" {save.title()} save.\n{dice_result}\n{success_string}"
+        )
+
+        return Attack_Data(None, 0, success_string, attk_output_string)
 
 
 class Attack_Data:
