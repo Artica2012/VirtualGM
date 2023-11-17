@@ -6,8 +6,8 @@ Kineticist_DB = {
         "lvl": 1,
         "traits": ["air", "impulse", "kineticist", "primal"],
         "type": {"value": "save", "save": "reflex", "type": "basic"},
-        "effect": {"basic dmg": "2d4 slashing"},
-        "heighten": {"interval": 2, "effect": "1d4"},
+        "effect": {"failure": "2d4 slashing"},
+        "heighten": {"interval": 2, "effect": "1d4 slashing"},
     },
     "flying flame": {
         "complex": True,
@@ -16,8 +16,8 @@ Kineticist_DB = {
         "lvl": 1,
         "traits": ["fire", "impulse", "kineticist", "primal"],
         "type": {"value": "save", "save": "reflex", "type": "basic"},
-        "effect": {"basic dmg": "1d6 fire"},
-        "heighten": {"interval": 2, "effect": "1d6"},
+        "effect": {"failure": "1d6 fire"},
+        "heighten": {"interval": 2, "effect": "1d6 fire"},
     },
     "hail of splinters": {
         "complex": True,

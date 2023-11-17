@@ -76,7 +76,7 @@ class Attack:
             if Target_Model.player:
                 output = (
                     f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
-                    f" {Attack_Data.output}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
+                    f" {Attack_Data.total_damage}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
                 )
             else:
                 output = (
@@ -309,8 +309,13 @@ class Attack:
                 Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
             )
             return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
-        elif self.attack_type == "complex":
-            pass
+        elif self.attack_type == "save":
+            print("save")
+            Attk_Data = await self.auto_complex_save_attk(Target_Model, attack_modifier, target_modifier)
+            Dmg_Data = await self.auto_complex_save_dmg(
+                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
+            )
+            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
 
     async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         roll_string = f"({await self.character.get_roll('class_dc')})"
@@ -414,7 +419,7 @@ class Attack:
 
         try:
             # Get the DC
-            goal_string = f"{self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
+            goal_string = f"{await self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
             goal_result = d20.roll(goal_string)
         except Exception as e:
             logging.warning(f"auto: {e}")
@@ -430,6 +435,128 @@ class Attack:
         )
 
         return Attack_Data(None, 0, success_string, attk_output_string)
+
+    async def auto_complex_save_dmg(
+        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
+    ):
+        # heightening code
+        if "heighten" in self.attack.keys():
+            print("Heightening")
+            print(self.character.character_model.level)
+            print(self.attack["lvl"])
+            if self.character.character_model.level > self.attack["lvl"]:
+                heighten = floor(
+                    (self.character.character_model.level - self.attack["lvl"]) / self.attack["heighten"]["interval"]
+                )
+            else:
+                heighten = 0
+
+            print(heighten)
+
+            if heighten > 0:
+                heighten_data = await automation_parse(self.attack["heighten"]["effect"], Target_Model)
+                print(heighten_data)
+        else:
+            heighten = 0
+
+        dmg_string = None
+        total_damage = 0
+
+        if success_string == "Critical Success":
+            if "critical success" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["critical success"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten + 1):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            else:
+                dmg_string = None
+                total_damage = 0
+
+        elif success_string == "Success":
+            if "success" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["success"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            elif self.attack["type"]["type"] == "basic":
+                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data,
+                    Target_Model,
+                    crit=False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                    half=True,
+                )
+        elif success_string == "Failure":
+            if "failure" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+        elif success_string == "Critical Failure":
+            if "critical failure" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["critical failure"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            elif self.attack["type"]["type"] == "basic":
+                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                print(data)
+                if heighten > 0:
+                    for x in range(0, heighten):
+                        for i in heighten_data["dmg"].keys():
+                            print(i)
+                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data,
+                    Target_Model,
+                    crit=True,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                )
+
+        else:
+            dmg_string = None
+            total_damage = 0
+
+        return Attack_Data(dmg_string, total_damage, success_string, "")
 
 
 class Attack_Data:
@@ -583,11 +710,16 @@ async def parse_automation_tree(tree, data: dict, target_model):
     return data
 
 
-async def scripted_damage_roll_resists(data: dict, Target_Model, crit: bool, flat_bonus="", dmg_type_override=None):
+async def scripted_damage_roll_resists(
+    data: dict, Target_Model, crit: bool, flat_bonus="", dmg_type_override=None, half=False
+):
     dmg_output = []
     total_damage = 0
     for x, key in enumerate(data["dmg"]):
-        dmg_string = f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''}){'*2' if crit else ''}"
+        dmg_string = (
+            f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''})"
+            f"{'*2' if crit else ''}{'/2' if half else ''}"
+        )
         damage_roll = d20.roll(dmg_string)
 
         if dmg_type_override == "":
