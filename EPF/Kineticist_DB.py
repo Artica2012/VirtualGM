@@ -27,12 +27,12 @@ Kineticist_DB = {
         "traits": ["overflow", "impulse", "kineticist", "primal", "wood"],
         "type": {"value": "save", "save": "reflex", "type": "complex"},
         "effect": {
-            "critical success": None,
-            "success": "(1d4)/2 piercing, pd (1d4)/2 piercing / dc15 flat",
+            "critical success": "",
+            "success": "1d4 piercing, pd 1d4 piercing / dc15 flat",
             "failure": "1d4 piercing, pd 1d4 piercing / dc15 flat",
-            "critical failure": "(1d4)*2 piercing / pd (1d4)*2 piercing / dc15 flat ",
+            "critical failure": "1d4 piercing, pd 1d4 piercing / dc15 flat ",
         },
-        "heighten": {"interval": 2, "effect": "1d4 piercing"},
+        "heighten": {"interval": 2, "effect": "1d4 piercing, hpd 1d4 piercing"},
     },
     "magnetic pinions": {
         "complex": True,

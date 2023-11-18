@@ -8,7 +8,6 @@ from lark import Lark
 from sqlalchemy.exc import NoResultFound
 
 from EPF.EPF_Character import EPF_Character, get_EPF_Character
-from EPF.EPF_Support import EPF_Conditions
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from PF2e.pf2_functions import PF2_eval_succss
 from database_operations import engine
@@ -345,6 +344,7 @@ class Attack:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # heightening code
+        heighten_data = {}
         if "heighten" in self.attack.keys():
             print("Heightening")
             print(self.character.character_model.level)
@@ -359,17 +359,17 @@ class Attack:
             print(heighten)
 
             if heighten > 0:
-                heighten_data = await automation_parse(self.attack["heighten"]["effect"], Target_Model)
+                heighten_data = await automation_parse(self.attack["heighten"]["effect"], self.character, Target_Model)
                 print(heighten_data)
         else:
             heighten = 0
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
-                    for x in range(0, heighten + 1):
+                    for x in range(0, heighten):
                         for i in heighten_data["dmg"].keys():
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
@@ -377,8 +377,9 @@ class Attack:
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
+                await self.pd(data, heighten, heighten_data, Target_Model)
             else:
-                data = await automation_parse(self.attack["effect"]["success"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten + 1):
@@ -386,12 +387,13 @@ class Attack:
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
 
+                await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
 
         elif success_string == "Success":
-            data = await automation_parse(self.attack["effect"]["success"], Target_Model)
+            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
             print(data)
             if heighten > 0:
                 for x in range(0, heighten):
@@ -399,6 +401,7 @@ class Attack:
                         print(i)
                         data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
             print(data)
+            await self.pd(data, heighten, heighten_data, Target_Model)
             dmg_string, total_damage = await scripted_damage_roll_resists(
                 data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
             )
@@ -440,6 +443,7 @@ class Attack:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # heightening code
+        heighten_data = {}
         if "heighten" in self.attack.keys():
             print("Heightening")
             print(self.character.character_model.level)
@@ -454,7 +458,7 @@ class Attack:
             print(heighten)
 
             if heighten > 0:
-                heighten_data = await automation_parse(self.attack["heighten"]["effect"], Target_Model)
+                heighten_data = await automation_parse(self.attack["heighten"]["effect"], self.character, Target_Model)
                 print(heighten_data)
         else:
             heighten = 0
@@ -464,13 +468,14 @@ class Attack:
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
-                    for x in range(0, heighten + 1):
+                    for x in range(0, heighten):
                         for i in heighten_data["dmg"].keys():
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                await self.pd(data, heighten, heighten_data, Target_Model)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -481,7 +486,7 @@ class Attack:
 
         elif success_string == "Success":
             if "success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["success"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten):
@@ -489,11 +494,12 @@ class Attack:
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
                 print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             elif self.attack["type"]["type"] == "basic":
-                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten):
@@ -501,6 +507,7 @@ class Attack:
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
                 print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data,
                     Target_Model,
@@ -511,20 +518,20 @@ class Attack:
                 )
         elif success_string == "Failure":
             if "failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten):
                         for i in heighten_data["dmg"].keys():
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
-                print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
         elif success_string == "Critical Failure":
             if "critical failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical failure"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten):
@@ -532,11 +539,12 @@ class Attack:
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
                 print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             elif self.attack["type"]["type"] == "basic":
-                data = await automation_parse(self.attack["effect"]["failure"], Target_Model)
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
                     for x in range(0, heighten):
@@ -557,6 +565,36 @@ class Attack:
             total_damage = 0
 
         return Attack_Data(dmg_string, total_damage, success_string, "")
+
+    async def pd(self, data, heighten, heighten_data, Target_Model):
+        if "pd" in data.keys():
+            print(data["pd"])
+            roll_string = data["pd"]["roll_string"]
+            if heighten > 0:
+                print(heighten_data)
+                for x in range(0, heighten):
+                    for i in heighten_data["hpd"].keys():
+                        roll_string = roll_string + " " + f"{heighten_data['hpd']['roll_string']}"
+            save_string = ""
+            if "save" in data["pd"]["save"]:
+                save_string = f"/ dc{data['[pd']['save_value']} {data['pd']['save']}"
+            action_string = f"pd {data['pd']['roll_string']} {data['pd']['dmg_type']} "
+            await Target_Model.set_cc(
+                f"Persistent {data['pd']['dmg_type']}", False, 0, "Round", False, data=f"{action_string} {save_string}"
+            )
+
+            embed = discord.Embed(
+                title=Target_Model.char_name.title(),
+                fields=[
+                    discord.EmbedField(
+                        name=f"Persistent {data['pd']['dmg_type']}", value=f"Persistent {data['pd']['dmg_type']} added."
+                    )
+                ],
+                color=discord.Color.blurple(),
+            )
+            embed.set_thumbnail(url=self.character.pic)
+
+            await self.ctx.channel.send(embed=embed)
 
 
 class Attack_Data:
@@ -583,9 +621,20 @@ phrase: value+ break
 
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
-    | WORD NUMBER?                                                     -> new_condition
+    | WORD NUMBER? (duration | unit | auto | stable | flex | target | data)*   -> new_condition
+    | heighten_persist
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
+
+heighten_persist: "hpd" roll_string WORD
+
+duration : "duration:" NUMBER
+unit : "unit:" WORD
+auto: "auto"
+data: "data:" SINGLE_QUOTED_STRING
+stable: "stable"
+flex: "flex"
+target: "myturn"
 
 modifier: SIGNED_INT
 
@@ -606,10 +655,10 @@ DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
 
 SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x"
+VARIABLE : "+x" | "-x" | POS_NEG? "lvl" | (POS_NEG?  ROLL)
 
 
-COMBO_WORD : WORD ("-" |"_") WORD
+COMBO_WORD : WORD ("-"|"_") WORD
 %import common.ESCAPED_STRING
 %import common.WORD
 %import common.SIGNED_INT
@@ -619,7 +668,7 @@ COMBO_WORD : WORD ("-" |"_") WORD
 """
 
 
-async def automation_parse(data, target_model):
+async def automation_parse(data, character_model, target_model):
     processed_data = {}
     try:
         if data[-1:] != ",":
@@ -627,42 +676,72 @@ async def automation_parse(data, target_model):
 
         tree = Lark(attack_grammer).parse(data)
         print(tree.pretty())
-        processed_data = await parse_automation_tree(tree, processed_data, target_model)
+        processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
     except Exception:
         processed_input = data.split(",")
         for item in processed_input:
-            # try:
-            if data[-1:] != ",":
-                data = data + ","
+            try:
+                if data[-1:] != ",":
+                    data = data + ","
 
-            tree = Lark(attack_grammer).parse(data)
-            print(tree.pretty())
-            processed_data = await parse_automation_tree(tree, processed_data, target_model)
-            # except Exception as e:
-            #     logging.error(f"Bad input: {item}: {e}")
+                tree = Lark(attack_grammer).parse(data)
+                print(tree.pretty())
+                processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
+            except Exception as e:
+                logging.error(f"Bad input: {item}: {e}")
 
     return processed_data
 
 
-async def parse_automation_tree(tree, data: dict, target_model):
+async def parse_automation_tree(tree, output_data: dict, char_model, target_model):
     t = tree.iter_subtrees_topdown()
     for branch in t:
         if branch.data == "new_condition":
-            # TODO Update syntax to allow duration and data etc in new conditions.
-            #  This can then be put back into the condition parser
-            new_con_name = ""
-            num = 0
+            data = {"title": "", "number": 0}
+
             for item in branch.children:
-                if item.type == "WORD":
-                    new_con_name = item.value
-                elif item.type == "NUMBER":
-                    num = item.value
+                if type(item) == lark.Token:
+                    if item.type == "WORD":
+                        data["title"] = item.value
+                    elif item.type == "NUMBER":
+                        data["number"] = item.value
+                elif type(item) == lark.Tree:
+                    try:
+                        data[str(item.data)] = item.children[0].value
+                    except IndexError:
+                        data[str(item.data)] = 0
 
-            if new_con_name.title() in EPF_Conditions.keys():
-                if new_con_name.title() not in await target_model.conditions():
-                    await target_model.set_cc(new_con_name.title(), False, num, "Round", False)
+            unit = "Round"
+            if "unit" in data.keys():
+                if data["unit"] in ["round", "minute", "hour", "days"]:
+                    unit = data["unit"].title()
 
-                data["condition"] = new_con_name
+            auto = False
+            if "auto" in data.keys():
+                auto = True
+
+            action = ""
+            if "data" in data.keys():
+                action = data["data"]
+
+            if "stable" in data.keys():
+                action = action + "" + "stable"
+
+            flex = False
+            if "flex" in data.keys():
+                flex = True
+
+            target = None
+            if "target" in data.keys():
+                target = char_model.char_name
+
+            # TODO Move this out to the main method
+            if data["title"].title() not in await target_model.conditions():
+                await target_model.set_cc(
+                    data["title"].title(), False, data["number"], unit, auto, flex=flex, data=action, target=target
+                )
+
+            output_data["condition"] = data
 
         elif branch.data == "persist_dmg":
             temp = {}
@@ -683,11 +762,27 @@ async def parse_automation_tree(tree, data: dict, target_model):
                         temp["dmg_type"] = item.value
                     elif item.type == "NUMBER":
                         temp["save_value"] = item.value
-            data["pd"] = temp
+            output_data["pd"] = temp
+
+        elif branch.data == "heighten_persist":
+            temp = {}
+            for item in branch.children:
+                if type(item) == lark.Tree:
+                    if item.data == "roll_string":
+                        roll_string = ""
+                        for sub in item.children:
+                            if sub is not None:
+                                roll_string = roll_string + sub.value
+
+                        temp["roll_string"] = roll_string
+                elif type(item) == lark.Token:
+                    if item.type == "WORD":
+                        temp["dmg_type"] = item.value
+            output_data["hpd"] = temp
 
         elif branch.data == "damage_string":
-            if "dmg" not in data.keys():
-                data["dmg"] = {}
+            if "dmg" not in output_data.keys():
+                output_data["dmg"] = {}
 
             temp = {}
             for item in branch.children:
@@ -705,9 +800,9 @@ async def parse_automation_tree(tree, data: dict, target_model):
                         temp["dmg_type"] = item.value
 
             if temp["dmg_type"] is not None and temp["roll_string"] is not None:
-                data["dmg"][temp["dmg_type"]] = temp["roll_string"]
+                output_data["dmg"][temp["dmg_type"]] = temp["roll_string"]
 
-    return data
+    return output_data
 
 
 async def scripted_damage_roll_resists(
