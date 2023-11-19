@@ -1,5 +1,5 @@
 Kineticist_DB = {
-    "Elemental Blast (Air)": [
+    "elemental blast (air)": [
         {
             "complex": True,
             "category": "kineticist",
@@ -21,7 +21,7 @@ Kineticist_DB = {
             "heighten": {"interval": 4, "effect": "1d6 slashing"},
         },
     ],
-    "Elemental Blast (Earth)": [
+    "elemental blast (earth)": [
         {
             "complex": True,
             "category": "kineticist",
@@ -43,7 +43,7 @@ Kineticist_DB = {
             "heighten": {"interval": 4, "effect": "1d8 bludgeoning"},
         },
     ],
-    "Elemental Blast (Fire)": {
+    "elemental blast (fire)": {
         "complex": True,
         "category": "kineticist",
         "title": "Elemental Blast (Fire)",
@@ -53,7 +53,7 @@ Kineticist_DB = {
         "effect": {"success": "1d6 fire"},
         "heighten": {"interval": 4, "effect": "1d6 fire"},
     },
-    "Elemental Blast (Metal)": [
+    "elemental blast (metal)": [
         {
             "complex": True,
             "category": "kineticist",
@@ -75,7 +75,7 @@ Kineticist_DB = {
             "heighten": {"interval": 4, "effect": "1d8 slashing"},
         },
     ],
-    "Elemental Blast (Water)": [
+    "elemental blast (water)": [
         {
             "complex": True,
             "category": "kineticist",
@@ -97,7 +97,7 @@ Kineticist_DB = {
             "heighten": {"interval": 4, "effect": "1d8 cold"},
         },
     ],
-    "Elemental Blast (Wood)": [
+    "elemental blast (wood)": [
         {
             "complex": True,
             "category": "kineticist",

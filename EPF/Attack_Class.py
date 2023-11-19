@@ -382,7 +382,7 @@ class Attack:
                 data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
-                    for x in range(0, heighten + 1):
+                    for x in range(0, heighten):
                         for i in heighten_data["dmg"].keys():
                             print(i)
                             data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"

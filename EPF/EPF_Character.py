@@ -1108,6 +1108,19 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         feats = ""
         feat_list = []
 
+        if "Air Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Air)")
+        if "Earth Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Earth)")
+        if "Fire Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Fire)")
+        if "Metal Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Metal)")
+        if "Water Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Water)")
+        if "Wood Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Wood)")
+
         for item in pb["build"]["feats"]:
             print(item)
             feats += f"{item[0]}, "
@@ -1330,14 +1343,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 pass
 
         # Kineticist Specific Code (at least for now:
-        print(Kineticist_DB.keys())
+        # print(Kineticist_DB.keys())
         for feat in feat_list:
             feat = feat.lower()
             print(feat)
             if feat in Kineticist_DB.keys():
-                print(Kineticist_DB[feat])
-                attacks[feat.lower()] = Kineticist_DB[feat]
-                print(Kineticist_DB[feat])
+                if type(Kineticist_DB[feat]) == list:
+                    for x, item in enumerate(Kineticist_DB[feat]):
+                        attacks[Kineticist_DB[feat][x]["title"]] = Kineticist_DB[feat][x]
+                else:
+                    attacks[Kineticist_DB[feat]["title"]] = Kineticist_DB[feat]
 
         if overwrite:
             async with async_session() as session:
