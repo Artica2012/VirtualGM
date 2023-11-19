@@ -19,18 +19,28 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     if weapon is not None:
         if "traits" in weapon.keys():
             if "concussive" in weapon["traits"]:
-                if "piercing" in target.resistance["immune"]:
+                if "piercing" in target.resistance.keys():
                     dmg_type = "bludgeoning"
-                elif "bludgeoning" in target.resistance["immune"]:
+                elif "bludgeoning" in target.resistance.keys():
                     dmg_type = "piercing"
-                elif "piercing" in target.resistance["resist"] and "bludgeoning" in target.resistance["resist"]:
-                    if target.resistance["resist"]["piercing"] > target.resistance["resist"]["bludgeoning"]:
+                elif "piercing" in target.resistance.keys() and "bludgeoning" in target.resistance.keys():
+                    try:
+                        p_resist = target.resistance["piercing"]["r"]
+                    except KeyError:
+                        p_resist = 0
+
+                    try:
+                        b_resist = target.resistance["bludgeoning"]["r"]
+                    except KeyError:
+                        b_resist = 0
+
+                    if p_resist > b_resist:
                         dmg_type = "bludgeoning"
-                    elif target.resistance["resist"]["piercing"] < target.resistance["resist"]["bludgeoning"]:
+                    else:
                         dmg_type = "piercing"
-                elif "piercing" in target.resistance["resist"]:
+                elif "piercing" in target.resistance.keys():
                     dmg_type = "bludgeoning"
-                elif "bludgeoning" in target.resistance["resist"]:
+                elif "bludgeoning" in target.resistance.keys():
                     dmg_type = "piercing"
         try:
             mat = weapon["mat"].lower()

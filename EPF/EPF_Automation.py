@@ -298,7 +298,7 @@ class EPF_Automation(Automation):
             success_string = PF2_eval_succss(attack_roll, goal_result)
             attk_output_string = f"{character} casts {spell_name} at {target}:\n{attack_roll}\n{success_string}"
 
-            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
+            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
                 dmg_string, total_damage = await roll_spell_dmg_resist(
                     Character_Model,
                     Target_Model,
@@ -431,7 +431,7 @@ async def roll_spell_dmg_resist(
     # Roll the critical damage and apply resistances
     dmg_rolls = {}
     # print(spell, crit)
-    if crit and "critical-hits" not in Target_Model.resistance["immune"]:
+    if crit and "critical-hits" not in Target_Model.resistance.keys():
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
         # print(spell_dmg)
         for key in spell_dmg.keys():
