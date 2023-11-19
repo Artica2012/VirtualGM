@@ -132,7 +132,15 @@ class Attack:
         return self.output
 
     async def complex_attack(self, target, vs, attack_modifier, target_modifier):
-        return []
+        Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        if self.attack_type == "attack":
+            Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
+        else:
+            Data = await self.auto_complex_save_attk(Target_Model, attack_modifier, target_modifier)
+
+        await self.format_output(Data, Target_Model)
+
+        return self.output
 
     async def save(self, target, dc, modifier):
         if target is None:
@@ -184,53 +192,65 @@ class Attack:
 
     async def damage(self, target, modifier, healing, damage_type: str, crit=False):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
-        weapon = None
 
         if self.complex:
-            # TODO Add complex damage roll
-            pass
+            if crit:
+                success_string = "Critical Success"
+            else:
+                success_string = "Success"
+            if self.attack_type == "attack":
+                Data = await self.auto_complex_attack_dmg(Target_Model, success_string, modifier, damage_type)
+            elif self.attack_type == "save":
+                Data = await self.auto_complex_save_dmg(Target_Model, success_string, modifier, damage_type)
+            else:
+                Data = Attack_Data(None, 0, success_string, "ERROR")
         else:
-            try:
-                roll_result: d20.RollResult = d20.roll(f"({self.attack_name}){ParseModifiers(modifier)}")
-                dmg = roll_result.total
-                if not healing:
-                    dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-                roll_string = f"{roll_result} {damage_type}"
-            except Exception:
-                try:
-                    dmg_output, total_damage = await roll_dmg_resist(
-                        self.character, Target_Model, self.attack_name, crit, modifier, dmg_type_override=damage_type
-                    )
-                    roll_string = ""
-                    for item in dmg_output:
-                        roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
-                    dmg = total_damage
-                except Exception:
-                    try:
-                        roll_result = d20.roll(
-                            f"{await self.character.get_roll(self.attack_name)}{ParseModifiers(modifier)}"
-                        )
-                        dmg = roll_result.total
-                        if not healing:
-                            dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-                        roll_string = f"{roll_result} {damage_type}"
-                    except Exception:
-                        roll_result = d20.roll("0 [Error]")
-                        dmg = roll_result.total
-                        roll_string = roll_result
+            Data = await self.simple_dmg(Target_Model, modifier, healing, damage_type, crit)
 
-        await Target_Model.change_hp(dmg, healing, post=False)
-        output_string = (
-            f"{self.character.char_name} {'heals' if healing else 'damages'}  {target} for: \n{roll_string}"
-            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
-            f"{await Target_Model.calculate_hp()}"
-        )
-
-        Data = Attack_Data(None, dmg, None, output_string)
+        await Target_Model.change_hp(Data.total_damage, healing, post=False)
 
         await self.format_output(Data, Target_Model)
 
         return self.output
+
+    async def simple_dmg(self, Target_Model, modifier, healing, damage_type: str, crit=False, weapon=None):
+        try:
+            roll_result: d20.RollResult = d20.roll(f"({self.attack_name}){ParseModifiers(modifier)}")
+            dmg = roll_result.total
+            if not healing:
+                dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
+            roll_string = f"{roll_result} {damage_type}"
+        except Exception:
+            try:
+                dmg_output, total_damage = await roll_dmg_resist(
+                    self.character, Target_Model, self.attack_name, crit, modifier, dmg_type_override=damage_type
+                )
+                roll_string = ""
+                for item in dmg_output:
+                    roll_string += f"{item['dmg_output_string']} {item['dmg_type'].title()}\n"
+                dmg = total_damage
+            except Exception:
+                try:
+                    roll_result = d20.roll(
+                        f"{await self.character.get_roll(self.attack_name)}{ParseModifiers(modifier)}"
+                    )
+                    dmg = roll_result.total
+                    if not healing:
+                        dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
+                    roll_string = f"{roll_result} {damage_type}"
+                except Exception:
+                    roll_result = d20.roll("0 [Error]")
+                    dmg = roll_result.total
+                    roll_string = roll_result
+
+        output_string = (
+            f"{self.character.char_name} {'heals' if healing else 'damages'}  {Target_Model.char_name} for:"
+            f" \n{roll_string}"
+            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
+            f"{await Target_Model.calculate_hp()}"
+        )
+
+        return Attack_Data(None, dmg, None, output_string)
 
     async def auto(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
@@ -559,6 +579,7 @@ class Attack:
                     flat_bonus=dmg_modifier,
                     dmg_type_override=dmg_type_override,
                 )
+                await self.pd(data, heighten, heighten_data, Target_Model)
 
         else:
             dmg_string = None
@@ -582,6 +603,8 @@ class Attack:
             await Target_Model.set_cc(
                 f"Persistent {data['pd']['dmg_type']}", False, 0, "Round", False, data=f"{action_string} {save_string}"
             )
+            print(roll_string)
+            print(f"{action_string} {save_string}")
 
             embed = discord.Embed(
                 title=Target_Model.char_name.title(),
