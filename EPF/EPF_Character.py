@@ -1348,6 +1348,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             feat = feat.lower()
             print(feat)
             if feat in Kineticist_DB.keys():
+                print(feat)
                 if type(Kineticist_DB[feat]) == list:
                     for x, item in enumerate(Kineticist_DB[feat]):
                         attacks[Kineticist_DB[feat][x]["title"]] = Kineticist_DB[feat][x]

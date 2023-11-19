@@ -761,8 +761,9 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
             # TODO Move this out to the main method
             if data["title"].title() not in await target_model.conditions():
                 await target_model.set_cc(
-                    data["title"].title(), False, data["number"], unit, auto, flex=flex, data=action, target=target
+                    data["title"].title(), False, int(data["number"]), unit, auto, flex=flex, data=action, target=target
                 )
+                print(action)
 
             output_data["condition"] = data
 
