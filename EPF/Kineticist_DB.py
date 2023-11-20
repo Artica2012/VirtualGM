@@ -234,5 +234,64 @@ Kineticist_DB = {
         "effect": {"failure": "2d4 cold"},
         "heighten": {"interval": 2, "effect": "1d4 cold"},
     },
-    # TODO Utility Skill format
+    # Level 4
+    "blazing wave": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Blazing Wave",
+        "lvl": 4,
+        "traits": ["fire", "impulse", "kineticist", "primal", "overflow"],
+        "type": {"value": "save", "save": "reflex", "type": "basic"},
+        "effect": {"failure": "4d6 fire", "critical failure": "4d6 fire, prone"},
+        "heighten": {"interval": 2, "effect": "1d6 fire"},
+    },
+    "lava leap": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Lava Leap",
+        "lvl": 4,
+        "traits": ["fire", "impulse", "kineticist", "primal", "overflow"],
+        "type": {"value": "save", "save": "reflex", "type": "basic"},
+        "effect": {
+            "failure": "1d6 bludgeoning, 2d6 fire, Shielded 2 duration: 1 unit: round auto flex self data 'ac +2 c'",
+        },
+        "heighten": {"interval": 3, "effect": "1d6 bludgeoning, 1d6 fire"},
+    },
+    "lightning dash": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Lightning Dash",
+        "lvl": 4,
+        "traits": ["air", "electricity", "impulse", "kineticist", "primal", "overflow", "move", "polymorph"],
+        "type": {"value": "save", "save": "reflex", "type": "basic"},
+        "effect": {
+            "failure": "2d12 electricity",
+        },
+        "heighten": {"interval": 3, "effect": "1d12 electricity"},
+    },
+    "rain of rust": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Rain of Rust",
+        "lvl": 4,
+        "traits": ["metal", "water", "impulse", "kineticist", "primal", "composite"],
+        "type": {"value": "save", "save": "fort", "type": "complex"},
+        "effect": {
+            "failure": "3d6 water, pd 1d6 water / dc15 flat, clumsy 1",
+        },
+        "heighten": {"interval": 2, "effect": "1d6 water"},
+    },
+    "whirling grindstone": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Whirling Grindstone",
+        "lvl": 4,
+        "traits": ["attack", "composite", "earth", "metal", "impulse", "kineticist", "primal"],
+        "type": {"value": "attack"},
+        "effect": {
+            "success": "2d6 slashing, 1d6 fire",
+        },
+        "heighten": {"interval": 5, "effect": "1d6 slashing, 1d6 fire"},
+    },
+    # Level 6
 }

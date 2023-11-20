@@ -568,7 +568,7 @@ class Attack:
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
-            elif self.attack["type"]["type"] == "basic":
+            else:
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
                 if heighten > 0:
@@ -649,7 +649,7 @@ phrase: value+ break
 
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
-    | WORD NUMBER? (duration | unit | auto | stable | flex | target | data)*   -> new_condition
+    | WORD NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
 
@@ -660,6 +660,7 @@ data: "data:" SINGLE_QUOTED_STRING
 stable: "stable"
 flex: "flex"
 target: "myturn"
+self: "self"
 
 modifier: SIGNED_INT
 
@@ -762,11 +763,35 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                 target = char_model.char_name
 
             # TODO Move this out to the main method
-            if data["title"].title() not in await target_model.conditions():
-                await target_model.set_cc(
-                    data["title"].title(), False, int(data["number"]), unit, auto, flex=flex, data=action, target=target
-                )
-                print(action)
+            if "self" in data.keys():
+                if "target" in data.keys():
+                    target = target_model.char_name
+
+                if data["title"].title() not in await target_model.conditions():
+                    await char_model.set_cc(
+                        data["title"].title(),
+                        False,
+                        int(data["number"]),
+                        unit,
+                        auto,
+                        flex=flex,
+                        data=action,
+                        target=target,
+                    )
+                    print(action)
+            else:
+                if data["title"].title() not in await target_model.conditions():
+                    await target_model.set_cc(
+                        data["title"].title(),
+                        False,
+                        int(data["number"]),
+                        unit,
+                        auto,
+                        flex=flex,
+                        data=action,
+                        target=target,
+                    )
+                    print(action)
 
             output_data["condition"] = data
 
@@ -819,7 +844,27 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         roll_string = ""
                         for sub in item.children:
                             if sub is not None:
-                                roll_string = roll_string + sub.value
+                                match sub.vale:  # noqa
+                                    case "str":
+                                        var = char_model.str_mod
+                                    case "dex":
+                                        var = char_model.dex_mod
+                                    case "con":
+                                        var = char_model.con_mod
+                                    case "int":
+                                        var = char_model.itl_mod
+                                    case "wis":
+                                        var = char_model.wis_mod
+                                    case "cha":
+                                        var = char_model.cha_mod
+                                    case "lvl":
+                                        var = char_model.character_model.level
+                                    case "dc":
+                                        var = char_model.class_dc
+                                    case _:
+                                        var = sub.value
+                                if sub is not None:
+                                    roll_string = roll_string + var
 
                         temp["roll_string"] = roll_string
                 elif type(item) == lark.Token:
@@ -839,7 +884,27 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         roll_string = ""
                         for sub in item.children:
                             if sub is not None:
-                                roll_string = roll_string + sub.value
+                                match sub.vale:  # noqa
+                                    case "str":
+                                        var = char_model.str_mod
+                                    case "dex":
+                                        var = char_model.dex_mod
+                                    case "con":
+                                        var = char_model.con_mod
+                                    case "int":
+                                        var = char_model.itl_mod
+                                    case "wis":
+                                        var = char_model.wis_mod
+                                    case "cha":
+                                        var = char_model.cha_mod
+                                    case "lvl":
+                                        var = char_model.character_model.level
+                                    case "dc":
+                                        var = char_model.class_dc
+                                    case _:
+                                        var = sub.value
+                                if sub is not None:
+                                    roll_string = roll_string + var
 
                         temp["roll_string"] = roll_string
                 elif type(item) == lark.Token:
