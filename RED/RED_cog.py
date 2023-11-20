@@ -144,8 +144,7 @@ class REDCog(commands.Cog):
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
+
             else:
                 embeds.append(
                     await Automation.auto(
@@ -162,6 +161,8 @@ class REDCog(commands.Cog):
                     )
                 )
             await ctx.send_followup(embeds=embeds)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
         except KeyError:
             await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
         except Exception as e:

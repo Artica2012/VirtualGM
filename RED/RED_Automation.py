@@ -6,7 +6,6 @@ import discord
 from Base.Automation import Automation
 from RED.RED_Support import RED_Roll_Result, RED_eval_success
 from utils.Char_Getter import get_character
-from utils.Tracker_Getter import get_tracker_model
 from utils.parsing import ParseModifiers
 
 
@@ -28,10 +27,9 @@ class RED_Automation(Automation):
         location="Body",
     ):
         logging.info("/red auto")
-        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
+
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
-        color = discord.Color(value=125)
 
         # Attack
         roll_string = f"({await Character_Model.get_roll(attack)})"
@@ -103,9 +101,9 @@ class RED_Automation(Automation):
         embed.set_thumbnail(url=Character_Model.pic)
 
         print(multi)
-        if not multi:
-            print("Updating")
-            await Tracker_Model.update_pinned_tracker()
+        # if not multi:
+        #     print("Updating")
+        #     await Tracker_Model.update_pinned_tracker()
         return embed
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
@@ -162,10 +160,8 @@ class RED_Automation(Automation):
         self, bot, character, target, net, attack_modifier, target_modifier, damage_modifier, multi=False
     ):
         logging.info("/red net_auto")
-        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
-        color = discord.Color(value=125)
 
         # Attack
 
@@ -208,7 +204,7 @@ class RED_Automation(Automation):
         embed.set_thumbnail(url=Character_Model.pic)
 
         print(multi)
-        if not multi:
-            print("Updating")
-            await Tracker_Model.update_pinned_tracker()
+        # if not multi:
+        #     print("Updating")
+        #     await Tracker_Model.update_pinned_tracker()
         return embed

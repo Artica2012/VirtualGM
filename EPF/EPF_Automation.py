@@ -31,7 +31,6 @@ class EPF_Automation(Automation):
         return await Attack.save(target, dc, modifier)
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
-        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         if roll == "Treat Wounds":
             return await treat_wounds(
                 self.ctx, character, target, damage_type, modifier, engine=self.engine, guild=self.guild
@@ -40,8 +39,8 @@ class EPF_Automation(Automation):
         Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
         embed = await Attack.damage(target, modifier, healing, damage_type, crit)
 
-        if not multi:
-            await Tracker_Model.update_pinned_tracker()
+        # if not multi:
+        #     await Tracker_Model.update_pinned_tracker()
         return embed
 
     async def auto(
@@ -57,13 +56,12 @@ class EPF_Automation(Automation):
         multi=False,
     ):
         logging.info("/a auto")
-        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
 
         Attack = await get_attack(character, attack, self.ctx, guild=self.guild)
         embed = await Attack.auto(target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override)
 
-        if not multi:
-            await Tracker_Model.update_pinned_tracker()
+        # if not multi:
+        #     await Tracker_Model.update_pinned_tracker()
         return embed
 
     async def cast(
@@ -80,7 +78,6 @@ class EPF_Automation(Automation):
         multi=False,
     ):
         logging.info("/a cast")
-        Tracker_Model = await get_tracker_model(self.ctx, bot, engine=self.engine, guild=self.guild)
         Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
         Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
         spell = Character_Model.character_model.spells[spell_name]
@@ -204,8 +201,8 @@ class EPF_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        if not multi:
-            await Tracker_Model.update_pinned_tracker()
+        # if not multi:
+        #     await Tracker_Model.update_pinned_tracker()
         return embed
 
 

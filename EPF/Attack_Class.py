@@ -337,7 +337,12 @@ class Attack:
             return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
 
     async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
-        roll_string = f"({await self.character.get_roll('class_dc')})"
+        # Get roll depending on category - currently only kineticist
+        if self.attack["category"] == "kineticist":
+            roll_string = f"({await self.character.get_roll('class_dc')})"
+        else:
+            roll_string = f"({await self.character.get_roll('class_dc')})"
+
         print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
         print(dice_result)
@@ -561,7 +566,7 @@ class Attack:
                 print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             elif self.attack["type"]["type"] == "basic":
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
@@ -645,11 +650,8 @@ phrase: value+ break
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
     | WORD NUMBER? (duration | unit | auto | stable | flex | target | data)*   -> new_condition
-    | heighten_persist
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
-
-heighten_persist: "hpd" roll_string WORD
 
 duration : "duration:" NUMBER
 unit : "unit:" WORD
@@ -667,12 +669,13 @@ quoted: SINGLE_QUOTED_STRING
 break: ","
 
 
-roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
+roll_string: ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))*
 !save_string: "reflex" | "fort" | "will" | "flat"
 
 ROLL: NUMBER "d" NUMBER
 
 POS_NEG : ("+" | "-")
+STAT_VAR : ("str" | "dex" | "con" | "int" | "wis" | "cha" | "lvl" | "dc")
 
 DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
@@ -768,14 +771,34 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
             output_data["condition"] = data
 
         elif branch.data == "persist_dmg":
+            # TODO Address variables
             temp = {}
             for item in branch.children:
                 if type(item) == lark.Tree:
                     if item.data == "roll_string":
                         roll_string = ""
                         for sub in item.children:
+                            match sub.vale:  # noqa
+                                case "str":
+                                    var = char_model.str_mod
+                                case "dex":
+                                    var = char_model.dex_mod
+                                case "con":
+                                    var = char_model.con_mod
+                                case "int":
+                                    var = char_model.itl_mod
+                                case "wis":
+                                    var = char_model.wis_mod
+                                case "cha":
+                                    var = char_model.cha_mod
+                                case "lvl":
+                                    var = char_model.character_model.level
+                                case "dc":
+                                    var = char_model.class_dc
+                                case _:
+                                    var = sub.value
                             if sub is not None:
-                                roll_string = roll_string + sub.value
+                                roll_string = roll_string + var
 
                         temp["roll_string"] = roll_string
                     elif item.data == "save_string":
