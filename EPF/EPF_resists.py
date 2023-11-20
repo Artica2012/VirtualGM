@@ -53,6 +53,16 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
 
     dmg_list = [dmg_type.lower(), "all-damage", mat]
 
+    # Remaster Conversion Code
+    if dmg_type.lower() == "negative":
+        dmg_list.append("void")
+    elif dmg_type.lower() == "void":
+        dmg_list.append("negative")
+    elif dmg_type.lower() == "positive":
+        dmg_list.append("vitality")
+    elif dmg_type.lower() == "vitality":
+        dmg_list.append("positive")
+
     for item in dmg_list:  # This is completely rewritten. It might be broken
         if item in target.resistance.keys():
             if "r" in target.resistance[item]:
