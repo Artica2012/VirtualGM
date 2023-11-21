@@ -511,6 +511,7 @@ class EPF_Character(Character):
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
+        print(spell_data)
         spell_dmg_bonus = await bonus_calc(0, "spelldmg", self.character_model.bonuses)
         if spell_dmg_bonus != 0:
             flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
@@ -538,16 +539,27 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_dict[key] = {
-                    "dmg_string": (
+                if type(spell_data["damage"][key]["value"]) == dict:
+                    dmg_string = (
+                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                    )
+                else:
+                    dmg_string = (
                         f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
-                    ),
+                    )
+
+                dmg_dict[key] = {
+                    "dmg_string": dmg_string,
                     "dmg_type": dmg_type,
                 }
 
             else:
+                if type(spell_data["damage"][key]["value"]) == dict:
+                    dmg_string = f"{spell_data['damage'][key]['value']['formula']}{ParseModifiers(flat_bonus)}"
+                else:
+                    dmg_string = f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
                 dmg_dict[key] = {
-                    "dmg_string": f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}",
+                    "dmg_string": dmg_string,
                     "dmg_type": dmg_type,
                 }
             # Heightening Calculations

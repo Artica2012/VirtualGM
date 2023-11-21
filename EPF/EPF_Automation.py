@@ -94,7 +94,7 @@ class EPF_Automation(Automation):
             success_string = PF2_eval_succss(attack_roll, goal_result)
             attk_output_string = f"{character} casts {spell_name} at {target}:\n{attack_roll}\n{success_string}"
 
-            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance["immune"]:
+            if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
                 dmg_string, total_damage = await roll_spell_dmg_resist(
                     Character_Model,
                     Target_Model,
@@ -121,7 +121,10 @@ class EPF_Automation(Automation):
                 color = color.red()
 
         elif spell["type"] == "save":
-            save_type = spell["save"]["value"]
+            try:
+                save_type = spell["save"]["value"]
+            except KeyError:
+                save_type = spell["save"]
             save_dc = d20.roll(
                 f"{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
             )
@@ -227,7 +230,7 @@ async def roll_spell_dmg_resist(
     # Roll the critical damage and apply resistances
     dmg_rolls = {}
     # print(spell, crit)
-    if crit and "critical-hits" not in Target_Model.resistance["immune"]:
+    if crit and "critical-hits" not in Target_Model.resistance.keys():
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
         # print(spell_dmg)
         for key in spell_dmg.keys():
@@ -252,6 +255,7 @@ async def roll_spell_dmg_resist(
 
             dmg_rolls[key] = {}
             dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
+            print(dmg_rolls[key])
             dmg_rolls[key]["damage_roll"] = d20.roll(f"{dmg_rolls[key]['damage_string']}")
             dmg_rolls[key]["damage_type"] = dmg_type
 
