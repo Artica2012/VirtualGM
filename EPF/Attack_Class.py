@@ -938,4 +938,9 @@ async def scripted_damage_roll_resists(
         output = {"dmg_output_string": dmg_output_string, "dmg_type": base_dmg_type}
         dmg_output.append(output)
 
+    try:
+        total_damage = total_damage - Target_Model.character_model.bonuses["other"]["hardness"]
+    except KeyError:
+        pass
+
     return dmg_output, total_damage

@@ -304,6 +304,17 @@ async def write_resitances(
                         visible=False,
                         update=False,
                     )
+                if "hardness" in resistance["other"].keys():
+                    await Character_Model.set_cc(
+                        "hardness",
+                        True,
+                        1,
+                        "Round",
+                        False,
+                        data=f"hardness {resistance['other']['hardness']}",
+                        visible=False,
+                        update=False,
+                    )
 
         return True
     except Exception:

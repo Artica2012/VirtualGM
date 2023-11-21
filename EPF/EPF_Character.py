@@ -2075,6 +2075,7 @@ phrase: value+ break
 
 value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                                -> init_skill
+    | "hardness" NUMBER                                                -> hardness
     | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                                     -> temp_hp
     | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
@@ -2176,6 +2177,14 @@ async def process_condition_tree(
             else:
                 bonuses["other"] = {"init_skill": branch.children[0].value}
             # print(bonuses)
+
+        elif branch.data == "hardness":
+            print("HARDNESS")
+            print(branch.children)
+            if "other" in bonuses.keys():
+                bonuses["other"]["hardness"] = int(branch.children[0].value)
+            else:
+                bonuses["other"] = {"hardness": int(branch.children[0].value)}
 
         elif branch.data == "new_condition":
             new_con_name = ""
