@@ -369,35 +369,13 @@ class Attack:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # heightening code
-        heighten_data = {}
-        if "heighten" in self.attack.keys():
-            print("Heightening")
-            print(self.character.character_model.level)
-            print(self.attack["lvl"])
-            if self.character.character_model.level > self.attack["lvl"]:
-                heighten = floor(
-                    (self.character.character_model.level - self.attack["lvl"]) / self.attack["heighten"]["interval"]
-                )
-            else:
-                heighten = 0
-
-            print(heighten)
-
-            if heighten > 0:
-                heighten_data = await automation_parse(self.attack["heighten"]["effect"], self.character, Target_Model)
-                print(heighten_data)
-        else:
-            heighten = 0
+        heighten_data, heighten = await self.heighten(Target_Model)
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -406,11 +384,7 @@ class Attack:
             else:
                 data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
 
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -420,11 +394,7 @@ class Attack:
         elif success_string == "Success":
             data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
             print(data)
-            if heighten > 0:
-                for x in range(0, heighten):
-                    for i in heighten_data["dmg"].keys():
-                        print(i)
-                        data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+            data = self.heighten_calc(data, heighten, heighten_data)
             print(data)
             await self.pd(data, heighten, heighten_data, Target_Model)
             dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -467,27 +437,7 @@ class Attack:
     async def auto_complex_save_dmg(
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
-        # heightening code
-        heighten_data = {}
-        if "heighten" in self.attack.keys():
-            print("Heightening")
-            print(self.character.character_model.level)
-            print(self.attack["lvl"])
-            if self.character.character_model.level > self.attack["lvl"]:
-                heighten = floor(
-                    (self.character.character_model.level - self.attack["lvl"]) / self.attack["heighten"]["interval"]
-                )
-            else:
-                heighten = 0
-
-            print(heighten)
-
-            if heighten > 0:
-                heighten_data = await automation_parse(self.attack["heighten"]["effect"], self.character, Target_Model)
-                print(heighten_data)
-        else:
-            heighten = 0
-
+        heighten_data, heighten = await self.heighten(Target_Model)
         dmg_string = None
         total_damage = 0
 
@@ -495,11 +445,7 @@ class Attack:
             if "critical success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -513,11 +459,7 @@ class Attack:
             if "success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -526,11 +468,7 @@ class Attack:
             elif self.attack["type"]["type"] == "basic":
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -545,11 +483,7 @@ class Attack:
             if "failure" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -558,11 +492,7 @@ class Attack:
             if "critical failure" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -571,11 +501,7 @@ class Attack:
             else:
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
                 print(data)
-                if heighten > 0:
-                    for x in range(0, heighten):
-                        for i in heighten_data["dmg"].keys():
-                            print(i)
-                            data["dmg"][i] = str(data["dmg"][i]) + f"+{heighten_data['dmg'][i]}"
+                data = self.heighten_calc(data, heighten, heighten_data)
                 print(data)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data,
@@ -597,7 +523,7 @@ class Attack:
             print(data["pd"])
             roll_string = data["pd"]["roll_string"]
             if heighten > 0:
-                print(heighten_data)
+                print("heighten_data  ", heighten_data)
                 for x in range(0, heighten):
                     for i in heighten_data["hpd"].keys():
                         roll_string = roll_string + " " + f"{heighten_data['hpd']['roll_string']}"
@@ -623,6 +549,50 @@ class Attack:
             embed.set_thumbnail(url=self.character.pic)
 
             await self.ctx.channel.send(embed=embed)
+
+        if "condition" in data.keys():
+            embed = discord.Embed(
+                title=data["condition"]["char_name"],
+                fields=[
+                    discord.EmbedField(
+                        name=data["condition"]["title"].title(), value=f"{data['condition']['title'].title()} added."
+                    )
+                ],
+                color=discord.Color.blurple(),
+            )
+            embed.set_thumbnail(url=self.character.pic)
+
+            await self.ctx.channel.send(embed=embed)
+
+    async def heighten(self, Target_Model):
+        # heightening code
+        heighten_data = {}
+        if "heighten" in self.attack.keys():
+            if self.character.character_model.level > self.attack["lvl"]:
+                heighten = floor(
+                    (self.character.character_model.level - self.attack["lvl"]) / self.attack["heighten"]["interval"]
+                )
+            else:
+                heighten = 0
+            if heighten > 0:
+                heighten_data = await automation_parse(self.attack["heighten"]["effect"], self.character, Target_Model)
+                print(heighten_data)
+        else:
+            heighten = 0
+        return (heighten_data, heighten)
+
+    def heighten_calc(self, data, heighten, heighten_data):
+        if heighten > 0:
+            for i in heighten_data["dmg"].keys():
+                sub_data = heighten_data["dmg"][i]["sub_data"]
+                for die_size in sub_data.keys():
+                    die_num = int(sub_data[die_size]) * heighten
+                    heighten_roll = f"{die_num}d{die_size}"
+                    try:
+                        data["dmg"][i]["roll_string"] = f"{str(data['dmg'][i]['roll_string'])}+{heighten_roll}"
+                    except KeyError:
+                        data["dmg"][i]["roll_string"] = heighten_roll
+        return data
 
 
 class Attack_Data:
@@ -650,8 +620,11 @@ phrase: value+ break
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
     | WORD NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
+    | heighten_persist
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
+heighten_persist: "hpd" roll_string WORD
+
 
 duration : "duration:" NUMBER
 unit : "unit:" WORD
@@ -702,6 +675,7 @@ async def automation_parse(data, character_model, target_model):
             data = data + ","
 
         tree = Lark(attack_grammer).parse(data)
+        print(data)
         print(tree.pretty())
         processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
     except Exception:
@@ -762,12 +736,17 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
             if "target" in data.keys():
                 target = char_model.char_name
 
+            if "self" in data.keys():
+                data["char_name"] = char_model.char_name
+            else:
+                data["char_name"] = target_model.char_name
+
             # TODO Move this out to the main method
             if "self" in data.keys():
                 if "target" in data.keys():
                     target = target_model.char_name
 
-                if data["title"].title() not in await target_model.conditions():
+                if data["title"].title() not in await char_model.conditions():
                     await char_model.set_cc(
                         data["title"].title(),
                         False,
@@ -803,7 +782,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                     if item.data == "roll_string":
                         roll_string = ""
                         for sub in item.children:
-                            match sub.vale:  # noqa
+                            match sub.value:  # noqa
                                 case "str":
                                     var = char_model.str_mod
                                 case "dex":
@@ -844,7 +823,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         roll_string = ""
                         for sub in item.children:
                             if sub is not None:
-                                match sub.vale:  # noqa
+                                match sub.value:  # noqa
                                     case "str":
                                         var = char_model.str_mod
                                     case "dex":
@@ -879,12 +858,21 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
             temp = {}
             for item in branch.children:
                 # print(item)
+
                 if type(item) == lark.Tree:
                     if item.data == "roll_string":
                         roll_string = ""
+                        sub_data = None
                         for sub in item.children:
+                            sub_data = {}
+                            # print(sub.value)
+                            # print(sub.type)
+                            if sub.type == "ROLL":
+                                sub_list = sub.value.split("d")
+                                sub_data[sub_list[1]] = sub_list[0]
+
                             if sub is not None:
-                                match sub.vale:  # noqa
+                                match sub.value:  # noqa
                                     case "str":
                                         var = char_model.str_mod
                                     case "dex":
@@ -912,7 +900,11 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         temp["dmg_type"] = item.value
 
             if temp["dmg_type"] is not None and temp["roll_string"] is not None:
-                output_data["dmg"][temp["dmg_type"]] = temp["roll_string"]
+                output_data["dmg"][temp["dmg_type"]] = {"roll_string": temp["roll_string"]}
+                try:
+                    output_data["dmg"][temp["dmg_type"]]["sub_data"] = sub_data
+                except Exception:
+                    pass
 
     return output_data
 
@@ -923,10 +915,16 @@ async def scripted_damage_roll_resists(
     dmg_output = []
     total_damage = 0
     for x, key in enumerate(data["dmg"]):
-        dmg_string = (
-            f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''})"
-            f"{'*2' if crit else ''}{'/2' if half else ''}"
-        )
+        try:
+            dmg_string = (
+                f"({data['dmg'][key]['roll_string']}{ParseModifiers(flat_bonus) if x == 0 else ''})"
+                f"{'*2' if crit else ''}{'/2' if half else ''}"
+            )
+        except KeyError:
+            dmg_string = (
+                f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''})"
+                f"{'*2' if crit else ''}{'/2' if half else ''}"
+            )
         damage_roll = d20.roll(dmg_string)
 
         if dmg_type_override == "":
