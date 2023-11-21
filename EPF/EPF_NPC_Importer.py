@@ -312,7 +312,7 @@ async def write_resitances(
                         "Round",
                         False,
                         data=f"hardness {resistance['other']['hardness']}",
-                        visible=False,
+                        visible=True,
                         update=False,
                     )
 

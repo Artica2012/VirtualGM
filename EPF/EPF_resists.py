@@ -148,7 +148,8 @@ async def roll_dmg_resist(
     try:
         total_damage = total_damage - Target_Model.character_model.bonuses["other"]["hardness"]
     except KeyError:
-        print("No Hardness")
+        # print("No Hardness")
+        pass
 
     return dmg_output, total_damage
 
