@@ -499,6 +499,10 @@ class EPF_Character(Character):
         spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
         if spell_data["tradition"] == "NPC":
+            # print(attk_stat)
+            # print(self.character_model.level)
+            # print(spell_data['proficiency'])
+            # print(spell_attack_bonus)
             if mod:
                 return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
@@ -511,7 +515,7 @@ class EPF_Character(Character):
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
-        print(spell_data)
+        # print(spell_data)
         spell_dmg_bonus = await bonus_calc(0, "spelldmg", self.character_model.bonuses)
         if spell_dmg_bonus != 0:
             flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
