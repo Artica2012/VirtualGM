@@ -48,7 +48,14 @@ class OptionsCog(commands.Cog):
     @option("gm_channel", description="GM Channel", required=True)
     @option(
         "system",
-        choices=["Base", "Pathfinder 2e", "D&D 4e", "Enhanced PF2", "Cyberpunk RED", "Starfinder"],
+        choices=[
+            "Base",
+            "Enhanced PF2 (Newest Version with Automation)",
+            "(Legacy) Pathfinder 2e (Lacks Automation)",
+            "D&D 4e",
+            "Cyberpunk RED",
+            "Starfinder",
+        ],
         required=False,
     )
     async def start(
@@ -65,14 +72,14 @@ class OptionsCog(commands.Cog):
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
             if response:
                 await ctx.send_followup("Server Setup", ephemeral=True)
-                if system == "Enhanced PF2":
+                if system == "Enhanced PF2 (Newest Version with Automation)":
                     doc_msg = await ctx.channel.send(
                         "Enhanced Pathfinder 2e Documentation:\n"
                         " https://docs.google.com/document/d/"
                         "1tD9PNXQ-iOBalvzxpTQ9CvuM2jy6Y_S75Rjjof-WRBk/edit?usp=sharing"
                     )
                     await doc_msg.pin()
-                elif system == "Pathfinder 2e":
+                elif system == "(Legacy) Pathfinder 2e (Lacks Automation)":
                     doc_msg = await ctx.channel.send(
                         "Legacy Pathfinder 2e Documentation:\n"
                         "https://docs.google.com/document/d/"
@@ -262,11 +269,11 @@ async def setup_tracker(
         )
         return False
 
-    if system == "Pathfinder 2e":
+    if system == "(Legacy) Pathfinder 2e (Lacks Automation)":
         g_system = "PF2"
     elif system == "D&D 4e":
         g_system = "D4e"
-    elif system == "Enhanced PF2":
+    elif system == "Enhanced PF2 (Newest Version with Automation)":
         g_system = "EPF"
     elif system == "Cyberpunk RED":
         g_system = "RED"

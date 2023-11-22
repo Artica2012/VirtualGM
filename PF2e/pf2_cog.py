@@ -98,30 +98,30 @@ class PF2Cog(commands.Cog):
                 await report.report()
 
         elif url is not None:
-            try:
-                guild = await get_guild(ctx, None)
-                if guild.system == "EPF":
-                    response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                    await Tracker_Model.update_pinned_tracker()
-                else:
-                    response = False
-                if response:
-                    Character_Model = await get_character(name, ctx, engine=engine)
-                    success.set_thumbnail(url=Character_Model.pic)
-                    await ctx.send_followup(embed=success)
-                else:
-                    await ctx.send_followup("Error importing character.")
-            except sqlalchemy.exc.NoResultFound:
-                await ctx.send_followup(
-                    "No active tracker set up in this channel. Please make sure that you are in the "
-                    "correct channel before trying again."
-                )
-            except Exception as e:
-                await ctx.send_followup("Error importing character")
-                logging.info(f"pb_import: {e}")
-                report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
-                await report.report()
+            # try:
+            guild = await get_guild(ctx, None)
+            if guild.system == "EPF":
+                response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                await Tracker_Model.update_pinned_tracker()
+            else:
+                response = False
+            if response:
+                Character_Model = await get_character(name, ctx, engine=engine)
+                success.set_thumbnail(url=Character_Model.pic)
+                await ctx.send_followup(embed=success)
+            else:
+                await ctx.send_followup("Error importing character.")
+            # except sqlalchemy.exc.NoResultFound:
+            #     await ctx.send_followup(
+            #         "No active tracker set up in this channel. Please make sure that you are in the "
+            #         "correct channel before trying again."
+            #     )
+            # except Exception as e:
+            #     await ctx.send_followup("Error importing character")
+            #     logging.info(f"pb_import: {e}")
+            #     report = ErrorReport(ctx, "g-sheet import", f"{e} - {url}", self.bot)
+            #     await report.report()
         try:
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
