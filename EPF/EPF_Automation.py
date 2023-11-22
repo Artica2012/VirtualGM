@@ -123,7 +123,7 @@ class EPF_Automation(Automation):
         elif spell["type"] == "save":
             try:
                 save_type = spell["save"]["value"]
-            except KeyError:
+            except TypeError:
                 save_type = spell["save"]
             save_dc = d20.roll(
                 f"{await Character_Model.get_spell_mod(spell_name, False)}{ParseModifiers(attack_modifier)}"
