@@ -277,9 +277,9 @@ Kineticist_DB = {
         "traits": ["metal", "water", "impulse", "kineticist", "primal", "composite"],
         "type": {"value": "save", "save": "fort", "type": "complex"},
         "effect": {
-            "failure": "3d6 water, pd 1d6 water / dc15 flat, clumsy 1",
+            "failure": "3d6 untyped, pd 1d6 untyped / dc15 flat, clumsy 1",
         },
-        "heighten": {"interval": 2, "effect": "1d6 water"},
+        "heighten": {"interval": 2, "effect": "1d6 untyped"},
     },
     "whirling grindstone": {
         "complex": True,
@@ -294,4 +294,52 @@ Kineticist_DB = {
         "heighten": {"interval": 5, "effect": "1d6 slashing, 1d6 fire"},
     },
     # Level 6
+    "ash strider": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Ash Strider",
+        "lvl": 6,
+        "traits": ["air", "fire", "composite", "impulse", "kineticist", "primal", "overflow", "polymorph"],
+        "type": {"value": "save", "save": "reflex", "type": "basic"},
+        "effect": {
+            "failure": "3d6 fire, concealed 1 duration: 1 unit: round auto flex self",
+        },
+        "heighten": {"interval": 2, "effect": "1d6 fire"},
+    },
+    "driving rain": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Driving Rain",
+        "lvl": 6,
+        "traits": ["water", "impulse", "kineticist", "primal", "overflow"],
+        "type": {"value": "save", "save": "reflex", "type": "basic"},
+        "effect": {
+            "failure": "3d8 bludgeoning",
+        },
+        "heighten": {"interval": 2, "effect": "1d8 bludgeoning"},
+    },
+    "elemental artillery": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Elemental Artillery",
+        "lvl": 6,
+        "traits": ["composite", "wood", "metal", "impulse", "kineticist", "primal"],
+        "type": {"value": "attack"},
+        "effect": {
+            "success": "3d12 piercing",
+        },
+        "heighten": {"interval": 3, "effect": "1d12 piercing"},
+    },
+    "molten wire": {
+        "complex": True,
+        "category": "kineticist",
+        "title": "Molten Wire",
+        "lvl": 6,
+        "traits": ["composite", "fire", "metal", "impulse", "kineticist", "primal"],
+        "type": {"value": "attack"},
+        "effect": {
+            "success": "2d6 slashing, clumsy 1 duration: 1 unit: minute auto, pd 2d4 fire / dcdc reflex ",
+        },
+        "heighten": {"interval": 4, "effect": "1d6 slashing, hpd 1d4 fire"},
+    },
 }

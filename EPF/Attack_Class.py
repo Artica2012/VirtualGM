@@ -622,7 +622,7 @@ value: roll_string WORD                                                -> damage
     | WORD NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
     | heighten_persist
 
-persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
+persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" (NUMBER | STAT_VAR) save_string]
 heighten_persist: "hpd" roll_string WORD
 
 
@@ -813,6 +813,27 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         temp["dmg_type"] = item.value
                     elif item.type == "NUMBER":
                         temp["save_value"] = item.value
+                    elif item.type == "STAT_VAR":
+                        match item.value:  # noqa
+                            case "str":
+                                var = char_model.str_mod
+                            case "dex":
+                                var = char_model.dex_mod
+                            case "con":
+                                var = char_model.con_mod
+                            case "int":
+                                var = char_model.itl_mod
+                            case "wis":
+                                var = char_model.wis_mod
+                            case "cha":
+                                var = char_model.cha_mod
+                            case "lvl":
+                                var = char_model.character_model.level
+                            case "dc":
+                                var = char_model.class_dc
+                            case _:
+                                var = sub.value
+                        temp["save_value"] = var
             output_data["pd"] = temp
 
         elif branch.data == "heighten_persist":
