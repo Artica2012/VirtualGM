@@ -281,6 +281,33 @@ Kineticist_DB = {
         },
         "heighten": {"interval": 2, "effect": "1d6 untyped"},
     },
+    # Prototype Utility Skill
+    "thermal nimbus": [
+        {
+            "complex": True,
+            "category": "kineticist",
+            "title": "Thermal Nimbus (Fire)",
+            "lvl": 4,
+            "traits": ["fire", "stance", "impulse", "kineticist", "primal"],
+            "type": {"value": "utility"},
+            "effect": {
+                "success": "aura 0 data: 'fire r _lvl_'",
+            },
+            "heighten": {"interval": 20, "effect": ""},
+        },
+        {
+            "complex": True,
+            "category": "kineticist",
+            "title": "Thermal Nimbus (Cold)",
+            "lvl": 4,
+            "traits": ["fire", "stance", "impulse", "kineticist", "primal"],
+            "type": {"value": "utility"},
+            "effect": {
+                "success": "aura 0 data: 'cold r _lvl_'",
+            },
+            "heighten": {"interval": 20, "effect": ""},
+        },
+    ],
     "whirling grindstone": {
         "complex": True,
         "category": "kineticist",
