@@ -10,7 +10,9 @@ import sys
 
 from dotenv import load_dotenv
 
+import EPF.Kineticist_DB
 from Bot import bot
+from EPF.EPF_Automation_Data import upload_data
 
 # import tracemalloc
 
@@ -58,7 +60,8 @@ DATABASE = os.getenv("DATABASE")
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    # logging.warning("Updating tables...")
+    logging.warning("Updating tables...")
+    await upload_data(EPF.Kineticist_DB.Kineticist_DB)
     # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
     # await database_operations.update_con_table()
