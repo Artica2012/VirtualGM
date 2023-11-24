@@ -725,8 +725,13 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
             if "data" in data.keys():
                 action = data["data"]
 
+            if "duration" in data.keys():
+                if int(data["duration"]) != int(data["number"]):
+                    action = action + " " + f"stable {data['number']}"
+                    data["number"] = data["duration"]
+
             if "stable" in data.keys():
-                action = action + "" + "stable"
+                action = action + " " + f"stable {data['number']}"
 
             flex = False
             if "flex" in data.keys():
@@ -782,25 +787,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                     if item.data == "roll_string":
                         roll_string = ""
                         for sub in item.children:
-                            match sub.value:  # noqa
-                                case "str":
-                                    var = char_model.str_mod
-                                case "dex":
-                                    var = char_model.dex_mod
-                                case "con":
-                                    var = char_model.con_mod
-                                case "int":
-                                    var = char_model.itl_mod
-                                case "wis":
-                                    var = char_model.wis_mod
-                                case "cha":
-                                    var = char_model.cha_mod
-                                case "lvl":
-                                    var = char_model.character_model.level
-                                case "dc":
-                                    var = char_model.class_dc
-                                case _:
-                                    var = sub.value
+                            var = stat_var(sub, char_model)
                             if sub is not None:
                                 roll_string = roll_string + var
 
@@ -814,25 +801,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                     elif item.type == "NUMBER":
                         temp["save_value"] = item.value
                     elif item.type == "STAT_VAR":
-                        match item.value:  # noqa
-                            case "str":
-                                var = char_model.str_mod
-                            case "dex":
-                                var = char_model.dex_mod
-                            case "con":
-                                var = char_model.con_mod
-                            case "int":
-                                var = char_model.itl_mod
-                            case "wis":
-                                var = char_model.wis_mod
-                            case "cha":
-                                var = char_model.cha_mod
-                            case "lvl":
-                                var = char_model.character_model.level
-                            case "dc":
-                                var = char_model.class_dc
-                            case _:
-                                var = sub.value
+                        var = stat_var(item, char_model)
                         temp["save_value"] = var
             output_data["pd"] = temp
 
@@ -844,25 +813,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         roll_string = ""
                         for sub in item.children:
                             if sub is not None:
-                                match sub.value:  # noqa
-                                    case "str":
-                                        var = char_model.str_mod
-                                    case "dex":
-                                        var = char_model.dex_mod
-                                    case "con":
-                                        var = char_model.con_mod
-                                    case "int":
-                                        var = char_model.itl_mod
-                                    case "wis":
-                                        var = char_model.wis_mod
-                                    case "cha":
-                                        var = char_model.cha_mod
-                                    case "lvl":
-                                        var = char_model.character_model.level
-                                    case "dc":
-                                        var = char_model.class_dc
-                                    case _:
-                                        var = sub.value
+                                var = stat_var(sub, char_model)
                                 if sub is not None:
                                     roll_string = roll_string + var
 
@@ -893,25 +844,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                                 sub_data[sub_list[1]] = sub_list[0]
 
                             if sub is not None:
-                                match sub.value:  # noqa
-                                    case "str":
-                                        var = char_model.str_mod
-                                    case "dex":
-                                        var = char_model.dex_mod
-                                    case "con":
-                                        var = char_model.con_mod
-                                    case "int":
-                                        var = char_model.itl_mod
-                                    case "wis":
-                                        var = char_model.wis_mod
-                                    case "cha":
-                                        var = char_model.cha_mod
-                                    case "lvl":
-                                        var = char_model.character_model.level
-                                    case "dc":
-                                        var = char_model.class_dc
-                                    case _:
-                                        var = sub.value
+                                var = stat_var(sub, char_model)
                                 if sub is not None:
                                     roll_string = roll_string + var
 
@@ -935,33 +868,59 @@ async def scripted_damage_roll_resists(
 ):
     dmg_output = []
     total_damage = 0
-    for x, key in enumerate(data["dmg"]):
-        try:
-            dmg_string = (
-                f"({data['dmg'][key]['roll_string']}{ParseModifiers(flat_bonus) if x == 0 else ''})"
-                f"{'*2' if crit else ''}{'/2' if half else ''}"
-            )
-        except KeyError:
-            dmg_string = (
-                f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''})"
-                f"{'*2' if crit else ''}{'/2' if half else ''}"
-            )
-        damage_roll = d20.roll(dmg_string)
-
-        if dmg_type_override == "":
-            dmg_type_override = None
-        if dmg_type_override is not None:
-            base_dmg_type = dmg_type_override
-        else:
-            base_dmg_type = key
-        total_damage += await damage_calc_resist(damage_roll.total, base_dmg_type, Target_Model)
-        dmg_output_string = f"{damage_roll}"
-        output = {"dmg_output_string": dmg_output_string, "dmg_type": base_dmg_type}
-        dmg_output.append(output)
-
     try:
-        total_damage = total_damage - Target_Model.character_model.bonuses["other"]["hardness"]
+        for x, key in enumerate(data["dmg"]):
+            try:
+                dmg_string = (
+                    f"({data['dmg'][key]['roll_string']}{ParseModifiers(flat_bonus) if x == 0 else ''})"
+                    f"{'*2' if crit else ''}{'/2' if half else ''}"
+                )
+            except KeyError:
+                dmg_string = (
+                    f"({data['dmg'][key]}{ParseModifiers(flat_bonus) if x == 0 else ''})"
+                    f"{'*2' if crit else ''}{'/2' if half else ''}"
+                )
+            damage_roll = d20.roll(dmg_string)
+
+            if dmg_type_override == "":
+                dmg_type_override = None
+            if dmg_type_override is not None:
+                base_dmg_type = dmg_type_override
+            else:
+                base_dmg_type = key
+            total_damage += await damage_calc_resist(damage_roll.total, base_dmg_type, Target_Model)
+            dmg_output_string = f"{damage_roll}"
+            output = {"dmg_output_string": dmg_output_string, "dmg_type": base_dmg_type}
+            dmg_output.append(output)
+
+        try:
+            total_damage = total_damage - Target_Model.character_model.bonuses["other"]["hardness"]
+        except KeyError:
+            pass
     except KeyError:
         pass
 
     return dmg_output, total_damage
+
+
+def stat_var(item: lark.Token, char_model: EPF_Character):
+    match item.value:  # noqa
+        case "str":
+            var = char_model.str_mod
+        case "dex":
+            var = char_model.dex_mod
+        case "con":
+            var = char_model.con_mod
+        case "int":
+            var = char_model.itl_mod
+        case "wis":
+            var = char_model.wis_mod
+        case "cha":
+            var = char_model.cha_mod
+        case "lvl":
+            var = char_model.character_model.level
+        case "dc":
+            var = char_model.class_dc
+        case _:
+            var = item.value
+    return var
