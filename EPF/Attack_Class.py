@@ -335,6 +335,8 @@ class Attack:
                 Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
             )
             return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
+        elif self.attack_type == "utility":
+            return await self.auto_complex_utility(Target_Model)
 
     async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         # Get roll depending on category - currently only kineticist
@@ -517,6 +519,22 @@ class Attack:
             total_damage = 0
 
         return Attack_Data(dmg_string, total_damage, success_string, "")
+
+    async def auto_complex_utility(self, Target_Model: EPF_Character):
+        heighten_data, heighten = await self.heighten(Target_Model)
+        dmg_string = None
+        total_damage = 0
+
+        if "success" in self.attack["effect"].keys():
+            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+            # print(data)
+            data = self.heighten_calc(data, heighten, heighten_data)
+            # print(data)
+            await self.pd(data, heighten, heighten_data, Target_Model)
+
+        attk_output_string = f"{self.attack_name.title()} on {Target_Model.char_name}."
+
+        return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
 
     async def pd(self, data, heighten, heighten_data, Target_Model):
         if "pd" in data.keys():
@@ -723,7 +741,8 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
 
             action = ""
             if "data" in data.keys():
-                action = data["data"]
+                action = data_stat_var(data["data"], char_model)
+                action = action.strip("'")
 
             if "duration" in data.keys():
                 if int(data["duration"]) != int(data["number"]):
@@ -924,3 +943,24 @@ def stat_var(item: lark.Token, char_model: EPF_Character):
         case _:
             var = item.value
     return var
+
+
+def data_stat_var(string: str, char_model: EPF_Character):
+    if "_str_" in string:
+        string = string.replace("_str", str(char_model.str_mod))
+    if "_dex_" in string:
+        string = string.replace("_dex_", str(char_model.dex_mod))
+    if "_con_" in string:
+        string = string.replace("_con_", str(char_model.con_mod))
+    if "_int_" in string:
+        string = string.replace("_int_", str(char_model.itl_mod))
+    if "_wis_" in string:
+        string = string.replace("_wis_", str(char_model.wis_mod))
+    if "_cha_" in string:
+        string = string.replace("_cha_", str(char_model.cha_mod))
+    if "_lvl_" in string:
+        string = string.replace("_lvl_", str(char_model.character_model.level))
+    if "_dc_" in string:
+        string = string.replace("_dc_", str(char_model.class_dc))
+
+    return string
