@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from EPF.EPF_Character import spell_lookup, EPF_Weapon, delete_intested_items, invest_items, get_EPF_Character
 from EPF.Kineticist_DB import Kineticist_DB
 from database_models import get_EPF_tracker
@@ -513,15 +514,9 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
             items.append(df.h[i])
 
     for feat in feat_list:
-        feat = feat.lower()
-        # print(feat)
-        if feat in Kineticist_DB.keys():
-            # print(feat)
-            if type(Kineticist_DB[feat]) == list:
-                for x, item in enumerate(Kineticist_DB[feat]):
-                    attacks[Kineticist_DB[feat][x]["title"]] = Kineticist_DB[feat][x]
-            else:
-                attacks[Kineticist_DB[feat]["title"]] = Kineticist_DB[feat]
+        feat_data = await EPF_retreive_complex_data(feat)
+        for x in feat_data:
+            attacks[x.display_name] = x.data
 
     return character, spells, attacks, items, resistances
 

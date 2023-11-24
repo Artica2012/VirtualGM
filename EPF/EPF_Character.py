@@ -36,6 +36,7 @@ from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
 from EPF.Kineticist_DB import Kineticist_DB
+from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 
 # define global variables
 
@@ -1361,15 +1362,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         # Kineticist Specific Code (at least for now:
         # print(Kineticist_DB.keys())
         for feat in feat_list:
-            feat = feat.lower()
-            print(feat)
-            if feat in Kineticist_DB.keys():
-                print(feat)
-                if type(Kineticist_DB[feat]) == list:
-                    for x, item in enumerate(Kineticist_DB[feat]):
-                        attacks[Kineticist_DB[feat][x]["title"]] = Kineticist_DB[feat][x]
-                else:
-                    attacks[Kineticist_DB[feat]["title"]] = Kineticist_DB[feat]
+            feat_data = await EPF_retreive_complex_data(feat)
+            for x in feat_data:
+                attacks[x.display_name] = x.data
 
         if overwrite:
             async with async_session() as session:
