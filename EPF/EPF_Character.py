@@ -430,14 +430,14 @@ class EPF_Character(Character):
             return None
 
     async def is_complex_attack(self, item):
-        # try:
-        if "complex" in self.character_model.attacks[item].keys():
-            if self.character_model.attacks[item]["complex"]:
-                return True
-        else:
+        try:
+            if "complex" in self.character_model.attacks[item].keys():
+                if self.character_model.attacks[item]["complex"]:
+                    return True
+            else:
+                return False
+        except KeyError:
             return False
-        # except KeyError:
-        #     return False
 
     async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
         try:

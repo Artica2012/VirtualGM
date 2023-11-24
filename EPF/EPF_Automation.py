@@ -410,15 +410,15 @@ async def automation_parse(data, target_model):
     except Exception:
         processed_input = data.split(",")
         for item in processed_input:
-            # try:
-            if data[-1:] != ",":
-                data = data + ","
+            try:
+                if data[-1:] != ",":
+                    data = data + ","
 
-            tree = Lark(attack_grammer).parse(data)
-            print(tree.pretty())
-            processed_data = await parse_automation_tree(tree, processed_data, target_model)
-            # except Exception as e:
-            #     logging.error(f"Bad input: {item}: {e}")
+                tree = Lark(attack_grammer).parse(data)
+                print(tree.pretty())
+                processed_data = await parse_automation_tree(tree, processed_data, target_model)
+            except Exception as e:
+                logging.error(f"Bad input: {item}: {e}")
 
     return processed_data
 

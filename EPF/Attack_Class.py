@@ -29,7 +29,7 @@ async def get_attack(character, attack_name, ctx, guild=None):
 
 class Attack:
     def __init__(self, ctx, guild, character: EPF_Character, attack_name: str, attack_data: dict):
-        print("Initializing Attack")
+        # print("Initializing Attack")
         self.ctx = ctx
         self.guild = guild
         self.character = character
@@ -52,7 +52,7 @@ class Attack:
             self.attack_type = attack_data["type"]["value"]
         else:
             self.attack_type = None
-        print("Success")
+        # print("Success")
 
     def success_color(self, success_string):
         if success_string == "Critical Success":
@@ -101,7 +101,7 @@ class Attack:
             return await self.simple_attack(target, vs, attack_modifier, target_modifier)
 
     async def simple_attack(self, target, vs, attack_modifier, target_modifier):
-        print("simple attack")
+        # print("simple attack")
         try:
             roll_string: str = f"{self.attack_name}{ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
@@ -317,8 +317,8 @@ class Attack:
         return Attack_Data(dmg_string, total_damage, success_string, attk_output_string)
 
     async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        print("Complex Attack")
-        print(self.attack)
+        # print("Complex Attack")
+        # print(self.attack)
 
         Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
 
@@ -329,7 +329,7 @@ class Attack:
             )
             return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
         elif self.attack_type == "save":
-            print("save")
+            # print("save")
             Attk_Data = await self.auto_complex_save_attk(Target_Model, attack_modifier, target_modifier)
             Dmg_Data = await self.auto_complex_save_dmg(
                 Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
@@ -343,9 +343,9 @@ class Attack:
         else:
             roll_string = f"({await self.character.get_roll('class_dc')})"
 
-        print(roll_string)
+        # print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
-        print(dice_result)
+        # print(dice_result)
         goal_value = Target_Model.ac_total
 
         try:
@@ -374,7 +374,7 @@ class Attack:
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -383,7 +383,7 @@ class Attack:
                 await self.pd(data, heighten, heighten_data, Target_Model)
             else:
                 data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
 
                 await self.pd(data, heighten, heighten_data, Target_Model)
@@ -393,9 +393,9 @@ class Attack:
 
         elif success_string == "Success":
             data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-            print(data)
+            # print(data)
             data = self.heighten_calc(data, heighten, heighten_data)
-            print(data)
+            # print(data)
             await self.pd(data, heighten, heighten_data, Target_Model)
             dmg_string, total_damage = await scripted_damage_roll_resists(
                 data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -411,9 +411,9 @@ class Attack:
         # Roll the save
         save = self.attack["type"]["save"]
         roll_string = f"({await Target_Model.get_roll(save)})"
-        print(roll_string)
+        # print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(target_modifier)}")
-        print(dice_result)
+        # print(dice_result)
 
         try:
             # Get the DC
@@ -444,7 +444,7 @@ class Attack:
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
 
@@ -458,18 +458,18 @@ class Attack:
         elif success_string == "Success":
             if "success" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
-                print(data)
+                # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             elif self.attack["type"]["type"] == "basic":
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
-                print(data)
+                # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data,
@@ -482,7 +482,7 @@ class Attack:
         elif success_string == "Failure":
             if "failure" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -491,18 +491,18 @@ class Attack:
         elif success_string == "Critical Failure":
             if "critical failure" in self.attack["effect"].keys():
                 data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
-                print(data)
+                # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             else:
                 data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                print(data)
+                # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
-                print(data)
+                # print(data)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data,
                     Target_Model,
@@ -520,10 +520,10 @@ class Attack:
 
     async def pd(self, data, heighten, heighten_data, Target_Model):
         if "pd" in data.keys():
-            print(data["pd"])
+            # print(data["pd"])
             roll_string = data["pd"]["roll_string"]
             if heighten > 0:
-                print("heighten_data  ", heighten_data)
+                # print("heighten_data  ", heighten_data)
                 for x in range(0, heighten):
                     for i in heighten_data["hpd"].keys():
                         roll_string = roll_string + " " + f"{heighten_data['hpd']['roll_string']}"
@@ -534,8 +534,8 @@ class Attack:
             await Target_Model.set_cc(
                 f"Persistent {data['pd']['dmg_type']}", False, 0, "Round", False, data=f"{action_string} {save_string}"
             )
-            print(roll_string)
-            print(f"{action_string} {save_string}")
+            # print(roll_string)
+            # print(f"{action_string} {save_string}")
 
             embed = discord.Embed(
                 title=Target_Model.char_name.title(),
@@ -675,8 +675,8 @@ async def automation_parse(data, character_model, target_model):
             data = data + ","
 
         tree = Lark(attack_grammer).parse(data)
-        print(data)
-        print(tree.pretty())
+        # print(data)
+        # print(tree.pretty())
         processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
     except Exception:
         processed_input = data.split(",")
@@ -686,7 +686,7 @@ async def automation_parse(data, character_model, target_model):
                     data = data + ","
 
                 tree = Lark(attack_grammer).parse(data)
-                print(tree.pretty())
+                # print(tree.pretty())
                 processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
             except Exception as e:
                 logging.error(f"Bad input: {item}: {e}")
@@ -762,7 +762,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         data=action,
                         target=target,
                     )
-                    print(action)
+                    # print(action)
             else:
                 if data["title"].title() not in await target_model.conditions():
                     await target_model.set_cc(
@@ -775,7 +775,7 @@ async def parse_automation_tree(tree, output_data: dict, char_model, target_mode
                         data=action,
                         target=target,
                     )
-                    print(action)
+                    # print(action)
 
             output_data["condition"] = data
 
