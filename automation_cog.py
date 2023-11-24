@@ -183,8 +183,6 @@ class AutomationCog(commands.Cog):
                                 title=char, fields=[discord.EmbedField(name=user_roll_str, value="Invalid Target")]
                             )
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
 
             else:
                 embeds.append(
@@ -193,6 +191,9 @@ class AutomationCog(commands.Cog):
                     )
                 )
             await ctx.send_followup(embeds=embeds)
+
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             logging.warning(f"attack_cog damage {e}")
             report = ErrorReport(ctx, "/a damage", e, self.bot)
@@ -245,8 +246,7 @@ class AutomationCog(commands.Cog):
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
+
             else:
                 embeds.append(
                     await Automation.auto(
@@ -261,6 +261,8 @@ class AutomationCog(commands.Cog):
                     )
                 )
             await ctx.send_followup(embeds=embeds)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
         except KeyError:
             await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
         except Exception as e:
@@ -318,8 +320,7 @@ class AutomationCog(commands.Cog):
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=spell, value="Invalid Target")])
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                await Tracker_Model.update_pinned_tracker()
+
             else:
                 embeds.append(
                     await Automation.cast(
@@ -335,6 +336,8 @@ class AutomationCog(commands.Cog):
                     )
                 )
             await ctx.send_followup(embeds=embeds)
+            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             logging.warning(f"attack_cog cast {e}")
             report = ErrorReport(ctx, "/a cast", e, self.bot)

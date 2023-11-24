@@ -586,35 +586,35 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         Character_Model = await get_character(character, ctx, engine=engine)
-        try:
-            if mode == "delete":
-                result = await Character_Model.delete_cc(condition)
+        # try:
+        if mode == "delete":
+            result = await Character_Model.delete_cc(condition)
+            if result:
+                await ctx.send_followup("Successful Delete", ephemeral=True)
+                await ctx.send(f"{condition} on {character} deleted.")
+        elif mode == "edit":
+            if value is not None:
+                result = await Character_Model.edit_cc(condition, value)
                 if result:
-                    await ctx.send_followup("Successful Delete", ephemeral=True)
-                    await ctx.send(f"{condition} on {character} deleted.")
-            elif mode == "edit":
-                if value is not None:
-                    result = await Character_Model.edit_cc(condition, value)
-                    if result:
-                        await ctx.send_followup(f"{condition} on {character} updated to {value}.")
-                    else:
-                        await ctx.send_followup("Error")
+                    await ctx.send_followup(f"{condition} on {character} updated to {value}.")
                 else:
-                    output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
-                    if output[0] is not None:
-                        await ctx.send_followup(output[0], view=output[1], ephemeral=True)
-                    else:
-                        await ctx.send_followup("Error")
+                    await ctx.send_followup("Error")
             else:
-                await ctx.send_followup("Invalid Input", ephemeral=True)
+                output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
+                if output[0] is not None:
+                    await ctx.send_followup(output[0], view=output[1], ephemeral=True)
+                else:
+                    await ctx.send_followup("Error")
+        else:
+            await ctx.send_followup("Invalid Input", ephemeral=True)
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-        except Exception as e:
-            await ctx.send_followup("Error", ephemeral=True)
-            logging.warning(f"/cc modify: {e}")
-            report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
-            await report.report()
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
+        # except Exception as e:
+        #     await ctx.send_followup("Error", ephemeral=True)
+        #     logging.warning(f"/cc modify: {e}")
+        #     report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
+        #     await report.report()
 
 
 def setup(bot):

@@ -63,6 +63,16 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
 
     dmg_list = [dmg_type.lower(), "all-damage", mat]
 
+    # Remaster Conversion Code
+    if dmg_type.lower() == "negative":
+        dmg_list.append("void")
+    elif dmg_type.lower() == "void":
+        dmg_list.append("negative")
+    elif dmg_type.lower() == "positive":
+        dmg_list.append("vitality")
+    elif dmg_type.lower() == "vitality":
+        dmg_list.append("positive")
+
     for item in dmg_list:  # This is completely rewritten. It might be broken
         if item in target.resistance.keys():
             if "r" in target.resistance[item]:
@@ -143,6 +153,14 @@ async def roll_dmg_resist(
             output = {"dmg_output_string": bonus_roll, "dmg_type": item["dmg_type"]}
             dmg_output.append((output))
     # print(dmg_output_string, total_damage)
+
+    # Hardness
+    try:
+        total_damage = total_damage - Target_Model.character_model.bonuses["other"]["hardness"]
+    except KeyError:
+        # print("No Hardness")
+        pass
+
     return dmg_output, total_damage
 
 

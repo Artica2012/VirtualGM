@@ -35,6 +35,9 @@ from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
+from EPF.Kineticist_DB import Kineticist_DB
+from EPF.EPF_Automation_Data import EPF_retreive_complex_data
+
 # define global variables
 
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
@@ -100,6 +103,7 @@ class EPF_Character(Character):
         self.fort_mod = character.fort_mod
         self.reflex_mod = character.reflex_mod
         self.will_mod = character.will_mod
+        self.class_dc = character.class_dc
 
         self.acrobatics_mod = character.acrobatics_mod
         self.arcana_mod = character.arcana_mod
@@ -175,6 +179,7 @@ class EPF_Character(Character):
         self.fort_mod = self.character_model.fort_mod
         self.reflex_mod = self.character_model.reflex_mod
         self.will_mod = self.character_model.will_mod
+        self.class_dc = self.character_model.class_dc
 
         self.acrobatics_mod = self.character_model.acrobatics_mod
         self.arcana_mod = self.character_model.arcana_mod
@@ -205,15 +210,17 @@ class EPF_Character(Character):
     async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
-        if item == "Fortitude" or item == "Fort":
+        if item == "Fortitude" or item == "Fort" or item == "fort":
             # print("a")
             return f"1d20+{self.fort_mod}"
-        elif item == "Reflex":
+        elif item == "Reflex" or item == "reflex":
             # print("b")
             return f"1d20+{self.reflex_mod}"
-        elif item == "Will":
+        elif item == "Will" or item == "reflex":
             # print("c")
             return f"1d20+{self.will_mod}"
+        elif item == "class_dc":
+            return f"1d20+{self.class_dc}"
         elif item == "Acrobatics":
             # print("d")
             return f"1d20+{self.acrobatics_mod}"
@@ -315,6 +322,7 @@ class EPF_Character(Character):
     async def weapon_attack(self, item):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
+
         attk_stat = self.str_mod
         match weapon["attk_stat"]:
             case "dex":
@@ -416,7 +424,20 @@ class EPF_Character(Character):
             return f"{die_mod}{die}+{dmg_mod}{ParseModifiers(f'{bonus_mod}')}{ParseModifiers(flat_bonus)}"
 
     async def get_weapon(self, item):
-        return self.character_model.attacks[item]
+        try:
+            return self.character_model.attacks[item]
+        except KeyError:
+            return None
+
+    async def is_complex_attack(self, item):
+        try:
+            if "complex" in self.character_model.attacks[item].keys():
+                if self.character_model.attacks[item]["complex"]:
+                    return True
+            else:
+                return False
+        except KeyError:
+            return False
 
     async def clone_attack(self, attack, new_name, bonus_dmg, dmg_type):
         try:
@@ -479,6 +500,10 @@ class EPF_Character(Character):
         spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
         if spell_data["tradition"] == "NPC":
+            # print(attk_stat)
+            # print(self.character_model.level)
+            # print(spell_data['proficiency'])
+            # print(spell_attack_bonus)
             if mod:
                 return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
@@ -491,6 +516,7 @@ class EPF_Character(Character):
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
+        # print(spell_data)
         spell_dmg_bonus = await bonus_calc(0, "spelldmg", self.character_model.bonuses)
         if spell_dmg_bonus != 0:
             flat_bonus = flat_bonus + f"+{spell_dmg_bonus}"
@@ -518,16 +544,27 @@ class EPF_Character(Character):
                     case "None":
                         mod_stat = 0
 
-                dmg_dict[key] = {
-                    "dmg_string": (
+                if type(spell_data["damage"][key]["value"]) == dict:
+                    dmg_string = (
+                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                    )
+                else:
+                    dmg_string = (
                         f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
-                    ),
+                    )
+
+                dmg_dict[key] = {
+                    "dmg_string": dmg_string,
                     "dmg_type": dmg_type,
                 }
 
             else:
+                if type(spell_data["damage"][key]["value"]) == dict:
+                    dmg_string = f"{spell_data['damage'][key]['value']['formula']}{ParseModifiers(flat_bonus)}"
+                else:
+                    dmg_string = f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}"
                 dmg_dict[key] = {
-                    "dmg_string": f"{spell_data['damage'][key]['value']}{ParseModifiers(flat_bonus)}",
+                    "dmg_string": dmg_string,
                     "dmg_type": dmg_type,
                 }
             # Heightening Calculations
@@ -584,13 +621,13 @@ class EPF_Character(Character):
     async def get_dc(self, item):
         if item == "AC":
             return self.ac_total
-        elif item == "Fort":
+        elif item == "Fort" or item == "fort":
             return 10 + self.fort_mod
-        elif item == "Reflex":
+        elif item == "Reflex" or item == "reflex":
             return 10 + self.reflex_mod
-        elif item == "Will":
+        elif item == "Will" or item == "will":
             return 10 + self.will_mod
-        elif item == "DC":
+        elif item == "DC" or item == "dc":
             return 10 + self.character_model.class_dc
         elif item.lower() == "acrobatics":
             return 10 + self.acrobatics_mod
@@ -1086,8 +1123,26 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             lores += output
 
         feats = ""
+        feat_list = []
+
+        if "Air Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Air)")
+        if "Earth Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Earth)")
+        if "Fire Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Fire)")
+        if "Metal Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Metal)")
+        if "Water Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Water)")
+        if "Wood Element" in pb["build"]["specials"]:
+            feat_list.append("Elemental Blast (Wood)")
+
         for item in pb["build"]["feats"]:
+            print(item)
             feats += f"{item[0]}, "
+            feat_list.append(item[0].strip())
+        print(feat_list)
 
         bonus_dmg_list = []
         attacks = {}
@@ -1303,6 +1358,13 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
             except Exception as e:
                 pass
+
+        # Kineticist Specific Code (at least for now:
+        # print(Kineticist_DB.keys())
+        for feat in feat_list:
+            feat_data = await EPF_retreive_complex_data(feat)
+            for x in feat_data:
+                attacks[x.display_name] = x.data
 
         if overwrite:
             async with async_session() as session:
@@ -2012,6 +2074,7 @@ phrase: value+ break
 
 value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
     | "init-skill" WORD                                                -> init_skill
+    | "hardness" NUMBER                                                -> hardness
     | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                                     -> temp_hp
     | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
@@ -2113,6 +2176,14 @@ async def process_condition_tree(
             else:
                 bonuses["other"] = {"init_skill": branch.children[0].value}
             # print(bonuses)
+
+        elif branch.data == "hardness":
+            print("HARDNESS")
+            print(branch.children)
+            if "other" in bonuses.keys():
+                bonuses["other"]["hardness"] = int(branch.children[0].value)
+            else:
+                bonuses["other"] = {"hardness": int(branch.children[0].value)}
 
         elif branch.data == "new_condition":
             new_con_name = ""
