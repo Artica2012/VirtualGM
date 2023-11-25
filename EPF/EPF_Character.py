@@ -1604,7 +1604,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
             )
             character.will_mod = await save_mod_calc(
-                character.wis_mod, "wis", character.will_prof, character.level, bonuses
+                character.wis_mod, "will", character.will_prof, character.level, bonuses
             )
 
             # Skills
