@@ -171,7 +171,7 @@ class AutoModel:
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
 
@@ -180,7 +180,7 @@ class AutoModel:
                 )
                 await self.pd(data, heighten, heighten_data, Target_Model)
             else:
-                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
 
@@ -190,7 +190,7 @@ class AutoModel:
                 )
 
         elif success_string == "Success":
-            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+            data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
             # print(data)
             data = self.heighten_calc(data, heighten, heighten_data)
             # print(data)
@@ -241,7 +241,7 @@ class AutoModel:
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
@@ -255,7 +255,7 @@ class AutoModel:
 
         elif success_string == "Success":
             if "success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
@@ -264,7 +264,7 @@ class AutoModel:
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             elif self.attack["type"]["type"] == "basic":
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
@@ -279,7 +279,7 @@ class AutoModel:
                 )
         elif success_string == "Failure":
             if "failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
@@ -288,7 +288,7 @@ class AutoModel:
                 )
         elif success_string == "Critical Failure":
             if "critical failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["critical failure"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
@@ -297,7 +297,7 @@ class AutoModel:
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
             else:
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
                 data = self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
@@ -322,7 +322,7 @@ class AutoModel:
         total_damage = 0
 
         if "success" in self.attack["effect"].keys():
-            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+            data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
             # print(data)
             data = self.heighten_calc(data, heighten, heighten_data)
             # print(data)
@@ -331,6 +331,228 @@ class AutoModel:
         attk_output_string = f"{self.attack_name.title()} on {Target_Model.char_name}."
 
         return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
+
+    async def heighten(self, Target_Model):
+        # heightening code
+        heighten_data = {}
+        if "heighten" in self.attack.keys():
+            if "interval" in self.attack["heighten"]:
+                if self.level > self.attack["lvl"]:
+                    heighten = floor((self.level - self.attack["lvl"]) / self.attack["heighten"]["interval"])
+                else:
+                    heighten = 0
+                if heighten > 0:
+                    heighten_data = await self.automation_parse(self.attack["heighten"]["effect"], Target_Model)
+                    print(heighten_data)
+        else:
+            heighten = 0
+        return (heighten_data, heighten)
+
+    def heighten_calc(self, data, heighten, heighten_data):
+        if heighten > 0:
+            for i in heighten_data["dmg"].keys():
+                sub_data = heighten_data["dmg"][i]["sub_data"]
+                for die_size in sub_data.keys():
+                    die_num = int(sub_data[die_size]) * heighten
+                    heighten_roll = f"{die_num}d{die_size}"
+                    try:
+                        data["dmg"][i]["roll_string"] = f"{str(data['dmg'][i]['roll_string'])}+{heighten_roll}"
+                    except KeyError:
+                        data["dmg"][i]["roll_string"] = heighten_roll
+        return data
+
+    async def automation_parse(self, data, target_model):
+        processed_data = {}
+        try:
+            if data[-1:] != ",":
+                data = data + ","
+
+            tree = Lark(attack_grammer).parse(data)
+            # print(data)
+            # print(tree.pretty())
+            processed_data = await self.parse_automation_tree(tree, processed_data, target_model)
+        except Exception:
+            processed_input = data.split(",")
+            for item in processed_input:
+                try:
+                    if data[-1:] != ",":
+                        data = data + ","
+
+                    tree = Lark(attack_grammer).parse(data)
+                    processed_data = await self.parse_automation_tree(tree, processed_data, target_model)
+                except Exception as e:
+                    logging.error(f"Bad input: {item}: {e}")
+
+        return processed_data
+
+    async def parse_automation_tree(self, tree, output_data: dict, target_model):
+        t = tree.iter_subtrees_topdown()
+        for branch in t:
+            if branch.data == "new_condition":
+                data = {"title": "", "number": 0}
+
+                for item in branch.children:
+                    if type(item) == lark.Token:
+                        if item.type == "WORD":
+                            data["title"] = item.value
+                        elif item.type == "NUMBER":
+                            data["number"] = item.value
+                    elif type(item) == lark.Tree:
+                        try:
+                            data[str(item.data)] = item.children[0].value
+                        except IndexError:
+                            data[str(item.data)] = 0
+
+                unit = "Round"
+                if "unit" in data.keys():
+                    if data["unit"] in ["round", "minute", "hour", "days"]:
+                        unit = data["unit"].title()
+
+                auto = False
+                if "auto" in data.keys():
+                    auto = True
+
+                action = ""
+                if "data" in data.keys():
+                    action = data_stat_var(data["data"], self.character)
+                    action = action.strip("'")
+
+                if "duration" in data.keys():
+                    if int(data["duration"]) != int(data["number"]):
+                        action = action + " " + f"stable {data['number']}"
+                        data["number"] = data["duration"]
+
+                if "stable" in data.keys():
+                    action = action + " " + f"stable {data['number']}"
+
+                flex = False
+                if "flex" in data.keys():
+                    flex = True
+
+                target = None
+                if "target" in data.keys():
+                    target = self.character.char_name
+
+                if "self" in data.keys():
+                    data["char_name"] = self.character.char_name
+                else:
+                    data["char_name"] = target_model.char_name
+
+                # TODO Move this out to the main method
+                if "self" in data.keys():
+                    if "target" in data.keys():
+                        target = target_model.char_name
+
+                    if data["title"].title() not in await self.character.conditions():
+                        await self.character.set_cc(
+                            data["title"].title(),
+                            False,
+                            int(data["number"]),
+                            unit,
+                            auto,
+                            flex=flex,
+                            data=action,
+                            target=target,
+                        )
+                        # print(action)
+                else:
+                    if data["title"].title() not in await target_model.conditions():
+                        await target_model.set_cc(
+                            data["title"].title(),
+                            False,
+                            int(data["number"]),
+                            unit,
+                            auto,
+                            flex=flex,
+                            data=action,
+                            target=target,
+                        )
+                        # print(action)
+
+                output_data["condition"] = data
+
+            elif branch.data == "persist_dmg":
+                # TODO Address variables
+                temp = {}
+                for item in branch.children:
+                    if type(item) == lark.Tree:
+                        if item.data == "roll_string":
+                            roll_string = ""
+                            for sub in item.children:
+                                var = stat_var(sub, self.character, self.attack_name)
+                                if sub is not None:
+                                    roll_string = roll_string + var
+
+                            temp["roll_string"] = roll_string
+                        elif item.data == "save_string":
+                            for sub in item.children:
+                                temp["save"] = sub.value
+                    elif type(item) == lark.Token:
+                        if item.type == "WORD":
+                            temp["dmg_type"] = item.value
+                        elif item.type == "NUMBER":
+                            temp["save_value"] = item.value
+                        elif item.type == "STAT_VAR":
+                            var = stat_var(item, self.character, self.attack_name)
+                            temp["save_value"] = var
+                output_data["pd"] = temp
+
+            elif branch.data == "heighten_persist":
+                temp = {}
+                for item in branch.children:
+                    if type(item) == lark.Tree:
+                        if item.data == "roll_string":
+                            roll_string = ""
+                            for sub in item.children:
+                                if sub is not None:
+                                    var = stat_var(sub, self.character, self.attack_name)
+                                    if sub is not None:
+                                        roll_string = roll_string + var
+
+                            temp["roll_string"] = roll_string
+                    elif type(item) == lark.Token:
+                        if item.type == "WORD":
+                            temp["dmg_type"] = item.value
+                output_data["hpd"] = temp
+
+            elif branch.data == "damage_string":
+                if "dmg" not in output_data.keys():
+                    output_data["dmg"] = {}
+
+                temp = {}
+                for item in branch.children:
+                    # print(item)
+
+                    if type(item) == lark.Tree:
+                        if item.data == "roll_string":
+                            roll_string = ""
+                            sub_data = None
+                            for sub in item.children:
+                                sub_data = {}
+                                # print(sub.value)
+                                # print(sub.type)
+                                if sub.type == "ROLL":
+                                    sub_list = sub.value.split("d")
+                                    sub_data[sub_list[1]] = sub_list[0]
+
+                                if sub is not None:
+                                    var = stat_var(sub, self.character, self.attack_name)
+                                    if sub is not None:
+                                        roll_string = roll_string + var
+
+                            temp["roll_string"] = roll_string
+                    elif type(item) == lark.Token:
+                        if item.type == "WORD":
+                            temp["dmg_type"] = item.value
+
+                if temp["dmg_type"] is not None and temp["roll_string"] is not None:
+                    output_data["dmg"][temp["dmg_type"]] = {"roll_string": temp["roll_string"]}
+                    try:
+                        output_data["dmg"][temp["dmg_type"]]["sub_data"] = sub_data
+                    except Exception:
+                        pass
+
+        return output_data
 
 
 async def get_attack(character, attack_name, ctx, guild=None):
@@ -588,59 +810,6 @@ class Attack(AutoModel):
 
         return Attack_Data(dmg_string, total_damage, success_string, attk_output_string)
 
-    async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        # print("Complex Attack")
-        # print(self.attack)
-
-        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
-
-        if self.attack_type == "attack":
-            Attk_Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
-            Dmg_Data = await self.auto_complex_attack_dmg(
-                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
-            )
-            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
-        elif self.attack_type == "save":
-            # print("save")
-            Attk_Data = await self.auto_complex_save_attk(Target_Model, attack_modifier, target_modifier)
-            Dmg_Data = await self.auto_complex_save_dmg(
-                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
-            )
-            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
-        elif self.attack_type == "utility":
-            return await self.auto_complex_utility(Target_Model)
-
-    async def heighten(self, Target_Model):
-        # heightening code
-        heighten_data = {}
-        if "heighten" in self.attack.keys():
-            if "interval" in self.attack["heighten"]:
-                if self.level > self.attack["lvl"]:
-                    heighten = floor((self.level - self.attack["lvl"]) / self.attack["heighten"]["interval"])
-                else:
-                    heighten = 0
-                if heighten > 0:
-                    heighten_data = await automation_parse(
-                        self.attack["heighten"]["effect"], self.character, Target_Model
-                    )
-                    print(heighten_data)
-        else:
-            heighten = 0
-        return (heighten_data, heighten)
-
-    def heighten_calc(self, data, heighten, heighten_data):
-        if heighten > 0:
-            for i in heighten_data["dmg"].keys():
-                sub_data = heighten_data["dmg"][i]["sub_data"]
-                for die_size in sub_data.keys():
-                    die_num = int(sub_data[die_size]) * heighten
-                    heighten_roll = f"{die_num}d{die_size}"
-                    try:
-                        data["dmg"][i]["roll_string"] = f"{str(data['dmg'][i]['roll_string'])}+{heighten_roll}"
-                    except KeyError:
-                        data["dmg"][i]["roll_string"] = heighten_roll
-        return data
-
 
 class Attack_Data:
     def __init__(self, dmg_string, total_damage, success_string, attack_output_string):
@@ -800,7 +969,9 @@ class Spell(AutoModel):
         Target_Model = await get_EPF_Character(target, self.ctx, engine=engine, guild=self.guild)
 
         if self.complex:
-            pass
+            spell_data = await self.auto_complex(
+                target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override
+            )
         else:
             if self.attack_type == "attack":
                 Attk_Data = await self.legacy_cast_attk_attk(Target_Model, attack_modifier, target_modifier)
@@ -816,7 +987,9 @@ class Spell(AutoModel):
             else:
                 return None
 
-        spell_data = Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
+            spell_data = Attack_Data(
+                Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output
+            )
 
         await self.format_output(spell_data, Target_Model)
         return self.output
@@ -829,7 +1002,7 @@ phrase: value+ break
 
 value: roll_string WORD                                                -> damage_string
     | persist_dmg
-    | WORD NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
+    | (WORD | COMBO_WORD) NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
     | heighten_persist
 
 persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" (NUMBER | STAT_VAR) save_string]
@@ -853,13 +1026,13 @@ quoted: SINGLE_QUOTED_STRING
 break: ","
 
 
-roll_string: ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))*
+roll_string: (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER)
 !save_string: "reflex" | "fort" | "will" | "flat"
 
 ROLL: NUMBER "d" NUMBER
 
 POS_NEG : ("+" | "-")
-STAT_VAR : ("str" | "dex" | "con" | "int" | "wis" | "cha" | "lvl" | "dc")
+STAT_VAR : ("str" | "dex" | "con" | "int" | "wis" | "cha" | "lvl" | "dc" | "key"| "scmod")
 
 DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
@@ -876,202 +1049,6 @@ COMBO_WORD : WORD ("-"|"_") WORD
 %import common.WS
 %ignore WS
 """
-
-
-async def automation_parse(data, character_model, target_model):
-    processed_data = {}
-    try:
-        if data[-1:] != ",":
-            data = data + ","
-
-        tree = Lark(attack_grammer).parse(data)
-        # print(data)
-        # print(tree.pretty())
-        processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
-    except Exception:
-        processed_input = data.split(",")
-        for item in processed_input:
-            try:
-                if data[-1:] != ",":
-                    data = data + ","
-
-                tree = Lark(attack_grammer).parse(data)
-                # print(tree.pretty())
-                processed_data = await parse_automation_tree(tree, processed_data, character_model, target_model)
-            except Exception as e:
-                logging.error(f"Bad input: {item}: {e}")
-
-    return processed_data
-
-
-async def parse_automation_tree(tree, output_data: dict, char_model, target_model):
-    t = tree.iter_subtrees_topdown()
-    for branch in t:
-        if branch.data == "new_condition":
-            data = {"title": "", "number": 0}
-
-            for item in branch.children:
-                if type(item) == lark.Token:
-                    if item.type == "WORD":
-                        data["title"] = item.value
-                    elif item.type == "NUMBER":
-                        data["number"] = item.value
-                elif type(item) == lark.Tree:
-                    try:
-                        data[str(item.data)] = item.children[0].value
-                    except IndexError:
-                        data[str(item.data)] = 0
-
-            unit = "Round"
-            if "unit" in data.keys():
-                if data["unit"] in ["round", "minute", "hour", "days"]:
-                    unit = data["unit"].title()
-
-            auto = False
-            if "auto" in data.keys():
-                auto = True
-
-            action = ""
-            if "data" in data.keys():
-                action = data_stat_var(data["data"], char_model)
-                action = action.strip("'")
-
-            if "duration" in data.keys():
-                if int(data["duration"]) != int(data["number"]):
-                    action = action + " " + f"stable {data['number']}"
-                    data["number"] = data["duration"]
-
-            if "stable" in data.keys():
-                action = action + " " + f"stable {data['number']}"
-
-            flex = False
-            if "flex" in data.keys():
-                flex = True
-
-            target = None
-            if "target" in data.keys():
-                target = char_model.char_name
-
-            if "self" in data.keys():
-                data["char_name"] = char_model.char_name
-            else:
-                data["char_name"] = target_model.char_name
-
-            # TODO Move this out to the main method
-            if "self" in data.keys():
-                if "target" in data.keys():
-                    target = target_model.char_name
-
-                if data["title"].title() not in await char_model.conditions():
-                    await char_model.set_cc(
-                        data["title"].title(),
-                        False,
-                        int(data["number"]),
-                        unit,
-                        auto,
-                        flex=flex,
-                        data=action,
-                        target=target,
-                    )
-                    # print(action)
-            else:
-                if data["title"].title() not in await target_model.conditions():
-                    await target_model.set_cc(
-                        data["title"].title(),
-                        False,
-                        int(data["number"]),
-                        unit,
-                        auto,
-                        flex=flex,
-                        data=action,
-                        target=target,
-                    )
-                    # print(action)
-
-            output_data["condition"] = data
-
-        elif branch.data == "persist_dmg":
-            # TODO Address variables
-            temp = {}
-            for item in branch.children:
-                if type(item) == lark.Tree:
-                    if item.data == "roll_string":
-                        roll_string = ""
-                        for sub in item.children:
-                            var = stat_var(sub, char_model)
-                            if sub is not None:
-                                roll_string = roll_string + var
-
-                        temp["roll_string"] = roll_string
-                    elif item.data == "save_string":
-                        for sub in item.children:
-                            temp["save"] = sub.value
-                elif type(item) == lark.Token:
-                    if item.type == "WORD":
-                        temp["dmg_type"] = item.value
-                    elif item.type == "NUMBER":
-                        temp["save_value"] = item.value
-                    elif item.type == "STAT_VAR":
-                        var = stat_var(item, char_model)
-                        temp["save_value"] = var
-            output_data["pd"] = temp
-
-        elif branch.data == "heighten_persist":
-            temp = {}
-            for item in branch.children:
-                if type(item) == lark.Tree:
-                    if item.data == "roll_string":
-                        roll_string = ""
-                        for sub in item.children:
-                            if sub is not None:
-                                var = stat_var(sub, char_model)
-                                if sub is not None:
-                                    roll_string = roll_string + var
-
-                        temp["roll_string"] = roll_string
-                elif type(item) == lark.Token:
-                    if item.type == "WORD":
-                        temp["dmg_type"] = item.value
-            output_data["hpd"] = temp
-
-        elif branch.data == "damage_string":
-            if "dmg" not in output_data.keys():
-                output_data["dmg"] = {}
-
-            temp = {}
-            for item in branch.children:
-                # print(item)
-
-                if type(item) == lark.Tree:
-                    if item.data == "roll_string":
-                        roll_string = ""
-                        sub_data = None
-                        for sub in item.children:
-                            sub_data = {}
-                            # print(sub.value)
-                            # print(sub.type)
-                            if sub.type == "ROLL":
-                                sub_list = sub.value.split("d")
-                                sub_data[sub_list[1]] = sub_list[0]
-
-                            if sub is not None:
-                                var = stat_var(sub, char_model)
-                                if sub is not None:
-                                    roll_string = roll_string + var
-
-                        temp["roll_string"] = roll_string
-                elif type(item) == lark.Token:
-                    if item.type == "WORD":
-                        temp["dmg_type"] = item.value
-
-            if temp["dmg_type"] is not None and temp["roll_string"] is not None:
-                output_data["dmg"][temp["dmg_type"]] = {"roll_string": temp["roll_string"]}
-                try:
-                    output_data["dmg"][temp["dmg_type"]]["sub_data"] = sub_data
-                except Exception:
-                    pass
-
-    return output_data
 
 
 async def scripted_damage_roll_resists(
@@ -1186,24 +1163,28 @@ async def legacy_roll_spell_dmg_resist(
     return dmg_output, total_damage
 
 
-def stat_var(item: lark.Token, char_model: EPF_Character):
+def stat_var(item: lark.Token, char_model: EPF_Character, spell_name):
     match item.value:  # noqa
         case "str":
-            var = char_model.str_mod
+            var = str(char_model.str_mod)
         case "dex":
-            var = char_model.dex_mod
+            var = str(char_model.dex_mod)
         case "con":
-            var = char_model.con_mod
+            var = str(char_model.con_mod)
         case "int":
-            var = char_model.itl_mod
+            var = str(char_model.itl_mod)
         case "wis":
-            var = char_model.wis_mod
+            var = str(char_model.wis_mod)
         case "cha":
-            var = char_model.cha_mod
+            var = str(char_model.cha_mod)
         case "lvl":
-            var = char_model.character_model.level
+            var = str(char_model.character_model.level)
         case "dc":
-            var = char_model.class_dc
+            var = str(char_model.class_dc)
+        case "key":
+            var = str(char_model.get_mod(char_model.character_model.key_ability))
+        case "scmod":
+            var = str(char_model.var_spell_mod(spell_name))
         case _:
             var = item.value
     return var

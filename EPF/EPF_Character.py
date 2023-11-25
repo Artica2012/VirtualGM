@@ -429,6 +429,29 @@ class EPF_Character(Character):
         except KeyError:
             return None
 
+    def get_mod(self, mod: str):
+        match mod:  # noqa
+            case "str":
+                return self.str_mod
+            case "dex":
+                return self.dex_mod
+            case "con":
+                return self.con_mod
+            case "itl":
+                return self.itl_mod
+            case "int":
+                return self.itl_mod
+            case "wis":
+                return self.wis_mod
+            case "cha":
+                return self.cha_mod
+            case _:
+                return 0
+
+    async def var_spell_mod(self, spell_name):
+        spell = await self.get_spell(spell_name)
+        return self.get_mod(spell["ability"])
+
     async def is_complex_attack(self, item):
         try:
             if "complex" in self.character_model.attacks[item].keys():
@@ -1263,7 +1286,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     spell_data = await EPF_retreive_complex_data(spell_name)
                     if len(spell_data) > 0:
                         for s in spell_data:
-                            spell_library[s.display_name] = s.data
+                            data = s.data
+                            data["ability"] = item["ability"]
+                            spell_library[s.display_name] = data
                     else:
                         spell_data = await spell_lookup(spell_name)
                         if spell_data[0] is True:
@@ -1299,7 +1324,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                 spell_data = await EPF_retreive_complex_data(spell_name)
                                 if len(spell_data) > 0:
                                     for s in spell_data:
-                                        spell_library[s.display_name] = s.data
+                                        data = s.data
+                                        data["ability"] = "wis"
+                                        spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
                                     if spell_data[0] is True:
@@ -1333,8 +1360,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                 # print(lookup_name)
                                 spell_data = await EPF_retreive_complex_data(spell_name)
                                 if len(spell_data) > 0:
-                                    for s in spell_data:
-                                        spell_library[s.display_name] = s.data
+                                    data = s.data
+                                    data["ability"] = "cha"
+                                    spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
                                     # print(spell_data[0])
@@ -1367,8 +1395,9 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
                                 spell_data = await EPF_retreive_complex_data(spell_name)
                                 if len(spell_data) > 0:
-                                    for s in spell_data:
-                                        spell_library[s.display_name] = s.data
+                                    data = s.data
+                                    data["ability"] = "itl"
+                                    spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
                                     if spell_data[0] is True:

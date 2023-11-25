@@ -63,7 +63,7 @@ DATABASE = os.getenv("DATABASE")
 async def on_ready():
     logging.warning("Updating tables...")
     await upload_data(EPF.Kineticist_DB.Kineticist_DB)
-    await upload_data(EPF.Spell_DB.Spell_DB)
+    await upload_data(EPF.Spell_DB.Arcane_Cantrips)
     # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
     # await database_operations.update_con_table()
