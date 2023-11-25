@@ -112,6 +112,226 @@ class AutoModel:
 
         self.output = embed
 
+    async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
+        # print("Complex Attack")
+        # print(self.attack)
+
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+
+        if self.attack_type == "attack":
+            Attk_Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
+            Dmg_Data = await self.auto_complex_attack_dmg(
+                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
+            )
+            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
+        elif self.attack_type == "save":
+            # print("save")
+            Attk_Data = await self.auto_complex_save_attk(Target_Model, attack_modifier, target_modifier)
+            Dmg_Data = await self.auto_complex_save_dmg(
+                Target_Model, Attk_Data.success_string, dmg_modifier, dmg_type_override
+            )
+            return Attack_Data(Dmg_Data.dmg_string, Dmg_Data.total_damage, Dmg_Data.success_string, Attk_Data.output)
+        elif self.attack_type == "utility":
+            return await self.auto_complex_utility(Target_Model)
+
+    async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
+        # Get roll depending on category - currently only kineticist
+        if self.attack["category"] == "kineticist":
+            roll_string = f"({await self.character.get_roll('class_dc')})"
+        else:
+            roll_string = f"({await self.character.get_roll('class_dc')})"
+
+        # print(roll_string)
+        dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
+        # print(dice_result)
+        goal_value = Target_Model.ac_total
+
+        try:
+            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
+            goal_result = d20.roll(goal_string)
+        except Exception as e:
+            logging.warning(f"auto: {e}")
+            return "Error"
+
+        success_string = PF2_eval_succss(dice_result, goal_result)
+
+        attk_output_string = (
+            f"{self.character.char_name} attacks"
+            f" {Target_Model.char_name} {'' if target_modifier == '' else f'(AC {target_modifier})'} with their"
+            f" {self.attack_name.title()}:\n{dice_result}\n{success_string}"
+        )
+
+        return Attack_Data(None, 0, success_string, attk_output_string)
+
+    async def auto_complex_attack_dmg(
+        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
+    ):
+        # heightening code
+        heighten_data, heighten = await self.heighten(Target_Model)
+
+        if success_string == "Critical Success":
+            if "critical success" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+                await self.pd(data, heighten, heighten_data, Target_Model)
+            else:
+                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+
+                await self.pd(data, heighten, heighten_data, Target_Model)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+
+        elif success_string == "Success":
+            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+            # print(data)
+            data = self.heighten_calc(data, heighten, heighten_data)
+            # print(data)
+            await self.pd(data, heighten, heighten_data, Target_Model)
+            dmg_string, total_damage = await scripted_damage_roll_resists(
+                data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+            )
+
+        else:
+            dmg_string = None
+            total_damage = 0
+
+        return Attack_Data(dmg_string, total_damage, success_string, "")
+
+    async def auto_complex_save_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
+        # Roll the save
+        save = self.attack["type"]["save"]
+        roll_string = f"({await Target_Model.get_roll(save)})"
+        # print(roll_string)
+        dice_result = d20.roll(f"{roll_string}{ParseModifiers(target_modifier)}")
+        # print(dice_result)
+
+        try:
+            # Get the DC
+            goal_string = f"{await self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
+            goal_result = d20.roll(goal_string)
+        except Exception as e:
+            logging.warning(f"auto: {e}")
+            return "Error"
+
+        success_string = PF2_eval_succss(dice_result, goal_result)
+
+        attk_output_string = (
+            f"{self.character.char_name} attacks"
+            f" {Target_Model.char_name} {'' if target_modifier == '' else f'({save.title()} {target_modifier})'} with"
+            f" their {self.attack_name.title()}:\n{self.character.char_name} forced a"
+            f" {save.title()} save.\n{dice_result}\n{success_string}"
+        )
+
+        return Attack_Data(None, 0, success_string, attk_output_string)
+
+    async def auto_complex_save_dmg(
+        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
+    ):
+        heighten_data, heighten = await self.heighten(Target_Model)
+        dmg_string = None
+        total_damage = 0
+
+        if success_string == "Critical Success":
+            if "critical success" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
+
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            else:
+                dmg_string = None
+                total_damage = 0
+
+        elif success_string == "Success":
+            if "success" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                # print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            elif self.attack["type"]["type"] == "basic":
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                # print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data,
+                    Target_Model,
+                    crit=False,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                    half=True,
+                )
+        elif success_string == "Failure":
+            if "failure" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+        elif success_string == "Critical Failure":
+            if "critical failure" in self.attack["effect"].keys():
+                data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                # print(data)
+                await self.pd(data, heighten, heighten_data, Target_Model)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
+                )
+            else:
+                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
+                # print(data)
+                data = self.heighten_calc(data, heighten, heighten_data)
+                # print(data)
+                dmg_string, total_damage = await scripted_damage_roll_resists(
+                    data,
+                    Target_Model,
+                    crit=True,
+                    flat_bonus=dmg_modifier,
+                    dmg_type_override=dmg_type_override,
+                )
+                await self.pd(data, heighten, heighten_data, Target_Model)
+
+        else:
+            dmg_string = None
+            total_damage = 0
+
+        return Attack_Data(dmg_string, total_damage, success_string, "")
+
+    async def auto_complex_utility(self, Target_Model: EPF_Character):
+        heighten_data, heighten = await self.heighten(Target_Model)
+        dmg_string = None
+        total_damage = 0
+
+        if "success" in self.attack["effect"].keys():
+            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
+            # print(data)
+            data = self.heighten_calc(data, heighten, heighten_data)
+            # print(data)
+            await self.pd(data, heighten, heighten_data, Target_Model)
+
+        attk_output_string = f"{self.attack_name.title()} on {Target_Model.char_name}."
+
+        return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
+
 
 async def get_attack(character, attack_name, ctx, guild=None):
     guild = await get_guild(ctx, guild)
@@ -127,6 +347,7 @@ class Attack(AutoModel):
     def __init__(self, ctx, guild, character: EPF_Character, attack_name: str, attack_data: dict):
         # print("Initializing Attack")
         super().__init__(ctx, guild, character, attack_name, attack_data)
+        self.level = character.character_model.level
 
         if type(attack_data) == dict:
             if "complex" in attack_data.keys():
@@ -389,214 +610,13 @@ class Attack(AutoModel):
         elif self.attack_type == "utility":
             return await self.auto_complex_utility(Target_Model)
 
-    async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
-        # Get roll depending on category - currently only kineticist
-        if self.attack["category"] == "kineticist":
-            roll_string = f"({await self.character.get_roll('class_dc')})"
-        else:
-            roll_string = f"({await self.character.get_roll('class_dc')})"
-
-        # print(roll_string)
-        dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
-        # print(dice_result)
-        goal_value = Target_Model.ac_total
-
-        try:
-            goal_string: str = f"{goal_value}{ParseModifiers(target_modifier)}"
-            goal_result = d20.roll(goal_string)
-        except Exception as e:
-            logging.warning(f"auto: {e}")
-            return "Error"
-
-        success_string = PF2_eval_succss(dice_result, goal_result)
-
-        attk_output_string = (
-            f"{self.character.char_name} attacks"
-            f" {Target_Model.char_name} {'' if target_modifier == '' else f'(AC {target_modifier})'} with their"
-            f" {self.attack_name.title()}:\n{dice_result}\n{success_string}"
-        )
-
-        return Attack_Data(None, 0, success_string, attk_output_string)
-
-    async def auto_complex_attack_dmg(
-        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
-    ):
-        # heightening code
-        heighten_data, heighten = await self.heighten(Target_Model)
-
-        if success_string == "Critical Success":
-            if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-                await self.pd(data, heighten, heighten_data, Target_Model)
-            else:
-                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-
-                await self.pd(data, heighten, heighten_data, Target_Model)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-
-        elif success_string == "Success":
-            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-            # print(data)
-            data = self.heighten_calc(data, heighten, heighten_data)
-            # print(data)
-            await self.pd(data, heighten, heighten_data, Target_Model)
-            dmg_string, total_damage = await scripted_damage_roll_resists(
-                data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-            )
-
-        else:
-            dmg_string = None
-            total_damage = 0
-
-        return Attack_Data(dmg_string, total_damage, success_string, "")
-
-    async def auto_complex_save_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
-        # Roll the save
-        save = self.attack["type"]["save"]
-        roll_string = f"({await Target_Model.get_roll(save)})"
-        # print(roll_string)
-        dice_result = d20.roll(f"{roll_string}{ParseModifiers(target_modifier)}")
-        # print(dice_result)
-
-        try:
-            # Get the DC
-            goal_string = f"{await self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
-            goal_result = d20.roll(goal_string)
-        except Exception as e:
-            logging.warning(f"auto: {e}")
-            return "Error"
-
-        success_string = PF2_eval_succss(dice_result, goal_result)
-
-        attk_output_string = (
-            f"{self.character.char_name} attacks"
-            f" {Target_Model.char_name} {'' if target_modifier == '' else f'({save.title()} {target_modifier})'} with"
-            f" their {self.attack_name.title()}:\n{self.character.char_name} forced a"
-            f" {save.title()} save.\n{dice_result}\n{success_string}"
-        )
-
-        return Attack_Data(None, 0, success_string, attk_output_string)
-
-    async def auto_complex_save_dmg(
-        self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
-    ):
-        heighten_data, heighten = await self.heighten(Target_Model)
-        dmg_string = None
-        total_damage = 0
-
-        if success_string == "Critical Success":
-            if "critical success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical success"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                await self.pd(data, heighten, heighten_data, Target_Model)
-
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-            else:
-                dmg_string = None
-                total_damage = 0
-
-        elif success_string == "Success":
-            if "success" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                # print(data)
-                await self.pd(data, heighten, heighten_data, Target_Model)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-            elif self.attack["type"]["type"] == "basic":
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                # print(data)
-                await self.pd(data, heighten, heighten_data, Target_Model)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data,
-                    Target_Model,
-                    crit=False,
-                    flat_bonus=dmg_modifier,
-                    dmg_type_override=dmg_type_override,
-                    half=True,
-                )
-        elif success_string == "Failure":
-            if "failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                await self.pd(data, heighten, heighten_data, Target_Model)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-        elif success_string == "Critical Failure":
-            if "critical failure" in self.attack["effect"].keys():
-                data = await automation_parse(self.attack["effect"]["critical failure"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                # print(data)
-                await self.pd(data, heighten, heighten_data, Target_Model)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
-                )
-            else:
-                data = await automation_parse(self.attack["effect"]["failure"], self.character, Target_Model)
-                # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
-                # print(data)
-                dmg_string, total_damage = await scripted_damage_roll_resists(
-                    data,
-                    Target_Model,
-                    crit=True,
-                    flat_bonus=dmg_modifier,
-                    dmg_type_override=dmg_type_override,
-                )
-                await self.pd(data, heighten, heighten_data, Target_Model)
-
-        else:
-            dmg_string = None
-            total_damage = 0
-
-        return Attack_Data(dmg_string, total_damage, success_string, "")
-
-    async def auto_complex_utility(self, Target_Model: EPF_Character):
-        heighten_data, heighten = await self.heighten(Target_Model)
-        dmg_string = None
-        total_damage = 0
-
-        if "success" in self.attack["effect"].keys():
-            data = await automation_parse(self.attack["effect"]["success"], self.character, Target_Model)
-            # print(data)
-            data = self.heighten_calc(data, heighten, heighten_data)
-            # print(data)
-            await self.pd(data, heighten, heighten_data, Target_Model)
-
-        attk_output_string = f"{self.attack_name.title()} on {Target_Model.char_name}."
-
-        return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
-
     async def heighten(self, Target_Model):
         # heightening code
         heighten_data = {}
         if "heighten" in self.attack.keys():
             if "interval" in self.attack["heighten"]:
-                if self.character.character_model.level > self.attack["lvl"]:
-                    heighten = floor(
-                        (self.character.character_model.level - self.attack["lvl"])
-                        / self.attack["heighten"]["interval"]
-                    )
+                if self.level > self.attack["lvl"]:
+                    heighten = floor((self.level - self.attack["lvl"]) / self.attack["heighten"]["interval"])
                 else:
                     heighten = 0
                 if heighten > 0:

@@ -1260,19 +1260,24 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         for item in spells_raw:
             for spell_level in item["spells"]:
                 for spell_name in spell_level["list"]:
-                    spell_data = await spell_lookup(spell_name)
-                    if spell_data[0] is True:
-                        spell = {
-                            "level": spell_level["spellLevel"],
-                            "tradition": item["magicTradition"],
-                            "ability": item["ability"],
-                            "proficiency": item["proficiency"],
-                            "type": spell_data[1].type,
-                            "save": spell_data[1].save,
-                            "damage": spell_data[1].damage,
-                            "heightening": spell_data[1].heightening,
-                        }
-                        spell_library[spell_name] = spell
+                    spell_data = await EPF_retreive_complex_data(spell_name)
+                    if len(spell_data) > 0:
+                        for s in spell_data:
+                            spell_library[s.display_name] = s.data
+                    else:
+                        spell_data = await spell_lookup(spell_name)
+                        if spell_data[0] is True:
+                            spell = {
+                                "level": spell_level["spellLevel"],
+                                "tradition": item["magicTradition"],
+                                "ability": item["ability"],
+                                "proficiency": item["proficiency"],
+                                "type": spell_data[1].type,
+                                "save": spell_data[1].save,
+                                "damage": spell_data[1].damage,
+                                "heightening": spell_data[1].heightening,
+                            }
+                            spell_library[spell_name] = spell
         for key in focus_spells.keys():
             # print(key)
             try:
@@ -1290,19 +1295,25 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     lookup_name = item.strip("(Amped)")
                                 else:
                                     lookup_name = item
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "wis",
-                                        "proficiency": focus_spells[key]["wis"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        spell_library[s.display_name] = s.data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "wis",
+                                            "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
                     if "cha" in focus_spells[key].keys():
                         if "focusSpells" in focus_spells[key]["cha"].keys():
                             discriminator = "focusSpells"
@@ -1320,20 +1331,25 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     # print("not amped")
                                     lookup_name = item
                                 # print(lookup_name)
-                                spell_data = await spell_lookup(lookup_name)
-                                # print(spell_data[0])
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "cha",
-                                        "proficiency": focus_spells[key]["cha"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        spell_library[s.display_name] = s.data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    # print(spell_data[0])
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "cha",
+                                            "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
 
                     if "int" in focus_spells[key].keys():
                         if "focusSpells" in focus_spells[key]["int"].keys():
@@ -1348,21 +1364,27 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     lookup_name = item.strip("(Amped)")
                                 else:
                                     lookup_name = item
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "itl",
-                                        "proficiency": focus_spells[key]["int"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
 
-            except Exception as e:
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        spell_library[s.display_name] = s.data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "itl",
+                                            "proficiency": focus_spells[key]["int"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
+
+            except Exception:
                 pass
 
         # Kineticist Specific Code (at least for now:

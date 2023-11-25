@@ -11,6 +11,7 @@ import sys
 from dotenv import load_dotenv
 
 import EPF.Kineticist_DB
+import EPF.Spell_DB
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
 
@@ -62,6 +63,7 @@ DATABASE = os.getenv("DATABASE")
 async def on_ready():
     logging.warning("Updating tables...")
     await upload_data(EPF.Kineticist_DB.Kineticist_DB)
+    await upload_data(EPF.Spell_DB.Spell_DB)
     # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
     # await database_operations.update_con_table()
