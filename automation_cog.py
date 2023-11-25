@@ -295,54 +295,54 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog cast")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        try:
-            Automation = await get_automation(ctx, engine=engine)
-            embeds = []
-            if "," in target:
-                multi_target = target.split(",")
-                for char in multi_target:
-                    try:
-                        embeds.append(
-                            await Automation.cast(
-                                self.bot,
-                                character,
-                                char.strip(),
-                                spell,
-                                level,
-                                attack_modifer,
-                                target_modifier,
-                                damage_modifier,
-                                damage_type_override,
-                                multi=True,
-                            )
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        embeds = []
+        if "," in target:
+            multi_target = target.split(",")
+            for char in multi_target:
+                try:
+                    embeds.append(
+                        await Automation.cast(
+                            self.bot,
+                            character,
+                            char.strip(),
+                            spell,
+                            level,
+                            attack_modifer,
+                            target_modifier,
+                            damage_modifier,
+                            damage_type_override,
+                            multi=True,
                         )
-                    except Exception:
-                        embeds.append(
-                            discord.Embed(title=char, fields=[discord.EmbedField(name=spell, value="Invalid Target")])
-                        )
-
-            else:
-                embeds.append(
-                    await Automation.cast(
-                        self.bot,
-                        character,
-                        target,
-                        spell,
-                        level,
-                        attack_modifer,
-                        target_modifier,
-                        damage_modifier,
-                        damage_type_override,
                     )
+                except Exception:
+                    embeds.append(
+                        discord.Embed(title=char, fields=[discord.EmbedField(name=spell, value="Invalid Target")])
+                    )
+
+        else:
+            embeds.append(
+                await Automation.cast(
+                    self.bot,
+                    character,
+                    target,
+                    spell,
+                    level,
+                    attack_modifer,
+                    target_modifier,
+                    damage_modifier,
+                    damage_type_override,
                 )
-            await ctx.send_followup(embeds=embeds)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-        except Exception as e:
-            logging.warning(f"attack_cog cast {e}")
-            report = ErrorReport(ctx, "/a cast", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
+            )
+        await ctx.send_followup(embeds=embeds)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
+        # except Exception as e:
+        #     logging.warning(f"attack_cog cast {e}")
+        #     report = ErrorReport(ctx, "/a cast", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error.  Ensure that you selected a valid spell, target and level.")
 
 
 def setup(bot):

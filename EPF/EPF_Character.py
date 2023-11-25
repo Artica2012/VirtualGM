@@ -472,6 +472,12 @@ class EPF_Character(Character):
             logging.warning(f"epf clone_attack {e}")
             return False
 
+    async def get_spell(self, spell):
+        try:
+            return self.character_model.spells[spell]
+        except KeyError:
+            return None
+
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
