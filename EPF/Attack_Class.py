@@ -25,6 +25,7 @@ class AutoModel:
         self.attack_name = attack_name
         self.attack = attack_data
         self.output = None
+        self.level = 0
 
     def success_color(self, success_string):
         if success_string == "Critical Success":
@@ -43,10 +44,11 @@ class AutoModel:
             # print(data["pd"])
             roll_string = data["pd"]["roll_string"]
             if heighten > 0:
-                # print("heighten_data  ", heighten_data)
-                for x in range(0, heighten):
-                    for i in heighten_data["hpd"].keys():
-                        roll_string = roll_string + " " + f"{heighten_data['hpd']['roll_string']}"
+                if "hpd" in heighten_data.keys():
+                    # print("heighten_data  ", heighten_data)
+                    for x in range(0, heighten):
+                        for i in heighten_data["hpd"].keys():
+                            roll_string = roll_string + " " + f"{heighten_data['hpd']['roll_string']}"
             save_string = ""
             if "save" in data["pd"]["save"]:
                 save_string = f"/ dc{data['[pd']['save_value']} {data['pd']['save']}"
@@ -167,13 +169,13 @@ class AutoModel:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # heightening code
-        heighten_data, heighten = await self.heighten(Target_Model)
+        heighten_data, heighten = await self.heighten(Target_Model, success_string)
 
         if success_string == "Critical Success":
             if "critical success" in self.attack["effect"].keys():
                 data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=True, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -182,7 +184,7 @@ class AutoModel:
             else:
                 data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
 
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -192,7 +194,7 @@ class AutoModel:
         elif success_string == "Success":
             data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
             # print(data)
-            data = self.heighten_calc(data, heighten, heighten_data)
+            data = await self.heighten_calc(data, heighten, heighten_data)
             # print(data)
             await self.pd(data, heighten, heighten_data, Target_Model)
             dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -235,7 +237,7 @@ class AutoModel:
     async def auto_complex_save_dmg(
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
-        heighten_data, heighten = await self.heighten(Target_Model)
+        heighten_data, heighten = await self.heighten(Target_Model, success_string)
         dmg_string = None
         total_damage = 0
 
@@ -243,7 +245,7 @@ class AutoModel:
             if "critical success" in self.attack["effect"].keys():
                 data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
 
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -257,7 +259,7 @@ class AutoModel:
             if "success" in self.attack["effect"].keys():
                 data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -266,7 +268,7 @@ class AutoModel:
             elif self.attack["type"]["type"] == "basic":
                 data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -281,7 +283,7 @@ class AutoModel:
             if "failure" in self.attack["effect"].keys():
                 data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
@@ -290,7 +292,7 @@ class AutoModel:
             if "critical failure" in self.attack["effect"].keys():
                 data = await self.automation_parse(self.attack["effect"]["critical failure"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
                 await self.pd(data, heighten, heighten_data, Target_Model)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
@@ -299,7 +301,7 @@ class AutoModel:
             else:
                 data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
-                data = self.heighten_calc(data, heighten, heighten_data)
+                data = await self.heighten_calc(data, heighten, heighten_data)
                 # print(data)
                 dmg_string, total_damage = await scripted_damage_roll_resists(
                     data,
@@ -317,14 +319,14 @@ class AutoModel:
         return Attack_Data(dmg_string, total_damage, success_string, "")
 
     async def auto_complex_utility(self, Target_Model: EPF_Character):
-        heighten_data, heighten = await self.heighten(Target_Model)
+        heighten_data, heighten = await self.heighten(Target_Model, "success")
         dmg_string = None
         total_damage = 0
 
         if "success" in self.attack["effect"].keys():
             data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
             # print(data)
-            data = self.heighten_calc(data, heighten, heighten_data)
+            data = await self.heighten_calc(data, heighten, heighten_data)
             # print(data)
             await self.pd(data, heighten, heighten_data, Target_Model)
 
@@ -332,9 +334,11 @@ class AutoModel:
 
         return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
 
-    async def heighten(self, Target_Model):
+    async def heighten(self, Target_Model, success_string):
         # heightening code
         heighten_data = {}
+        heighten = 0
+        print(success_string)
         if "heighten" in self.attack.keys():
             if "interval" in self.attack["heighten"]:
                 if self.level > self.attack["lvl"]:
@@ -344,11 +348,39 @@ class AutoModel:
                 if heighten > 0:
                     heighten_data = await self.automation_parse(self.attack["heighten"]["effect"], Target_Model)
                     print(heighten_data)
+
+            if "set" in self.attack["heighten"]:
+                print("set")
+                heighten_levels = list(self.attack["heighten"]["set"].keys())
+                heighten_levels.sort()
+                print(heighten_levels)
+                for x, l in enumerate(heighten_levels):
+                    print(l)
+                    print(self.level)
+                    try:
+                        if int(l) <= self.level:
+                            print("writing")
+                            heighten_data = await self.automation_parse(
+                                self.attack["heighten"]["set"][l][success_string.lower()], Target_Model
+                            )
+                            heighten = 1
+                            print("heighten data:", heighten_data)
+                        if int(l) > self.level:
+                            print("greater")
+                            break
+                    except KeyError:
+                        print("error")
+                print(heighten_data)
         else:
             heighten = 0
         return (heighten_data, heighten)
 
-    def heighten_calc(self, data, heighten, heighten_data):
+    async def heighten_calc(self, data, heighten, heighten_data):
+        if heighten_data != {} and heighten > 0:
+            if "set" in self.attack["heighten"]:
+                data = heighten_data
+                return data
+
         if heighten > 0:
             for i in heighten_data["dmg"].keys():
                 sub_data = heighten_data["dmg"][i]["sub_data"]
@@ -359,6 +391,7 @@ class AutoModel:
                         data["dmg"][i]["roll_string"] = f"{str(data['dmg'][i]['roll_string'])}+{heighten_roll}"
                     except KeyError:
                         data["dmg"][i]["roll_string"] = heighten_roll
+
         return data
 
     async def automation_parse(self, data, target_model):
@@ -834,7 +867,7 @@ async def get_spell(character, attack_name, level, ctx, guild=None):
     guild = await get_guild(ctx, guild)
     CharacterModel = await get_character(character, ctx, guild=guild, engine=engine)
     try:
-        spell_data = await CharacterModel.get_spell(attack_name)
+        spell_data = CharacterModel.get_spell(attack_name)
     except Exception:
         spell_data = ""
     return Spell(ctx, guild, CharacterModel, attack_name, spell_data, level)
@@ -842,9 +875,9 @@ async def get_spell(character, attack_name, level, ctx, guild=None):
 
 class Spell(AutoModel):
     def __init__(self, ctx, guild, character: EPF_Character, attack_name: str, attack_data: dict, level: int):
-        self.level = level
         super().__init__(ctx, guild, character, attack_name, attack_data)
         print(attack_data)
+        self.level = level
         if type(attack_data) == dict:
             if "complex" in attack_data.keys():
                 if attack_data["complex"]:

@@ -12,9 +12,9 @@ Arcane_Cantrips = {
         "heighten": {
             "set": {
                 3: {"success": "1d6+scmod+1 acid", "critical success": "1d6+scmod+1 acid, pd 2 acid / dc15 flat"},
-                5: {"success": "2d6+key+2 acid", "critical success": "1d6+scmod+1 acid, pd 3 acid / dc15 flat"},
-                7: {"success": "3d6+key+3 acid", "critical success": "3d6+scmod+3 acid, pd 4 acid / dc15 flat"},
-                9: {"success": "4d6+key+4 acid", "critical success": "4d6+scmod+4 acid, pd 5 acid / dc15 flat"},
+                5: {"success": "2d6+scmod+2 acid", "critical success": "1d6+scmod+1 acid, pd 3 acid / dc15 flat"},
+                7: {"success": "3d6+scmod+3 acid", "critical success": "3d6+scmod+3 acid, pd 4 acid / dc15 flat"},
+                9: {"success": "4d6+scmod+4 acid", "critical success": "4d6+scmod+4 acid, pd 5 acid / dc15 flat"},
             },
         },
     },

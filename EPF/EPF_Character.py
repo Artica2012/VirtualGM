@@ -448,8 +448,8 @@ class EPF_Character(Character):
             case _:
                 return 0
 
-    async def var_spell_mod(self, spell_name):
-        spell = await self.get_spell(spell_name)
+    def var_spell_mod(self, spell_name):
+        spell = self.get_spell(spell_name)
         return self.get_mod(spell["ability"])
 
     async def is_complex_attack(self, item):
@@ -495,7 +495,7 @@ class EPF_Character(Character):
             logging.warning(f"epf clone_attack {e}")
             return False
 
-    async def get_spell(self, spell):
+    def get_spell(self, spell):
         try:
             return self.character_model.spells[spell]
         except KeyError:
@@ -1661,7 +1661,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 character.dex_mod, "reflex", character.reflex_prof, character.level, bonuses
             )
             character.will_mod = await save_mod_calc(
-                character.wis_mod, "wis", character.will_prof, character.level, bonuses
+                character.wis_mod, "will", character.will_prof, character.level, bonuses
             )
 
             # Skills

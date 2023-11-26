@@ -250,29 +250,52 @@ class EPF_Autocmplete(AutoComplete):
                 self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
             )
             spell_name = self.ctx.options["spell"]
-            spell = Character.character_model.spells[spell_name]
+            spell = Character.get_spell(spell_name)
+            # print(spell_name)
+            # print(spell)
         except Exception:
-            # await self.engine.dispose()
             return []
 
         try:
-            # await self.engine.dispose()
-            if spell["tradition"] == "NPC":
-                return [spell["cast_level"]]
+            try:
+                if spell["tradition"] == "NPC":
+                    return [spell["cast_level"]]
+            except KeyError:
+                pass
 
-            min_level = spell["level"]
+            try:
+                min_level = spell["level"]
+            except KeyError:
+                min_level = spell["lvl"]
+
+            print(min_level)
+
+            # Cantrips are always at max spell rank
             if min_level == 0:
                 return [ceil(Character.character_model.level / 2)]
             max_level = ceil(Character.character_model.level / 2)
-            if spell["heightening"]["type"] == "interval":
-                interval_level = spell["heightening"]["interval"]
-            elif spell["heightening"]["type"] == "fixed":
-                level_list = [min_level]
-                for key in spell["heightening"]["type"]["interval"]:
-                    level_list.append(key)
-                return level_list
+
+            if "complex" in spell.keys():
+                if "interval" in spell["heighten"].keys():
+                    interval_level = spell["heighten"]["interval"]
+                elif "set" in spell["heighten"].keys():
+                    level_list = [min_level]
+                    for key in spell["heighten"]["set"].keys():
+                        level_list.append(int(key))
+                    level_list.sort()
+                    return level_list
+                else:
+                    interval_level = 1
             else:
-                interval_level = 1
+                if spell["heightening"]["type"] == "interval":
+                    interval_level = spell["heightening"]["interval"]
+                elif spell["heightening"]["type"] == "fixed":
+                    level_list = [min_level]
+                    for key in spell["heightening"]["type"]["interval"]:
+                        level_list.append(key)
+                    return level_list
+                else:
+                    interval_level = 1
 
             level_list = []
             for num in range(min_level, max_level + 1, interval_level):
