@@ -16,17 +16,15 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import EPF.EPF_Support
 import time_keeping_functions
 from Base.Character import Character
 from EPF.EPF_Support import EPF_Conditions, EPF_SKills, EPF_SKills_NO_SAVE
+from EPF.Lark import condition_grammer
 from database_models import (
     get_condition,
     get_EPF_tracker,
-    Base,
     LookupBase,
     get_macro,
-    get_tracker,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, engine
 from database_operations import get_asyncio_db_engine, DATABASE
@@ -35,7 +33,6 @@ from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
-from EPF.Kineticist_DB import Kineticist_DB
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 
 # define global variables
@@ -501,6 +498,68 @@ class EPF_Character(Character):
         except KeyError:
             return None
 
+    async def get_mod_bonus(self, item: str, bonus_string: str):
+        logging.info(f"Get Mod: {item}")
+        # print(item)
+        if item == "Fortitude" or item == "Fort" or item == "fort":
+            mod = self.fort_mod
+        elif item == "Reflex" or item == "reflex":
+            mod = self.reflex_mod
+        elif item == "Will" or item == "reflex":
+            mod = self.will_mod
+        elif item == "class_dc":
+            mod = self.class_dc
+        elif item == "Acrobatics":
+            mod = self.acrobatics_mod
+        elif item == "Arcana":
+            mod = self.arcana_mod
+        elif item == "Athletics":
+            mod = self.athletics_mod
+        elif item == "Crafting":
+            mod = self.crafting_mod
+        elif item == "Deception":
+            mod = self.deception_mod
+        elif item == "Diplomacy":
+            # print("i")
+            mod = self.diplomacy_mod
+        elif item == "Intimidation":
+            # print("j")
+            mod = self.intimidation_mod
+        elif item == "Medicine":
+            # print("k")
+            mod = self.medicine_mod
+        elif item == "Nature":
+            # print("l")
+            mod = self.nature_mod
+        elif item == "Occultism":
+            # print("m")
+            mod = self.occultism_mod
+        elif item == "Perception":
+            # print("n")
+            mod = self.perception_mod
+        elif item == "Performance":
+            # print("o")
+            mod = self.performance_mod
+        elif item == "Religion":
+            # print("p")
+            mod = self.religion_mod
+        elif item == "Society":
+            # print("q")
+            mod = self.society_mod
+        elif item == "Stealth":
+            # print("r")
+            mod = self.stealth_mod
+        elif item == "Survival":
+            # print("s")
+            mod = self.survival_mod
+        elif item == "Thievery":
+            # print("t")
+            mod = self.thievery_mod
+        else:
+            return None
+
+        return await bonus_calc(mod, bonus_string, self.character_model.bonuses)
+
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
@@ -575,11 +634,11 @@ class EPF_Character(Character):
 
                 if type(spell_data["damage"][key]["value"]) == dict:
                     dmg_string = (
-                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x == 0 else ''}"
                     )
                 else:
                     dmg_string = (
-                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x == 0 else ''}"
                     )
 
                 dmg_dict[key] = {
@@ -1601,6 +1660,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
         await delete_intested_items(char_name, ctx, guild, engine)
         for item in pb["build"]["equipment"]:
+            print(item)
             await invest_items(item[0], char_name, ctx, guild, engine)
         await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
@@ -2044,11 +2104,12 @@ async def invest_items(item, character, ctx, guild, engine):
             data = result.scalars().all()
             if len(data) > 0:
                 data = data[0]
-                # print(data)
+                print(data)
                 for key in data.keys():
-                    if key in EPF_SKills:
-                        if data[key]["mode"] == "item":
-                            condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
+                    print(key)
+
+                    if data[key]["mode"] == "item":
+                        condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
         # await lookup_engine.dispose()
         if condition_string != "":
             # print(condition_string)
@@ -2124,62 +2185,12 @@ async def spell_lookup(spell: str):
         return False, {}
 
 
-grammer = """
-start: phrase+
-
-phrase: value+ break
-
-value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
-    | "init-skill" WORD                                                -> init_skill
-    | "hardness" NUMBER                                                -> hardness
-    | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
-    | "thp" NUMBER                                                     -> temp_hp
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?              -> resistance_w_exception
-    | "stable" NUMBER?                                                 -> stable
-    | persist_dmg                       
-    | WORD NUMBER?                                                     -> new_condition
-
-persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
-
-modifier: SIGNED_INT
-
-quoted: SINGLE_QUOTED_STRING
-    | DOUBLE_QUOTED_STRING
-
-break: ","
-
-
-roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
-!save_string: "reflex" | "fort" | "will" | "flat"
-
-ROLL: NUMBER "d" NUMBER 
-
-POS_NEG : ("+" | "-")
-
-DOUBLE_QUOTED_STRING  : /"[^"]*"/
-SINGLE_QUOTED_STRING  : /'[^']*'/
-
-SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x" 
-
-
-COMBO_WORD : WORD ("-" |"_") WORD
-%import common.ESCAPED_STRING
-%import common.WORD
-%import common.SIGNED_INT
-%import common.NUMBER
-%import common.WS
-%ignore WS
-"""
-
-
 async def condition_parser(data: str):
     # print(data)
     if data[-1:] != ",":
         data = data + ","
 
-    parser = Lark(grammer)
+    parser = Lark(condition_grammer)
     return parser.parse(data)
 
 
@@ -2192,7 +2203,7 @@ async def process_condition_tree(
             bonus_data = {}
             for item in branch.children:
                 if type(item) == lark.Token:
-                    if item.type == "WORD":
+                    if item.type == "WORD" or item.type == "COMBO_WORD":
                         bonus_data["skill"] = item.value
                     elif item.type == "SIGNED_INT":
                         bonus_data["value"] = int(item.value)

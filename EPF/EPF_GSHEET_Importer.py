@@ -11,7 +11,6 @@ from sqlalchemy.orm import sessionmaker
 
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from EPF.EPF_Character import spell_lookup, EPF_Weapon, delete_intested_items, invest_items, get_EPF_Character
-from EPF.Kineticist_DB import Kineticist_DB
 from database_models import get_EPF_tracker
 from database_operations import get_asyncio_db_engine
 from utils.utils import get_guild

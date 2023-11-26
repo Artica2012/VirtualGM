@@ -9,6 +9,7 @@ from sqlalchemy.exc import NoResultFound
 
 from EPF.EPF_Character import EPF_Character, get_EPF_Character
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
+from EPF.Lark import attack_grammer
 from PF2e.pf2_functions import PF2_eval_succss
 from database_operations import engine
 from error_handling_reporting import error_not_initialized
@@ -139,7 +140,9 @@ class AutoModel:
     async def auto_complex_attack_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         # Get roll depending on category - currently only kineticist
         if self.attack["category"] == "kineticist":
-            roll_string = f"({await self.character.get_roll('class_dc')})"
+            roll_string = f"1d20+{await self.character.get_mod_bonus('class_dc', 'impulse-attack')}"
+        elif self.attack["category"] == "spell":
+            roll_string = f"({await self.character.get_spell_mod(self.attack_name, True)})"
         else:
             roll_string = f"({await self.character.get_roll('class_dc')})"
 
@@ -1026,62 +1029,6 @@ class Spell(AutoModel):
 
         await self.format_output(spell_data, Target_Model)
         return self.output
-
-
-attack_grammer = """
-start: phrase+
-
-phrase: value+ break
-
-value: roll_string WORD                                                -> damage_string
-    | persist_dmg
-    | (WORD | COMBO_WORD) NUMBER? (duration | unit | auto | stable | flex | target | data | self)*   -> new_condition
-    | heighten_persist
-
-persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" (NUMBER | STAT_VAR) save_string]
-heighten_persist: "hpd" roll_string WORD
-
-
-duration : "duration:" NUMBER
-unit : "unit:" WORD
-auto: "auto"
-data: "data:" SINGLE_QUOTED_STRING
-stable: "stable"
-flex: "flex"
-target: "myturn"
-self: "self"
-
-modifier: SIGNED_INT
-
-quoted: SINGLE_QUOTED_STRING
-    | DOUBLE_QUOTED_STRING
-
-break: ","
-
-
-roll_string: (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER)
-!save_string: "reflex" | "fort" | "will" | "flat"
-
-ROLL: NUMBER "d" NUMBER
-
-POS_NEG : ("+" | "-")
-STAT_VAR : ("str" | "dex" | "con" | "int" | "wis" | "cha" | "lvl" | "dc" | "key"| "scmod")
-
-DOUBLE_QUOTED_STRING  : /"[^"]*"/
-SINGLE_QUOTED_STRING  : /'[^']*'/
-
-SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x" | POS_NEG? "lvl" | (POS_NEG?  ROLL)
-
-
-COMBO_WORD : WORD ("-"|"_") WORD
-%import common.ESCAPED_STRING
-%import common.WORD
-%import common.SIGNED_INT
-%import common.NUMBER
-%import common.WS
-%ignore WS
-"""
 
 
 async def scripted_damage_roll_resists(
