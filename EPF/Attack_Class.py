@@ -142,9 +142,9 @@ class AutoModel:
         if self.attack["category"] == "kineticist":
             roll_string = f"1d20+{await self.character.get_mod_bonus('class_dc', 'impulse-attack')}"
         elif self.attack["category"] == "spell":
-            roll_string = f"({await self.character.get_spell_mod(self.attack_name, True)})"
+            roll_string = f"(1d20+{await self.character.get_spell_mod(self.attack_name, True)})"
         else:
-            roll_string = f"({await self.character.get_roll('class_dc')})"
+            roll_string = f"(1d20+{await self.character.get_roll('class_dc')})"
 
         # print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
@@ -213,6 +213,7 @@ class AutoModel:
     async def auto_complex_save_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         # Roll the save
         save = self.attack["type"]["save"]
+        # print(save)
         roll_string = f"({await Target_Model.get_roll(save)})"
         # print(roll_string)
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(target_modifier)}")
@@ -220,7 +221,15 @@ class AutoModel:
 
         try:
             # Get the DC
-            goal_string = f"{await self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
+            if self.attack["category"] == "kineticist":
+                goal_string = f"{await self.character.get_dc('DC')}{ParseModifiers(attack_modifier)}"
+            elif self.attack["category"] == "spell":
+                goal_string = (
+                    f"{await self.character.get_spell_mod(self.attack_name, False)}{ParseModifiers(attack_modifier)}"
+                )
+            else:
+                goal_string = f"{await self.character.get_roll('class_dc')}{ParseModifiers(attack_modifier)}"
+            print(goal_string)
             goal_result = d20.roll(goal_string)
         except Exception as e:
             logging.warning(f"auto: {e}")

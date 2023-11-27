@@ -213,7 +213,7 @@ class EPF_Character(Character):
         elif item == "Reflex" or item == "reflex":
             # print("b")
             return f"1d20+{self.reflex_mod}"
-        elif item == "Will" or item == "reflex":
+        elif item == "Will" or item == "will":
             # print("c")
             return f"1d20+{self.will_mod}"
         elif item == "class_dc":
@@ -587,20 +587,49 @@ class EPF_Character(Character):
 
         spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
-        if spell_data["tradition"] == "NPC":
-            # print(attk_stat)
-            # print(self.character_model.level)
-            # print(spell_data['proficiency'])
-            # print(spell_attack_bonus)
+        if "complex" in spell_data.keys():
+            match spell_data["trad"]:
+                case "arcane":
+                    proficiency = self.arcane_mod
+                case "divine":
+                    proficiency = self.divine_mod
+                case "occult":
+                    proficiency = self.occult_mod
+                case "primal":
+                    proficiency = self.primal_mod
+                case _:
+                    proficiency = 0
+
+            if mod:
+                return proficiency
+            else:
+                return 10 + proficiency
+        else:
+            proficiency = spell_data["proficiency"]
+
+        npc = False
+        try:
+            if spell_data["tradition"] == "NPC":
+                npc = True
+
+        except KeyError:
+            npc = False
+
+        print(attk_stat)
+        print(self.character_model.level)
+        print(proficiency)
+        print(spell_attack_bonus)
+
+        if npc:
             if mod:
                 return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
                 return attk_stat + self.character_model.level + spell_data["dc"] + spell_attack_bonus
         else:
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
+                return attk_stat + self.character_model.level + proficiency + spell_attack_bonus
             else:
-                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
+                return 10 + attk_stat + self.character_model.level + proficiency + spell_attack_bonus
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
@@ -1347,6 +1376,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                         for s in spell_data:
                             data = s.data
                             data["ability"] = item["ability"]
+                            data["trad"] = item["magicTradition"]
                             spell_library[s.display_name] = data
                     else:
                         spell_data = await spell_lookup(spell_name)
@@ -1385,6 +1415,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     for s in spell_data:
                                         data = s.data
                                         data["ability"] = "wis"
+                                        data["trad"] = key
                                         spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
@@ -1421,6 +1452,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                 if len(spell_data) > 0:
                                     data = s.data
                                     data["ability"] = "cha"
+                                    data["trad"] = key
                                     spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
@@ -1456,6 +1488,8 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                 if len(spell_data) > 0:
                                     data = s.data
                                     data["ability"] = "itl"
+                                    data["trad"] = key
+
                                     spell_library[s.display_name] = data
                                 else:
                                     spell_data = await spell_lookup(lookup_name)
@@ -1794,6 +1828,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 case "cha":
                     key_ability = character.cha_mod
 
+            # print(key_ability, character.arane_prof, character.level)
             character.arcane_mod = await skill_mod_calc(
                 key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
             )
@@ -1801,10 +1836,10 @@ async def calculate(ctx, engine, char_name, guild=None):
                 key_ability, "divine", character.divine_prof, character.level, bonuses, False
             )
             character.occult_mod = await skill_mod_calc(
-                key_ability, "occult", character.arcane_prof, character.level, bonuses, False
+                key_ability, "occult", character.occult_prof, character.level, bonuses, False
             )
             character.primal_mod = await skill_mod_calc(
-                key_ability, "primal", character.arcane_prof, character.level, bonuses, False
+                key_ability, "primal", character.primal_prof, character.level, bonuses, False
             )
 
             character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
