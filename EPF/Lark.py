@@ -9,7 +9,7 @@ value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_
     | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
     | "thp" NUMBER                                                     -> temp_hp
     | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?              -> resistance_w_exception
+    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" (WORD | COMBO_WORD)* ";"?              -> resistance_w_exception
     | "stable" NUMBER?                                                 -> stable
     | persist_dmg
     | WORD NUMBER?                                                     -> new_condition

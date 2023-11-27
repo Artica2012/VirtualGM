@@ -2136,7 +2136,6 @@ async def invest_items(item, character, ctx, guild, engine):
         else:
             return False
     except Exception:
-        # await engine.dispose()
         return False
 
 
@@ -2360,14 +2359,14 @@ async def process_condition_tree(
                 resistances[temp["word"]] = {temp["specifier"]: temp["value"]}
 
         elif branch.data == "resistance_w_exception":
-            temp = {"value": 0}
+            temp = {"value": 0, "exception": ""}
             resistance_data = {}
             for x, item in enumerate(branch.children):
                 if item.type == "WORD" or item.type == "COMBO_WORD":
                     if x == 0:
                         temp["word"] = item.value
                     else:
-                        temp["exception"] = item.value
+                        temp["exception"] = temp["exception"] + " " + item.value
                 elif item.type == "SPECIFIER":
                     temp["specifier"] = item.value
                 elif item.type == "NUMBER":

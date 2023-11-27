@@ -215,7 +215,7 @@ async def epf_npc_lookup(
             await Charater_Model.set_cc(
                 "Hazard", True, 0, "Round", False, data="init-skill stealth", visible=False, update=False
             )
-
+        print(data.resistance)
         await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
         await Charater_Model.update()
@@ -239,6 +239,7 @@ async def epf_npc_lookup(
 async def write_resitances(
     resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine, overwrite=True
 ):
+    print("write resistances")
     # First delete out all the old resistances
     if overwrite:
         await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
@@ -246,75 +247,77 @@ async def write_resitances(
     # Then write the new ones
     # print(resistance)
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            for key, value in resistance["resist"].items():
-                # print(key)
-                # print(type(value))
-                if type(value) == dict:
-                    exceptions = ""
-                    for item in value["exceptions"]:
-                        exceptions += item
-                    condition_string = f"{key} r {value['value']} e {exceptions}"
-                    value = value["value"]
-                else:
-                    condition_string = f"{key} r {value}"
-                async with session.begin():
-                    await Character_Model.set_cc(
-                        key, True, value, "Round", False, data=condition_string, visible=False, update=False
-                    )
-            for key, value in resistance["weak"].items():
-                # print(key)
-                if type(value) == dict:
-                    exceptions = ""
-                    for item in value["exceptions"]:
-                        exceptions += item
-                    condition_string = f"{key} w {value['value']} e {exceptions}"
-                    value = value["value"]
-                else:
-                    condition_string = f"{key} w {value}"
-                async with session.begin():
-                    await Character_Model.set_cc(
-                        key, True, value, "Round", False, data=condition_string, visible=False, update=False
-                    )
-            for key in resistance["immune"].keys():
-                # print(key)
-                if type(value) == dict:
-                    exceptions = ""
-                    for item in value["exceptions"]:
-                        exceptions += item
-                    condition_string = f"{key} i {exceptions}"
-                else:
-                    condition_string = f"{key} i"
-                async with session.begin():
-                    await Character_Model.set_cc(
-                        key, True, 1, "Round", False, data=condition_string, visible=False, update=False
-                    )
-            if "other" in resistance.keys():
-                # print("other")
-                if "init-skill" in resistance["other"].keys():
-                    # print("init-skill")
-                    await Character_Model.set_cc(
-                        "init-skill",
-                        True,
-                        1,
-                        "Round",
-                        False,
-                        data=f"init-skill {resistance['other']['init-skill']}",
-                        visible=False,
-                        update=False,
-                    )
-                if "hardness" in resistance["other"].keys():
-                    await Character_Model.set_cc(
-                        "hardness",
-                        True,
-                        1,
-                        "Round",
-                        False,
-                        data=f"hardness {resistance['other']['hardness']}",
-                        visible=True,
-                        update=False,
-                    )
+        for key, value in resistance["resist"].items():
+            print(key)
+            print(type(value))
+            if type(value) == dict:
+                exceptions = ""
+                for item in value["exceptions"]:
+                    print(item)
+                    exceptions = exceptions + " " + item
+                condition_string = f"{key} r {value['value']} e {exceptions}"
+                value = value["value"]
+            else:
+                condition_string = f"{key} r {value}"
+            print(condition_string)
+
+            await Character_Model.set_cc(
+                key, True, value, "Round", False, data=condition_string, visible=False, update=False
+            )
+        for key, value in resistance["weak"].items():
+            # print(key)
+            if type(value) == dict:
+                exceptions = ""
+                for item in value["exceptions"]:
+                    exceptions = exceptions + " " + item
+                condition_string = f"{key} w {value['value']} e {exceptions}"
+                value = value["value"]
+            else:
+                condition_string = f"{key} w {value}"
+            print(condition_string)
+
+            await Character_Model.set_cc(
+                key, True, value, "Round", False, data=condition_string, visible=False, update=False
+            )
+        for key in resistance["immune"].keys():
+            # print(key)
+            if type(value) == dict:
+                exceptions = ""
+                for item in value["exceptions"]:
+                    exceptions = exceptions + " " + item
+                condition_string = f"{key} i {exceptions}"
+            else:
+                condition_string = f"{key} i"
+            print(condition_string)
+
+            await Character_Model.set_cc(
+                key, True, 1, "Round", False, data=condition_string, visible=False, update=False
+            )
+        if "other" in resistance.keys():
+            # print("other")
+            if "init-skill" in resistance["other"].keys():
+                # print("init-skill")
+                await Character_Model.set_cc(
+                    "init-skill",
+                    True,
+                    1,
+                    "Round",
+                    False,
+                    data=f"init-skill {resistance['other']['init-skill']}",
+                    visible=False,
+                    update=False,
+                )
+            if "hardness" in resistance["other"].keys():
+                await Character_Model.set_cc(
+                    "hardness",
+                    True,
+                    1,
+                    "Round",
+                    False,
+                    data=f"hardness {resistance['other']['hardness']}",
+                    visible=True,
+                    update=False,
+                )
 
         return True
     except Exception:
