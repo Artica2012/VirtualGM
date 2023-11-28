@@ -207,7 +207,7 @@ Arcane_Cantrips = {
         "traits": ["cantrip", "abjuration", "force"],
         "type": {"value": "utility"},
         "effect": {
-            "success": "shield 1 unit: round auto flex self data:'ac +1 c",
+            "success": "shield 1 unit: round auto flex self data:'ac +1 c'",
         },
         "heighten": {"interval": 30, "effect": ""},
     },
