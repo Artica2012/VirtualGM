@@ -229,7 +229,7 @@ class AutoModel:
                 )
             else:
                 goal_string = f"{await self.character.get_roll('class_dc')}{ParseModifiers(attack_modifier)}"
-            print(goal_string)
+            # print(goal_string)
             goal_result = d20.roll(goal_string)
         except Exception as e:
             logging.warning(f"auto: {e}")
@@ -350,7 +350,7 @@ class AutoModel:
         # heightening code
         heighten_data = {}
         heighten = 0
-        print(success_string)
+        # print(success_string)
         if "heighten" in self.attack.keys():
             if "interval" in self.attack["heighten"]:
                 if self.level > self.attack["lvl"]:
@@ -359,29 +359,30 @@ class AutoModel:
                     heighten = 0
                 if heighten > 0:
                     heighten_data = await self.automation_parse(self.attack["heighten"]["effect"], Target_Model)
-                    print(heighten_data)
+                    # print(heighten_data)
 
             if "set" in self.attack["heighten"]:
-                print("set")
+                # print("set")
                 heighten_levels = list(self.attack["heighten"]["set"].keys())
                 heighten_levels.sort()
-                print(heighten_levels)
+                # print(heighten_levels)
                 for x, l in enumerate(heighten_levels):
-                    print(l)
-                    print(self.level)
+                    # print(l)
+                    # print(self.level)
                     try:
                         if int(l) <= self.level:
-                            print("writing")
+                            # print("writing")
                             heighten_data = await self.automation_parse(
                                 self.attack["heighten"]["set"][l][success_string.lower()], Target_Model
                             )
                             heighten = 1
-                            print("heighten data:", heighten_data)
+                            # print("heighten data:", heighten_data)
                         if int(l) > self.level:
-                            print("greater")
+                            # print("greater")
                             break
                     except KeyError:
-                        print("error")
+                        # print("error")
+                        pass
                 print(heighten_data)
         else:
             heighten = 0
@@ -875,7 +876,7 @@ class Attack_Data:
 
 # Spell Subclass
 async def get_spell(character, attack_name, level, ctx, guild=None):
-    print(attack_name)
+    # print(attack_name)
     guild = await get_guild(ctx, guild)
     CharacterModel = await get_character(character, ctx, guild=guild, engine=engine)
     try:
@@ -888,7 +889,7 @@ async def get_spell(character, attack_name, level, ctx, guild=None):
 class Spell(AutoModel):
     def __init__(self, ctx, guild, character: EPF_Character, attack_name: str, attack_data: dict, level: int):
         super().__init__(ctx, guild, character, attack_name, attack_data)
-        print(attack_data)
+        # print(attack_data)
         self.level = level
         if type(attack_data) == dict:
             if "complex" in attack_data.keys():
@@ -1076,7 +1077,7 @@ async def scripted_damage_roll_resists(
             pass
     except KeyError:
         pass
-    print(dmg_output)
+    # print(dmg_output)
 
     return dmg_output, total_damage
 
@@ -1148,7 +1149,7 @@ async def legacy_roll_spell_dmg_resist(
         dmg_output.append(convert)
 
     # print(dmg_output_string, total_damage)
-    print(dmg_output)
+    # print(dmg_output)
     return dmg_output, total_damage
 
 

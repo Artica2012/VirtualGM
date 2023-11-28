@@ -279,3 +279,42 @@ Arcane_Cantrips = {
         "heighten": {"interval": 1, "effect": "1d4 bludgeoning,"},
     },
 }
+
+Divine_Cantrips = {
+    "disrupt undead": {
+        "complex": True,
+        "category": "spell",
+        "title": "Disrupt Undead",
+        "lvl": 0,
+        "traits": ["cantrip", "necromancy", "positive"],
+        "type": {"value": "save", "save": "fort", "type": "basic"},
+        "effect": {
+            "failure": "1d6+scmod vitality",
+            "critical failure": "1d6+scmod vitality, enfeebled 1 unit: round auto",
+        },
+        "heighten": {"interval": 1, "effect": "1d6 vitality,"},
+    },
+    "divine lance": {
+        "complex": True,
+        "category": "spell",
+        "title": "Divine Lance",
+        "lvl": 0,
+        "traits": ["cantrip", "attack", "evocation"],
+        "type": {"value": "attack"},
+        "effect": {"success": "1d4+scmod untyped"},
+        "heighten": {"interval": 1, "effect": "1d4 untyped"},
+    },
+    "haunting hymn": {
+        "complex": True,
+        "category": "spell",
+        "title": "Haunting Hymn",
+        "lvl": 0,
+        "traits": ["cantrip", "evocation", "sonic", "auditory"],
+        "type": {"value": "save", "save": "fort", "type": "basic"},
+        "effect": {
+            "failure": "scmod sonic",
+            "critical failure": "scmod sonic, deafened 1 unit: minute auto",
+        },
+        "heighten": {"interval": 2, "effect": "1d6 sonic,"},
+    },
+}
