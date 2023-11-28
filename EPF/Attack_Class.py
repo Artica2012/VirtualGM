@@ -175,7 +175,9 @@ class AutoModel:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # Bonus damage from scripted bonuses
-        dmg_modifier = dmg_modifier + await self.bonus_dmg()
+        bonus = await self.bonus_dmg()
+        if bonus != 0:
+            dmg_modifier = dmg_modifier + f"+{bonus}"
         # heightening code
         heighten_data, heighten = await self.heighten(Target_Model, success_string)
 
@@ -255,7 +257,9 @@ class AutoModel:
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
         # Bonus damage from scripted bonuses
-        dmg_modifier = dmg_modifier + await self.bonus_dmg()
+        bonus = await self.bonus_dmg()
+        if bonus != 0:
+            dmg_modifier = dmg_modifier + f"+{bonus}"
 
         heighten_data, heighten = await self.heighten(Target_Model, success_string)
         dmg_string = None
