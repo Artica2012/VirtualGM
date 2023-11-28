@@ -1,4 +1,4 @@
-Arcane_Cantrips = {
+Cantrips = {
     "acid splash": {
         "complex": True,
         "category": "spell",
@@ -278,9 +278,6 @@ Arcane_Cantrips = {
         },
         "heighten": {"interval": 1, "effect": "1d4 bludgeoning,"},
     },
-}
-
-Divine_Cantrips = {
     "disrupt undead": {
         "complex": True,
         "category": "spell",
@@ -317,13 +314,6 @@ Divine_Cantrips = {
         },
         "heighten": {"interval": 2, "effect": "1d6 sonic,"},
     },
-}
-
-Occult_Cantrips = {
-    # No cantrips for automation not on other lists
-}
-
-Primal_Cantrips = {
     "glass shield": [
         {
             "complex": True,
