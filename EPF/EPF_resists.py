@@ -62,7 +62,14 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
             # print(dmg_type)
 
     dmg_list = [dmg_type.lower(), "all-damage", mat]
+    exception_list = [mat]
+    if weapon is not None:
+        print(weapon["runes"])
+        if "Ghost Touch" in weapon["runes"]:
+            exception_list.append("ghost-touch")
 
+    print(dmg_list)
+    [print(exception_list)]
     # Remaster Conversion Code
     if dmg_type.lower() == "negative":
         dmg_list.append("void")
@@ -75,31 +82,43 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
 
     for item in dmg_list:  # This is completely rewritten. It might be broken
         if item in target.resistance.keys():
-            if "r" in target.resistance[item]:
-                if type(target.resistance[item]["r"]) == dict:
-                    if mat in target.resistance[item]["r"]["except"]:
-                        pass
-                    else:
-                        dmg = dmg - target.resistance[item]["r"]["value"]
-                else:
+            if "r" in target.resistance[item].keys():
+                # print(target.resistance[item].keys())
+                exempt = False
+                if "except" in target.resistance[item].keys():
+                    # print(target.resistance[item]["except"])
+
+                    for e in exception_list:
+                        if e in target.resistance[item]["except"]:
+                            exempt = True
+                            # print(e, "exempt")
+                if not exempt:
                     dmg = dmg - target.resistance[item]["r"]
+                    if dmg < 0:
+                        dmg = 0
+            else:
+                dmg = dmg - target.resistance[item]["r"]
                 if dmg < 0:
                     dmg = 0
 
             if "w" in target.resistance[item]:
-                if type(target.resistance[item]["w"]) == dict:
-                    if mat in target.resistance[item]["w"]["except"]:
-                        pass
-                    else:
-                        dmg = dmg + target.resistance[item]["w"]["value"]
-                else:
+                exempt = False
+                if "except" in target.resistance[item].keys():
+                    for e in exception_list:
+                        if e in target.resistance[item]["except"]:
+                            exempt = True
+                if not exempt:
                     dmg = dmg + target.resistance[item]["w"]
+            else:
+                dmg = dmg + target.resistance[item]["w"]
 
             if "i" in target.resistance[item]:
-                if type(target.resistance[item]["i"]) == dict:
-                    if mat in target.resistance[item]["i"]["except"]:
-                        pass
-                    else:
+                if "except" in target.resistance[item].keys():
+                    exempt = False
+                    for e in exception_list:
+                        if e in target.resistance[item]["except"]:
+                            exempt = True
+                    if not exempt:
                         dmg = 0
                 else:
                     dmg = 0
