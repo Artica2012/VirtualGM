@@ -207,7 +207,7 @@ Arcane_Cantrips = {
         "traits": ["cantrip", "abjuration", "force"],
         "type": {"value": "utility"},
         "effect": {
-            "success": "shield 1 unit: round auto flex self data:'ac +1 c",
+            "success": "shield 1 unit: round auto flex self data:'ac +1 c'",
         },
         "heighten": {"interval": 30, "effect": ""},
     },
@@ -318,3 +318,45 @@ Divine_Cantrips = {
         "heighten": {"interval": 2, "effect": "1d6 sonic,"},
     },
 }
+
+Occult_Cantrips = {
+    # No cantrips for automation not on other lists
+}
+
+Primal_Cantrips = {
+    "glass shield": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Glass Shield",
+            "lvl": 0,
+            "traits": ["cantrip", "concentrate", "earth"],
+            "type": {"value": "utility"},
+            "effect": {
+                "success": "shield 1 unit: round auto flex self data:'ac +1 c'",
+            },
+            "heighten": {"interval": 30, "effect": ""},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Glass Shield (Break)",
+            "lvl": 0,
+            "traits": ["cantrip", "abjuration", "force"],
+            "type": {"value": "save", "save": "reflex", "type": "basic"},
+            "effect": {
+                "success": "1d4 piercing",
+            },
+            "heighten": {
+                "set": {
+                    3: {"success": "1d4+scmod piercing"},
+                    5: {"success": "2d4+scmod piercing"},
+                    7: {"success": "3d4+scmod piercing"},
+                    9: {"success": "4d4+scmod piercing"},
+                },
+            },
+        },
+    ],
+}
+
+Psychic_Cantrips = {}
