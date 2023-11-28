@@ -590,20 +590,59 @@ class EPF_Character(Character):
         if "complex" in spell_data.keys():
             match spell_data["trad"]:
                 case "arcane":
-                    proficiency = self.arcane_mod
+                    proficiency = self.character_model.arcane_prof
+                    spmod = await skill_mod_calc(
+                        attk_stat,
+                        "arcane",
+                        proficiency,
+                        self.character_model.level,
+                        self.character_model.bonuses,
+                        False,
+                    )
+
                 case "divine":
-                    proficiency = self.divine_mod
+                    proficiency = self.character_model.divine_prof
+                    spmod = await skill_mod_calc(
+                        attk_stat,
+                        "divine",
+                        proficiency,
+                        self.character_model.level,
+                        self.character_model.bonuses,
+                        False,
+                    )
+
                 case "occult":
-                    proficiency = self.occult_mod
+                    proficiency = self.character_model.occult_prof
+                    spmod = await skill_mod_calc(
+                        attk_stat,
+                        "occult",
+                        proficiency,
+                        self.character_model.level,
+                        self.character_model.bonuses,
+                        False,
+                    )
+
                 case "primal":
-                    proficiency = self.primal_mod
+                    proficiency = self.character_model.primal_prof
+                    spmod = await skill_mod_calc(
+                        attk_stat,
+                        "primal",
+                        proficiency,
+                        self.character_model.level,
+                        self.character_model.bonuses,
+                        False,
+                    )
+
                 case _:
                     proficiency = 0
+                    spmod = 0
+
+            spmod = spmod + spell_attack_bonus
 
             if mod:
-                return proficiency
+                return spmod
             else:
-                return 10 + proficiency
+                return 10 + spmod
         else:
             proficiency = spell_data["proficiency"]
 
@@ -614,11 +653,6 @@ class EPF_Character(Character):
 
         except KeyError:
             npc = False
-
-        print(attk_stat)
-        print(self.character_model.level)
-        print(proficiency)
-        print(spell_attack_bonus)
 
         if npc:
             if mod:

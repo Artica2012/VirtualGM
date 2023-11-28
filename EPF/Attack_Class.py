@@ -7,7 +7,7 @@ import lark
 from lark import Lark
 from sqlalchemy.exc import NoResultFound
 
-from EPF.EPF_Character import EPF_Character, get_EPF_Character
+from EPF.EPF_Character import EPF_Character, get_EPF_Character, bonus_calc
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from EPF.Lark import attack_grammer
 from PF2e.pf2_functions import PF2_eval_succss
@@ -39,6 +39,9 @@ class AutoModel:
             color = discord.Color.dark_red()
 
         return color
+
+    async def bonus_dmg(self):
+        return await bonus_calc(0, "dmg", self.character.character_model.bonuses)
 
     async def pd(self, data, heighten, heighten_data, Target_Model):
         if "pd" in data.keys():
@@ -171,6 +174,8 @@ class AutoModel:
     async def auto_complex_attack_dmg(
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
+        # Bonus damage from scripted bonuses
+        dmg_modifier = dmg_modifier + await self.bonus_dmg()
         # heightening code
         heighten_data, heighten = await self.heighten(Target_Model, success_string)
 
@@ -249,6 +254,9 @@ class AutoModel:
     async def auto_complex_save_dmg(
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
+        # Bonus damage from scripted bonuses
+        dmg_modifier = dmg_modifier + await self.bonus_dmg()
+
         heighten_data, heighten = await self.heighten(Target_Model, success_string)
         dmg_string = None
         total_damage = 0
@@ -906,6 +914,9 @@ class Spell(AutoModel):
             self.attack_type = attack_data["type"]["value"]
         else:
             self.attack_type = self.attack["type"]
+
+    async def bonus_dmg(self):
+        return await bonus_calc(0, "spelldmg", self.character.character_model.bonuses)
 
     async def legacy_cast_attk_attk(self, Target_Model: EPF_Character, attack_modifier, target_modifier):
         attack_roll = d20.roll(
