@@ -16,17 +16,15 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import EPF.EPF_Support
 import time_keeping_functions
 from Base.Character import Character
 from EPF.EPF_Support import EPF_Conditions, EPF_SKills, EPF_SKills_NO_SAVE
+from EPF.Lark import condition_grammer
 from database_models import (
     get_condition,
     get_EPF_tracker,
-    Base,
     LookupBase,
     get_macro,
-    get_tracker,
 )
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, engine
 from database_operations import get_asyncio_db_engine, DATABASE
@@ -35,7 +33,6 @@ from time_keeping_functions import get_time
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
-from EPF.Kineticist_DB import Kineticist_DB
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 
 # define global variables
@@ -216,7 +213,7 @@ class EPF_Character(Character):
         elif item == "Reflex" or item == "reflex":
             # print("b")
             return f"1d20+{self.reflex_mod}"
-        elif item == "Will" or item == "reflex":
+        elif item == "Will" or item == "will":
             # print("c")
             return f"1d20+{self.will_mod}"
         elif item == "class_dc":
@@ -429,6 +426,29 @@ class EPF_Character(Character):
         except KeyError:
             return None
 
+    def get_mod(self, mod: str):
+        match mod:  # noqa
+            case "str":
+                return self.str_mod
+            case "dex":
+                return self.dex_mod
+            case "con":
+                return self.con_mod
+            case "itl":
+                return self.itl_mod
+            case "int":
+                return self.itl_mod
+            case "wis":
+                return self.wis_mod
+            case "cha":
+                return self.cha_mod
+            case _:
+                return 0
+
+    def var_spell_mod(self, spell_name):
+        spell = self.get_spell(spell_name)
+        return self.get_mod(spell["ability"])
+
     async def is_complex_attack(self, item):
         try:
             if "complex" in self.character_model.attacks[item].keys():
@@ -472,6 +492,74 @@ class EPF_Character(Character):
             logging.warning(f"epf clone_attack {e}")
             return False
 
+    def get_spell(self, spell):
+        try:
+            return self.character_model.spells[spell]
+        except KeyError:
+            return None
+
+    async def get_mod_bonus(self, item: str, bonus_string: str):
+        logging.info(f"Get Mod: {item}")
+        # print(item)
+        if item == "Fortitude" or item == "Fort" or item == "fort":
+            mod = self.fort_mod
+        elif item == "Reflex" or item == "reflex":
+            mod = self.reflex_mod
+        elif item == "Will" or item == "reflex":
+            mod = self.will_mod
+        elif item == "class_dc":
+            mod = self.class_dc
+        elif item == "Acrobatics":
+            mod = self.acrobatics_mod
+        elif item == "Arcana":
+            mod = self.arcana_mod
+        elif item == "Athletics":
+            mod = self.athletics_mod
+        elif item == "Crafting":
+            mod = self.crafting_mod
+        elif item == "Deception":
+            mod = self.deception_mod
+        elif item == "Diplomacy":
+            # print("i")
+            mod = self.diplomacy_mod
+        elif item == "Intimidation":
+            # print("j")
+            mod = self.intimidation_mod
+        elif item == "Medicine":
+            # print("k")
+            mod = self.medicine_mod
+        elif item == "Nature":
+            # print("l")
+            mod = self.nature_mod
+        elif item == "Occultism":
+            # print("m")
+            mod = self.occultism_mod
+        elif item == "Perception":
+            # print("n")
+            mod = self.perception_mod
+        elif item == "Performance":
+            # print("o")
+            mod = self.performance_mod
+        elif item == "Religion":
+            # print("p")
+            mod = self.religion_mod
+        elif item == "Society":
+            # print("q")
+            mod = self.society_mod
+        elif item == "Stealth":
+            # print("r")
+            mod = self.stealth_mod
+        elif item == "Survival":
+            # print("s")
+            mod = self.survival_mod
+        elif item == "Thievery":
+            # print("t")
+            mod = self.thievery_mod
+        else:
+            return None
+
+        return await bonus_calc(mod, bonus_string, self.character_model.bonuses)
+
     async def get_spell_mod(self, spell, mod: bool):
         """
         Returns the spell modifier for the spell
@@ -499,20 +587,49 @@ class EPF_Character(Character):
 
         spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
-        if spell_data["tradition"] == "NPC":
-            # print(attk_stat)
-            # print(self.character_model.level)
-            # print(spell_data['proficiency'])
-            # print(spell_attack_bonus)
+        if "complex" in spell_data.keys():
+            match spell_data["trad"]:
+                case "arcane":
+                    proficiency = self.arcane_mod
+                case "divine":
+                    proficiency = self.divine_mod
+                case "occult":
+                    proficiency = self.occult_mod
+                case "primal":
+                    proficiency = self.primal_mod
+                case _:
+                    proficiency = 0
+
+            if mod:
+                return proficiency
+            else:
+                return 10 + proficiency
+        else:
+            proficiency = spell_data["proficiency"]
+
+        npc = False
+        try:
+            if spell_data["tradition"] == "NPC":
+                npc = True
+
+        except KeyError:
+            npc = False
+
+        print(attk_stat)
+        print(self.character_model.level)
+        print(proficiency)
+        print(spell_attack_bonus)
+
+        if npc:
             if mod:
                 return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
             else:
                 return attk_stat + self.character_model.level + spell_data["dc"] + spell_attack_bonus
         else:
             if mod:
-                return attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
+                return attk_stat + self.character_model.level + proficiency + spell_attack_bonus
             else:
-                return 10 + attk_stat + self.character_model.level + spell_data["proficiency"] + spell_attack_bonus
+                return 10 + attk_stat + self.character_model.level + proficiency + spell_attack_bonus
 
     async def get_spell_dmg(self, spell: str, level: int, flat_bonus: str = ""):
         spell_data = self.character_model.spells[spell]
@@ -546,11 +663,11 @@ class EPF_Character(Character):
 
                 if type(spell_data["damage"][key]["value"]) == dict:
                     dmg_string = (
-                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                        f"{spell_data['damage'][key]['value']['formula']}+{mod_stat}{ParseModifiers(flat_bonus) if x == 0 else ''}"
                     )
                 else:
                     dmg_string = (
-                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x==0 else ''}"
+                        f"{spell_data['damage'][key]['value']}+{mod_stat}{ParseModifiers(flat_bonus) if x == 0 else ''}"
                     )
 
                 dmg_dict[key] = {
@@ -1254,19 +1371,27 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         for item in spells_raw:
             for spell_level in item["spells"]:
                 for spell_name in spell_level["list"]:
-                    spell_data = await spell_lookup(spell_name)
-                    if spell_data[0] is True:
-                        spell = {
-                            "level": spell_level["spellLevel"],
-                            "tradition": item["magicTradition"],
-                            "ability": item["ability"],
-                            "proficiency": item["proficiency"],
-                            "type": spell_data[1].type,
-                            "save": spell_data[1].save,
-                            "damage": spell_data[1].damage,
-                            "heightening": spell_data[1].heightening,
-                        }
-                        spell_library[spell_name] = spell
+                    spell_data = await EPF_retreive_complex_data(spell_name)
+                    if len(spell_data) > 0:
+                        for s in spell_data:
+                            data = s.data
+                            data["ability"] = item["ability"]
+                            data["trad"] = item["magicTradition"]
+                            spell_library[s.display_name] = data
+                    else:
+                        spell_data = await spell_lookup(spell_name)
+                        if spell_data[0] is True:
+                            spell = {
+                                "level": spell_level["spellLevel"],
+                                "tradition": item["magicTradition"],
+                                "ability": item["ability"],
+                                "proficiency": item["proficiency"],
+                                "type": spell_data[1].type,
+                                "save": spell_data[1].save,
+                                "damage": spell_data[1].damage,
+                                "heightening": spell_data[1].heightening,
+                            }
+                            spell_library[spell_name] = spell
         for key in focus_spells.keys():
             # print(key)
             try:
@@ -1284,19 +1409,28 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     lookup_name = item.strip("(Amped)")
                                 else:
                                     lookup_name = item
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "wis",
-                                        "proficiency": focus_spells[key]["wis"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        data = s.data
+                                        data["ability"] = "wis"
+                                        data["trad"] = key
+                                        spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "wis",
+                                            "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
                     if "cha" in focus_spells[key].keys():
                         if "focusSpells" in focus_spells[key]["cha"].keys():
                             discriminator = "focusSpells"
@@ -1314,20 +1448,27 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     # print("not amped")
                                     lookup_name = item
                                 # print(lookup_name)
-                                spell_data = await spell_lookup(lookup_name)
-                                # print(spell_data[0])
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "cha",
-                                        "proficiency": focus_spells[key]["cha"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    data = s.data
+                                    data["ability"] = "cha"
+                                    data["trad"] = key
+                                    spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    # print(spell_data[0])
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "cha",
+                                            "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
 
                     if "int" in focus_spells[key].keys():
                         if "focusSpells" in focus_spells[key]["int"].keys():
@@ -1342,21 +1483,30 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                     lookup_name = item.strip("(Amped)")
                                 else:
                                     lookup_name = item
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "itl",
-                                        "proficiency": focus_spells[key]["int"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
 
-            except Exception as e:
+                                spell_data = await EPF_retreive_complex_data(spell_name)
+                                if len(spell_data) > 0:
+                                    data = s.data
+                                    data["ability"] = "itl"
+                                    data["trad"] = key
+
+                                    spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "itl",
+                                            "proficiency": focus_spells[key]["int"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
+
+            except Exception:
                 pass
 
         # Kineticist Specific Code (at least for now:
@@ -1544,6 +1694,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
         await delete_intested_items(char_name, ctx, guild, engine)
         for item in pb["build"]["equipment"]:
+            print(item)
             await invest_items(item[0], char_name, ctx, guild, engine)
         await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
@@ -1677,6 +1828,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 case "cha":
                     key_ability = character.cha_mod
 
+            # print(key_ability, character.arane_prof, character.level)
             character.arcane_mod = await skill_mod_calc(
                 key_ability, "arcane", character.arcane_prof, character.level, bonuses, False
             )
@@ -1684,10 +1836,10 @@ async def calculate(ctx, engine, char_name, guild=None):
                 key_ability, "divine", character.divine_prof, character.level, bonuses, False
             )
             character.occult_mod = await skill_mod_calc(
-                key_ability, "occult", character.arcane_prof, character.level, bonuses, False
+                key_ability, "occult", character.occult_prof, character.level, bonuses, False
             )
             character.primal_mod = await skill_mod_calc(
-                key_ability, "primal", character.arcane_prof, character.level, bonuses, False
+                key_ability, "primal", character.primal_prof, character.level, bonuses, False
             )
 
             character.ac_total = await bonus_calc(character.ac_base, "ac", bonuses)
@@ -1987,11 +2139,12 @@ async def invest_items(item, character, ctx, guild, engine):
             data = result.scalars().all()
             if len(data) > 0:
                 data = data[0]
-                # print(data)
+                print(data)
                 for key in data.keys():
-                    if key in EPF_SKills:
-                        if data[key]["mode"] == "item":
-                            condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
+                    print(key)
+
+                    if data[key]["mode"] == "item":
+                        condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
         # await lookup_engine.dispose()
         if condition_string != "":
             # print(condition_string)
@@ -2018,7 +2171,6 @@ async def invest_items(item, character, ctx, guild, engine):
         else:
             return False
     except Exception:
-        # await engine.dispose()
         return False
 
 
@@ -2067,62 +2219,12 @@ async def spell_lookup(spell: str):
         return False, {}
 
 
-grammer = """
-start: phrase+
-
-phrase: value+ break
-
-value: (WORD | COMBO_WORD) (SIGNED_INT | VARIABLE )  SPECIFIER         -> skill_bonus
-    | "init-skill" WORD                                                -> init_skill
-    | "hardness" NUMBER                                                -> hardness
-    | quoted (WORD | COMBO_WORD) SIGNED_INT SPECIFIER                  -> item_bonus
-    | "thp" NUMBER                                                     -> temp_hp
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? ";"?                       -> resistance
-    | (WORD | COMBO_WORD) SPECIFIER NUMBER? "e" WORD ";"?              -> resistance_w_exception
-    | "stable" NUMBER?                                                 -> stable
-    | persist_dmg                       
-    | WORD NUMBER?                                                     -> new_condition
-
-persist_dmg : ("persistent dmg" | "pd") roll_string WORD* ["/" "dc" NUMBER save_string]
-
-modifier: SIGNED_INT
-
-quoted: SINGLE_QUOTED_STRING
-    | DOUBLE_QUOTED_STRING
-
-break: ","
-
-
-roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
-!save_string: "reflex" | "fort" | "will" | "flat"
-
-ROLL: NUMBER "d" NUMBER 
-
-POS_NEG : ("+" | "-")
-
-DOUBLE_QUOTED_STRING  : /"[^"]*"/
-SINGLE_QUOTED_STRING  : /'[^']*'/
-
-SPECIFIER : "c" | "s" | "i" | "r" | "w"
-VARIABLE : "+x" | "-x" 
-
-
-COMBO_WORD : WORD ("-" |"_") WORD
-%import common.ESCAPED_STRING
-%import common.WORD
-%import common.SIGNED_INT
-%import common.NUMBER
-%import common.WS
-%ignore WS
-"""
-
-
 async def condition_parser(data: str):
     # print(data)
     if data[-1:] != ",":
         data = data + ","
 
-    parser = Lark(grammer)
+    parser = Lark(condition_grammer)
     return parser.parse(data)
 
 
@@ -2135,7 +2237,7 @@ async def process_condition_tree(
             bonus_data = {}
             for item in branch.children:
                 if type(item) == lark.Token:
-                    if item.type == "WORD":
+                    if item.type == "WORD" or item.type == "COMBO_WORD":
                         bonus_data["skill"] = item.value
                     elif item.type == "SIGNED_INT":
                         bonus_data["value"] = int(item.value)
@@ -2292,14 +2394,14 @@ async def process_condition_tree(
                 resistances[temp["word"]] = {temp["specifier"]: temp["value"]}
 
         elif branch.data == "resistance_w_exception":
-            temp = {"value": 0}
+            temp = {"value": 0, "exception": ""}
             resistance_data = {}
             for x, item in enumerate(branch.children):
                 if item.type == "WORD" or item.type == "COMBO_WORD":
                     if x == 0:
                         temp["word"] = item.value
                     else:
-                        temp["exception"] = item.value
+                        temp["exception"] = temp["exception"] + " " + item.value
                 elif item.type == "SPECIFIER":
                     temp["specifier"] = item.value
                 elif item.type == "NUMBER":

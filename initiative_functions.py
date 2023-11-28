@@ -36,31 +36,31 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
             report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
             await report.report()
         return [None, None]
-    # try:
-    async with async_session() as session:
-        result = await session.execute(
-            select(Condition).where(Condition.character_id == char).where(Condition.title == condition)
-        )
-        cond = result.scalars().one()
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == char).where(Condition.title == condition)
+            )
+            cond = result.scalars().one()
 
-        if cond.time or cond.number is None:
-            await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
-            return [None, None]
-        else:
-            output_string = f"{cond.title}: {cond.number}"
-            view.add_item(ConditionMinus(ctx, bot, character, condition, guild))
-            view.add_item(ConditionAdd(ctx, bot, character, condition, guild))
-            return output_string, view
-    # except NoResultFound:
-    #     if ctx is not None:
-    #         await ctx.channel.send(error_not_initialized, delete_after=30)
-    #     return [None, None]
-    # except Exception as e:
-    #     logging.info(f"edit_cc: {e}")
-    #     if ctx is not None:
-    #         report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
-    #         await report.report()
-    #     return [None, None]
+            if cond.time or cond.number is None:
+                await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
+                return [None, None]
+            else:
+                output_string = f"{cond.title}: {cond.number}"
+                view.add_item(ConditionMinus(ctx, bot, character, condition, guild))
+                view.add_item(ConditionAdd(ctx, bot, character, condition, guild))
+                return output_string, view
+    except NoResultFound:
+        if ctx is not None:
+            await ctx.channel.send(error_not_initialized, delete_after=30)
+        return [None, None]
+    except Exception as e:
+        logging.info(f"edit_cc: {e}")
+        if ctx is not None:
+            report = ErrorReport(ctx, edit_cc_interface.__name__, e, bot)
+            await report.report()
+        return [None, None]
 
 
 async def increment_cc(
@@ -68,55 +68,55 @@ async def increment_cc(
 ):
     logging.info("increment_cc")
 
-    # try:
-    guild = await get_guild(ctx, guild)
-    Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
-    Tracker = await get_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        guild = await get_guild(ctx, guild)
+        Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
+        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    async with async_session() as session:
-        result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-        character = result.scalars().one()
+        async with async_session() as session:
+            result = await session.execute(select(Tracker.id).where(Tracker.name == character))
+            character = result.scalars().one()
 
-    # except NoResultFound:
-    #     await ctx.channel.send(error_not_initialized, delete_after=30)
-    #     return False
-    # except Exception as e:
-    #     logging.info(f"increment_cc: {e}")
-    #     if ctx is not None:
-    #         report = ErrorReport(ctx, increment_cc.__name__, e, bot)
-    #         await report.report()
-    #     return False
+    except NoResultFound:
+        await ctx.channel.send(error_not_initialized, delete_after=30)
+        return False
+    except Exception as e:
+        logging.info(f"increment_cc: {e}")
+        if ctx is not None:
+            report = ErrorReport(ctx, increment_cc.__name__, e, bot)
+            await report.report()
+        return False
 
-    # try:
-    async with async_session() as session:
-        result = await session.execute(
-            select(Condition).where(Condition.character_id == character).where(Condition.title == condition)
-        )
-        condition = result.scalars().one()
-        current_value = condition.number
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition).where(Condition.character_id == character).where(Condition.title == condition)
+            )
+            condition = result.scalars().one()
+            current_value = condition.number
 
-        if condition.time or condition.number is None:
-            await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
-            return False
-        else:
-            if add is True:
-                condition.number = current_value + 1
+            if condition.time or condition.number is None:
+                await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
+                return False
             else:
-                condition.number = current_value - 1
-            await session.commit()
-    await Tracker_Model.update_pinned_tracker()
+                if add is True:
+                    condition.number = current_value + 1
+                else:
+                    condition.number = current_value - 1
+                await session.commit()
+        await Tracker_Model.update_pinned_tracker()
 
-    return True
-    # except NoResultFound:
-    #     await ctx.channel.send(error_not_initialized, delete_after=30)
-    #     return False
-    # except Exception as e:
-    #     logging.warning(f"edit_cc: {e}")
-    #     report = ErrorReport(ctx, "increment_cc", e, bot)
-    #     await report.report()
-    #     return False
+        return True
+    except NoResultFound:
+        await ctx.channel.send(error_not_initialized, delete_after=30)
+        return False
+    except Exception as e:
+        logging.warning(f"edit_cc: {e}")
+        report = ErrorReport(ctx, "increment_cc", e, bot)
+        await report.report()
+        return False
 
 
 class ConditionMinus(discord.ui.Button):
@@ -131,7 +131,6 @@ class ConditionMinus(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
             await increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
             output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
             print(output[0])
@@ -153,13 +152,12 @@ class ConditionAdd(discord.ui.Button):
         super().__init__(style=discord.ButtonStyle.primary, emoji="➕")
 
     async def callback(self, interaction: discord.Interaction):
-        # try:
-        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
-        await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
-        output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
-        print(output[0])
-        await interaction.response.edit_message(content=output[0], view=output[1])
+        try:
+            await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
+            output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
+            print(output[0])
+            await interaction.response.edit_message(content=output[0], view=output[1])
         # await Tracker_Model.update_pinned_tracker()
-        # except Exception as e:
-        #     print(f"Error: {e}")
-        #     logging.info(e)
+        except Exception as e:
+            print(f"Error: {e}")
+            logging.info(e)
