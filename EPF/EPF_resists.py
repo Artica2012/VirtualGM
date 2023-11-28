@@ -67,6 +67,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         print(weapon["runes"])
         if "Ghost Touch" in weapon["runes"]:
             exception_list.append("ghost-touch")
+            dmg_list.append("ghost-touch")
 
     print(dmg_list)
     [print(exception_list)]
