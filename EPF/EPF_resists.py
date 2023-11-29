@@ -13,8 +13,9 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
     if dmg_type is None:
         return dmg_roll
     dmg_type = dmg_type.lower()
-    print(target.resistance)
-    print(dmg_type)
+    # print(target.resistance)
+    # print(dmg_type)
+    # print(dmg_roll)
 
     if weapon is not None:
         if "traits" in weapon.keys():
@@ -48,7 +49,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
             mat = ""
     else:
         mat = ""
-    print(f"Mat: {mat}")
+    # print(f"Mat: {mat}")
 
     if "physical" in target.resistance.keys():
         # print("Physical Resistance")
@@ -69,8 +70,8 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
             exception_list.append("ghost-touch")
             dmg_list.append("ghost-touch")
 
-    print(dmg_list)
-    [print(exception_list)]
+    # print(dmg_list)
+    # [print(exception_list)]
     # Remaster Conversion Code
     if dmg_type.lower() == "negative":
         dmg_list.append("void")
@@ -82,6 +83,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
         dmg_list.append("positive")
 
     for item in dmg_list:  # This is completely rewritten. It might be broken
+        # print(item)
         if item in target.resistance.keys():
             if "r" in target.resistance[item].keys():
                 # print(target.resistance[item].keys())
@@ -97,10 +99,6 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                     dmg = dmg - target.resistance[item]["r"]
                     if dmg < 0:
                         dmg = 0
-            else:
-                dmg = dmg - target.resistance[item]["r"]
-                if dmg < 0:
-                    dmg = 0
 
             if "w" in target.resistance[item]:
                 exempt = False
@@ -110,8 +108,6 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                             exempt = True
                 if not exempt:
                     dmg = dmg + target.resistance[item]["w"]
-            else:
-                dmg = dmg + target.resistance[item]["w"]
 
             if "i" in target.resistance[item]:
                 if "except" in target.resistance[item].keys():
@@ -121,9 +117,8 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                             exempt = True
                     if not exempt:
                         dmg = 0
-                else:
-                    dmg = 0
 
+    # print("DMG:", dmg)
     return dmg
 
 

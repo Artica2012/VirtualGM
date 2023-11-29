@@ -207,7 +207,7 @@ class EPF_Character(Character):
     async def get_roll(self, item: str):
         logging.info(f"Returning roll: {item}")
         # print(item)
-        if item == "Fortitude" or item == "Fort" or item == "fort":
+        if item == "Fortitude" or item == "Fort" or item == "fort" or item == "fortitude":
             # print("a")
             return f"1d20+{self.fort_mod}"
         elif item == "Reflex" or item == "reflex":
@@ -501,7 +501,7 @@ class EPF_Character(Character):
     async def get_mod_bonus(self, item: str, bonus_string: str):
         logging.info(f"Get Mod: {item}")
         # print(item)
-        if item == "Fortitude" or item == "Fort" or item == "fort":
+        if item == "Fortitude" or item == "Fort" or item == "fort" or item == "fortitude":
             mod = self.fort_mod
         elif item == "Reflex" or item == "reflex":
             mod = self.reflex_mod
@@ -1251,501 +1251,500 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
     if pb["success"] is False:
         return False
 
-    try:
-        guild = await get_guild(ctx, guild)
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # try:
+    guild = await get_guild(ctx, guild)
+    EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-        initiative_num = 0
+    initiative_num = 0
 
-        # print(initiative_num)
-        # Check to see if character already exists, if it does, update instead of creating
+    # print(initiative_num)
+    # Check to see if character already exists, if it does, update instead of creating
 
+    async with async_session() as session:
+        query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
+        character = query.scalars().all()
+    if len(character) > 0:
+        overwrite = True
+        character = character[0]
+
+    lores = ""
+    for item, value in pb["build"]["lores"]:
+        output = f"{item}, {value}; "
+        lores += output
+
+    feats = ""
+    feat_list = []
+
+    if "Air Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Air)")
+    if "Earth Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Earth)")
+    if "Fire Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Fire)")
+    if "Metal Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Metal)")
+    if "Water Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Water)")
+    if "Wood Element" in pb["build"]["specials"]:
+        feat_list.append("Elemental Blast (Wood)")
+
+    for item in pb["build"]["feats"]:
+        print(item)
+        feats += f"{item[0]}, "
+        feat_list.append(item[0].strip())
+    print(feat_list)
+
+    bonus_dmg_list = []
+    attacks = {}
+    for item in pb["build"]["weapons"]:
+        die_num = 0
+        match item["str"]:
+            case "":
+                die_num = 1
+            case "striking":
+                die_num = 2
+            case "greaterStriking":
+                die_num = 3
+            case "majorStriking":
+                die_num = 4
+
+        if len(item["extraDamage"]) > 0:
+            for i in item["extraDamage"]:
+                bonus = i.split(" ")[0]
+                bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
+
+        if "mat" in item.keys():
+            if item["mat"] is None:
+                mat = ""
+            else:
+                material = str(item["mat"])
+                parsed_mat = material.split("(")
+                mat = parsed_mat[0].strip()
+        else:
+            mat = ""
+
+        attacks[item["display"]] = {
+            "display": item["display"],
+            "prof": item["prof"],
+            "die": item["die"],
+            "pot": item["pot"],
+            "str": item["str"],
+            "name": item["name"],
+            "runes": item["runes"],
+            "die_num": die_num,
+            "crit": "*2",
+            "stat": "str",
+            "dmg_type": "Bludgeoning",
+            "attk_stat": "str",
+            "traits": [],
+            "mat": mat,
+        }
+
+        if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
+            attacks[item["display"]]["override_prof"] = 2
+        elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
+            attacks[item["display"]]["override_prof"] = 4
+        elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
+            attacks[item["display"]]["override_prof"] = 6
+        elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
+            attacks[item["display"]]["override_prof"] = 8
+
+        edited_attack = await attack_lookup(attacks[item["display"]], pb)
+
+        double_attacks = False
+        # Check for two handed and fatal
+        if "traits" in edited_attack.keys():
+            for trait in edited_attack["traits"]:
+                if "fatal-aim" in trait:
+                    double_attacks = True
+                    parsed_trait = trait.split("-")
+                    fatal_die = parsed_trait[2]
+                    attack_one = edited_attack.copy()
+                    attack_two = edited_attack.copy()
+                    trait_list = attack_one["traits"]
+                    trait_copy = trait_list.copy()
+                    for x, i in enumerate(trait_list):
+                        if i == trait:
+                            trait_copy[x] = f"fatal-{fatal_die}"
+
+                    attack_one["traits"] = trait_copy
+                    attack_one["display"] = f"{edited_attack['display']} (2H)"
+
+                    trait_copy = []
+                    for i in trait_list:
+                        if i != trait:
+                            trait_copy.append(i)
+
+                    attack_two["display"] = f"{edited_attack['display']} (1H)"
+                    attack_two["traits"] = trait_copy
+                if "two-hand" in trait:
+                    double_attacks = True
+                    parsed_trait = trait.split("-")
+                    attk_2_die = parsed_trait[2]
+                    attack_one = edited_attack.copy()
+                    attack_two = edited_attack.copy()
+                    attack_one["display"] = f"{edited_attack['display']} (2H)"
+                    attack_one["die"] = attk_2_die
+                    attack_two["display"] = f"{edited_attack['display']} (1H)"
+
+        if double_attacks:
+            del attacks[item["display"]]
+            attacks[attack_one["display"]] = attack_one
+            attacks[attack_two["display"]] = attack_two
+        else:
+            attacks[item["display"]] = edited_attack
+
+    # print(attacks)
+
+    # Spells
+    spells_raw = pb["build"]["spellCasters"]
+    focus_spells = pb["build"]["focus"]
+    # print(focus_spells)
+    spell_library = {}
+    for item in spells_raw:
+        for spell_level in item["spells"]:
+            for spell_name in spell_level["list"]:
+                spell_data = await EPF_retreive_complex_data(spell_name)
+                if len(spell_data) > 0:
+                    for s in spell_data:
+                        data = s.data
+                        data["ability"] = item["ability"]
+                        data["trad"] = item["magicTradition"]
+                        spell_library[s.display_name] = data
+                else:
+                    spell_data = await spell_lookup(spell_name)
+                    if spell_data[0] is True:
+                        spell = {
+                            "level": spell_level["spellLevel"],
+                            "tradition": item["magicTradition"],
+                            "ability": item["ability"],
+                            "proficiency": item["proficiency"],
+                            "type": spell_data[1].type,
+                            "save": spell_data[1].save,
+                            "damage": spell_data[1].damage,
+                            "heightening": spell_data[1].heightening,
+                        }
+                        spell_library[spell_name] = spell
+    for key in focus_spells.keys():
+        print(key)
+        # try:
+        if type(focus_spells[key]) == dict:
+            if "wis" in focus_spells[key].keys():
+                discriminator_list = []
+                if "focusSpells" in focus_spells[key]["wis"].keys():
+                    discriminator_list.append("focusSpells")
+                if "focusCantrips" in focus_spells[key]["wis"].keys():
+                    discriminator_list.append("focusCantrips")
+                for discriminator in discriminator_list:
+                    for item in focus_spells[key]["wis"]["focusSpells"]:
+                        if "(Amped)" in item:
+                            lookup_name = item.strip("(Amped)")
+                        else:
+                            lookup_name = item
+
+                        spell_data = await EPF_retreive_complex_data(lookup_name)
+                        if len(spell_data) > 0:
+                            for s in spell_data:
+                                data = s.data
+                                data["ability"] = "wis"
+                                data["trad"] = key
+                                spell_library[s.display_name] = data
+                        else:
+                            spell_data = await spell_lookup(lookup_name)
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "wis",
+                                    "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+            if "cha" in focus_spells[key].keys():
+                print("cha")
+                discriminator_list = []
+                if "focusSpells" in focus_spells[key]["cha"].keys():
+                    discriminator_list.append("focusSpells")
+                if "focusCantrips" in focus_spells[key]["cha"].keys():
+                    discriminator_list.append("focusCantrips")
+
+                for discriminator in discriminator_list:
+                    for item in focus_spells[key]["cha"][discriminator]:
+                        print(item)
+                        if "(Amped)" in item:
+                            # print("amped")
+                            lookup_name = item.strip("(Amped)")
+                        else:
+                            # print("not amped")
+                            lookup_name = item
+                        print(lookup_name)
+                        spell_data = await EPF_retreive_complex_data(lookup_name)
+                        if len(spell_data) > 0:
+                            for s in spell_data:
+                                data = s.data
+                                data["ability"] = "cha"
+                                data["trad"] = key
+                                spell_library[s.display_name] = data
+                        else:
+                            spell_data = await spell_lookup(lookup_name)
+                            # print(spell_data[0])
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "cha",
+                                    "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+
+            if "int" in focus_spells[key].keys():
+                discriminator_list = []
+                if "focusSpells" in focus_spells[key]["int"].keys():
+                    discriminator_list.append("focusSpells")
+                if "focusCantrips" in focus_spells[key]["int"].keys():
+                    discriminator_list.append("focusCantrips")
+                for discriminator in discriminator_list:
+                    for item in focus_spells[key]["int"]["focusSpells"]:
+                        if "(Amped)" in item:
+                            lookup_name = item.strip("(Amped)")
+                        else:
+                            lookup_name = item
+
+                        spell_data = await EPF_retreive_complex_data(lookup_name)
+                        if len(spell_data) > 0:
+                            for s in spell_data:
+                                data = s.data
+                                data["ability"] = "itl"
+                                data["trad"] = key
+
+                                spell_library[s.display_name] = data
+                        else:
+                            spell_data = await spell_lookup(lookup_name)
+                            if spell_data[0] is True:
+                                spell = {
+                                    "level": 0,
+                                    "tradition": key,
+                                    "ability": "itl",
+                                    "proficiency": focus_spells[key]["int"]["proficiency"],
+                                    "type": spell_data[1].type,
+                                    "save": spell_data[1].save,
+                                    "damage": spell_data[1].damage,
+                                    "heightening": spell_data[1].heightening,
+                                }
+                                spell_library[item] = spell
+
+        # except Exception:
+        #     pass
+
+    # Kineticist Specific Code (at least for now:
+    # print(Kineticist_DB.keys())
+    for feat in feat_list:
+        feat_data = await EPF_retreive_complex_data(feat)
+        for x in feat_data:
+            attacks[x.display_name] = x.data
+
+    if overwrite:
         async with async_session() as session:
             query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
-            character = query.scalars().all()
-        if len(character) > 0:
-            overwrite = True
-            character = character[0]
+            character = query.scalars().one()
 
-        lores = ""
-        for item, value in pb["build"]["lores"]:
-            output = f"{item}, {value}; "
-            lores += output
-
-        feats = ""
-        feat_list = []
-
-        if "Air Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Air)")
-        if "Earth Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Earth)")
-        if "Fire Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Fire)")
-        if "Metal Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Metal)")
-        if "Water Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Water)")
-        if "Wood Element" in pb["build"]["specials"]:
-            feat_list.append("Elemental Blast (Wood)")
-
-        for item in pb["build"]["feats"]:
-            print(item)
-            feats += f"{item[0]}, "
-            feat_list.append(item[0].strip())
-        print(feat_list)
-
-        bonus_dmg_list = []
-        attacks = {}
-        for item in pb["build"]["weapons"]:
-            die_num = 0
-            match item["str"]:
-                case "":
-                    die_num = 1
-                case "striking":
-                    die_num = 2
-                case "greaterStriking":
-                    die_num = 3
-                case "majorStriking":
-                    die_num = 4
-
-            if len(item["extraDamage"]) > 0:
-                for i in item["extraDamage"]:
-                    bonus = i.split(" ")[0]
-                    bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
-
-            if "mat" in item.keys():
-                if item["mat"] is None:
-                    mat = ""
-                else:
-                    material = str(item["mat"])
-                    parsed_mat = material.split("(")
-                    mat = parsed_mat[0].strip()
-            else:
-                mat = ""
-
-            attacks[item["display"]] = {
-                "display": item["display"],
-                "prof": item["prof"],
-                "die": item["die"],
-                "pot": item["pot"],
-                "str": item["str"],
-                "name": item["name"],
-                "runes": item["runes"],
-                "die_num": die_num,
-                "crit": "*2",
-                "stat": "str",
-                "dmg_type": "Bludgeoning",
-                "attk_stat": "str",
-                "traits": [],
-                "mat": mat,
-            }
-
-            if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
-                attacks[item["display"]]["override_prof"] = 2
-            elif item["name"] in pb["build"]["specificProficiencies"]["expert"]:
-                attacks[item["display"]]["override_prof"] = 4
-            elif item["name"] in pb["build"]["specificProficiencies"]["master"]:
-                attacks[item["display"]]["override_prof"] = 6
-            elif item["name"] in pb["build"]["specificProficiencies"]["legendary"]:
-                attacks[item["display"]]["override_prof"] = 8
-
-            edited_attack = await attack_lookup(attacks[item["display"]], pb)
-
-            double_attacks = False
-            # Check for two handed and fatal
-            if "traits" in edited_attack.keys():
-                for trait in edited_attack["traits"]:
-                    if "fatal-aim" in trait:
-                        double_attacks = True
-                        parsed_trait = trait.split("-")
-                        fatal_die = parsed_trait[2]
-                        attack_one = edited_attack.copy()
-                        attack_two = edited_attack.copy()
-                        trait_list = attack_one["traits"]
-                        trait_copy = trait_list.copy()
-                        for x, i in enumerate(trait_list):
-                            if i == trait:
-                                trait_copy[x] = f"fatal-{fatal_die}"
-
-                        attack_one["traits"] = trait_copy
-                        attack_one["display"] = f"{edited_attack['display']} (2H)"
-
-                        trait_copy = []
-                        for i in trait_list:
-                            if i != trait:
-                                trait_copy.append(i)
-
-                        attack_two["display"] = f"{edited_attack['display']} (1H)"
-                        attack_two["traits"] = trait_copy
-                    if "two-hand" in trait:
-                        double_attacks = True
-                        parsed_trait = trait.split("-")
-                        attk_2_die = parsed_trait[2]
-                        attack_one = edited_attack.copy()
-                        attack_two = edited_attack.copy()
-                        attack_one["display"] = f"{edited_attack['display']} (2H)"
-                        attack_one["die"] = attk_2_die
-                        attack_two["display"] = f"{edited_attack['display']} (1H)"
-
-            if double_attacks:
-                del attacks[item["display"]]
-                attacks[attack_one["display"]] = attack_one
-                attacks[attack_two["display"]] = attack_two
-            else:
-                attacks[item["display"]] = edited_attack
-
-        # print(attacks)
-
-        # Spells
-        spells_raw = pb["build"]["spellCasters"]
-        focus_spells = pb["build"]["focus"]
-        # print(focus_spells)
-        spell_library = {}
-        for item in spells_raw:
-            for spell_level in item["spells"]:
-                for spell_name in spell_level["list"]:
-                    spell_data = await EPF_retreive_complex_data(spell_name)
-                    if len(spell_data) > 0:
-                        for s in spell_data:
-                            data = s.data
-                            data["ability"] = item["ability"]
-                            data["trad"] = item["magicTradition"]
-                            spell_library[s.display_name] = data
-                    else:
-                        spell_data = await spell_lookup(spell_name)
-                        if spell_data[0] is True:
-                            spell = {
-                                "level": spell_level["spellLevel"],
-                                "tradition": item["magicTradition"],
-                                "ability": item["ability"],
-                                "proficiency": item["proficiency"],
-                                "type": spell_data[1].type,
-                                "save": spell_data[1].save,
-                                "damage": spell_data[1].damage,
-                                "heightening": spell_data[1].heightening,
-                            }
-                            spell_library[spell_name] = spell
-        for key in focus_spells.keys():
-            # print(key)
-            try:
-                if type(focus_spells[key]) == dict:
-                    if "wis" in focus_spells[key].keys():
-                        if "focusSpells" in focus_spells[key]["wis"].keys():
-                            discriminator = "focusSpells"
-                        elif "focusCantrips" in focus_spells[key]["wis"].keys():
-                            discriminator = "focusCantrips"
-                        else:
-                            discriminator = None
-                        if discriminator is not None:
-                            for item in focus_spells[key]["wis"]["focusSpells"]:
-                                if "(Amped)" in item:
-                                    lookup_name = item.strip("(Amped)")
-                                else:
-                                    lookup_name = item
-
-                                spell_data = await EPF_retreive_complex_data(spell_name)
-                                if len(spell_data) > 0:
-                                    for s in spell_data:
-                                        data = s.data
-                                        data["ability"] = "wis"
-                                        data["trad"] = key
-                                        spell_library[s.display_name] = data
-                                else:
-                                    spell_data = await spell_lookup(lookup_name)
-                                    if spell_data[0] is True:
-                                        spell = {
-                                            "level": 0,
-                                            "tradition": key,
-                                            "ability": "wis",
-                                            "proficiency": focus_spells[key]["wis"]["proficiency"],
-                                            "type": spell_data[1].type,
-                                            "save": spell_data[1].save,
-                                            "damage": spell_data[1].damage,
-                                            "heightening": spell_data[1].heightening,
-                                        }
-                                        spell_library[item] = spell
-                    if "cha" in focus_spells[key].keys():
-                        if "focusSpells" in focus_spells[key]["cha"].keys():
-                            discriminator = "focusSpells"
-                        elif "focusCantrips" in focus_spells[key]["cha"].keys():
-                            discriminator = "focusCantrips"
-                        else:
-                            discriminator = None
-                        if discriminator is not None:
-                            for item in focus_spells[key]["cha"][discriminator]:
-                                # print(item)
-                                if "(Amped)" in item:
-                                    # print("amped")
-                                    lookup_name = item.strip("(Amped)")
-                                else:
-                                    # print("not amped")
-                                    lookup_name = item
-                                # print(lookup_name)
-                                spell_data = await EPF_retreive_complex_data(spell_name)
-                                if len(spell_data) > 0:
-                                    data = s.data
-                                    data["ability"] = "cha"
-                                    data["trad"] = key
-                                    spell_library[s.display_name] = data
-                                else:
-                                    spell_data = await spell_lookup(lookup_name)
-                                    # print(spell_data[0])
-                                    if spell_data[0] is True:
-                                        spell = {
-                                            "level": 0,
-                                            "tradition": key,
-                                            "ability": "cha",
-                                            "proficiency": focus_spells[key]["cha"]["proficiency"],
-                                            "type": spell_data[1].type,
-                                            "save": spell_data[1].save,
-                                            "damage": spell_data[1].damage,
-                                            "heightening": spell_data[1].heightening,
-                                        }
-                                        spell_library[item] = spell
-
-                    if "int" in focus_spells[key].keys():
-                        if "focusSpells" in focus_spells[key]["int"].keys():
-                            discriminator = "focusSpells"
-                        elif "focusCantrips" in focus_spells[key]["int"].keys():
-                            discriminator = "focusCantrips"
-                        else:
-                            discriminator = None
-                        if discriminator is not None:
-                            for item in focus_spells[key]["int"]["focusSpells"]:
-                                if "(Amped)" in item:
-                                    lookup_name = item.strip("(Amped)")
-                                else:
-                                    lookup_name = item
-
-                                spell_data = await EPF_retreive_complex_data(spell_name)
-                                if len(spell_data) > 0:
-                                    data = s.data
-                                    data["ability"] = "itl"
-                                    data["trad"] = key
-
-                                    spell_library[s.display_name] = data
-                                else:
-                                    spell_data = await spell_lookup(lookup_name)
-                                    if spell_data[0] is True:
-                                        spell = {
-                                            "level": 0,
-                                            "tradition": key,
-                                            "ability": "itl",
-                                            "proficiency": focus_spells[key]["int"]["proficiency"],
-                                            "type": spell_data[1].type,
-                                            "save": spell_data[1].save,
-                                            "damage": spell_data[1].damage,
-                                            "heightening": spell_data[1].heightening,
-                                        }
-                                        spell_library[item] = spell
-
-            except Exception:
-                pass
-
-        # Kineticist Specific Code (at least for now:
-        # print(Kineticist_DB.keys())
-        for feat in feat_list:
-            feat_data = await EPF_retreive_complex_data(feat)
-            for x in feat_data:
-                attacks[x.display_name] = x.data
-
-        if overwrite:
-            async with async_session() as session:
-                query = await session.execute(
-                    select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower())
+            # Write the data from the JSON
+            character.max_hp = (
+                pb["build"]["attributes"]["ancestryhp"]
+                + pb["build"]["attributes"]["classhp"]
+                + pb["build"]["attributes"]["bonushp"]
+                + pb["build"]["attributes"]["bonushpPerLevel"]
+                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                + (
+                    (pb["build"]["level"] - 1)
+                    * (
+                        pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushpPerLevel"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                    )
                 )
-                character = query.scalars().one()
+            )
+            character.char_class = pb["build"]["class"]
+            character.level = pb["build"]["level"]
+            character.ac_base = pb["build"]["acTotal"]["acTotal"]
+            character.class_prof = pb["build"]["proficiencies"]["classDC"]
+            character.class_dc = 0
+            character.key_ability = pb["build"]["keyability"]
 
-                # Write the data from the JSON
-                character.max_hp = (
-                    pb["build"]["attributes"]["ancestryhp"]
-                    + pb["build"]["attributes"]["classhp"]
-                    + pb["build"]["attributes"]["bonushp"]
-                    + pb["build"]["attributes"]["bonushpPerLevel"]
-                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                    + (
-                        (pb["build"]["level"] - 1)
-                        * (
-                            pb["build"]["attributes"]["classhp"]
-                            + pb["build"]["attributes"]["bonushpPerLevel"]
-                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+            character.str = pb["build"]["abilities"]["str"]
+            character.dex = pb["build"]["abilities"]["dex"]
+            character.con = pb["build"]["abilities"]["con"]
+            character.itl = pb["build"]["abilities"]["int"]
+            character.wis = pb["build"]["abilities"]["wis"]
+            character.cha = pb["build"]["abilities"]["cha"]
+
+            character.fort_prof = pb["build"]["proficiencies"]["fortitude"]
+            character.reflex_prof = pb["build"]["proficiencies"]["reflex"]
+            character.will_prof = pb["build"]["proficiencies"]["will"]
+
+            character.unarmored_prof = pb["build"]["proficiencies"]["unarmored"]
+            character.light_armor_prof = pb["build"]["proficiencies"]["light"]
+            character.medium_armor_prof = pb["build"]["proficiencies"]["medium"]
+            character.heavy_armor_prof = pb["build"]["proficiencies"]["heavy"]
+
+            character.unarmed_prof = pb["build"]["proficiencies"]["unarmed"]
+            character.simple_prof = pb["build"]["proficiencies"]["simple"]
+            character.martial_prof = pb["build"]["proficiencies"]["martial"]
+            character.advanced_prof = pb["build"]["proficiencies"]["advanced"]
+
+            character.arcane_prof = pb["build"]["proficiencies"]["castingArcane"]
+            character.divine_prof = pb["build"]["proficiencies"]["castingDivine"]
+            character.occult_prof = pb["build"]["proficiencies"]["castingOccult"]
+            character.primal_prof = pb["build"]["proficiencies"]["castingPrimal"]
+
+            character.acrobatics_prof = pb["build"]["proficiencies"]["acrobatics"]
+            character.arcana_prof = pb["build"]["proficiencies"]["arcana"]
+            character.athletics_prof = pb["build"]["proficiencies"]["athletics"]
+            character.crafting_prof = pb["build"]["proficiencies"]["crafting"]
+            character.deception_prof = pb["build"]["proficiencies"]["deception"]
+            character.diplomacy_prof = pb["build"]["proficiencies"]["diplomacy"]
+            character.intimidation_prof = pb["build"]["proficiencies"]["intimidation"]
+            character.medicine_prof = pb["build"]["proficiencies"]["medicine"]
+            character.nature_prof = pb["build"]["proficiencies"]["nature"]
+            character.occultism_prof = pb["build"]["proficiencies"]["occultism"]
+            character.perception_prof = pb["build"]["proficiencies"]["perception"]
+            character.performance_prof = pb["build"]["proficiencies"]["performance"]
+            character.religion_prof = pb["build"]["proficiencies"]["religion"]
+            character.society_prof = pb["build"]["proficiencies"]["society"]
+            character.stealth_prof = pb["build"]["proficiencies"]["stealth"]
+            character.survival_prof = pb["build"]["proficiencies"]["survival"]
+            character.thievery_prof = pb["build"]["proficiencies"]["thievery"]
+
+            character.lores = lores
+            character.feats = feats
+            character.attacks = attacks
+            character.spells = spell_library
+            if image is not None:
+                character.pic = image
+
+            await session.commit()
+
+    else:  # Create a new character
+        async with async_session() as session:
+            async with session.begin():
+                new_char = EPF_tracker(
+                    name=char_name,
+                    player=True,
+                    user=ctx.user.id,
+                    current_hp=(
+                        pb["build"]["attributes"]["ancestryhp"]
+                        + pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushp"]
+                        + pb["build"]["attributes"]["bonushpPerLevel"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        + (
+                            (pb["build"]["level"] - 1)
+                            * (
+                                pb["build"]["attributes"]["classhp"]
+                                + pb["build"]["attributes"]["bonushpPerLevel"]
+                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                            )
                         )
-                    )
+                    ),
+                    max_hp=(
+                        pb["build"]["attributes"]["ancestryhp"]
+                        + pb["build"]["attributes"]["classhp"]
+                        + pb["build"]["attributes"]["bonushp"]
+                        + pb["build"]["attributes"]["bonushpPerLevel"]
+                        + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                        + (
+                            (pb["build"]["level"] - 1)
+                            * (
+                                pb["build"]["attributes"]["classhp"]
+                                + pb["build"]["attributes"]["bonushpPerLevel"]
+                                + floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                            )
+                        )
+                    ),
+                    temp_hp=0,
+                    char_class=pb["build"]["class"],
+                    level=pb["build"]["level"],
+                    ac_base=pb["build"]["acTotal"]["acTotal"],
+                    init=initiative_num,
+                    class_prof=pb["build"]["proficiencies"]["classDC"],
+                    class_dc=0,
+                    str=pb["build"]["abilities"]["str"],
+                    dex=pb["build"]["abilities"]["dex"],
+                    con=pb["build"]["abilities"]["con"],
+                    itl=pb["build"]["abilities"]["int"],
+                    wis=pb["build"]["abilities"]["wis"],
+                    cha=pb["build"]["abilities"]["cha"],
+                    fort_prof=pb["build"]["proficiencies"]["fortitude"],
+                    reflex_prof=pb["build"]["proficiencies"]["reflex"],
+                    will_prof=pb["build"]["proficiencies"]["will"],
+                    unarmored_prof=pb["build"]["proficiencies"]["unarmored"],
+                    light_armor_prof=pb["build"]["proficiencies"]["light"],
+                    medium_armor_prof=pb["build"]["proficiencies"]["medium"],
+                    heavy_armor_prof=pb["build"]["proficiencies"]["heavy"],
+                    unarmed_prof=pb["build"]["proficiencies"]["unarmed"],
+                    simple_prof=pb["build"]["proficiencies"]["simple"],
+                    martial_prof=pb["build"]["proficiencies"]["martial"],
+                    advanced_prof=pb["build"]["proficiencies"]["advanced"],
+                    arcane_prof=pb["build"]["proficiencies"]["castingArcane"],
+                    divine_prof=pb["build"]["proficiencies"]["castingDivine"],
+                    occult_prof=pb["build"]["proficiencies"]["castingOccult"],
+                    primal_prof=pb["build"]["proficiencies"]["castingPrimal"],
+                    acrobatics_prof=pb["build"]["proficiencies"]["acrobatics"],
+                    arcana_prof=pb["build"]["proficiencies"]["arcana"],
+                    athletics_prof=pb["build"]["proficiencies"]["athletics"],
+                    crafting_prof=pb["build"]["proficiencies"]["crafting"],
+                    deception_prof=pb["build"]["proficiencies"]["deception"],
+                    diplomacy_prof=pb["build"]["proficiencies"]["diplomacy"],
+                    intimidation_prof=pb["build"]["proficiencies"]["intimidation"],
+                    medicine_prof=pb["build"]["proficiencies"]["medicine"],
+                    nature_prof=pb["build"]["proficiencies"]["nature"],
+                    occultism_prof=pb["build"]["proficiencies"]["occultism"],
+                    perception_prof=pb["build"]["proficiencies"]["perception"],
+                    performance_prof=pb["build"]["proficiencies"]["performance"],
+                    religion_prof=pb["build"]["proficiencies"]["religion"],
+                    society_prof=pb["build"]["proficiencies"]["society"],
+                    stealth_prof=pb["build"]["proficiencies"]["stealth"],
+                    survival_prof=pb["build"]["proficiencies"]["survival"],
+                    thievery_prof=pb["build"]["proficiencies"]["thievery"],
+                    lores=lores,
+                    feats=feats,
+                    key_ability=pb["build"]["keyability"],
+                    attacks=attacks,
+                    spells=spell_library,
+                    resistance={"resist": {}, "weak": {}, "immune": {}},
+                    pic=image,
                 )
-                character.char_class = pb["build"]["class"]
-                character.level = pb["build"]["level"]
-                character.ac_base = pb["build"]["acTotal"]["acTotal"]
-                character.class_prof = pb["build"]["proficiencies"]["classDC"]
-                character.class_dc = 0
-                character.key_ability = pb["build"]["keyability"]
+                session.add(new_char)
+            await session.commit()
 
-                character.str = pb["build"]["abilities"]["str"]
-                character.dex = pb["build"]["abilities"]["dex"]
-                character.con = pb["build"]["abilities"]["con"]
-                character.itl = pb["build"]["abilities"]["int"]
-                character.wis = pb["build"]["abilities"]["wis"]
-                character.cha = pb["build"]["abilities"]["cha"]
+    await delete_intested_items(char_name, ctx, guild, engine)
+    for item in pb["build"]["equipment"]:
+        print(item)
+        await invest_items(item[0], char_name, ctx, guild, engine)
+    await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
-                character.fort_prof = pb["build"]["proficiencies"]["fortitude"]
-                character.reflex_prof = pb["build"]["proficiencies"]["reflex"]
-                character.will_prof = pb["build"]["proficiencies"]["will"]
+    await calculate(ctx, engine, char_name, guild=guild)
+    Character = await get_EPF_Character(char_name, ctx, guild, engine)
+    # await Character.update()
 
-                character.unarmored_prof = pb["build"]["proficiencies"]["unarmored"]
-                character.light_armor_prof = pb["build"]["proficiencies"]["light"]
-                character.medium_armor_prof = pb["build"]["proficiencies"]["medium"]
-                character.heavy_armor_prof = pb["build"]["proficiencies"]["heavy"]
+    if guild.initiative is not None:
+        # print("In initiative")
+        try:
+            await Character.roll_initiative()
+        except Exception:
+            logging.error("Error Rolling Initiative")
 
-                character.unarmed_prof = pb["build"]["proficiencies"]["unarmed"]
-                character.simple_prof = pb["build"]["proficiencies"]["simple"]
-                character.martial_prof = pb["build"]["proficiencies"]["martial"]
-                character.advanced_prof = pb["build"]["proficiencies"]["advanced"]
-
-                character.arcane_prof = pb["build"]["proficiencies"]["castingArcane"]
-                character.divine_prof = pb["build"]["proficiencies"]["castingDivine"]
-                character.occult_prof = pb["build"]["proficiencies"]["castingOccult"]
-                character.primal_prof = pb["build"]["proficiencies"]["castingPrimal"]
-
-                character.acrobatics_prof = pb["build"]["proficiencies"]["acrobatics"]
-                character.arcana_prof = pb["build"]["proficiencies"]["arcana"]
-                character.athletics_prof = pb["build"]["proficiencies"]["athletics"]
-                character.crafting_prof = pb["build"]["proficiencies"]["crafting"]
-                character.deception_prof = pb["build"]["proficiencies"]["deception"]
-                character.diplomacy_prof = pb["build"]["proficiencies"]["diplomacy"]
-                character.intimidation_prof = pb["build"]["proficiencies"]["intimidation"]
-                character.medicine_prof = pb["build"]["proficiencies"]["medicine"]
-                character.nature_prof = pb["build"]["proficiencies"]["nature"]
-                character.occultism_prof = pb["build"]["proficiencies"]["occultism"]
-                character.perception_prof = pb["build"]["proficiencies"]["perception"]
-                character.performance_prof = pb["build"]["proficiencies"]["performance"]
-                character.religion_prof = pb["build"]["proficiencies"]["religion"]
-                character.society_prof = pb["build"]["proficiencies"]["society"]
-                character.stealth_prof = pb["build"]["proficiencies"]["stealth"]
-                character.survival_prof = pb["build"]["proficiencies"]["survival"]
-                character.thievery_prof = pb["build"]["proficiencies"]["thievery"]
-
-                character.lores = lores
-                character.feats = feats
-                character.attacks = attacks
-                character.spells = spell_library
-                if image is not None:
-                    character.pic = image
-
-                await session.commit()
-
-        else:  # Create a new character
-            async with async_session() as session:
-                async with session.begin():
-                    new_char = EPF_tracker(
-                        name=char_name,
-                        player=True,
-                        user=ctx.user.id,
-                        current_hp=(
-                            pb["build"]["attributes"]["ancestryhp"]
-                            + pb["build"]["attributes"]["classhp"]
-                            + pb["build"]["attributes"]["bonushp"]
-                            + pb["build"]["attributes"]["bonushpPerLevel"]
-                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                            + (
-                                (pb["build"]["level"] - 1)
-                                * (
-                                    pb["build"]["attributes"]["classhp"]
-                                    + pb["build"]["attributes"]["bonushpPerLevel"]
-                                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                                )
-                            )
-                        ),
-                        max_hp=(
-                            pb["build"]["attributes"]["ancestryhp"]
-                            + pb["build"]["attributes"]["classhp"]
-                            + pb["build"]["attributes"]["bonushp"]
-                            + pb["build"]["attributes"]["bonushpPerLevel"]
-                            + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                            + (
-                                (pb["build"]["level"] - 1)
-                                * (
-                                    pb["build"]["attributes"]["classhp"]
-                                    + pb["build"]["attributes"]["bonushpPerLevel"]
-                                    + floor((pb["build"]["abilities"]["con"] - 10) / 2)
-                                )
-                            )
-                        ),
-                        temp_hp=0,
-                        char_class=pb["build"]["class"],
-                        level=pb["build"]["level"],
-                        ac_base=pb["build"]["acTotal"]["acTotal"],
-                        init=initiative_num,
-                        class_prof=pb["build"]["proficiencies"]["classDC"],
-                        class_dc=0,
-                        str=pb["build"]["abilities"]["str"],
-                        dex=pb["build"]["abilities"]["dex"],
-                        con=pb["build"]["abilities"]["con"],
-                        itl=pb["build"]["abilities"]["int"],
-                        wis=pb["build"]["abilities"]["wis"],
-                        cha=pb["build"]["abilities"]["cha"],
-                        fort_prof=pb["build"]["proficiencies"]["fortitude"],
-                        reflex_prof=pb["build"]["proficiencies"]["reflex"],
-                        will_prof=pb["build"]["proficiencies"]["will"],
-                        unarmored_prof=pb["build"]["proficiencies"]["unarmored"],
-                        light_armor_prof=pb["build"]["proficiencies"]["light"],
-                        medium_armor_prof=pb["build"]["proficiencies"]["medium"],
-                        heavy_armor_prof=pb["build"]["proficiencies"]["heavy"],
-                        unarmed_prof=pb["build"]["proficiencies"]["unarmed"],
-                        simple_prof=pb["build"]["proficiencies"]["simple"],
-                        martial_prof=pb["build"]["proficiencies"]["martial"],
-                        advanced_prof=pb["build"]["proficiencies"]["advanced"],
-                        arcane_prof=pb["build"]["proficiencies"]["castingArcane"],
-                        divine_prof=pb["build"]["proficiencies"]["castingDivine"],
-                        occult_prof=pb["build"]["proficiencies"]["castingOccult"],
-                        primal_prof=pb["build"]["proficiencies"]["castingPrimal"],
-                        acrobatics_prof=pb["build"]["proficiencies"]["acrobatics"],
-                        arcana_prof=pb["build"]["proficiencies"]["arcana"],
-                        athletics_prof=pb["build"]["proficiencies"]["athletics"],
-                        crafting_prof=pb["build"]["proficiencies"]["crafting"],
-                        deception_prof=pb["build"]["proficiencies"]["deception"],
-                        diplomacy_prof=pb["build"]["proficiencies"]["diplomacy"],
-                        intimidation_prof=pb["build"]["proficiencies"]["intimidation"],
-                        medicine_prof=pb["build"]["proficiencies"]["medicine"],
-                        nature_prof=pb["build"]["proficiencies"]["nature"],
-                        occultism_prof=pb["build"]["proficiencies"]["occultism"],
-                        perception_prof=pb["build"]["proficiencies"]["perception"],
-                        performance_prof=pb["build"]["proficiencies"]["performance"],
-                        religion_prof=pb["build"]["proficiencies"]["religion"],
-                        society_prof=pb["build"]["proficiencies"]["society"],
-                        stealth_prof=pb["build"]["proficiencies"]["stealth"],
-                        survival_prof=pb["build"]["proficiencies"]["survival"],
-                        thievery_prof=pb["build"]["proficiencies"]["thievery"],
-                        lores=lores,
-                        feats=feats,
-                        key_ability=pb["build"]["keyability"],
-                        attacks=attacks,
-                        spells=spell_library,
-                        resistance={"resist": {}, "weak": {}, "immune": {}},
-                        pic=image,
-                    )
-                    session.add(new_char)
-                await session.commit()
-
-        await delete_intested_items(char_name, ctx, guild, engine)
-        for item in pb["build"]["equipment"]:
-            print(item)
-            await invest_items(item[0], char_name, ctx, guild, engine)
-        await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
-
-        await calculate(ctx, engine, char_name, guild=guild)
-        Character = await get_EPF_Character(char_name, ctx, guild, engine)
-        # await Character.update()
-
-        if guild.initiative is not None:
-            # print("In initiative")
-            try:
-                await Character.roll_initiative()
-            except Exception:
-                logging.error("Error Rolling Initiative")
-
-        return True
-    except Exception:
-        return False
+    return True
+    # except Exception:
+    #     return False
 
 
 async def calculate(ctx, engine, char_name, guild=None):
