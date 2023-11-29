@@ -74,10 +74,10 @@ class PF2Cog(commands.Cog):
                     logging.info("Imported")
                     print(response)
                     if response:
-                        await Tracker_Model.update_pinned_tracker()
                         Character_Model = await get_character(name, ctx, engine=engine)
                         success.set_thumbnail(url=Character_Model.pic)
                         await ctx.send_followup(embed=success)
+                        await Tracker_Model.update_pinned_tracker()
                         logging.info("Import Successful")
                     else:
                         await ctx.send_followup("Import Failed")
@@ -100,16 +100,16 @@ class PF2Cog(commands.Cog):
         elif url is not None:
             try:
                 guild = await get_guild(ctx, None)
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 if guild.system == "EPF":
                     response = await EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                    await Tracker_Model.update_pinned_tracker()
                 else:
                     response = False
                 if response:
                     Character_Model = await get_character(name, ctx, engine=engine)
                     success.set_thumbnail(url=Character_Model.pic)
                     await ctx.send_followup(embed=success)
+                    await Tracker_Model.update_pinned_tracker()
                 else:
                     await ctx.send_followup("Error importing character.")
             except sqlalchemy.exc.NoResultFound:

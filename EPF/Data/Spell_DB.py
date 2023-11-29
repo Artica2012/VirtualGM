@@ -349,4 +349,169 @@ Cantrips = {
     ],
 }
 
-Psychic_Cantrips = {}
+Psychic_Cantrips = {
+    "astral rain": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Astral Rain (Bludgeoning)",
+            "lvl": 3,
+            "traits": ["cantrip", "evocation", "force", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "reflex", "type": "basic"},
+            "effect": {
+                "failure": "2d4+scmod bludgeoning",
+            },
+            "heighten": {"interval": 1, "effect": "1d4 bludgeoning,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Astral Rain (Piercing)",
+            "lvl": 3,
+            "traits": ["cantrip", "evocation", "force", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "reflex", "type": "basic"},
+            "effect": {
+                "failure": "2d4+scmod piercing",
+            },
+            "heighten": {"interval": 1, "effect": "1d4 piercing,"},
+        },
+    ],
+    "imaginary weapon": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Imaginary Weapon",
+            "lvl": 1,
+            "traits": ["cantrip", "attack", "evocation", "uncommon", "force", "psychic"],
+            "type": {"value": "attack"},
+            "effect": {"success": "1d8+scmod bludgeoning"},
+            "heighten": {"interval": 1, "effect": "1d8 bludgeoning"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Imaginary Weapon (Amped",
+            "lvl": 1,
+            "traits": ["cantrip", "attack", "evocation", "uncommon", "force", "psychic"],
+            "type": {"value": "attack"},
+            "effect": {"success": "1d8+scmod bludgeoning"},
+            "heighten": {"interval": 1, "effect": "2d8 bludgeoning"},
+        },
+    ],
+    "redistribute potential": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Redistribute Potential (Heat)",
+            "lvl": 5,
+            "traits": ["cantrip", "evocation", "cold", "fire", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "4d4 fire, enfeebled 1 duration: 1 unit: round flex myturn stable",
+            },
+            "heighten": {"interval": 1, "effect": "1d4 fire,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Redistribute Potential (Cold)",
+            "lvl": 5,
+            "traits": ["cantrip", "evocation", "cold", "fire", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "4d4 cold, clumsy 1 duration: 1 unit: round flex myturn stable",
+            },
+            "heighten": {"interval": 1, "effect": "1d4 cold,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Redistribute Potential (Heat) (Amped)",
+            "lvl": 5,
+            "traits": ["cantrip", "evocation", "cold", "fire", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "6d6 fire, enfeebled 1 duration: 1 unit: round flex myturn stable ",
+            },
+            "heighten": {"interval": 1, "effect": "2d6 fire,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Redistribute Potential (Cold) (Amped)",
+            "lvl": 5,
+            "traits": ["cantrip", "evocation", "cold", "fire", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "6d6 cold, clumsy 1 duration: 1 unit: round flex myturn stable ",
+            },
+            "heighten": {"interval": 1, "effect": "2d6 cold,"},
+        },
+    ],
+    "shatter mind": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Shatter Mind",
+            "lvl": 3,
+            "traits": ["cantrip", "evocation", "psychic", "mental", "uncommon"],
+            "type": {"value": "save", "save": "will", "type": "basic"},
+            "effect": {
+                "failure": "2d4+scmod mental",
+            },
+            "heighten": {"interval": 1, "effect": "1d4 mental,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Shatter Mind (Amped)",
+            "lvl": 3,
+            "traits": ["cantrip", "evocation", "psychic", "mental", "uncommon"],
+            "type": {"value": "save", "save": "will", "type": "basic"},
+            "effect": {
+                "failure": "2d10+scmod mental, stupefied 1 duration: 1 unit: round myturn flex stable",
+                "critical failure": "2d10+scmod mental, stupefied 2 duration: 1 unit: round myturn flex stable",
+            },
+            "heighten": {"interval": 1, "effect": "1d10 mental,"},
+        },
+    ],
+    "telekinetic rend": [
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Telekinetic Rend (Slashing)",
+            "lvl": 1,
+            "traits": ["cantrip", "evocation", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "1d6 slashing",
+            },
+            "heighten": {"interval": 2, "effect": "1d6 slashing,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Telekinetic Rend (Bludgeoning)",
+            "lvl": 1,
+            "traits": ["cantrip", "evocation", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "1d6 bludgeoning",
+            },
+            "heighten": {"interval": 2, "effect": "1d6 bludgeoning,"},
+        },
+        {
+            "complex": True,
+            "category": "spell",
+            "title": "Telekinetic Rend (Amped)",
+            "lvl": 1,
+            "traits": ["cantrip", "evocation", "psychic", "uncommon"],
+            "type": {"value": "save", "save": "fortitude", "type": "basic"},
+            "effect": {
+                "failure": "1d6 slashing, 1d6 bludgeoning",
+                "critical failure": "1d6 slashing, 1d6 bludgeoning, stunned 1 unit: round auto flex",
+            },
+            "heighten": {"interval": 2, "effect": "1d6 slashing, 1d6 bludgeoning"},
+        },
+    ],
+}
