@@ -47,6 +47,7 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
                 .where(Tracker.active == true())
                 .order_by(Tracker.init.desc())
                 .order_by(Tracker.init_string.desc())
+                .order_by(Tracker.id)
             )
             init_list = result.scalars().all()
             # for item in init_list:
@@ -82,6 +83,7 @@ class D4e_Tracker(Tracker):
                     .where(Tracker.active == true())
                     .order_by(Tracker.init.desc())
                     .order_by(Tracker.init_string.desc())
+                    .order_by(Tracker.id)
                 )
                 init_list = result.scalars().all()
                 # for item in init_list:
