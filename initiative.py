@@ -92,7 +92,6 @@ class InitiativeCog(commands.Cog):
         number: int = 1,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        response = False
         player_bool = False
         if player == "player":
             player_bool = True
@@ -101,38 +100,21 @@ class InitiativeCog(commands.Cog):
 
         if number > 26:
             number = 26
-        embeds = []
 
         try:
             Utilities = await get_utilities(ctx, engine=engine)
-            for x in range(0, number):
-                if number > 1:
-                    modifier = f" {utils.NPC_Iterator[x]}"
-                else:
-                    modifier = ""
-                try:
-                    new_hp = d20.roll(f"{hp}").total
-                    response = await Utilities.add_character(
-                        self.bot, f"{name}{modifier}", new_hp, player_bool, initiative, image=image
-                    )
-                except Exception as e:
-                    logging.warning(f"char add {e}")
-                    report = ErrorReport(ctx, "/char add", e, self.bot)
-                    await report.report()
 
-                if response:
-                    success = discord.Embed(
-                        title=f"{name}{modifier}".title(),
-                        fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
-                        color=discord.Color.dark_gold(),
-                    )
-                    try:
-                        Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
-                        success.set_thumbnail(url=Character_Model.pic)
-                        embeds.append(success)
-                    except AttributeError:
-                        pass
-            await ctx.respond(embeds=embeds)
+            try:
+                # new_hp = d20.roll(f"{hp}").total
+                await Utilities.add_character(
+                    self.bot, f"{name}", hp, player_bool, initiative, image=image, multi=number
+                )
+            except Exception as e:
+                logging.warning(f"char add {e}")
+                report = ErrorReport(ctx, "/char add", e, self.bot)
+                await report.report()
+
+            # await ctx.respond("Creating Character")
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:

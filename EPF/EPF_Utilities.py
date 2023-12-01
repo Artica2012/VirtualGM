@@ -13,7 +13,7 @@ class EPF_Utilities(Utilities):
     def __init__(self, ctx, guild, engine):
         super().__init__(ctx, guild, engine)
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         await self.ctx.channel.send("Please use `/pf2 import character` or `/pf2 add_npc` to add a character")
         return False
 

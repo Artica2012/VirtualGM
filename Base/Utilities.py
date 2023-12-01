@@ -2,13 +2,17 @@ import asyncio
 import logging
 
 import d20
+import discord
 from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import Base.Character
 from database_models import get_tracker, get_condition, get_macro, Character_Vault
 from error_handling_reporting import error_not_initialized, ErrorReport
+from utils import utils
+from utils.Char_Getter import get_character
 
 
 class Utilities:
@@ -21,7 +25,7 @@ class Utilities:
         self.guild = guild
         self.engine = engine
 
-    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None):
+    async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         """
         Adds a character into the database.
 
@@ -33,38 +37,71 @@ class Utilities:
         :param image: string - Link
         :return: boolean - True for sucess, false for failure
         """
+
+        if "multi" in kwargs.keys():
+            multi = kwargs["multi"]
+        else:
+            multi = 1
+        embeds = []
+
         logging.info("add_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-            initiative = 0
-            if self.guild.initiative is not None:
-                try:
-                    roll = d20.roll(init)
-                    initiative = roll.total
-                except ValueError:
-                    await self.ctx.channel.send(f"Invalid Initiative String `{init}`, Please check and try again.")
-                    return False
-                except Exception:
-                    initiative = 0
+            for x in range(0, multi):
+                if multi > 1:
+                    modifier = f" {utils.NPC_Iterator[x]}"
+                else:
+                    modifier = ""
 
-            async with async_session() as session:
-                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-                async with session.begin():
-                    tracker = Tracker(
-                        name=name,
-                        init_string=init,
-                        init=initiative,
-                        player=player_bool,
-                        user=self.ctx.user.id,
-                        current_hp=hp,
-                        max_hp=hp,
-                        temp_hp=0,
-                        pic=image,
+                item_name = f"{name} {modifier}"
+
+                new_hp = d20.roll(f"{hp}").total
+                initiative = 0
+                if self.guild.initiative is not None:
+                    try:
+                        roll = d20.roll(init)
+                        initiative = roll.total
+                    except ValueError:
+                        await self.ctx.channel.send(f"Invalid Initiative String `{init}`, Please check and try again.")
+                        return False
+                    except Exception:
+                        initiative = 0
+
+                async with async_session() as session:
+                    Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                    async with session.begin():
+                        tracker = Tracker(
+                            name=item_name,
+                            init_string=init,
+                            init=initiative,
+                            player=player_bool,
+                            user=self.ctx.user.id,
+                            current_hp=new_hp,
+                            max_hp=new_hp,
+                            temp_hp=0,
+                            pic=image,
+                        )
+                        session.add(tracker)
+                    await session.commit()
+
+                    success = discord.Embed(
+                        title=item_name.title(),
+                        fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
+                        color=discord.Color.dark_gold(),
                     )
-                    session.add(tracker)
-                await session.commit()
-
+                    try:
+                        Character_Model = await get_character(item_name, self.ctx, engine=self.engine)
+                        success.set_thumbnail(url=Character_Model.pic)
+                    except AttributeError:
+                        success.set_thumbnail(url=Base.Character.default_pic)
+                    embeds.append(success)
+            print(len(embeds))
+            await self.ctx.respond(embeds=embeds[:9])
+            embeds = embeds[9:]
+            while len(embeds) > 0:
+                await self.ctx.channel.send(embeds=embeds[:9])
+                embeds = embeds[9:]
             return True
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
