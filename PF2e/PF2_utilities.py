@@ -10,6 +10,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import PF2e.PF2_Character
 from Base.Tracker import get_init_list
 from Base.Utilities import Utilities
 from database_models import get_tracker, get_condition
@@ -46,6 +47,7 @@ class PF2_Utilities(Utilities):
                 bot=bot,
                 title=name,
                 pic=image,
+                guild=self.guild,
                 multi=multi,
             )
             await self.ctx.send_modal(pf2Modal)
@@ -62,7 +64,9 @@ class PF2_Utilities(Utilities):
 
 
 class PF2AddCharacterModal(discord.ui.Modal):
-    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, pic, *args, **kwargs):
+    def __init__(
+        self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, pic, guild, multi, *args, **kwargs
+    ):
         self.name = name
         self.hp = hp
         self.init = init
@@ -72,10 +76,12 @@ class PF2AddCharacterModal(discord.ui.Modal):
         self.engine = engine
         self.bot = bot
         self.pic = pic
-        if "multi" in kwargs.keys():
-            self.number = kwargs["multi"]
+        self.guild = guild
+        if multi is not None:
+            self.number = multi
         else:
             self.number = 1
+
         super().__init__(
             discord.ui.InputText(
                 label="AC",
@@ -147,6 +153,8 @@ class PF2AddCharacterModal(discord.ui.Modal):
 
             if self.pic is not None:
                 embed.set_thumbnail(url=self.pic)
+            else:
+                embed.set_thumbnail(url=PF2e.PF2_Character.default_pic)
 
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
