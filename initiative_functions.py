@@ -47,9 +47,13 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
                 await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
                 return [None, None]
             else:
-                output_string = f"{cond.title}: {cond.number}"
+                if guild.system == "EPF":
+                    output_string = f"{cond.title}: {cond.value}"
+                else:
+                    output_string = f"{cond.title}: {cond.number}"
                 view.add_item(ConditionMinus(ctx, bot, character, condition, guild))
                 view.add_item(ConditionAdd(ctx, bot, character, condition, guild))
+                print(output_string, view)
                 return output_string, view
     except NoResultFound:
         if ctx is not None:
@@ -70,7 +74,6 @@ async def increment_cc(
 
     try:
         guild = await get_guild(ctx, guild)
-        Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -95,18 +98,25 @@ async def increment_cc(
                 select(Condition).where(Condition.character_id == character).where(Condition.title == condition)
             )
             condition = result.scalars().one()
-            current_value = condition.number
 
             if condition.time or condition.number is None:
                 await ctx.send_followup("Unable to edit. Try again in a future update.", ephemeral=True)
                 return False
+
+            if guild.system == "EPF":
+                current_value = condition.value
+                if add is True:
+                    condition.value = current_value + 1
+                else:
+                    condition.value = current_value - 1
+                await session.commit()
             else:
+                current_value = condition.number
                 if add is True:
                     condition.number = current_value + 1
                 else:
                     condition.number = current_value - 1
                 await session.commit()
-        await Tracker_Model.update_pinned_tracker()
 
         return True
     except NoResultFound:
@@ -131,11 +141,12 @@ class ConditionMinus(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         try:
+            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
+            await interaction.response.defer()
             await increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
             output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
-            print(output[0])
-            await interaction.response.edit_message(content=output[0], view=output[1])
-            # await Tracker_Model.update_pinned_tracker()
+            await interaction.edit_original_response(content=output[0], view=output[1])
+            await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             print(f"Error: {e}")
             logging.info(e)
@@ -152,12 +163,13 @@ class ConditionAdd(discord.ui.Button):
         super().__init__(style=discord.ButtonStyle.primary, emoji="➕")
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         try:
+            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
             await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
             output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
-            print(output[0])
-            await interaction.response.edit_message(content=output[0], view=output[1])
-        # await Tracker_Model.update_pinned_tracker()
+            await interaction.edit_original_response(content=output[0], view=output[1])
+            await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             print(f"Error: {e}")
             logging.info(e)
