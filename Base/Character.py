@@ -235,6 +235,7 @@ class Character:
         """
         logging.info("Calculate hp")
         try:
+            # print(self.current_hp, self.max_hp)
             hp = self.current_hp / self.max_hp
             if hp == 1:
                 hp_string = "Uninjured"
@@ -248,7 +249,7 @@ class Character:
                 hp_string = "Dead"
         except Exception:
             hp_string = ""
-
+        # print(hp_string)
         return hp_string
 
     async def add_thp(self, amount: int):

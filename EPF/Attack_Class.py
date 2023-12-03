@@ -18,6 +18,23 @@ from utils.parsing import ParseModifiers
 from utils.utils import get_guild
 
 
+class Attack_Data:
+    def __init__(self, dmg_string, total_damage, success_string, attack_output_string):
+        self.dmg_string = dmg_string
+        self.total_damage = total_damage
+        self.success_string = success_string
+        self.output = attack_output_string
+
+    def __str__(self):
+        return self.output
+
+    def __int__(self):
+        return self.total_damage
+
+    def __float__(self):
+        return self.total_damage
+
+
 class AutoModel:
     def __init__(self, ctx, guild, character: EPF_Character, attack_name: str, attack_data: dict):
         self.ctx = ctx
@@ -91,11 +108,15 @@ class AutoModel:
             await self.ctx.channel.send(embed=embed)
 
     async def format_output(self, Attack_Data, Target_Model: EPF_Character):
+        # print("Formatting Output", Target_Model.current_hp, await Target_Model.calculate_hp())
         if Attack_Data.dmg_string is not None:
             dmg_output_string = f"{self.character.char_name} damages {Target_Model.char_name} for:"
             for item in Attack_Data.dmg_string:
                 dmg_output_string += f"\n{item['dmg_output_string']} {item['dmg_type'].title()}"
             await Target_Model.change_hp(Attack_Data.total_damage, heal=False, post=False)
+            await Target_Model.update()
+            # print(Target_Model.current_hp)
+            # print(await Target_Model.calculate_hp())
             if Target_Model.player:
                 output = (
                     f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
@@ -115,7 +136,7 @@ class AutoModel:
             color=self.success_color(Attack_Data.success_string),
         )
         embed.set_thumbnail(url=self.character.pic)
-
+        # print(output)
         self.output = embed
 
     async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
@@ -395,7 +416,7 @@ class AutoModel:
                     except KeyError:
                         # print("error")
                         pass
-                print(heighten_data)
+                # print(heighten_data)
         else:
             heighten = 0
         return (heighten_data, heighten)
@@ -757,9 +778,8 @@ class Attack(AutoModel):
             else:
                 Data = Attack_Data(None, 0, success_string, "ERROR")
         else:
+            # print("simple damage")
             Data = await self.simple_dmg(Target_Model, modifier, healing, damage_type, crit)
-
-        await Target_Model.change_hp(Data.total_damage, healing, post=False)
 
         await self.format_output(Data, Target_Model)
 
@@ -767,11 +787,13 @@ class Attack(AutoModel):
 
     async def simple_dmg(self, Target_Model, modifier, healing, damage_type: str, crit=False, weapon=None):
         try:
+            # print("I'm simple damage")
             roll_result: d20.RollResult = d20.roll(f"({self.attack_name}){ParseModifiers(modifier)}")
             dmg = roll_result.total
             if not healing:
                 dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
             roll_string = f"{roll_result} {damage_type}"
+            dmg_output = [{"dmg_output_string": roll_string, "dmg_type": damage_type}]
         except Exception:
             try:
                 dmg_output, total_damage = await roll_dmg_resist(
@@ -789,20 +811,15 @@ class Attack(AutoModel):
                     dmg = roll_result.total
                     if not healing:
                         dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
-                    roll_string = f"{roll_result} {damage_type}"
+                    roll_string = f"{roll_result}"
+                    dmg_output = [{"dmg_output_string": roll_string, "dmg_type": damage_type}]
                 except Exception:
                     roll_result = d20.roll("0 [Error]")
                     dmg = roll_result.total
                     roll_string = roll_result
+                    dmg_output = [{"dmg_output_string": roll_string, "dmg_type": damage_type}]
 
-        output_string = (
-            f"{self.character.char_name} {'heals' if healing else 'damages'}  {Target_Model.char_name} for:"
-            f" \n{roll_string}"
-            f"\n{f'{dmg} Damage' if not healing else f'{dmg} Healed'}\n"
-            f"{await Target_Model.calculate_hp()}"
-        )
-
-        return Attack_Data(None, dmg, None, output_string)
+        return Attack_Data(dmg_output, dmg, None, "")
 
     async def auto(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
@@ -867,23 +884,6 @@ class Attack(AutoModel):
             total_damage = 0
 
         return Attack_Data(dmg_string, total_damage, success_string, attk_output_string)
-
-
-class Attack_Data:
-    def __init__(self, dmg_string, total_damage, success_string, attack_output_string):
-        self.dmg_string = dmg_string
-        self.total_damage = total_damage
-        self.success_string = success_string
-        self.output = attack_output_string
-
-    def __str__(self):
-        return self.output
-
-    def __int__(self):
-        return self.total_damage
-
-    def __float__(self):
-        return self.total_damage
 
 
 # Spell Subclass
@@ -1144,7 +1144,7 @@ async def legacy_roll_spell_dmg_resist(
 
             dmg_rolls[key] = {}
             dmg_rolls[key]["damage_string"] = spell_dmg[key]["dmg_string"]
-            print(dmg_rolls[key])
+            # print(dmg_rolls[key])
             if half:
                 dmg_rolls[key]["damage_roll"] = d20.roll(f"({dmg_rolls[key]['damage_string']})/2")
             else:
