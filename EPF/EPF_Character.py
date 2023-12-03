@@ -1074,20 +1074,30 @@ class EPF_Character(Character):
         return embeds
 
     async def change_hp(self, amount: int, heal: bool, post=True):
+        # print(self.current_hp)
+        # print(await self.calculate_hp())
         if self.character_model.eidolon:
+            # print("eidolon")
             Partner = await get_EPF_Character(
                 self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
             )
             await Partner.change_hp(amount, heal, post)
             await self.set_hp(Partner.current_hp)
+            await self.update()
+            # print(self.current_hp)
+            # print(await self.calculate_hp())
             return True
         else:
+            # print("Not Eidolon")
             await super().change_hp(amount, heal, post)
             if self.character_model.partner is not None:
                 Eidolon = await get_EPF_Character(
                     self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
                 )
                 await Eidolon.set_hp(self.current_hp)
+            await self.update()
+            # print(self.current_hp)
+            # print(await self.calculate_hp())
             return True
 
     # Set the initiative
