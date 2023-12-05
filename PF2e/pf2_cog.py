@@ -16,6 +16,7 @@ import initiative
 import utils.utils
 from EPF.EPF_Character import pb_import, calculate
 from EPF.EPF_NPC_Importer import epf_npc_lookup
+from PF2e import pf2_wanderer_lookup
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
 from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
@@ -286,17 +287,25 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Failed")
 
     @pf2.command(description="Pathfinder Lookup")
-    @option("category", description="category", required=True, choices=endpoints)
+    @option("category", description="category", required=True, choices=pf2_wanderer_lookup.endpoints.keys())
     @option("query", description="Lookup")
     @option("private", description="Keep Lookup private (True), or allow the world to see (False).")
     async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str, private: bool = True):
         await ctx.response.defer(ephemeral=private)
         try:
-            lookup = PF2_Lookup(os.environ["LOOKUP_KEY"])
-            paginator = Paginator(pages=await lookup.embed_list(query=query, endpoint=category))
-            await paginator.respond(ctx.interaction, ephemeral=private)
+            Wanderer = pf2_wanderer_lookup.Wanderer(os.environ["WANDERER_CLIENT_ID"], os.environ["WANDERER_API_KEY"])
+            await ctx.send_followup(embeds=await Wanderer.wander(category, query=query))
+        #     lookup = PF2_Lookup(os.environ["LOOKUP_KEY"])
+        #     paginator = Paginator(pages=await lookup.embed_list(query=query, endpoint=category))
+        #     await paginator.respond(ctx.interaction, ephemeral=private)
         except Exception as e:
-            await ctx.send_followup("Lookup Failed. No Results.", ephemeral=private)
+            await ctx.send_followup(
+                (
+                    "**WARNING: THERE IS A NEW LOOKUP DATABASE**\nThis requires an exact match to the "
+                    "search query. \n\nLookup Failed. No Results."
+                ),
+                ephemeral=private,
+            )
             logging.info(f"pf2_lookup {query} {category}: {e}")
             report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
             await report.report()
