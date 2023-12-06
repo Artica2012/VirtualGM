@@ -44,6 +44,7 @@ class AutoModel:
         self.attack = attack_data
         self.output = None
         self.level = 0
+        self.heal = False
 
     def success_color(self, success_string):
         if success_string == "Critical Success":
@@ -110,21 +111,22 @@ class AutoModel:
     async def format_output(self, Attack_Data, Target_Model: EPF_Character):
         # print("Formatting Output", Target_Model.current_hp, await Target_Model.calculate_hp())
         if Attack_Data.dmg_string is not None:
-            dmg_output_string = f"{self.character.char_name} damages {Target_Model.char_name} for:"
+            dmg_output_string = (
+                f"{self.character.char_name} {'damages' if not self.heal else 'heals'} {Target_Model.char_name} for:"
+            )
             for item in Attack_Data.dmg_string:
                 dmg_output_string += f"\n{item['dmg_output_string']} {item['dmg_type'].title()}"
-            await Target_Model.change_hp(Attack_Data.total_damage, heal=False, post=False)
+            await Target_Model.change_hp(Attack_Data.total_damage, heal=self.heal, post=False)
             await Target_Model.update()
-            # print(Target_Model.current_hp)
-            # print(await Target_Model.calculate_hp())
+
             if Target_Model.player:
                 output = (
-                    f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
+                    f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} {'damaged' if not self.heal else 'healed'} for"
                     f" {Attack_Data.total_damage}.New HP: {Target_Model.current_hp}/{Target_Model.max_hp}"
                 )
             else:
                 output = (
-                    f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} damaged for"
+                    f"{Attack_Data.output}\n{dmg_output_string}\n{Target_Model.char_name} {'damaged' if not self.heal else 'healed'} for"
                     f" {Attack_Data.total_damage}. {await Target_Model.calculate_hp()}"
                 )
         else:
@@ -136,6 +138,8 @@ class AutoModel:
             color=self.success_color(Attack_Data.success_string),
         )
         embed.set_thumbnail(url=self.character.pic)
+        if self.heal:
+            embed.color = discord.Color.green()
         # print(output)
         self.output = embed
 
@@ -765,6 +769,7 @@ class Attack(AutoModel):
 
     async def damage(self, target, modifier, healing, damage_type: str, crit=False):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        self.heal = healing
 
         if self.complex:
             if crit:
