@@ -3,22 +3,21 @@
 # system specific module
 
 import logging
-import os
 
 import discord
 import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from discord.ext.pages import Page, Paginator
+from discord.ext.pages import Paginator
 import EPF.EPF_GSHEET_Importer
 import database_operations
 import initiative
 import utils.utils
-from EPF.EPF_Character import pb_import, calculate
+from EPF.EPF_Character import pb_import
 from EPF.EPF_NPC_Importer import epf_npc_lookup
-from PF2e import pf2_wanderer_lookup
 from PF2e.NPC_importer import npc_lookup
 from PF2e.pathbuilder_importer import pathbuilder_import
+from PF2e.pf2_db_lookup import WandererLookup
 from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
@@ -27,7 +26,6 @@ from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
-from PF2e.pf2_lookup import pf2_lookup_search, endpoints, PF2_Lookup
 
 
 class PF2Cog(commands.Cog):
@@ -287,27 +285,27 @@ class PF2Cog(commands.Cog):
             await ctx.send_followup("Failed")
 
     @pf2.command(description="Pathfinder Lookup")
-    @option("category", description="category", required=True, choices=pf2_wanderer_lookup.endpoints.keys())
+    # @option("category", description="category", required=True, choices=pf2_wanderer_lookup.endpoints.keys())
     @option("query", description="Lookup")
     @option("private", description="Keep Lookup private (True), or allow the world to see (False).")
-    async def lookup(self, ctx: discord.ApplicationContext, category: str, query: str, private: bool = True):
+    async def lookup(self, ctx: discord.ApplicationContext, query: str, private: bool = True):
         await ctx.response.defer(ephemeral=private)
         try:
-            Wanderer = pf2_wanderer_lookup.Wanderer(os.environ["WANDERER_CLIENT_ID"], os.environ["WANDERER_API_KEY"])
-            await ctx.send_followup(embeds=await Wanderer.wander(category, query=query))
-        #     lookup = PF2_Lookup(os.environ["LOOKUP_KEY"])
-        #     paginator = Paginator(pages=await lookup.embed_list(query=query, endpoint=category))
-        #     await paginator.respond(ctx.interaction, ephemeral=private)
+            # Wanderer = pf2_wanderer_lookup.Wanderer(os.environ["WANDERER_CLIENT_ID"], os.environ["WANDERER_API_KEY"])
+            # await ctx.send_followup(embeds=await Wanderer.wander(category, query=query))
+            Lookup = WandererLookup()
+            paginator = Paginator(pages=await Lookup.lookup(query))
+            await paginator.respond(ctx.interaction, ephemeral=private)
         except Exception as e:
             await ctx.send_followup(
                 (
-                    "**WARNING: THERE IS A NEW LOOKUP DATABASE**\nThis requires an exact match to the "
-                    "search query. \n\nLookup Failed. No Results."
+                    "**WARNING: THERE IS A NEW LOOKUP DATABASE**\nPlease alert if there are issues \n\nLookup Failed."
+                    " No Results."
                 ),
                 ephemeral=private,
             )
-            logging.info(f"pf2_lookup {query} {category}: {e}")
-            report = ErrorReport(ctx, f"pf2_lookup {query} {category}", e, self.bot)
+            logging.info(f"pf2_lookup {query}: {e}")
+            report = ErrorReport(ctx, f"pf2_lookup_new {query}", e, self.bot)
             await report.report()
 
 

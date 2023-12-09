@@ -897,3 +897,12 @@ class NPC(LookupBase):
     will = Column(Integer())
     dc = Column(Integer())
     macros = Column(String())
+
+
+class PF2_Lookup(LookupBase):
+    __tablename__ = "pf2_lookup_data"
+    # Columns
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    name = Column(String(), unique=True)
+    endpoint = Column(String())
+    data = Column(JSON())
