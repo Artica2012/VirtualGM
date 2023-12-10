@@ -26,6 +26,7 @@ from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
 from utils.utils import get_guild
+from EPF.Wanderer_Import import WandererImporter, get_WandeerImporter
 
 
 class PF2Cog(commands.Cog):
@@ -38,8 +39,15 @@ class PF2Cog(commands.Cog):
     @option("name", description="Character Name", required=True)
     @option("pathbuilder_id", description="Pathbuilder Export ID")
     @option("url", description="Public Google Sheet URL")
+    @option("wanderer", description="Wanderer's Guide Export File", required=False)
     async def import_character(
-        self, ctx: discord.ApplicationContext, name: str, pathbuilder_id: int = None, url: str = None, image: str = None
+        self,
+        ctx: discord.ApplicationContext,
+        name: str,
+        pathbuilder_id: int = None,
+        url: str = None,
+        wanderer: discord.Attachment = None,
+        image: str = None,
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
@@ -49,7 +57,10 @@ class PF2Cog(commands.Cog):
             fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
             color=discord.Color.dark_gold(),
         )
-        if pathbuilder_id is None and url is None:
+        if wanderer is not None:
+            Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
+            await Wanderer.import_character()
+        elif pathbuilder_id is None and url is None:
             await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
         elif pathbuilder_id is not None:
             try:
