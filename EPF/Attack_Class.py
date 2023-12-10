@@ -387,6 +387,9 @@ class AutoModel:
         # heightening code
         heighten_data = {}
         heighten = 0
+        if self.attack["lvl"] == 0:
+            self.attack["lvl"] = 1
+
         # print(success_string)
         if "heighten" in self.attack.keys():
             if "interval" in self.attack["heighten"]:
