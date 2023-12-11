@@ -59,7 +59,18 @@ class PF2Cog(commands.Cog):
         )
         if wanderer is not None:
             Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
-            await Wanderer.import_character()
+            response = await Wanderer.import_character()
+
+            if response:
+                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Character_Model = await get_character(name, ctx, engine=engine)
+                success.set_thumbnail(url=Character_Model.pic)
+                await ctx.send_followup(embed=success)
+                await Tracker_Model.update_pinned_tracker()
+                logging.info("Import Successful")
+            else:
+                await ctx.send_followup("Import Failed")
+
         elif pathbuilder_id is None and url is None:
             await ctx.send_followup("Error, Please input either the pathbuilder ID, or the G-sheet url.")
         elif pathbuilder_id is not None:
