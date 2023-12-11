@@ -42,7 +42,7 @@ class WandererImporter:
         # print(self.data)
 
     async def import_character(self):
-        guild = get_guild(self.ctx, None)
+        guild = await get_guild(self.ctx, None)
         EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -174,7 +174,7 @@ class WandererImporter:
                     "mat": item["materialType"],
                 }
 
-                edited_attack = self.attack_lookup(weapon)
+                edited_attack = await self.attack_lookup(weapon)
                 # print(weapon)
                 weapons[item["name"]] = edited_attack
         print(weapons)
@@ -204,11 +204,38 @@ class WandererImporter:
             if spell["spellSRC"].lower() == output["class"].lower():
                 spell_name = spell["_spellName"]
                 spell_data = await EPF_retreive_complex_data(spell_name)
-                for s in spell_data:
-                    data = s.data
-                    data["ability"] = stat.lower()
-                    data["trad"] = trad.lower()
-                    spell_library[s.display_name] = data
+                if len(spell_data) > 0:
+                    for s in spell_data:
+                        data = s.data
+                        data["ability"] = stat.lower()
+                        data["trad"] = trad.lower()
+                        spell_library[s.display_name] = data
+                else:
+                    spell_data = await EPF.EPF_Character.spell_lookup(spell_name)
+                    match trad:  # noqa
+                        case "ARCANE":
+                            prof = output["proficiencies"]["arcaneprof"]
+                        case "DIVINE":
+                            prof = output["proficienceis"]["divineprof"]
+                        case "PRIMAL":
+                            prof = output["proficienceis"]["primalprof"]
+                        case "OCCULT":
+                            prof = output["proficienceis"]["occultprof"]
+                        case _:
+                            prof = 0
+
+                    if spell_data[0] is True:
+                        spell = {
+                            "level": 0,
+                            "tradition": trad.lower(),
+                            "ability": stat.lower(),
+                            "proficiency": prof,
+                            "type": spell_data[1].type,
+                            "save": spell_data[1].save,
+                            "damage": spell_data[1].damage,
+                            "heightening": spell_data[1].heightening,
+                        }
+                        spell_library[spell_name] = spell
 
         print(spell_library)
         output["spells"] = spell_library
