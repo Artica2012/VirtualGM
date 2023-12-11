@@ -62,16 +62,20 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
             dmg_type = "physical"
             # print(dmg_type)
 
-    dmg_list = [dmg_type.lower(), "all-damage", mat]
-    exception_list = [mat]
+    if mat != "":
+        exception_list = [mat]
+        dmg_list = [dmg_type.lower(), "all-damage", mat]
+    else:
+        dmg_list = [dmg_type.lower(), "all-damage"]
+        exception_list = []
     if weapon is not None:
-        print(weapon["runes"])
+        # print(weapon["runes"])
         if "Ghost Touch" in weapon["runes"]:
             exception_list.append("ghost-touch")
             dmg_list.append("ghost-touch")
 
     # print(dmg_list)
-    # [print(exception_list)]
+    # print(exception_list)
     # Remaster Conversion Code
     if dmg_type.lower() == "negative":
         dmg_list.append("void")
@@ -96,7 +100,10 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: EPF.EPF_Character.EPF_C
                             exempt = True
                             # print(e, "exempt")
                 if not exempt:
+                    # print('not exempt')
+                    # print(dmg)
                     dmg = dmg - target.resistance[item]["r"]
+                    # print(dmg)
                     if dmg < 0:
                         dmg = 0
 
