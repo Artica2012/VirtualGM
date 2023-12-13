@@ -186,56 +186,81 @@ class WandererImporter:
 
         output["attacks"] = weapons
 
+        spell_casting_classes = []
+        for item in self.data["metaData"]:
+            if (
+                "PREPARED-BOOK" in item["value"]
+                or "SPONTANEOUS-REPERTOIRE" in item["value"]
+                or "PREPARED-LIST" in item["value"]
+            ):
+                sp_class = item["value"].split("=")[0]
+                spell_casting_classes.append(sp_class)
+                print("spellcasting class", sp_class)
+
         # Spell Stuff
         traditions = ["ARCANE", "DIVINE", "PRIMAL", "OCCULT"]
         skills = ["CON", "INT", "WIS", "CHA"]
 
-        trad = None
-        stat = None
-        for item in self.data["metaData"]:
-            if output["class"].upper() in item["value"]:
-                value = item["value"].split("=")[1]
-                if value in traditions:
-                    trad = value
-                elif value in skills:
-                    stat = value
+        sp_db = []
+        for sp_class in spell_casting_classes:
+            name = sp_class
+            trad = None
+            stat = None
+            for item in self.data["metaData"]:
+                if sp_class.upper() in item["value"]:
+                    i = item["value"].split("=")[1]
+                    if i in traditions:
+                        trad = i
+                    elif i in skills:
+                        stat = i
+            sp_data = {"name": name, "trad": trad, "stat": stat}
+            sp_db.append(sp_data)
+
+        spells = {}
+        for spell in self.data["spellBookSpells"]:
+            for sp_class in sp_db:
+                if spell["spellSRC"].lower() == sp_class["name"].lower():
+                    spells[spell["_spellName"]] = {"trad": sp_class["trad"], "stat": sp_class["stat"]}
+        print(spells)
+
         spell_library = {}
         for spell in self.data["spellBookSpells"]:
-            if spell["spellSRC"].lower() == output["class"].lower():
-                spell_name = spell["_spellName"]
-                spell_data = await EPF_retreive_complex_data(spell_name)
-                if len(spell_data) > 0:
-                    for s in spell_data:
-                        data = s.data
-                        data["ability"] = stat.lower()
-                        data["trad"] = trad.lower()
-                        spell_library[s.display_name] = data
-                else:
-                    spell_data = await EPF.EPF_Character.spell_lookup(spell_name)
-                    match trad:  # noqa
-                        case "ARCANE":
-                            prof = output["proficiencies"]["arcaneprof"]
-                        case "DIVINE":
-                            prof = output["proficienceis"]["divineprof"]
-                        case "PRIMAL":
-                            prof = output["proficienceis"]["primalprof"]
-                        case "OCCULT":
-                            prof = output["proficienceis"]["occultprof"]
-                        case _:
-                            prof = 0
+            for sp_class in sp_db:
+                if spell["spellSRC"].lower() == sp_class["name"].lower():
+                    spell_name = spell["_spellName"]
+                    spell_data = await EPF_retreive_complex_data(spell_name)
+                    if len(spell_data) > 0:
+                        for s in spell_data:
+                            data = s.data
+                            data["ability"] = sp_class["stat"].lower()
+                            data["trad"] = sp_class["trad"].lower()
+                            spell_library[s.display_name] = data
+                    else:
+                        spell_data = await EPF.EPF_Character.spell_lookup(spell_name)
+                        match sp_class["trad"]:  # noqa
+                            case "ARCANE":
+                                prof = output["proficiencies"]["arcaneprof"]
+                            case "DIVINE":
+                                prof = output["proficiencies"]["divineprof"]
+                            case "PRIMAL":
+                                prof = output["proficiencies"]["primalprof"]
+                            case "OCCULT":
+                                prof = output["proficiencies"]["occultprof"]
+                            case _:
+                                prof = 0
 
-                    if spell_data[0] is True:
-                        spell = {
-                            "level": 0,
-                            "tradition": trad.lower(),
-                            "ability": stat.lower(),
-                            "proficiency": prof,
-                            "type": spell_data[1].type,
-                            "save": spell_data[1].save,
-                            "damage": spell_data[1].damage,
-                            "heightening": spell_data[1].heightening,
-                        }
-                        spell_library[spell_name] = spell
+                        if spell_data[0] is True:
+                            spell = {
+                                "level": spell_data[1].level,
+                                "tradition": sp_class["trad"].lower(),
+                                "ability": sp_class["stat"].lower(),
+                                "proficiency": prof,
+                                "type": spell_data[1].type,
+                                "save": spell_data[1].save,
+                                "damage": spell_data[1].damage,
+                                "heightening": spell_data[1].heightening,
+                            }
+                            spell_library[spell_name] = spell
 
         print(spell_library)
         output["spells"] = spell_library
@@ -354,23 +379,23 @@ class WandererImporter:
             character.occult_prof = output["proficiencies"]["occultprof"]
             character.primal_prof = output["proficiencies"]["primalprof"]
 
-            character.acrobatics_prof = output["proficiencies"]["Acrobatics"]
-            character.arcana_prof = output["proficiencies"]["Arcana"]
-            character.athletics_prof = output["proficiencies"]["Athletics"]
-            character.crafting_prof = output["proficiencies"]["Crafting"]
-            character.deception_prof = output["proficiencies"]["Deception"]
-            character.diplomacy_prof = output["proficiencies"]["Diplomacy"]
-            character.intimidation_prof = output["proficiencies"]["Intimidation"]
-            character.medicine_prof = output["proficiencies"]["Medicine"]
-            character.nature_prof = output["proficiencies"]["Nature"]
-            character.occultism_prof = output["proficiencies"]["Occultism"]
-            character.perception_prof = output["proficiencies"]["Perception"]
-            character.performance_prof = output["proficiencies"]["Performance"]
-            character.religion_prof = output["proficiencies"]["Religion"]
-            character.society_prof = output["proficiencies"]["Society"]
-            character.stealth_prof = output["proficiencies"]["Stealth"]
-            character.survival_prof = output["proficiencies"]["Survival"]
-            character.thievery_prof = output["proficiencies"]["Thievery"]
+            character.acrobatics_prof = output["skills"]["Acrobatics"]
+            character.arcana_prof = output["skills"]["Arcana"]
+            character.athletics_prof = output["skills"]["Athletics"]
+            character.crafting_prof = output["skills"]["Crafting"]
+            character.deception_prof = output["skills"]["Deception"]
+            character.diplomacy_prof = output["skills"]["Diplomacy"]
+            character.intimidation_prof = output["skills"]["Intimidation"]
+            character.medicine_prof = output["skills"]["Medicine"]
+            character.nature_prof = output["skills"]["Nature"]
+            character.occultism_prof = output["skills"]["Occultism"]
+            character.perception_prof = output["skills"]["Perception"]
+            character.performance_prof = output["skills"]["Performance"]
+            character.religion_prof = output["skills"]["Religion"]
+            character.society_prof = output["skills"]["Society"]
+            character.stealth_prof = output["skills"]["Stealth"]
+            character.survival_prof = output["skills"]["Survival"]
+            character.thievery_prof = output["skills"]["Thievery"]
 
             character.lores = output["lores"]
             character.feats = output["feats"]

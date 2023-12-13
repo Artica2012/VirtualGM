@@ -58,8 +58,11 @@ class PF2Cog(commands.Cog):
             color=discord.Color.dark_gold(),
         )
         if wanderer is not None:
-            Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
-            response = await Wanderer.import_character()
+            try:
+                Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
+                response = await Wanderer.import_character()
+            except Exception:
+                response = False
 
             if response:
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
