@@ -1729,7 +1729,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     key_ability=pb["build"]["keyability"],
                     attacks=attacks,
                     spells=spell_library,
-                    resistance={"resist": {}, "weak": {}, "immune": {}},
+                    resistance={},
                     pic=image,
                 )
                 session.add(new_char)
