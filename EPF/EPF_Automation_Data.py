@@ -12,7 +12,7 @@ class Automation_Data(Base):
     # ID Columns
     id = Column(Integer(), primary_key=True, autoincrement=True)
     name = Column(String())
-    display_name = Column(String())
+    display_name = Column(String(), unique=True)
     category = Column(String())
     traits = Column(String())
     level = Column(Integer())
