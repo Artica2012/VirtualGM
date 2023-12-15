@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import EPF.EPF_Character
+from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from EPF.EPF_Character import get_EPF_Character, delete_intested_items
 from database_models import get_tracker, LookupBase
 from utils.parsing import ParseModifiers
@@ -105,6 +106,20 @@ async def epf_npc_lookup(
         else:
             hp_mod = -30
         stat_mod = -2
+
+    spell_book = {}
+    for spell in data.spells.keys():
+        spell_data = await EPF_retreive_complex_data(spell)
+        if len(spell_data) > 0:
+            for s in spell_data:
+                complex_spell = s.data
+                complex_spell["ability"] = data.spells[spell]["ability"]
+                complex_spell["trad"] = "NPC"
+                complex_spell["dc"] = data.spells[spell]["dc"]
+                complex_spell["proficiency"] = data.spells[spell]["proficiency"]
+                spell_book[s.display_name] = complex_spell
+        else:
+            spell_book[spell] = data.spells[spell]
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

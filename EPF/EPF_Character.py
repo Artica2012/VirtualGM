@@ -632,6 +632,11 @@ class EPF_Character(Character):
                         self.character_model.bonuses,
                         False,
                     )
+                case "NPC":
+                    if mod:
+                        spmod = spell_data["proficiency"] + self.character_model.level
+                    else:
+                        spmod = spell_data["dc"] - 10 + self.character_model.level
 
                 case _:
                     proficiency = 0
