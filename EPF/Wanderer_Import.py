@@ -54,8 +54,10 @@ class WandererImporter:
             )
             character = query.scalars().all()
         if len(character) > 0:
+            overwrite = True
             await self.overwrite_character(output)
         else:
+            overwrite = False
             await self.write_character(output)
 
         await EPF.EPF_Character.write_bonuses(self.ctx, engine, guild, self.char_name, [])
@@ -63,13 +65,13 @@ class WandererImporter:
 
         Character = await EPF.EPF_Character.get_EPF_Character(self.char_name, self.ctx, guild, engine)
         # await Character.update()
-
-        if guild.initiative is not None:
-            # print("In initiative")
-            try:
-                await Character.roll_initiative()
-            except Exception:
-                logging.error("Error Rolling Initiative")
+        if not overwrite:
+            if guild.initiative is not None:
+                # print("In initiative")
+                try:
+                    await Character.roll_initiative()
+                except Exception:
+                    logging.error("Error Rolling Initiative")
 
         return True
 

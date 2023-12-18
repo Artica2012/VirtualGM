@@ -153,9 +153,12 @@ class Character:
         Rolls the initiative string and sets it in the database.
         :return: integer (Initiative Value)
         """
-        init = d20.roll(self.init_string).total
-        await self.set_init(init)
-        return init
+        if self.char_name != self.guild.saved_order:
+            init = d20.roll(self.init_string).total
+            await self.set_init(init)
+            return init
+        else:
+            return False
 
     async def change_hp(self, amount: int, heal: bool, post=True):
         """

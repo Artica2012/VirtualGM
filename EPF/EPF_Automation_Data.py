@@ -1,4 +1,7 @@
+import logging
+
 from sqlalchemy import Column, Integer, String, JSON, select, func
+from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -116,7 +119,19 @@ async def load_complex_data(data: dict):
 
 
 async def EPF_retreive_complex_data(search: str):
-    async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        query = await session.execute(select(Automation_Data).where(func.lower(Automation_Data.name) == search.lower()))
-        return query.scalars().all()
+    try:
+        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            query = await session.execute(
+                select(Automation_Data).where(func.lower(Automation_Data.name) == search.lower())
+            )
+            return query.scalars().all()
+    except InterfaceError as e:
+        logging.error(f"Lookup Database was unexpectedly closed. {e}")
+
+        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            query = await session.execute(
+                select(Automation_Data).where(func.lower(Automation_Data.name) == search.lower())
+            )
+            return query.scalars().all()
