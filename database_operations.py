@@ -36,7 +36,9 @@ url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{SERVER_DAT
 engine = create_async_engine(url, echo=False, pool_size=20, max_overflow=-1)
 lookup_url = f"postgresql+asyncpg://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DATABASE}"
 # print(f"Lookup URL: {lookup_url}")
-look_up_engine = create_async_engine(lookup_url, echo=False, pool_size=10, max_overflow=-1, query_cache_size=150)
+look_up_engine = create_async_engine(
+    lookup_url, echo=False, pool_size=10, max_overflow=-1, query_cache_size=150, pool_pre_ping=True
+)
 
 
 # Get the engine

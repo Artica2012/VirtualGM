@@ -321,6 +321,17 @@ class PF2Cog(commands.Cog):
             Lookup = WandererLookup()
             paginator = Paginator(pages=await Lookup.lookup(query))
             await paginator.respond(ctx.interaction, ephemeral=private)
+        except sqlalchemy.InterfaceError as e:
+            await ctx.send_followup(
+                (
+                    "There was a database error, please try your query again. If this continues to happen, "
+                    "please report it via the `/bug` command."
+                ),
+                ephemeral=private,
+            )
+            logging.error(f"INTERFACE ERROR, You didn't fix it: {e}")
+            report = ErrorReport(ctx, f"pf2_lookup_new INTERFACE ERROR: You Didn't Fix it. {query}", e, self.bot)
+            await report.report()
         except Exception as e:
             await ctx.send_followup(
                 (
