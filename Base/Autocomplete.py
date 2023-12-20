@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_tracker, get_macro, get_condition
+from database_models import get_tracker, get_macro, get_condition, Character_Vault
 from utils.Char_Getter import get_character
 
 
@@ -58,6 +58,42 @@ class AutoComplete:
         except Exception as e:
             logging.warning(f"epf character_select: {e}")
             return []
+
+    async def vault_search(self, **kwargs):
+        print("vault search")
+        output_list = []
+        if "gm" in kwargs.keys():
+            gm = kwargs["gm"]
+        else:
+            gm = False
+
+        # vault search
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Character_Vault)
+                .where(Character_Vault.user == self.ctx.interaction.user.id)
+                .where(Character_Vault.system == self.guild.system)
+                .where(Character_Vault.guild_id != self.guild.id)
+            )
+            vault_chars = result.scalars().all()
+
+            for item in vault_chars:
+                output_list.append(f"{item.name}, {item.guild_id}")
+
+        if gm:
+            char_list = await self.character_select(gm=gm)
+            output_list.extend(char_list)
+        print("output list:", output_list)
+
+        if self.ctx.value != "":
+            val = self.ctx.value.lower()
+            return [char for char in output_list if val in char.lower()]
+        else:
+            return output_list
+
+        return output_list
 
     async def npc_select(self, **kwargs):
         logging.info("character_select")

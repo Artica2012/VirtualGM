@@ -169,7 +169,7 @@ class InitiativeCog(commands.Cog):
         "name",
         description="Character Name",
         input_type=str,
-        autocomplete=character_select_gm,
+        autocomplete=auto_complete.character_vault_search,
     )
     @option("new_name", description="Name for the new NPC", input_type=str, required=True)
     async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str, number: int = 1):
@@ -191,14 +191,14 @@ class InitiativeCog(commands.Cog):
                 response = await Utilities.copy_character(name, f"{new_name}{modifier}")
                 if response:
                     this_success = success.copy()
-                    this_success.add_field(name=f"{name}{modifier}", value=f"Successfully copied.")
+                    this_success.add_field(name=f"{new_name}{modifier}", value=f"Successfully copied.")
                     Character_Model = await get_character(f"{new_name}{modifier}", ctx, engine=engine)
                     if Character_Model.player:
                         await Utilities.add_to_vault(Character_Model.char_name)
-                    this_success.set_thumbnail(url=Character_Model.pic)
-                    embeds.append(this_success)
-                else:
-                    raise Exception
+                        this_success.set_thumbnail(url=Character_Model.pic)
+                        embeds.append(this_success)
+                    else:
+                        raise Exception
             except Exception as e:
                 logging.warning(f"char copy {e}")
                 report = ErrorReport(ctx, "/char copy", e, self.bot)

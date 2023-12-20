@@ -104,6 +104,15 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
         return []
 
 
+async def character_vault_search(ctx: discord.AutocompleteContext):
+    print("triggered")
+    # try:
+    AutoComplete = await get_autocomplete(ctx)
+    return await AutoComplete.vault_search(gm=True)
+    # except Exception:
+    #     return []
+
+
 async def character_select_player(ctx: discord.AutocompleteContext):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     try:
