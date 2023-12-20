@@ -191,7 +191,7 @@ class InitiativeCog(commands.Cog):
                 response = await Utilities.copy_character(name, f"{new_name}{modifier}")
                 if response:
                     this_success = success.copy()
-                    this_success.add_field(name=f"{name}{modifier}", value=f"Successfully copied.")
+                    this_success.add_field(name=f"{new_name}{modifier}", value=f"Successfully copied.")
                     Character_Model = await get_character(f"{new_name}{modifier}", ctx, engine=engine)
                     if Character_Model.player:
                         await Utilities.add_to_vault(Character_Model.char_name)
