@@ -66,7 +66,7 @@ class Global(Base):
 
 
 # Tracker Get Function
-async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
+async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=None):
     if ctx is None and id is None:
         raise Exception
 
@@ -82,20 +82,25 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
+            system = guild.system
             # print(f"From CTX:{guild.id}")
         id = guild.id
     else:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            result = await session.execute(select(Global).where(Global.id == id))
-            guild = result.scalars().one()
-            # print(f"From ID:{guild.id}")
+        try:
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(Global.id == id))
+                guild = result.scalars().one()
+                print(f"From ID:{guild.id}")
+                system = guild.system
+        except Exception:
+            pass
 
-    if guild.system == "EPF":
+    if system == "EPF":
         return await get_EPF_tracker(ctx, engine, id=id)
-    elif guild.system == "RED":
+    elif system == "RED":
         return await get_RED_tracker(ctx, engine, id=id)
-    elif guild.system == "STF":
+    elif system == "STF":
         return await get_STF_tracker(ctx, engine, id=id)
     else:
         tablename = f"Tracker_{id}"

@@ -122,20 +122,27 @@ class Utilities:
             Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
             # Load up the old character
+
+            split_name = name.split(",")
             async with async_session() as session:
-                char_result = await session.execute(select(Tracker).where(Tracker.name == name))
-                character = char_result.scalars().one()
+                if len(split_name) > 1:
+                    character = await self.retreive_from_vault(name)
+                    guild_id = int(split_name[1])
+                else:
+                    char_result = await session.execute(select(Tracker).where(Tracker.name == name))
+                    character = char_result.scalars().one()
+                    guild_id = self.guild.id
 
-            # If initiative is active, roll initiative
-            initiative = 0
-            if self.guild.initiative is not None:
-                try:
-                    roll = d20.roll(character.init_string)
-                    initiative = roll.total
-                except Exception:
-                    initiative = 0
+                # If initiative is active, roll initiative
+                initiative = 0
+                if self.guild.initiative is not None:
+                    try:
+                        roll = d20.roll(character.init_string)
+                        initiative = roll.total
+                    except Exception:
+                        initiative = 0
 
-            # Copy the character over into a new character with a new name
+                # Copy the character over into a new character with a new name
             async with session.begin():
                 new_char = Tracker(
                     name=new_name,
@@ -158,8 +165,11 @@ class Utilities:
 
             # Copy conditions
             async with async_session() as session:
+                Search_Con = await get_condition(self.ctx, self.engine, id=guild_id)
                 con_result = await session.execute(
-                    select(Condition).where(Condition.character_id == character.id).where(Condition.visible == false())
+                    select(Search_Con)
+                    .where(Search_Con.character_id == character.id)
+                    .where(Search_Con.visible == false())
                 )
                 conditions = con_result.scalars().all()
 
@@ -180,7 +190,10 @@ class Utilities:
 
             # Copy Macros
             async with async_session() as session:
-                macro_result = await session.execute(select(Macro).where(Macro.character_id == character.id))
+                Search_Macro = await get_macro(self.ctx, self.engine, id=guild_id)
+                macro_result = await session.execute(
+                    select(Search_Macro).where(Search_Macro.character_id == character.id)
+                )
                 macros = macro_result.scalars().all()
 
             async with session.begin():
@@ -312,3 +325,19 @@ class Utilities:
             return True
         except Exception:
             return False
+
+    async def retreive_from_vault(self, char_name):
+        logging.info("retreiving from vault")
+
+        split_name = char_name.split(",")
+        name = split_name[0]
+        guild_id = int(split_name[1])
+        print(guild_id)
+
+        Tracker = await get_tracker(self.ctx, self.engine, id=guild_id, system=self.guild.system)
+
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == name))
+            character = result.scalars().one()
+        return character
