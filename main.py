@@ -25,7 +25,7 @@ from EPF.EPF_Automation_Data import upload_data
 # then its running locally and use the local postgres server and the beta token. This allows one .env and code for both
 # testing and production.
 
-import database_operations
+# import database_operations
 
 
 print(os.environ["PRODUCTION"])
@@ -65,7 +65,7 @@ async def on_ready():
     await upload_data(EPF.Data.Kineticist_DB.Kineticist_DB)
     await upload_data(EPF.Data.Spell_DB.Cantrips)
     await upload_data((EPF.Data.Spell_DB.Psychic_Cantrips))
-    await database_operations.update_global_manager()
+    # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
     # await database_operations.update_con_table()
     # database_operations.create_reminder_table()
