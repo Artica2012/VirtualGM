@@ -1442,121 +1442,121 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                             spell_library[spell_name] = spell
         for key in focus_spells.keys():
             print(key)
-            # try:
-            if type(focus_spells[key]) == dict:
-                if "wis" in focus_spells[key].keys():
-                    discriminator_list = []
-                    if "focusSpells" in focus_spells[key]["wis"].keys():
-                        discriminator_list.append("focusSpells")
-                    if "focusCantrips" in focus_spells[key]["wis"].keys():
-                        discriminator_list.append("focusCantrips")
-                    for discriminator in discriminator_list:
-                        for item in focus_spells[key]["wis"]["focusSpells"]:
-                            if "(Amped)" in item:
-                                lookup_name = item.strip("(Amped)")
-                            else:
-                                lookup_name = item
+            try:
+                if type(focus_spells[key]) == dict:
+                    if "wis" in focus_spells[key].keys():
+                        discriminator_list = []
+                        if "focusSpells" in focus_spells[key]["wis"].keys():
+                            discriminator_list.append("focusSpells")
+                        if "focusCantrips" in focus_spells[key]["wis"].keys():
+                            discriminator_list.append("focusCantrips")
+                        for discriminator in discriminator_list:
+                            for item in focus_spells[key]["wis"]["focusSpells"]:
+                                if "(Amped)" in item:
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    lookup_name = item
 
-                            spell_data = await EPF_retreive_complex_data(lookup_name)
-                            if len(spell_data) > 0:
-                                for s in spell_data:
-                                    data = s.data
-                                    data["ability"] = "wis"
-                                    data["trad"] = key
-                                    spell_library[s.display_name] = data
-                            else:
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "wis",
-                                        "proficiency": focus_spells[key]["wis"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
-                if "cha" in focus_spells[key].keys():
-                    print("cha")
-                    discriminator_list = []
-                    if "focusSpells" in focus_spells[key]["cha"].keys():
-                        discriminator_list.append("focusSpells")
-                    if "focusCantrips" in focus_spells[key]["cha"].keys():
-                        discriminator_list.append("focusCantrips")
+                                spell_data = await EPF_retreive_complex_data(lookup_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        data = s.data
+                                        data["ability"] = "wis"
+                                        data["trad"] = key
+                                        spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "wis",
+                                            "proficiency": focus_spells[key]["wis"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
+                    if "cha" in focus_spells[key].keys():
+                        print("cha")
+                        discriminator_list = []
+                        if "focusSpells" in focus_spells[key]["cha"].keys():
+                            discriminator_list.append("focusSpells")
+                        if "focusCantrips" in focus_spells[key]["cha"].keys():
+                            discriminator_list.append("focusCantrips")
 
-                    for discriminator in discriminator_list:
-                        for item in focus_spells[key]["cha"][discriminator]:
-                            print(item)
-                            if "(Amped)" in item:
-                                # print("amped")
-                                lookup_name = item.strip("(Amped)")
-                            else:
-                                # print("not amped")
-                                lookup_name = item
-                            print(lookup_name)
-                            spell_data = await EPF_retreive_complex_data(lookup_name)
-                            if len(spell_data) > 0:
-                                for s in spell_data:
-                                    data = s.data
-                                    data["ability"] = "cha"
-                                    data["trad"] = key
-                                    spell_library[s.display_name] = data
-                            else:
-                                spell_data = await spell_lookup(lookup_name)
-                                # print(spell_data[0])
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "cha",
-                                        "proficiency": focus_spells[key]["cha"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+                        for discriminator in discriminator_list:
+                            for item in focus_spells[key]["cha"][discriminator]:
+                                print(item)
+                                if "(Amped)" in item:
+                                    # print("amped")
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    # print("not amped")
+                                    lookup_name = item
+                                print(lookup_name)
+                                spell_data = await EPF_retreive_complex_data(lookup_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        data = s.data
+                                        data["ability"] = "cha"
+                                        data["trad"] = key
+                                        spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    # print(spell_data[0])
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "cha",
+                                            "proficiency": focus_spells[key]["cha"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
 
-                if "int" in focus_spells[key].keys():
-                    discriminator_list = []
-                    if "focusSpells" in focus_spells[key]["int"].keys():
-                        discriminator_list.append("focusSpells")
-                    if "focusCantrips" in focus_spells[key]["int"].keys():
-                        discriminator_list.append("focusCantrips")
-                    for discriminator in discriminator_list:
-                        for item in focus_spells[key]["int"]["focusSpells"]:
-                            if "(Amped)" in item:
-                                lookup_name = item.strip("(Amped)")
-                            else:
-                                lookup_name = item
+                    if "int" in focus_spells[key].keys():
+                        discriminator_list = []
+                        if "focusSpells" in focus_spells[key]["int"].keys():
+                            discriminator_list.append("focusSpells")
+                        if "focusCantrips" in focus_spells[key]["int"].keys():
+                            discriminator_list.append("focusCantrips")
+                        for discriminator in discriminator_list:
+                            for item in focus_spells[key]["int"]["focusSpells"]:
+                                if "(Amped)" in item:
+                                    lookup_name = item.strip("(Amped)")
+                                else:
+                                    lookup_name = item
 
-                            spell_data = await EPF_retreive_complex_data(lookup_name)
-                            if len(spell_data) > 0:
-                                for s in spell_data:
-                                    data = s.data
-                                    data["ability"] = "itl"
-                                    data["trad"] = key
+                                spell_data = await EPF_retreive_complex_data(lookup_name)
+                                if len(spell_data) > 0:
+                                    for s in spell_data:
+                                        data = s.data
+                                        data["ability"] = "itl"
+                                        data["trad"] = key
 
-                                    spell_library[s.display_name] = data
-                            else:
-                                spell_data = await spell_lookup(lookup_name)
-                                if spell_data[0] is True:
-                                    spell = {
-                                        "level": 0,
-                                        "tradition": key,
-                                        "ability": "itl",
-                                        "proficiency": focus_spells[key]["int"]["proficiency"],
-                                        "type": spell_data[1].type,
-                                        "save": spell_data[1].save,
-                                        "damage": spell_data[1].damage,
-                                        "heightening": spell_data[1].heightening,
-                                    }
-                                    spell_library[item] = spell
+                                        spell_library[s.display_name] = data
+                                else:
+                                    spell_data = await spell_lookup(lookup_name)
+                                    if spell_data[0] is True:
+                                        spell = {
+                                            "level": 0,
+                                            "tradition": key,
+                                            "ability": "itl",
+                                            "proficiency": focus_spells[key]["int"]["proficiency"],
+                                            "type": spell_data[1].type,
+                                            "save": spell_data[1].save,
+                                            "damage": spell_data[1].damage,
+                                            "heightening": spell_data[1].heightening,
+                                        }
+                                        spell_library[item] = spell
 
-            # except Exception:
-            #     pass
+            except Exception:
+                pass
 
         # Kineticist Specific Code (at least for now:
         # print(Kineticist_DB.keys())

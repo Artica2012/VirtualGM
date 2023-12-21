@@ -152,45 +152,48 @@ class Update_and_Maintenance_Cog(commands.Cog):
         logging.warning(await self.get_stats())
 
     async def get_stats(self):
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
-            guild = await session.execute(select(Global))
-            result = guild.scalars().all()
-            total = len(result)
+        try:
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            async with async_session() as session:
+                guild = await session.execute(select(Global))
+                result = guild.scalars().all()
+                total = len(result)
 
-        # counts
-        block = 0
-        time = 0
-        base = 0
-        EPF = 0
-        PF2 = 0
-        STF = 0
-        RED = 0
-        D4e = 0
+            # counts
+            block = 0
+            time = 0
+            base = 0
+            EPF = 0
+            PF2 = 0
+            STF = 0
+            RED = 0
+            D4e = 0
 
-        for item in result:
-            if item.block:
-                block += 1
-            if item.time:
-                time += 1
-            if item.system is None:
-                base += 1
-            if item.system == "EPF":
-                EPF += 1
-            if item.system == "PF2":
-                PF2 += 1
-            if item.system == "STF":
-                STF += 1
-            if item.system == "RED":
-                RED += 1
-            if item.system == "D4e":
-                D4e += 1
-        output = (
-            f"Total Tables: {total}\n"
-            f"Block: {block}, Time: {time} "
-            f"Base: {base}, EPF: {EPF}, PF2: {PF2}, STF: {STF}, RED: {RED}, D4e: {D4e}"
-        )
-        return output
+            for item in result:
+                if item.block:
+                    block += 1
+                if item.time:
+                    time += 1
+                if item.system is None:
+                    base += 1
+                if item.system == "EPF":
+                    EPF += 1
+                if item.system == "PF2":
+                    PF2 += 1
+                if item.system == "STF":
+                    STF += 1
+                if item.system == "RED":
+                    RED += 1
+                if item.system == "D4e":
+                    D4e += 1
+            output = (
+                f"Total Tables: {total}\n"
+                f"Block: {block}, Time: {time} "
+                f"Base: {base}, EPF: {EPF}, PF2: {PF2}, STF: {STF}, RED: {RED}, D4e: {D4e}"
+            )
+            return output
+        except Exception:
+            return ""
 
     async def force_refresh(self):
         print("Forcing Refresh")

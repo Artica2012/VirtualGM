@@ -5,17 +5,22 @@ import d20
 import discord
 import lark
 from lark import Lark
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from EPF.EPF_Character import EPF_Character, get_EPF_Character, bonus_calc
 from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from EPF.Lark import attack_grammer
 from PF2e.pf2_functions import PF2_eval_succss
+from database_models import Global
 from database_operations import engine
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
-from utils.utils import get_guild
+from utils.utils import get_guild, direct_message
+from Bot import bot
 
 
 class Attack_Data:
@@ -45,6 +50,33 @@ class AutoModel:
         self.output = None
         self.level = 0
         self.heal = False
+
+    async def gm_log(self, Target_Model, Attack_Data):
+        if self.guild.audit_log is None:
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(Global.id == self.guild.id))
+
+                guild_result = result.scalars().one()
+
+                guild_result.audit_log = "GM"
+            await session.commit()
+
+            self.guild = guild_result
+
+        message = (
+            f"{self.character.char_name} v {Target_Model.char_name}:"
+            f" {self.attack_name}\n{'Damage: ' if not self.heal else 'Healing: '}{Attack_Data.total_damage}."
+            f" <{Target_Model.current_hp}/{Target_Model.max_hp}>"
+        )
+        if "DM" in self.guild.audit_log:
+            gm = bot.get_user(int(self.guild.gm))
+            await direct_message(gm, message)
+
+        if "GM" in self.guild.audit_log:
+            gm_channel = bot.get_channel(int(self.guild.gm_tracker_channel))
+            await gm_channel.send(message)
 
     def success_color(self, success_string):
         if success_string == "Critical Success":
@@ -118,6 +150,7 @@ class AutoModel:
                 dmg_output_string += f"\n{item['dmg_output_string']} {item['dmg_type'].title()}"
             await Target_Model.change_hp(Attack_Data.total_damage, heal=self.heal, post=False)
             await Target_Model.update()
+            await self.gm_log(Target_Model, Attack_Data)
 
             if Target_Model.player:
                 output = (

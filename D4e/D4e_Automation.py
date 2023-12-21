@@ -2,14 +2,21 @@ import logging
 
 import d20
 import discord
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from Base.Automation import Automation
+from Bot import bot
+from database_models import Global
+from database_operations import engine
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.Macro_Getter import get_macro_object
 from utils.parsing import ParseModifiers
 from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
+from utils.utils import direct_message
 
 
 class D4e_Automation(Automation):
