@@ -1,6 +1,6 @@
 # auto_complete.py
 
-# Consolidating all of the autocompletes into one place.
+# Consolidating all the autocompletes into one place.
 
 import datetime
 
@@ -57,6 +57,7 @@ async def gm_check(ctx, engine):
 # returns a list of all characters
 async def character_select(ctx: discord.AutocompleteContext):
     try:
+        print("Char Select No GM")
         AutoComplete = await get_autocomplete(ctx)
         return await AutoComplete.character_select()
     except Exception:
@@ -106,11 +107,11 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
 
 async def character_vault_search(ctx: discord.AutocompleteContext):
     print("triggered")
-    # try:
-    AutoComplete = await get_autocomplete(ctx)
-    return await AutoComplete.vault_search(gm=True)
-    # except Exception:
-    #     return []
+    try:
+        AutoComplete = await get_autocomplete(ctx)
+        return await AutoComplete.vault_search(gm=True)
+    except Exception:
+        return []
 
 
 async def character_select_player(ctx: discord.AutocompleteContext):

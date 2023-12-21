@@ -58,6 +58,7 @@ class Global(Base):
     time_year = Column(Integer(), nullable=True)
     # Extra
     block_data = Column(JSON(), nullable=True)
+    audit_log = Column(String(), default="GM")
 
 
 #########################################

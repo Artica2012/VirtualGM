@@ -147,3 +147,16 @@ def relabel_roll(roll: str):
     except Exception:
         output = roll
     return output
+
+
+async def direct_message(user: discord.User, message: str, embeds=[]):
+    dm_channel = user.dm_channel
+    if dm_channel is None:
+        await user.create_dm()
+        dm_channel = user.dm_channel
+        await dm_channel.send(
+            "This is the beginning of your audit log with VirtualGM.  If you do not wish to see "
+            "these messages, it can be turned off in the `/admin options` command."
+        )
+
+    await dm_channel.send(message, embeds=embeds)
