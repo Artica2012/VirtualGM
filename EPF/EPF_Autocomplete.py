@@ -23,6 +23,8 @@ class EPF_Autocmplete(AutoComplete):
         super().__init__(ctx, engine, guild)
 
     async def character_select(self, **kwargs):
+        print("Char Select")
+
         if "all" in kwargs.keys():
             allnone = kwargs["all"]
         else:

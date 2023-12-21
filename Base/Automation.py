@@ -4,9 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_macro
+from Bot import bot
+from database_models import get_macro, Global
+from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
+from utils.utils import direct_message
 
 
 class Automation:
@@ -14,6 +17,29 @@ class Automation:
         self.ctx = ctx
         self.engine = engine
         self.guild = guild
+
+    async def gm_log(self, output_string, Target_Model):
+        if self.guild.audit_log is None:
+            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(Global.id == self.guild.id))
+
+                guild_result = result.scalars().one()
+
+                guild_result.audit_log = "GM"
+            await session.commit()
+
+            self.guild = guild_result
+
+        message = f"{output_string}. <{Target_Model.current_hp}/{Target_Model.max_hp}>"
+        if "DM" in self.guild.audit_log:
+            gm = bot.get_user(int(self.guild.gm))
+            await direct_message(gm, message)
+
+        if "GM" in self.guild.audit_log:
+            gm_channel = bot.get_channel(int(self.guild.gm_tracker_channel))
+            await gm_channel.send(message)
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
         return "Attack Function not set up for current system."
@@ -55,6 +81,7 @@ class Automation:
         await Target_Model.change_hp(roll_result.total, healing, post=False)
         # if not multi:
         #     await Tracker_Model.update_pinned_tracker()
+        await self.gm_log(output_string, Target_Model)
         return embed
 
     async def auto(

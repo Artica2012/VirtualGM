@@ -25,14 +25,25 @@ from utils.utils import gm_check, get_guild
 # define global variables
 
 
+async def option_autocomplete(ctx: discord.AutocompleteContext):
+    try:
+        module = ctx.options["module"]
+        if module == "Audit Log":
+            return ["GM Channel", "DM", "Both", "None"]
+        else:
+            return ["On", "Off"]
+    except Exception:
+        return []
+
+
 class OptionsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def display_options(self, timekeeping: bool, block: bool, system: str):
+    async def display_options(self, timekeeping: bool, block: bool, system: str, audit: str):
         embed = discord.Embed(
             title="Optional Modules",
-            description=f"Timekeeper: {timekeeping}\nBlock Initiative: {block}\nSystem: {system}",
+            description=f"Timekeeper: {timekeeping}\nBlock Initiative: {block}\nSystem: {system}\n Audit Log: {audit}",
         )
         return embed
 
@@ -169,13 +180,9 @@ class OptionsCog(commands.Cog):
     @setup.command(description="Optional Modules")
     @option(
         "module",
-        choices=[
-            "View Modules",
-            "Timekeeper",
-            "Block Initiative",
-        ],
+        choices=["View Modules", "Timekeeper", "Block Initiative", "Audit Log"],
     )
-    @option("toggle", choices=["On", "Off"], required=False)
+    @option("toggle", autocomplete=option_autocomplete, required=False)
     @option("time", description="Number of Seconds per round (optional)", required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
         # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
@@ -213,6 +220,19 @@ class OptionsCog(commands.Cog):
                     await Tracker_Model.update_pinned_tracker()
                 elif module == "Block Initiative":
                     guild.block = toggler
+                elif module == "Audit Log":
+                    match toggle:  # noqa
+                        case "GM Channel":
+                            audit = "GM"
+                        case "DM":
+                            audit = "DM"
+                        case "Both":
+                            audit = "DM, GM"
+                        case "None":
+                            audit = ""
+
+                    guild.audit_log = audit
+
                 else:
                     await ctx.send_followup("Invalid Entry", ephemeral=True)
                     return
@@ -234,7 +254,9 @@ class OptionsCog(commands.Cog):
             else:
                 system_str = "Base"
 
-            embed = await self.display_options(timekeeping=guild.timekeeping, block=guild.block, system=system_str)
+            embed = await self.display_options(
+                timekeeping=guild.timekeeping, block=guild.block, system=system_str, audit=guild.audit_log
+            )
             await ctx.send_followup(embed=embed)
 
         except NoResultFound:
