@@ -24,12 +24,14 @@ quoted: SINGLE_QUOTED_STRING
 break: ","
 
 
-roll_string: ROLL (POS_NEG ROLL)* [POS_NEG NUMBER]
+
+roll_string: PAREN? (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER))* | NUMBER) PAREN? (POS_NEG (NUMBER))?
 !save_string: "reflex" | "fort" | "will" | "flat"
 
 ROLL: NUMBER "d" NUMBER
 
-POS_NEG : ("+" | "-")
+POS_NEG : ("+" | "-" | "*" | "/")
+PAREN : ("("|")")
 
 DOUBLE_QUOTED_STRING  : /"[^"]*"/
 SINGLE_QUOTED_STRING  : /'[^']*'/
@@ -46,7 +48,6 @@ COMBO_WORD : WORD (("-" |"_") WORD)+
 %import common.WS
 %ignore WS
 """
-
 
 attack_grammer = """
 start: phrase+
@@ -79,12 +80,14 @@ quoted: SINGLE_QUOTED_STRING
 break: ","
 
 
-roll_string: (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER)
+
+roll_string: PAREN? (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER) PAREN? (POS_NEG (NUMBER | STAT_VAR))? 
 !save_string: "reflex" | "fort" | "will" | "flat"
 
 ROLL: NUMBER "d" NUMBER
 
-POS_NEG : ("+" | "-")
+POS_NEG : ("+" | "-" | "*" | "/")
+PAREN : ("("|")")
 STAT_VAR : ("str" | "dex" | "con" | "int" | "wis" | "cha" | "lvl" | "dc" | "key"| "scmod")
 
 DOUBLE_QUOTED_STRING  : /"[^"]*"/

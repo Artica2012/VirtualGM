@@ -217,55 +217,55 @@ class EPF_Character(Character):
             return f"1d20+{self.will_mod}"
         elif item == "class_dc":
             return f"1d20+{self.class_dc}"
-        elif item == "Acrobatics":
+        elif item == "Acrobatics" or item == "acrobatics":
             # print("d")
             return f"1d20+{self.acrobatics_mod}"
-        elif item == "Arcana":
+        elif item == "Arcana" or item == "arcana":
             # print("e")
             return f"1d20+{self.arcana_mod}"
-        elif item == "Athletics":
+        elif item == "Athletics" or item == "athletics":
             # print("f")
             return f"1d20+{self.athletics_mod}"
-        elif item == "Crafting":
+        elif item == "Crafting" or item == "crafting":
             # print("g")
             return f"1d20+{self.crafting_mod}"
-        elif item == "Deception":
+        elif item == "Deception" or item == "deception":
             # print("h")
             return f"1d20+{self.deception_mod}"
-        elif item == "Diplomacy":
+        elif item == "Diplomacy" or item == "diplomacy":
             # print("i")
             return f"1d20+{self.diplomacy_mod}"
-        elif item == "Intimidation":
+        elif item == "Intimidation" or item == "intimidation":
             # print("j")
             return f"1d20+{self.intimidation_mod}"
-        elif item == "Medicine":
+        elif item == "Medicine" or item == "medicine":
             # print("k")
             return f"1d20+{self.medicine_mod}"
-        elif item == "Nature":
+        elif item == "Nature" or item == "nature":
             # print("l")
             return f"1d20+{self.nature_mod}"
-        elif item == "Occultism":
+        elif item == "Occultism" or item == "occultism":
             # print("m")
             return f"1d20+{self.occultism_mod}"
-        elif item == "Perception":
+        elif item == "Perception" or item == "perception":
             # print("n")
             return f"1d20+{self.perception_mod}"
-        elif item == "Performance":
+        elif item == "Performance" or item == "performance":
             # print("o")
             return f"1d20+{self.performance_mod}"
-        elif item == "Religion":
+        elif item == "Religion" or item == "religion":
             # print("p")
             return f"1d20+{self.religion_mod}"
-        elif item == "Society":
+        elif item == "Society" or item == "society":
             # print("q")
             return f"1d20+{self.society_mod}"
-        elif item == "Stealth":
+        elif item == "Stealth" or item == "stealth":
             # print("r")
             return f"1d20+{self.stealth_mod}"
-        elif item == "Survival":
+        elif item == "Survival" or item == "survival":
             # print("s")
             return f"1d20+{self.survival_mod}"
-        elif item == "Thievery":
+        elif item == "Thievery" or item == "thievery":
             # print("t")
             return f"1d20+{self.thievery_mod}"
         elif "Lore" in item:
@@ -504,54 +504,54 @@ class EPF_Character(Character):
             mod = self.fort_mod
         elif item == "Reflex" or item == "reflex":
             mod = self.reflex_mod
-        elif item == "Will" or item == "reflex":
+        elif item == "Will" or item == "will":
             mod = self.will_mod
         elif item == "class_dc":
             mod = self.class_dc
-        elif item == "Acrobatics":
+        elif item == "Acrobatics" or item == "acrobatics":
             mod = self.acrobatics_mod
-        elif item == "Arcana":
+        elif item == "Arcana" or item == "arcana":
             mod = self.arcana_mod
-        elif item == "Athletics":
+        elif item == "Athletics" or item == "athletics":
             mod = self.athletics_mod
-        elif item == "Crafting":
+        elif item == "Crafting" or item == "crafting":
             mod = self.crafting_mod
-        elif item == "Deception":
+        elif item == "Deception" or item == "deception":
             mod = self.deception_mod
-        elif item == "Diplomacy":
+        elif item == "Diplomacy" or item == "diplomacy":
             # print("i")
             mod = self.diplomacy_mod
-        elif item == "Intimidation":
+        elif item == "Intimidation" or item == "intimidation":
             # print("j")
             mod = self.intimidation_mod
-        elif item == "Medicine":
+        elif item == "Medicine" or item == "medicine":
             # print("k")
             mod = self.medicine_mod
-        elif item == "Nature":
+        elif item == "Nature" or item == "nature":
             # print("l")
             mod = self.nature_mod
-        elif item == "Occultism":
+        elif item == "Occultism" or item == "occultism":
             # print("m")
             mod = self.occultism_mod
-        elif item == "Perception":
+        elif item == "Perception" or item == "perception":
             # print("n")
             mod = self.perception_mod
-        elif item == "Performance":
+        elif item == "Performance" or item == "performance":
             # print("o")
             mod = self.performance_mod
-        elif item == "Religion":
+        elif item == "Religion" or item == "religion":
             # print("p")
             mod = self.religion_mod
-        elif item == "Society":
+        elif item == "Society" or item == "society":
             # print("q")
             mod = self.society_mod
-        elif item == "Stealth":
+        elif item == "Stealth" or item == "stealth":
             # print("r")
             mod = self.stealth_mod
-        elif item == "Survival":
+        elif item == "Survival" or item == "survival":
             # print("s")
             mod = self.survival_mod
-        elif item == "Thievery":
+        elif item == "Thievery" or item == "theivery":
             # print("t")
             mod = self.thievery_mod
         else:
