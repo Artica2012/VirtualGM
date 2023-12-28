@@ -16,6 +16,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import database_operations
 import time_keeping_functions
 from Base.Character import Character
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
@@ -71,7 +72,7 @@ default_pic = (
 async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        engine = database_operations.engine
     guild = await get_guild(ctx, guild)
     EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -82,7 +83,17 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
             return EPF_Character(char_name, ctx, engine, character, guild=guild)
 
     except NoResultFound:
-        return None
+        try:
+            char_name = f"{char_name} "
+            async with async_session() as session:
+                result = await session.execute(
+                    select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower())
+                )
+                character = result.scalars().one()
+                return EPF_Character(char_name, ctx, engine, character, guild=guild)
+
+        except NoResultFound:
+            return None
 
 
 # A class to hold the data model and functions involved in the enhanced pf2 features

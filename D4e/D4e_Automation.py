@@ -33,6 +33,7 @@ class D4e_Automation(Automation):
             roll = roll_list[1]
 
         char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+
         try:
             Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
             roll_string: str = f"({await Macro_Model.get_macro(character, roll)}){ParseModifiers(attack_modifier)}"

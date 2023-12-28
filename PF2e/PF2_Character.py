@@ -55,7 +55,28 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
             return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:
-        return None
+        try:
+            char_name = f"{char_name} "
+            async with async_session() as session:
+                result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
+                character = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == character.id)
+                    .where(Condition.visible == false())
+                    .order_by(Condition.title.asc())
+                )
+                stat_list = result.scalars().all()
+                # print(len(stat_list))
+                stats = {"AC": 0, "Fort": 0, "Reflex": 0, "Will": 0, "DC": 0}
+                for item in stat_list:
+                    stats[f"{item.title}"] = item.number
+                # print(stats)
+                return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
+
+        except NoResultFound:
+            return None
 
 
 class PF2_Character(Character):
