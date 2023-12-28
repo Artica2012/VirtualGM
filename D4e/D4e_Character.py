@@ -22,6 +22,7 @@ default_pic = (
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
+    print(char_name)
     logging.info("Generating D4e_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -49,7 +50,27 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
             return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
 
     except NoResultFound:
-        return None
+        try:
+            char_name = f"{char_name} "
+            async with async_session() as session:
+                result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
+                character = result.scalars().one()
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == character.id)
+                    .where(Condition.visible == false())
+                    .order_by(Condition.title.asc())
+                )
+                stat_list = result.scalars().all()
+                # print(len(stat_list))
+                stats = {}
+                for item in stat_list:
+                    stats[f"{item.title}"] = item.number
+                # print(stats)
+                return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
+        except NoResultFound:
+            return None
 
 
 class D4e_Character(Character):
