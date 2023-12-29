@@ -2293,7 +2293,10 @@ async def process_condition_tree(
     ctx: discord.ApplicationContext, tree, character_model, condition, bonuses: dict, resistances: dict
 ):
     t = tree.iter_subtrees_topdown()
+    print(tree.pretty())
     for branch in t:
+        # print(branch)
+        # print(branch.data)
         if branch.data == "skill_bonus":
             bonus_data = {}
             for item in branch.children:
@@ -2341,8 +2344,8 @@ async def process_condition_tree(
             # print(bonuses)
 
         elif branch.data == "hardness":
-            print("HARDNESS")
-            print(branch.children)
+            # print("HARDNESS")
+            # print(branch.children)
             if "other" in bonuses.keys():
                 bonuses["other"]["hardness"] = int(branch.children[0].value)
             else:
@@ -2362,12 +2365,22 @@ async def process_condition_tree(
                     await character_model.set_cc(new_con_name.title(), False, num, "Round", False)
 
         elif branch.data == "item_bonus":
+            print("ITEM BONUS BEING PARSED!!!!")
             bonus_data = {}
             for item in branch.children:
                 if type(item) == lark.Token:
+                    print(item)
                     if item.type == "quoted":
-                        bonus_data["item"] = item.value.strip('"')
-                    if item.type == "WORD":
+                        print("QUOTED")
+                        print(item.value)
+                        val = ""
+                        for x in item.value:
+                            if x not in ['"', "\\", " "]:
+                                val += x
+                        print(val)
+                        bonus_data["item"] = val
+                        print(bonus_data["item"])
+                    elif item.type == "WORD":
                         bonus_data["skill"] = item.value
                     elif item.type == "SIGNED_INT":
                         bonus_data["value"] = int(item.value)
@@ -2376,7 +2389,18 @@ async def process_condition_tree(
                     elif item.type == "SPECIFIER":
                         bonus_data["specifier"] = item.value
                 elif type(item) == lark.Tree:
-                    bonus_data["item"] = item.children[0].value
+                    print(item.children)
+                    print(item.children[0].value.strip())
+                    val = ""
+                    for x in item.children[0].value:
+                        if x not in ['"', "\\", " "]:
+                            val += x
+                    print(val)
+                    bonus_data["item"] = val
+                    print(bonus_data["item"])
+
+                    # bonus_data["item"] = item.children[0].value
+            print(bonus_data)
 
             if f"{bonus_data['item']},{bonus_data['skill']}" not in bonuses.keys():
                 bonuses[f"{bonus_data['item']},{bonus_data['skill']}"] = {
