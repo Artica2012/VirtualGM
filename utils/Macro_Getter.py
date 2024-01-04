@@ -8,6 +8,7 @@ from Base.Macro import Macro
 from EPF.EPF_Macro import EPF_Macro
 from STF.STF_Macro import STF_Macro
 from PF2e.PF2_Macro import PF2_Macro
+from D4e.D4e_Macro import D4e_Macro
 
 
 async def get_macro_object(ctx, engine=None, guild=None):
@@ -18,6 +19,8 @@ async def get_macro_object(ctx, engine=None, guild=None):
 
     if guild.system == "EPF":
         return EPF_Macro(ctx, engine, guild)
+    elif guild.system == "D4e":
+        return D4e_Macro(ctx, engine, guild)
     elif guild.system == "PF2":
         return PF2_Macro(ctx, engine, guild)
     elif guild.system == "STF":

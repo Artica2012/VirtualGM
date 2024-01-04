@@ -121,6 +121,30 @@ class MacroCog(commands.Cog):
         else:
             await ctx.send_followup("Action Failed")
 
+    # Set Variables
+    @macro.command(description="Set Variables")
+    @option(
+        "character",
+        description="Character",
+        autocomplete=character_select,
+    )
+    @option("data", description="Variable string (var=value, var=value)", required=True)
+    async def set_var(self, ctx: discord.ApplicationContext, character: str, data: str):
+        await ctx.response.defer(ephemeral=True)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        Macro_Model = await get_macro_object(ctx, engine=engine)
+        result = False
+        try:
+            result = await Macro_Model.set_vars(character, data)
+        except Exception as e:
+            logging.warning(f"macro set_vars {e}")
+            report = ErrorReport(ctx, "/macro set_vars", e, self.bot)
+            await report.report()
+        if result:
+            await ctx.send_followup("Variables Set Successfully")
+        else:
+            await ctx.send_followup("Action Failed")
+
     @macro.command(description="Display Macros")
     @option(
         "character",
