@@ -208,6 +208,10 @@ class Macro:
 
         return embed
 
+    async def set_vars(self, character, vars):
+        await self.ctx.channel.send("This function is not available for the current system.")
+        return False
+
     async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
         logging.info(f"get_macro {character}, {macro_name}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

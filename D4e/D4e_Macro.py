@@ -7,31 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Base.Macro import Macro
-from PF2e.pf2_functions import PF2_eval_succss
-from EPF.EPF_Support import EPF_Success_colors
 from database_models import get_tracker, get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 from utils.utils import relabel_roll
 
-default_vars = {"u": 0, "t": 2, "e": 4, "m": 6, "l": 8}
+default_vars = {"t": 5}
 
 
-class PF2_Macro(Macro):
+class D4e_Macro(Macro):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
-
-    def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
-        # print(f"{roll} - {dc}")
-        success_string = PF2_eval_succss(roll, dc)
-        color = EPF_Success_colors(success_string)
-        return (
-            (
-                f"{':thumbsup:' if success_string == 'Critical Success' or success_string == 'Success' else ':thumbsdown:'} {roll} >="  # noqa
-                f" {dc} {success_string}!"
-            ),
-            color,
-        )
 
     async def set_vars(self, character, vars):
         try:
@@ -71,8 +57,10 @@ class PF2_Macro(Macro):
 
             if failure:
                 await self.ctx.channel.send(
-                    "```\nOne or more variables found in error. Syntax is name=value, name=value\nThe variables 'u, t,"
-                    " e, m,l' for untrained, trained, expert, master, legendary are already automatically included.```"
+                    "```\n"
+                    "One or more variables found in error. Syntax is name=value, name=value\n"
+                    "The variable 't' for trained is already automatically included."
+                    "```"
                 )
 
             return True
@@ -80,8 +68,10 @@ class PF2_Macro(Macro):
         except Exception as e:
             print(e)
             await self.ctx.channel.send(
-                "```\nOne or more variables found in error. Syntax is name=value, name=value\nThe variables 'u, t, e,"
-                " m,l' for untrained, trained, expert, master, legendary are already automatically included.```"
+                "```\n"
+                "One or more variables found in error. Syntax is name=value, name=value\n"
+                "The variable 't' for trained is already automatically included."
+                "```"
             )
             return False
 
