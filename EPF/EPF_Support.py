@@ -113,6 +113,7 @@ class PF2_Character_Model:
             db.Column("eidolon", db.BOOLEAN(), default=False),
             db.Column("partner", db.String(255)),
             db.Column("pic", db.String(), nullable=True),
+            db.Column("variables", db.JSON(), nullable=True),
         )
 
         logging.info("pf2_character_model_table")

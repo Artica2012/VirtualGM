@@ -124,6 +124,10 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
             init_string = Column(String(), nullable=True)
             active = Column(Boolean(), default=True)
             pic = Column(String(), nullable=True)
+            variables = Column(
+                JSON(),
+                nullable=True,
+            )
 
         logging.info("get_tracker: returning tracker")
         return Tracker
@@ -186,6 +190,7 @@ class TrackerTable:
             db.Column("init_string", db.String(255), nullable=True),
             db.Column("active", db.BOOLEAN, default=True),
             db.Column("pic", db.String(), nullable=True),
+            db.Column("variables", db.JSON(), nullable=True),
         )
         return emp
 
@@ -334,6 +339,7 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         eidolon = Column(Boolean(), default=False)
         partner = Column(String())
         pic = Column(String(), nullable=True)
+        variables = Column(JSON(), nullable=True)
 
     logging.info("get_tracker: returning tracker")
     return Tracker
@@ -461,6 +467,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
         bonuses = Column(JSON())
         resistance = Column(JSON())
         pic = Column(String(), nullable=True)
+        variables = Column(JSON(), nullable=True)
 
     logging.info("get_tracker: returning tracker")
     return Tracker
@@ -528,6 +535,7 @@ async def get_RED_tracker(ctx: discord.ApplicationContext, engine, id=None):
         pic = Column(String(), nullable=True)
         net_status = Column(Boolean(), default=False)
         tie_breaker = Column(Integer())
+        variables = Column(JSON(), nullable=True)
 
     logging.info("get_tracker: returning tracker RED")
     return Tracker

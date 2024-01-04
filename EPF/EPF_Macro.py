@@ -62,6 +62,7 @@ class EPF_Macro(Macro):
             # print(dice_result)
             if dice_result == 0:
                 embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
+                embed_list.append(embed)
             else:
                 if dc != 0:
                     roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))

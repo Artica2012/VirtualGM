@@ -101,6 +101,7 @@ class STF_Character_Model:
             db.Column("bonuses", db.JSON()),
             db.Column("resistance", db.JSON()),
             db.Column("pic", db.String(), nullable=True),
+            db.Column("variables", db.JSON(), nullable=True),
         )
 
         logging.info("stf_character_model_table")

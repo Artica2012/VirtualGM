@@ -46,6 +46,7 @@ class RED_Character_Model:
             db.Column("pic", db.String(), nullable=True),
             db.Column("net_status", db.BOOLEAN, default=False),
             db.Column("tie_breaker", db.INTEGER()),
+            db.Column("variables", db.JSON(), nullable=True),
         )
 
         logging.info("RED_character_model_table")
