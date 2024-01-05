@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Base.Macro import Macro
+from Base.Macro import Macro, macro_replace_vars, macro_vars_show
 from PF2e.pf2_functions import PF2_eval_succss
 from EPF.EPF_Support import EPF_Success_colors
 from database_models import get_tracker, get_macro
@@ -85,6 +85,19 @@ class PF2_Macro(Macro):
             )
             return False
 
+    async def show_vars(self, character):
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        display_string = macro_vars_show(Character_Model.character_model.variables)
+
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name="Variables", value=display_string)],
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
+
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info(f"roll_macro {character}, {macro_name}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -130,15 +143,11 @@ class PF2_Macro(Macro):
             try:
                 dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
             except Exception:
-                raw_macro = macro_data.macro.lower()
+                raw_macro = macro_data.macro
                 variables = Character_Model.character_model.variables
-                variables.update(default_vars)
+                replaced_macro = macro_replace_vars(raw_macro, variables, default_vars)
 
-                for key in variables.keys():
-                    if key in raw_macro:
-                        raw_macro = raw_macro.replace(key, str(variables[key]))
-
-                dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
+                dice_result = d20.roll(f"({replaced_macro}){ParseModifiers(modifier)}")
 
         if dc:
             roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
