@@ -163,6 +163,24 @@ class MacroCog(commands.Cog):
             await report.report()
             await ctx.send_followup("Error Displaying Character Sheet")
 
+    @macro.command(description="Display Macros")
+    @option(
+        "character",
+        description="Character",
+        autocomplete=character_select_gm,
+    )
+    async def show_vars(self, ctx: discord.ApplicationContext, character: str):
+        await ctx.response.defer(ephemeral=True)
+        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        Macro_Model = await get_macro_object(ctx, engine=engine)
+        try:
+            await ctx.send_followup(embed=await Macro_Model.show_vars(character), ephemeral=True)
+        except Exception as e:
+            logging.warning(f"macro show {e}")
+            report = ErrorReport(ctx, "/macro show", e, self.bot)
+            await report.report()
+            await ctx.send_followup("Error Displaying Variables")
+
     @commands.slash_command(name="m", description="Roll Macro")
     @option(
         "character",
