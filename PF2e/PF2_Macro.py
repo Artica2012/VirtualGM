@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Base.Macro import Macro, macro_replace_vars
+from Base.Macro import Macro, macro_replace_vars, macro_vars_show
 from PF2e.pf2_functions import PF2_eval_succss
 from EPF.EPF_Support import EPF_Success_colors
 from database_models import get_tracker, get_macro
@@ -84,6 +84,19 @@ class PF2_Macro(Macro):
                 " m,l' for untrained, trained, expert, master, legendary are already automatically included.```"
             )
             return False
+
+    async def show_vars(self, character):
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        display_string = macro_vars_show(Character_Model.character_model.variables)
+
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name="Variables", value=display_string)],
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info(f"roll_macro {character}, {macro_name}")

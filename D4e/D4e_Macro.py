@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Base.Macro import Macro, macro_replace_vars
+from Base.Macro import Macro, macro_replace_vars, macro_vars_show
 from database_models import get_tracker, get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
@@ -74,6 +74,19 @@ class D4e_Macro(Macro):
                 "```"
             )
             return False
+
+    async def show_vars(self, character):
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        display_string = macro_vars_show(Character_Model.character_model.variables)
+
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[discord.EmbedField(name="Variables", value=display_string)],
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+
+        return embed
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
         logging.info(f"roll_macro {character}, {macro_name}")

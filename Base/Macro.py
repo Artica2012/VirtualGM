@@ -212,6 +212,18 @@ class Macro:
         await self.ctx.channel.send("This function is not available for the current system.")
         return False
 
+    async def show_vars(self, character):
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[
+                discord.EmbedField(name="Not Available", value="This function is not available for the current system.")
+            ],
+            color=discord.Color.red(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+        return embed
+
     async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
         logging.info(f"get_macro {character}, {macro_name}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -306,3 +318,14 @@ def macro_replace_vars(raw_macro: str, variables: dict, default_vars: dict):
             macro = macro.replace(key, str(variables[key]))
 
     return macro
+
+
+def macro_vars_show(variables: dict):
+    display_string = ""
+    try:
+        for key in variables.keys():
+            display_string = display_string + f"{key} = {variables[key]}\n"
+    except AttributeError:
+        display_string = "No variables set. Use /macro set_var to set character variables."
+
+    return display_string
