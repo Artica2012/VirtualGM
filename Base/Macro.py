@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import Base.Character
-from database_models import get_macro
+from database_models import get_macro, get_tracker
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 from utils.utils import relabel_roll, get_guild
@@ -19,6 +19,7 @@ class Macro:
         self.ctx = ctx
         self.engine = engine
         self.guild = guild
+        self.default_vars = {}
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
         # print(f"{roll} - {dc}")
@@ -190,7 +191,15 @@ class Macro:
         try:
             dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
         except Exception:
-            dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
+            try:
+                dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
+            except Exception:
+                raw_macro = macro_data.macro
+                variables = Character_Model.character_model.variables
+                replaced_macro = macro_replace_vars(raw_macro, variables, self.default_vars)
+
+                dice_result = d20.roll(f"({replaced_macro}){ParseModifiers(modifier)}")
+
         if dc:
             roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
             output_string = f"{roll_str[0]}"
@@ -209,19 +218,72 @@ class Macro:
         return embed
 
     async def set_vars(self, character, vars):
-        await self.ctx.channel.send("This function is not available for the current system.")
-        return False
+        try:
+            print(vars)
+            failure = False
+            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            if Character_Model.character_model.variables is None:
+                variables = {}
+            else:
+                try:
+                    Character_Model.character_model.variables.keys()
+                    variables = Character_Model.character_model.variables
+                except Exception:
+                    variables = {}
+
+            var_list = vars.split(",")
+            for item in var_list:
+                try:
+                    split = item.split("=")
+                    variables[split[0].strip().lower()] = int(split[1])
+                except Exception:
+                    failure = True
+
+            print(variables)
+
+            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+
+            async with async_session() as session:
+                result = await session.execute(select(Tracker).where(Tracker.id == Character_Model.id))
+                char = result.scalars().one()
+                print(char.variables)
+                char.variables = variables
+
+                await session.commit()
+
+            if failure:
+                await self.ctx.channel.send(
+                    "```\n"
+                    "One or more variables found in error. Syntax is name=value, name=value\n"
+                    "The variable 't' for trained is already automatically included."
+                    "```"
+                )
+
+            return True
+
+        except Exception as e:
+            print(e)
+            await self.ctx.channel.send(
+                "```\n"
+                "One or more variables found in error. Syntax is name=value, name=value\n"
+                "The variable 't' for trained is already automatically included."
+                "```"
+            )
+            return False
 
     async def show_vars(self, character):
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        display_string = macro_vars_show(Character_Model.character_model.variables)
+
         embed = discord.Embed(
             title=Character_Model.char_name,
-            fields=[
-                discord.EmbedField(name="Not Available", value="This function is not available for the current system.")
-            ],
-            color=discord.Color.red(),
+            fields=[discord.EmbedField(name="Variables", value=display_string)],
+            color=discord.Color.blue(),
         )
         embed.set_thumbnail(url=Character_Model.pic)
+
         return embed
 
     async def get_macro(self, character: str, macro_name: str, Character_Model: Base.Character.Character = None):
