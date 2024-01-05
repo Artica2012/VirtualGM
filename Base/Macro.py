@@ -289,3 +289,20 @@ class Macro:
             # dice_result = d20.roll(self.macro.macro)
             # output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
             # await interaction.response.send_message(output_string)
+
+
+def macro_replace_vars(raw_macro: str, variables: dict, default_vars: dict):
+    macro = raw_macro.lower()
+
+    variables.update(default_vars)
+
+    # Need to check from longest to shortest to prevent a single letter variable from breaking a longer variable
+    var_list = list(variables.keys())
+    var_list.sort(key=len)
+    var_list.reverse()
+
+    for key in var_list:
+        if key in macro:
+            macro = macro.replace(key, str(variables[key]))
+
+    return macro

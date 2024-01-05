@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Base.Macro import Macro
+from Base.Macro import Macro, macro_replace_vars
 from database_models import get_tracker, get_macro
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
@@ -120,15 +120,11 @@ class D4e_Macro(Macro):
             try:
                 dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
             except Exception:
-                raw_macro = macro_data.macro.lower()
+                raw_macro = macro_data.macro
                 variables = Character_Model.character_model.variables
-                variables.update(default_vars)
+                replaced_macro = macro_replace_vars(raw_macro, variables, default_vars)
 
-                for key in variables.keys():
-                    if key in raw_macro:
-                        raw_macro = raw_macro.replace(key, str(variables[key]))
-
-                dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
+                dice_result = d20.roll(f"({replaced_macro}){ParseModifiers(modifier)}")
 
         if dc:
             roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
