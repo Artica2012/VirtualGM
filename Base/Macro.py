@@ -149,12 +149,10 @@ class Macro:
             # await self.engine.dispose()
             return False
 
-    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
-        logging.info(f"roll_macro {character}, {macro_name}")
+    async def raw_macro(self, character: str, macro_name: str):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
-
         async with async_session() as session:
             result = await session.execute(
                 select(Macro)
@@ -172,33 +170,32 @@ class Macro:
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
-            try:
-                macro_data = macro_list[0]
-            except Exception:
-                embed = discord.Embed(
-                    title=character,
-                    fields=[
-                        discord.EmbedField(
-                            name=macro_name,
-                            value=(
-                                "Error: Duplicate Macros with the Same Name or invalid macro. Rolling one macro, but"
-                                " please ensure that you do not have duplicate names."
-                            ),
-                        )
-                    ],
-                )
-                return embed
+
+            macro_data = macro_list[0]
+
         try:
-            dice_result = d20.roll(f"({macro_data.macro}){ParseModifiers(modifier)}")
+            raw_macro = f"{macro_data.macro}"
+            d20.roll(raw_macro)
         except Exception:
             try:
-                dice_result = d20.roll(f"({relabel_roll(macro_data.macro)}){ParseModifiers(modifier)}")
+                raw_macro = f"{relabel_roll(macro_data.macro)}"
+                d20.roll(raw_macro)
             except Exception:
                 raw_macro = macro_data.macro
                 variables = Character_Model.character_model.variables
                 replaced_macro = macro_replace_vars(raw_macro, variables, self.default_vars)
 
-                dice_result = d20.roll(f"({replaced_macro}){ParseModifiers(modifier)}")
+                raw_macro = f"{replaced_macro}"
+                d20.roll(raw_macro)
+
+        return raw_macro
+
+    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
+        logging.info(f"roll_macro {character}, {macro_name}")
+        raw_macro = await self.raw_macro(character, macro_name)
+        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+
+        dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
 
         if dc:
             roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))

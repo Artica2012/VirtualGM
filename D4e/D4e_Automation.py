@@ -29,7 +29,7 @@ class D4e_Automation(Automation):
 
         try:
             Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
-            roll_string: str = f"({await Macro_Model.get_macro(character, roll)}){ParseModifiers(attack_modifier)}"
+            roll_string: str = f"({await Macro_Model.raw_macro(character, roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
         except:
             roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
