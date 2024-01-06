@@ -10,6 +10,7 @@ from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 from utils.utils import direct_message
+from utils.Macro_Getter import get_macro_object
 
 
 class Automation:
@@ -57,12 +58,15 @@ class Automation:
             output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         except Exception:
             try:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-                async with async_session() as session:
-                    result = await session.execute(
-                        select(Macro.macro).where(Macro.character_id == Character_Model.id).where(Macro.name == roll)
-                    )
-                    macro_roll = result.scalars().one()
+                Macro = await get_macro_object(self.ctx, self.engine, self.guild)
+                macro_roll = await Macro.raw_macro(character, roll)
+                print(macro_roll)
+                # async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                # async with async_session() as session:
+                #     result = await session.execute(
+                #         select(Macro.macro).where(Macro.character_id == Character_Model.id).where(Macro.name == roll)
+                #     )
+                #     macro_roll = result.scalars().one()
                 if crit:
                     roll_result = d20.roll(f"(({macro_roll}){ParseModifiers(modifier)})*2")
                 else:
