@@ -82,6 +82,22 @@ class EPF_Macro(Macro):
 
         return embed_list
 
+    async def set_vars(self, character, vars):
+        await self.ctx.channel.send("This function is not available for the current system.")
+        return False
+
+    async def show_vars(self, character):
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        embed = discord.Embed(
+            title=Character_Model.char_name,
+            fields=[
+                discord.EmbedField(name="Not Available", value="This function is not available for the current system.")
+            ],
+            color=discord.Color.red(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+        return embed
+
     async def show(self, character):
         Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
         macro_list = await Character_Model.macro_list()
