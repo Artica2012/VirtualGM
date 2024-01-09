@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import D4e.d4e_functions
 from Base.Character import Character
 from database_models import get_tracker, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -81,6 +82,7 @@ class D4e_Character(Character):
         self.will = stats["Will"]
         super().__init__(char_name, ctx, engine, character, guild)
         self.pic = character.pic if character.pic is not None else default_pic
+        self.default_vars = D4e.d4e_functions.default_vars
 
     async def conditions(self, no_time=False, flex=False):
         logging.info("Returning D4e Character Conditions")
