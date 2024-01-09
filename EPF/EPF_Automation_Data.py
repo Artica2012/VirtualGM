@@ -35,7 +35,7 @@ async def create_data_table():
 async def load_complex_data(data: dict):
     async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
     for key in data.keys():
-        print(key)
+        # print(key)
         async with async_session() as session:
             query = await session.execute((select(Automation_Data).where(Automation_Data.name == key.lower())))
             entry = query.scalars().all()

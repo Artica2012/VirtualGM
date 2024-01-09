@@ -60,7 +60,7 @@ class AutoComplete:
             return []
 
     async def vault_search(self, **kwargs):
-        print("vault search")
+        # print("vault search")
         output_list = []
         if "gm" in kwargs.keys():
             gm = kwargs["gm"]
@@ -85,7 +85,7 @@ class AutoComplete:
         if gm:
             char_list = await self.character_select(gm=gm)
             output_list.extend(char_list)
-        print("output list:", output_list)
+        # print("output list:", output_list)
 
         if self.ctx.value != "":
             val = self.ctx.value.lower()

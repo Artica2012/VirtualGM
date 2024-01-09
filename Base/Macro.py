@@ -216,7 +216,7 @@ class Macro:
 
     async def set_vars(self, character, vars):
         try:
-            print(vars)
+            # print(vars)
             failure = False
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
             if Character_Model.character_model.variables is None:
@@ -236,7 +236,7 @@ class Macro:
                 except Exception:
                     failure = True
 
-            print(variables)
+            # print(variables)
 
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -245,7 +245,7 @@ class Macro:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.id == Character_Model.id))
                 char = result.scalars().one()
-                print(char.variables)
+                # print(char.variables)
                 char.variables = variables
 
                 await session.commit()
@@ -260,8 +260,8 @@ class Macro:
 
             return True
 
-        except Exception as e:
-            print(e)
+        except Exception:
+            # print(e)
             await self.ctx.channel.send(
                 "```\n"
                 "One or more variables found in error. Syntax is name=value, name=value\n"
@@ -348,7 +348,7 @@ class Macro:
             )
 
         async def callback(self, interaction: discord.Interaction):
-            print(self.macro.macro)
+            # print(self.macro.macro)
             guild = await get_guild(self.ctx, None)
             MacroClass = Macro(self.ctx, self.engine, guild)
             output = await MacroClass.roll_macro(self.character.char_name, self.macro.name, 0, "", guild=guild)

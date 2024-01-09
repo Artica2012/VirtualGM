@@ -60,13 +60,8 @@ class Automation:
             try:
                 Macro = await get_macro_object(self.ctx, self.engine, self.guild)
                 macro_roll = await Macro.raw_macro(character, roll)
-                print(macro_roll)
-                # async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-                # async with async_session() as session:
-                #     result = await session.execute(
-                #         select(Macro.macro).where(Macro.character_id == Character_Model.id).where(Macro.name == roll)
-                #     )
-                #     macro_roll = result.scalars().one()
+                # print(macro_roll)
+
                 if crit:
                     roll_result = d20.roll(f"(({macro_roll}){ParseModifiers(modifier)})*2")
                 else:

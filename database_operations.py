@@ -87,7 +87,7 @@ async def update_tracker_table():
 
     for row in guild:
         try:
-            print(f"Updating {row.id}")
+            # print(f"Updating {row.id}")
             alter_string = text(f'ALTER TABLE "Tracker_{row.id}" ADD variables JSON')
             async with async_session() as session:
                 await session.execute(alter_string)

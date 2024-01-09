@@ -372,9 +372,9 @@ async def epf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
 
     for i in range(37, (len(df.a) - 1)):
         try:
-            print(i)
+            # print(i)
             name = df.a[i]
-            print(name)
+            # print(name)
             # print(name)
             if type(name) == str:
                 tradition = df.c[i]
@@ -560,7 +560,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     try:
         EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        print(df.b[1])
+        # print(df.b[1])
         partner_name: str = df.b[1]
         partner_name = partner_name.strip()
         async with async_session() as session:
@@ -571,7 +571,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
             partner_query.partner = char_name
             await session.commit()
         Partner = await get_EPF_Character(partner_name, ctx, engine=engine, guild=guild)
-        print(Partner.char_name)
+        # print(Partner.char_name)
     except:
         logging.warning("Import Error")
         raise
@@ -580,7 +580,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     # print(df.iloc[[i]])
 
     # print(df.d[1])
-    print(df)
+    # print(df)
     character = {
         "name": df.b[0],
         "level": Partner.character_model.level,
@@ -698,7 +698,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
                     parsed_traits = df.f[i + 8].split(",")
                 else:
                     parsed_traits = []
-                print(df.f[i + 9])
+                # print(df.f[i + 9])
                 if type(df.f[i + 9]) == str:
                     dmg_type = df.f[i + 9]
                 else:
@@ -955,7 +955,7 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
             inplace=True,
         )
 
-        print(df)
+        # print(df)
     except Exception:
         return False
 
@@ -1133,13 +1133,13 @@ async def epf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
     for i in range(31, (len(df.k) - 1)):
         # print(i)
         if df.k[i] is not numpy.nan and df.l[i] is not numpy.nan:
-            print(df.k[i], df.l[i])
+            # print(df.k[i], df.l[i])
             resistances["weak"][df.k[i]] = int(df.l[i])
 
     for i in range(31, (len(df.m) - 1)):
         # print(i)
         if df.m[i] is not numpy.nan:
-            print(df.m[i])
+            # print(df.m[i])
             resistances["immune"][df.m[i]] = 1
     # print(resistances)
 

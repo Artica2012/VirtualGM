@@ -321,10 +321,10 @@ class STF_Character(Character):
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         logging.info("weapon_dmg")
         weapon = self.character_model.attacks[item]
-        print(weapon)
+        # print(weapon)
 
         bonus_mod = await skill_mod_calc("dmg", 0, self.bonuses)
-        print(bonus_mod)
+        # print(bonus_mod)
         return (
             f"{weapon['dmg_die_num']}{weapon['dmg_die']}{ParseModifiers(str(weapon['dmg_bonus']))}"
             f"{ParseModifiers(str(bonus_mod))}"
@@ -427,7 +427,7 @@ class STF_Character(Character):
             if title in STF_Conditions.keys():
                 data = STF_Conditions[title]
                 # print(data)
-        print(data)
+        # print(data)
         if "thp" in data:
             data_list = data.split(",")
             final_list = data_list.copy()
@@ -440,9 +440,9 @@ class STF_Character(Character):
                         final_list.pop(x)
                     except Exception:
                         pass
-            print(final_list)
+            # print(final_list)
             data = ", ".join(final_list)
-            print(data)
+            # print(data)
 
         # Write the condition to the table
         try:
@@ -737,7 +737,7 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
         await asyncio.sleep(0)
         # Get the data from the conditions
         # Write the bonuses into the two dictionaries
-        print(f"{condition.title}, {condition.action}")
+        # print(f"{condition.title}, {condition.action}")
 
         data: str = condition.action
         data_list = data.split(",")
@@ -831,5 +831,5 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
                 pass
 
     # print(bonuses)
-    print(resistances)
+    # print(resistances)
     return bonuses, resistances

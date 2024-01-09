@@ -157,13 +157,13 @@ class Character:
         :return: integer (Initiative Value)
         """
 
-        print("Rolling Initiative")
+        # print("Rolling Initiative")
         if self.char_name != self.guild.saved_order:
             try:
-                print(f"Trying {self.init_string}")
+                # print(f"Trying {self.init_string}")
                 init = d20.roll(self.init_string).total
             except Exception:
-                print("Variables")
+                # print("Variables")
                 macro = self.init_string.lower()
                 variables = self.character_model.variables
                 variables.update(self.default_vars)
@@ -175,7 +175,7 @@ class Character:
                     if key in macro:
                         macro = macro.replace(key, str(variables[key]))
 
-                print(macro)
+                # print(macro)
                 init = d20.roll(macro).total
 
             await self.set_init(init)
@@ -322,7 +322,7 @@ class Character:
                 roll = d20.roll(init)
                 init = roll.total
             except Exception:
-                print("Variables")
+                # print("Variables")
                 macro = init.lower()
                 variables = self.character_model.variables
                 variables.update(self.default_vars)
@@ -334,7 +334,7 @@ class Character:
                     if key in macro:
                         macro = macro.replace(key, str(variables[key]))
 
-                print(macro)
+                # print(macro)
                 init = d20.roll(macro).total
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)

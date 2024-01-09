@@ -88,7 +88,7 @@ class WandererImporter:
         stats = {}
         ab_data = self.data["stats"]["totalAbilityScores"]
         parsed_ab_data = json.loads(ab_data)
-        print(parsed_ab_data)
+        # print(parsed_ab_data)
         for item in parsed_ab_data:
             stats[item["Name"]] = item["Score"]
         output["stats"] = stats
@@ -118,7 +118,7 @@ class WandererImporter:
                 string = f"{key}, {output['skills'][key]}; "
                 lores += string
         output["lores"] = lores
-        print(lores)
+        # print(lores)
 
         proficiencies = {}
         proficiencies["arcaneprof"] = self.data["stats"]["arcaneSpellProfMod"]
@@ -140,14 +140,14 @@ class WandererImporter:
         feats = self.data["build"]["feats"]
         for item in feats:
             feat_list.append(item["value"]["name"])
-        print(feat_list)
+        # print(feat_list)
         feats = ", ".join(feat_list)
         output["feats"] = feats
 
         # Attacks
         weapons = {}
         # Parsing Inventory
-        print("Inventory")
+        # print("Inventory")
         for item in self.data["invItems"]:
             if item["itemIsWeapon"] == 1:
                 fundRuneID = {
@@ -179,7 +179,7 @@ class WandererImporter:
                 edited_attack = await self.attack_lookup(weapon)
                 # print(weapon)
                 weapons[item["name"]] = edited_attack
-        print(weapons)
+        # print(weapons)
 
         for feat in feat_list:
             feat_data = await EPF_retreive_complex_data(feat)
@@ -197,7 +197,7 @@ class WandererImporter:
             ):
                 sp_class = item["value"].split("=")[0]
                 spell_casting_classes.append(sp_class)
-                print("spellcasting class", sp_class)
+                # print("spellcasting class", sp_class)
 
         # Spell Stuff
         traditions = ["ARCANE", "DIVINE", "PRIMAL", "OCCULT"]
@@ -223,7 +223,7 @@ class WandererImporter:
             for sp_class in sp_db:
                 if spell["spellSRC"].lower() == sp_class["name"].lower():
                     spells[spell["_spellName"]] = {"trad": sp_class["trad"], "stat": sp_class["stat"]}
-        print(spells)
+        # print(spells)
 
         spell_library = {}
         for spell in self.data["spellBookSpells"]:
@@ -264,7 +264,7 @@ class WandererImporter:
                             }
                             spell_library[spell_name] = spell
 
-        print(spell_library)
+        # print(spell_library)
         output["spells"] = spell_library
 
         return output

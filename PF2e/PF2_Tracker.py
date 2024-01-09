@@ -326,7 +326,7 @@ class PF2_Tracker(Tracker):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 Tracker_model = PF2_Tracker(
                     self.ctx,
                     self.engine,
@@ -336,7 +336,7 @@ class PF2_Tracker(Tracker):
                 )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
             # await self.engine.dispose()
 

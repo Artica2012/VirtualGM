@@ -36,11 +36,11 @@ class RED_Autocomplete(AutoComplete):
         except Exception:
             return []
 
-        print(character)
+        # print(character)
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             macro_list = Character_Model.macros
-            print(macro_list)
+            # print(macro_list)
 
             if attk and auto:
                 attk_list = Character_Model.attacks.keys()
@@ -51,7 +51,7 @@ class RED_Autocomplete(AutoComplete):
                     return [option.title() for option in attk_list]
             elif net:
                 net_list = Character_Model.net.keys()
-                print(net_list)
+                # print(net_list)
                 if self.ctx.value != "":
                     val = self.ctx.value.lower()
                     return [option.title() for option in net_list if val in option.lower()]
@@ -93,11 +93,11 @@ class RED_Autocomplete(AutoComplete):
         except Exception:
             return []
 
-        print(character)
+        # print(character)
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
             macro_list = Character_Model.macros
-            print(macro_list)
+            # print(macro_list)
 
             if attk and auto:
                 attk_list = Character_Model.attacks.keys()

@@ -96,7 +96,7 @@ class PF2Cog(commands.Cog):
                     logging.info("Beginning PF2-Enhanced import")
                     response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild, image=image)
                     logging.info("Imported")
-                    print(response)
+                    # print(response)
                     if response:
                         Character_Model = await get_character(name, ctx, engine=engine)
                         success.set_thumbnail(url=Character_Model.pic)

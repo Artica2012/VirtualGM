@@ -161,7 +161,7 @@ class EPF_Character(Character):
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
-        print("UPDATING!!!!!!!!!!!")
+        # print("UPDATING!!!!!!!!!!!")
 
         await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
         self.character_model = await self.character()
@@ -920,7 +920,7 @@ class EPF_Character(Character):
                         tree = await condition_parser(item)
                         data_list.append(await first_pass_process(self.ctx, tree, self.char_name))
                     except Exception as e:
-                        print(f"Bad input: {item}: {e}")
+                        logging.error(f"Bad input: {item}: {e}")
             for item in data_list:
                 if "value" in item.keys():
                     value = item["value"]
@@ -1315,10 +1315,10 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
             feat_list.append("Elemental Blast (Wood)")
 
         for item in pb["build"]["feats"]:
-            print(item)
+            # print(item)
             feats += f"{item[0]}, "
             feat_list.append(item[0].strip())
-        print(feat_list)
+        # print(feat_list)
 
         bonus_dmg_list = []
         attacks = {}
@@ -1452,7 +1452,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                             }
                             spell_library[spell_name] = spell
         for key in focus_spells.keys():
-            print(key)
+            # print(key)
             try:
                 if type(focus_spells[key]) == dict:
                     if "wis" in focus_spells[key].keys():
@@ -1490,7 +1490,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                                         }
                                         spell_library[item] = spell
                     if "cha" in focus_spells[key].keys():
-                        print("cha")
+                        # print("cha")
                         discriminator_list = []
                         if "focusSpells" in focus_spells[key]["cha"].keys():
                             discriminator_list.append("focusSpells")
@@ -1499,14 +1499,14 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
                         for discriminator in discriminator_list:
                             for item in focus_spells[key]["cha"][discriminator]:
-                                print(item)
+                                # print(item)
                                 if "(Amped)" in item:
                                     # print("amped")
                                     lookup_name = item.strip("(Amped)")
                                 else:
                                     # print("not amped")
                                     lookup_name = item
-                                print(lookup_name)
+                                # print(lookup_name)
                                 spell_data = await EPF_retreive_complex_data(lookup_name)
                                 if len(spell_data) > 0:
                                     for s in spell_data:
@@ -1754,7 +1754,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
         await delete_intested_items(char_name, ctx, guild, engine)
         for item in pb["build"]["equipment"]:
-            print(item)
+            # print(item)
             await invest_items(item[0], char_name, ctx, guild, engine)
         await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
 
@@ -2200,9 +2200,9 @@ async def invest_items(item, character, ctx, guild, engine):
             data = result.scalars().all()
             if len(data) > 0:
                 data = data[0]
-                print(data)
+                # print(data)
                 for key in data.keys():
-                    print(key)
+                    # print(key)
 
                     if data[key]["mode"] == "item":
                         condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
@@ -2237,7 +2237,7 @@ async def invest_items(item, character, ctx, guild, engine):
 
 async def write_bonuses(ctx, engine, guild, character: str, bonuses: list):
     bonus_string = ", ".join(bonuses)
-    print(bonus_string)
+    # print(bonus_string)
     EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     Condition = await get_condition(ctx, engine, id=guild.id)
     write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -2293,7 +2293,7 @@ async def process_condition_tree(
     ctx: discord.ApplicationContext, tree, character_model, condition, bonuses: dict, resistances: dict
 ):
     t = tree.iter_subtrees_topdown()
-    print(tree.pretty())
+    # print(tree.pretty())
     for branch in t:
         # print(branch)
         # print(branch.data)
@@ -2365,21 +2365,21 @@ async def process_condition_tree(
                     await character_model.set_cc(new_con_name.title(), False, num, "Round", False)
 
         elif branch.data == "item_bonus":
-            print("ITEM BONUS BEING PARSED!!!!")
+            # print("ITEM BONUS BEING PARSED!!!!")
             bonus_data = {}
             for item in branch.children:
                 if type(item) == lark.Token:
-                    print(item)
+                    # print(item)
                     if item.type == "quoted":
-                        print("QUOTED")
-                        print(item.value)
+                        # print("QUOTED")
+                        # print(item.value)
                         val = ""
                         for x in item.value:
                             if x not in ['"', "\\", " "]:
                                 val += x
-                        print(val)
+                        # print(val)
                         bonus_data["item"] = val
-                        print(bonus_data["item"])
+                        # print(bonus_data["item"])
                     elif item.type == "WORD":
                         bonus_data["skill"] = item.value
                     elif item.type == "SIGNED_INT":
@@ -2389,18 +2389,18 @@ async def process_condition_tree(
                     elif item.type == "SPECIFIER":
                         bonus_data["specifier"] = item.value
                 elif type(item) == lark.Tree:
-                    print(item.children)
-                    print(item.children[0].value.strip())
+                    # print(item.children)
+                    # print(item.children[0].value.strip())
                     val = ""
                     for x in item.children[0].value:
                         if x not in ['"', "\\", " "]:
                             val += x
-                    print(val)
+                    # print(val)
                     bonus_data["item"] = val
-                    print(bonus_data["item"])
+                    # print(bonus_data["item"])
 
                     # bonus_data["item"] = item.children[0].value
-            print(bonus_data)
+            # print(bonus_data)
 
             if f"{bonus_data['item']},{bonus_data['skill']}" not in bonuses.keys():
                 bonuses[f"{bonus_data['item']},{bonus_data['skill']}"] = {

@@ -101,7 +101,7 @@ class EPF_Macro(Macro):
     async def show(self, character):
         Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
         macro_list = await Character_Model.macro_list()
-        print(macro_list)
+        # print(macro_list)
         view = discord.ui.View(timeout=None)
         for macro in macro_list:
             try:
