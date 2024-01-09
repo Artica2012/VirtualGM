@@ -92,7 +92,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild = result.scalars().one()
-                print(f"From ID:{guild.id}")
+                # print(f"From ID:{guild.id}")
                 system = guild.system
         except Exception:
             pass

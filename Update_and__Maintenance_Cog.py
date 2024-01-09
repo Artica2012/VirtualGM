@@ -196,7 +196,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
             return ""
 
     async def force_refresh(self):
-        print("Forcing Refresh")
+        # print("Forcing Refresh")
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global))
@@ -229,7 +229,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     #                     await session.commit()
                     #         except Exception:
                     #             pass
-                    print(Character_Model.char_name, "updated.")
+                    # print(Character_Model.char_name, "updated.")
 
                 try:
                     Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)

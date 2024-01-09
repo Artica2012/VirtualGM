@@ -23,7 +23,7 @@ default_pic = (
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
-    print(char_name)
+    # print(char_name)
     logging.info("Generating D4e_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -255,7 +255,7 @@ async def edit_stats(ctx, engine, name: str, bot):
         # print("GENERATING MODAL")
         # print(condition_dict)
         editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
-        print(editModal)
+        # print(editModal)
         result = await ctx.send_modal(editModal)
 
         return result
