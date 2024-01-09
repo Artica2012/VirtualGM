@@ -167,7 +167,7 @@ async def set_datetime(
         )
         return False
     except Exception as e:
-        print(f"set_datetime: {e}")
+        # print(f"set_datetime: {e}")
         report = ErrorReport(ctx, "set_datetime", e, bot)
         await report.report()
         return False

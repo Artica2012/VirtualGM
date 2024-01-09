@@ -165,7 +165,7 @@ class OptionsCog(commands.Cog):
                     except NoResultFound:
                         await ctx.respond(error_not_initialized, ephemeral=True)
                     except Exception as e:
-                        print(f"/admin tracker: {e}")
+                        # print(f"/admin tracker: {e}")
                         report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
                         await report.report()
         except NoResultFound as e:
@@ -263,7 +263,7 @@ class OptionsCog(commands.Cog):
             await ctx.channel.send(error_not_initialized, delete_after=30)
             return False
         except Exception as e:
-            print(f"/admin options: {e}")
+            # print(f"/admin options: {e}")
             report = ErrorReport(ctx, "/admin options", e, self.bot)
             await report.report()
             return False

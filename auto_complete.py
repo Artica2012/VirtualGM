@@ -57,7 +57,7 @@ async def gm_check(ctx, engine):
 # returns a list of all characters
 async def character_select(ctx: discord.AutocompleteContext):
     try:
-        print("Char Select No GM")
+        # print("Char Select No GM")
         AutoComplete = await get_autocomplete(ctx)
         return await AutoComplete.character_select()
     except Exception:
@@ -106,7 +106,7 @@ async def character_select_gm(ctx: discord.AutocompleteContext):
 
 
 async def character_vault_search(ctx: discord.AutocompleteContext):
-    print("triggered")
+    # print("triggered")
     try:
         AutoComplete = await get_autocomplete(ctx)
         return await AutoComplete.vault_search(gm=True)
@@ -126,8 +126,8 @@ async def character_select_player(ctx: discord.AutocompleteContext):
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 logging.info("Searching Character Vault")
-                print(ctx.interaction.user.id)
-                print(ctx.interaction.guild.id)
+                # print(ctx.interaction.user.id)
+                # print(ctx.interaction.guild.id)
                 result = await session.execute(
                     select(Character_Vault)
                     .where(Character_Vault.user == ctx.interaction.user.id)

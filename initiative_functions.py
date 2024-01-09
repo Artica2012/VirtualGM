@@ -53,7 +53,7 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
                     output_string = f"{cond.title}: {cond.number}"
                 view.add_item(ConditionMinus(ctx, bot, character, condition, guild))
                 view.add_item(ConditionAdd(ctx, bot, character, condition, guild))
-                print(output_string, view)
+                # print(output_string, view)
                 return output_string, view
     except NoResultFound:
         if ctx is not None:
@@ -148,7 +148,7 @@ class ConditionMinus(discord.ui.Button):
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
-            print(f"Error: {e}")
+            # print(f"Error: {e}")
             logging.info(e)
 
 
@@ -171,5 +171,5 @@ class ConditionAdd(discord.ui.Button):
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
-            print(f"Error: {e}")
+            # print(f"Error: {e}")
             logging.info(e)

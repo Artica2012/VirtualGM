@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import PF2e.pf2_functions
 from Base.Character import Character
 
 # from utils.Tracker_Getter import get_tracker_model
@@ -88,6 +89,7 @@ class PF2_Character(Character):
         self.dc = stats["DC"]
         super().__init__(char_name, ctx, engine, character, guild)
         self.pic = character.pic if character.pic is not None else default_pic
+        self.default_vars = PF2e.pf2_functions.default_vars
 
     async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
         logging.info("edit_character")

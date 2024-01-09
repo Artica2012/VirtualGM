@@ -56,7 +56,7 @@ class EPF_Macro(Macro):
             character_list = [character]
         embed_list = []
         for item in character_list:
-            print(character)
+            # print(character)
             Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
             dice_result = await Character_Model.roll_macro(macro_name, modifier)
             # print(dice_result)

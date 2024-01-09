@@ -2,6 +2,7 @@
 import os
 
 import d20
+
 # define global variables
 PF2_attributes = ["AC", "Fort", "Reflex", "Will", "DC"]
 PF2_saves = ["Fort", "Reflex", "Will"]
@@ -19,7 +20,7 @@ def PF2_eval_succss(dice_result: d20.RollResult, goal: d20.RollResult):
     else:
         result_tier = 1
 
-    match dice_result.crit:
+    match dice_result.crit:  # noqa
         case d20.CritType.CRIT:
             result_tier += 1
         case d20.CritType.FAIL:
@@ -36,3 +37,5 @@ def PF2_eval_succss(dice_result: d20.RollResult, goal: d20.RollResult):
 
     return success_string
 
+
+default_vars = {"u": 0, "t": 2, "e": 4, "m": 6, "l": 8}

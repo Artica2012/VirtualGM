@@ -81,7 +81,7 @@ async def epf_npc_lookup(
         result = await session.execute(select(EPF_NPC).where(EPF_NPC.name == lookup))
         data = result.scalars().one()
 
-    print(data.resistance)
+    # print(data.resistance)
 
     # elite/weak adjustments
     hp_mod = 0
@@ -205,7 +205,7 @@ async def epf_npc_lookup(
         # print(f"Stat_Mod: {stat_mod}")
         Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
         if stat_mod != 0:
-            print("Write the elite/weak modifiers")
+            # print("Write the elite/weak modifiers")
             stat_mod = ParseModifiers(f"{stat_mod}")
             await Charater_Model.update()
             result = await Charater_Model.set_cc(
@@ -225,12 +225,12 @@ async def epf_npc_lookup(
                 visible=False,
                 update=False,
             )
-        print(data.type)
+        # print(data.type)
         if "hazard" in data.type.lower():
             await Charater_Model.set_cc(
                 "Hazard", True, 0, "Round", False, data="init-skill stealth", visible=False, update=False
             )
-        print(data.resistance)
+        # print(data.resistance)
         await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
 
         await Charater_Model.update()
@@ -254,7 +254,7 @@ async def epf_npc_lookup(
 async def write_resitances(
     resistance: dict, Character_Model: EPF.EPF_Character.EPF_Character, ctx, guild, engine, overwrite=True
 ):
-    print("write resistances")
+    # print("write resistances")
     # First delete out all the old resistances
     if overwrite:
         await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
@@ -263,18 +263,18 @@ async def write_resitances(
     # print(resistance)
     try:
         for key, value in resistance["resist"].items():
-            print(key)
-            print(type(value))
+            # print(key)
+            # print(type(value))
             if type(value) == dict:
                 exceptions = ""
                 for item in value["exceptions"]:
-                    print(item)
+                    # print(item)
                     exceptions = exceptions + " " + item
                 condition_string = f"{key} r {value['value']} e {exceptions}"
                 value = value["value"]
             else:
                 condition_string = f"{key} r {value}"
-            print(condition_string)
+            # print(condition_string)
 
             await Character_Model.set_cc(
                 key, True, value, "Round", False, data=condition_string, visible=False, update=False
@@ -289,7 +289,7 @@ async def write_resitances(
                 value = value["value"]
             else:
                 condition_string = f"{key} w {value}"
-            print(condition_string)
+            # print(condition_string)
 
             await Character_Model.set_cc(
                 key, True, value, "Round", False, data=condition_string, visible=False, update=False
