@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import D4e.d4e_functions
 from Base.Character import Character
 from database_models import get_tracker, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -22,7 +23,7 @@ default_pic = (
 
 
 async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
-    print(char_name)
+    # print(char_name)
     logging.info("Generating D4e_Character Class")
     if engine is None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -81,6 +82,7 @@ class D4e_Character(Character):
         self.will = stats["Will"]
         super().__init__(char_name, ctx, engine, character, guild)
         self.pic = character.pic if character.pic is not None else default_pic
+        self.default_vars = D4e.d4e_functions.default_vars
 
     async def conditions(self, no_time=False, flex=False):
         logging.info("Returning D4e Character Conditions")
@@ -253,7 +255,7 @@ async def edit_stats(ctx, engine, name: str, bot):
         # print("GENERATING MODAL")
         # print(condition_dict)
         editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
-        print(editModal)
+        # print(editModal)
         result = await ctx.send_modal(editModal)
 
         return result

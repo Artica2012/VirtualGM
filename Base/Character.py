@@ -41,6 +41,8 @@ default_pic = (
     "artica_A_portrait_of_a_generic_fantasy_character._Cloaked_in_sh_b571634a-b297-4e86-a57a-496ce438dd0b.png"
 )
 
+default_vars = {}
+
 
 class Character:
     def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
@@ -73,6 +75,7 @@ class Character:
         self.character_model = character
         self.pic = character.pic if character.pic is not None else default_pic  # uses the default picture if none is
         # supplied
+        self.default_vars = {}
 
     async def character(self):
         """
@@ -153,8 +156,28 @@ class Character:
         Rolls the initiative string and sets it in the database.
         :return: integer (Initiative Value)
         """
+
+        print("Rolling Initiative")
         if self.char_name != self.guild.saved_order:
-            init = d20.roll(self.init_string).total
+            try:
+                print(f"Trying {self.init_string}")
+                init = d20.roll(self.init_string).total
+            except Exception:
+                print("Variables")
+                macro = self.init_string.lower()
+                variables = self.character_model.variables
+                variables.update(self.default_vars)
+                var_list = list(variables.keys())
+                var_list.sort(key=len)
+                var_list.reverse()
+
+                for key in var_list:
+                    if key in macro:
+                        macro = macro.replace(key, str(variables[key]))
+
+                print(macro)
+                init = d20.roll(macro).total
+
             await self.set_init(init)
             return init
         else:
@@ -295,8 +318,24 @@ class Character:
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")
         if type(init) == str:
-            roll = d20.roll(init)
-            init = roll.total
+            try:
+                roll = d20.roll(init)
+                init = roll.total
+            except Exception:
+                print("Variables")
+                macro = init.lower()
+                variables = self.character_model.variables
+                variables.update(self.default_vars)
+                var_list = list(variables.keys())
+                var_list.sort(key=len)
+                var_list.reverse()
+
+                for key in var_list:
+                    if key in macro:
+                        macro = macro.replace(key, str(variables[key]))
+
+                print(macro)
+                init = d20.roll(macro).total
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:

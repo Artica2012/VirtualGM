@@ -53,7 +53,7 @@ class TimekeeperCog(commands.Cog):
                 ephemeral=True,
             )
         except Exception as e:
-            print(f"set_time: {e}")
+            # print(f"set_time: {e}")
             report = ErrorReport(ctx, "/set_time", e, self.bot)
             await report.report()
             await ctx.respond("Setup Failed")

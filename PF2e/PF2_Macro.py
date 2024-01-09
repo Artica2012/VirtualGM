@@ -2,13 +2,13 @@ import d20
 
 from Base.Macro import Macro
 from EPF.EPF_Support import EPF_Success_colors
-from PF2e.pf2_functions import PF2_eval_succss
+from PF2e.pf2_functions import PF2_eval_succss, default_vars
 
 
 class PF2_Macro(Macro):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
-        self.default_vars = {"u": 0, "t": 2, "e": 4, "m": 6, "l": 8}
+        self.default_vars = default_vars
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
         # print(f"{roll} - {dc}")

@@ -28,7 +28,7 @@ from EPF.EPF_Automation_Data import upload_data
 # import database_operations
 
 
-print(os.environ["PRODUCTION"])
+# print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
     # TOKEN = os.getenv("TOKEN")

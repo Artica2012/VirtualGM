@@ -24,6 +24,8 @@ D4e_Conditions = [
     "Unconscious",
 ]
 
+default_vars = {"t": 5}
+
 
 def D4e_eval_success(dice_result: d20.RollResult, goal: d20.RollResult):
     success_string = ""
