@@ -7,6 +7,7 @@ import logging
 # imports
 import os
 import sys
+import asyncio
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,8 @@ import EPF.Data.Kineticist_DB
 import EPF.Data.Spell_DB
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
+from API.VGM_API import app, start_uvicorn
+
 
 # import tracemalloc
 
@@ -72,6 +75,8 @@ async def on_ready():
     # logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
+    loop = asyncio.get_running_loop()
+    start_uvicorn(loop)
 
 
 @bot.event
@@ -104,5 +109,10 @@ bot.load_extension("reminder_cog")
 bot.load_extension("STF.stf_cog")
 bot.load_extension("RED.RED_cog")
 
-# run the bot
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+
 bot.run(TOKEN)
