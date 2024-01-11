@@ -15,7 +15,7 @@ import EPF.Data.Kineticist_DB
 import EPF.Data.Spell_DB
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
-from API.VGM_API import app, start_uvicorn
+from API.VGM_API import start_uvicorn
 
 
 # import tracemalloc
@@ -108,11 +108,5 @@ bot.load_extension("Update_and__Maintenance_Cog")
 bot.load_extension("reminder_cog")
 bot.load_extension("STF.stf_cog")
 bot.load_extension("RED.RED_cog")
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
 
 bot.run(TOKEN)
