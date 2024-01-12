@@ -33,24 +33,32 @@ async def api_roll(roll_data: RollData):
         else:
             success = None
         if roll_data.discord_post:
-            guild = await get_guild_by_id(roll_data.guild)
-            username = get_username_by_id(roll_data.user)
+            try:
+                guild = await get_guild_by_id(roll_data.guild)
+                username = get_username_by_id(roll_data.user)
 
-            if roll_data.secret:
-                await bot.get_channel(int(guild.gm_tracker_channel)).send(
-                    f"```Secret Roll from {username}```\n{roll}\n{roll_str}"
-                )
-            else:
-                await bot.get_channel(int(guild.tracker_channel)).send(
-                    f"```Roll from {username}```\n{roll}\n{roll_str}"
-                )
+                if roll_data.secret:
+                    await bot.get_channel(int(guild.gm_tracker_channel)).send(
+                        f"```Secret Roll from {username}```\n{roll}\n{roll_str}"
+                    )
+                else:
+                    await bot.get_channel(int(guild.tracker_channel)).send(
+                        f"```Roll from {username}```\n{roll}\n{roll_str}"
+                    )
+                post = True
+            except Exception:
+                post = False
+        else:
+            post = False
 
         output = {
             "roll": roll,
             "roll_result": roll_result,
             "total": roll_result.total,
             "success": success,
+            "posted": post,
         }
+
         return output
 
     except Exception as e:
