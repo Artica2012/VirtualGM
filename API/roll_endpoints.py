@@ -9,6 +9,7 @@ from Bot import bot
 from error_handling_reporting import API_ErrorReport
 from utils.parsing import opposed_roll, eval_success
 from utils.utils import relabel_roll
+import json
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class RollData(BaseModel):
 
 @router.post("/roll")
 async def api_roll(roll_data: RollData):
+    print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:
         roll_result = d20.roll(roll)
@@ -52,14 +54,17 @@ async def api_roll(roll_data: RollData):
             post = False
 
         output = {
-            "roll": roll,
-            "roll_result": roll_result,
-            "total": roll_result.total,
+            "roll": str(roll),
+            "roll_result": str(roll_result),
+            "total": int(roll_result.total),
             "success": success,
             "posted": post,
         }
-
-        return output
+        #
+        json_op = json.dumps(output)
+        print(json_op)
+        # return output
+        return json_op
 
     except Exception as e:
         logging.warning(f"API /roll: {e}")
