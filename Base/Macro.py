@@ -3,14 +3,14 @@ import logging
 
 import d20
 import discord
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import Base.Character
 from database_models import get_macro, get_tracker
 from utils.Char_Getter import get_character
-from utils.parsing import ParseModifiers
+from utils.parsing import ParseModifiers, eval_success
 from utils.utils import relabel_roll, get_guild
 
 
@@ -44,13 +44,16 @@ class Macro:
 
             async with async_session() as session:
                 result = await session.execute(
-                    select(Macro).where(Macro.character_id == Character_Model.id).where(Macro.name == macro_name)
+                    select(Macro)
+                    .where(Macro.character_id == Character_Model.id)
+                    .where(func.lower(Macro.name) == macro_name.lower())
                 )
                 name_check = result.scalars().all()
                 if len(name_check) > 0:
-                    await self.ctx.channel.send(
-                        "Duplicate Macro Name. Please use a different name or delete the old macro first"
-                    )
+                    if self.ctx is not None:
+                        await self.ctx.channel.send(
+                            "Duplicate Macro Name. Please use a different name or delete the old macro first"
+                        )
                     return False
 
             async with session.begin():
@@ -58,11 +61,9 @@ class Macro:
                 session.add(new_macro)
             await session.commit()
             await Character_Model.update()
-            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"create_macro: {e}")
-            # await self.engine.dispose()
             return False
 
     async def mass_add(self, character: str, data: str):
@@ -149,6 +150,16 @@ class Macro:
             # await self.engine.dispose()
             return False
 
+    async def get_macro_list(self, character: str):
+        logging.info("get_macro")
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            result = await session.execute(select(Macro.name).where(Macro.character_id == Character_Model.id))
+            macro_list = result.scalars().all()
+        return macro_list
+
     async def raw_macro(self, character: str, macro_name: str):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -157,7 +168,7 @@ class Macro:
             result = await session.execute(
                 select(Macro)
                 .where(Macro.character_id == Character_Model.id)
-                .where(Macro.name == macro_name.split(":")[0])
+                .where(func.lower(Macro.name) == macro_name.split(":")[0].lower())
             )
         try:
             macro_data = result.scalars().one()
@@ -190,19 +201,21 @@ class Macro:
 
         return raw_macro
 
-    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
+    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info(f"roll_macro {character}, {macro_name}")
-        raw_macro = await self.raw_macro(character, macro_name)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
 
-        dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
+        if raw is not None:
+            raw_result = raw
+        else:
+            raw_result = await self.raw_roll_macro(character, macro_name, dc, modifier)
 
         if dc:
-            roll_str = self.opposed_roll(dice_result, d20.roll(f"{dc}"))
+            roll_str = self.opposed_roll(raw_result.get("result"), d20.roll(f"{dc}"))
             output_string = f"{roll_str[0]}"
             color = roll_str[1]
         else:
-            output_string = str(dice_result)
+            output_string = str(raw_result.get("result"))
             color = discord.Color.dark_grey()
 
         embed = discord.Embed(
@@ -213,6 +226,19 @@ class Macro:
         embed.set_thumbnail(url=Character_Model.pic)
 
         return embed
+
+    async def raw_roll_macro(self, character, macro_name, dc, modifier):
+        logging.info(f"roll_macro {character}, {macro_name}")
+        raw_macro = await self.raw_macro(character, macro_name)
+
+        dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
+
+        if dc:
+            success = eval_success(dice_result, d20.roll(f"{dc}"))
+        else:
+            success = None
+
+        return {"result": dice_result, "success": success}
 
     async def set_vars(self, character, vars):
         try:

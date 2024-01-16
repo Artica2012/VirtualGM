@@ -14,6 +14,7 @@ from Base.Macro import Macro
 from EPF.EPF_Character import get_EPF_Character, EPF_Character
 from database_models import get_EPF_tracker
 from utils.Char_Getter import get_character
+from utils.parsing import eval_success
 
 
 class EPF_Macro(Macro):
@@ -32,33 +33,43 @@ class EPF_Macro(Macro):
             color,
         )
 
-    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
+    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info("EPF roll_macro")
-        if character.lower() in ["all pcs", "all npcs", "all characters"]:
-            EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            try:
-                if character.lower() == "all pcs":
-                    async with async_session() as session:
-                        result = await session.execute(select(EPF_tracker.name).where(EPF_tracker.player == true()))
-                        character_list = result.scalars().all()
-                elif character.lower() == "all npcs":
-                    async with async_session() as session:
-                        result = await session.execute(select(EPF_tracker.name).where(EPF_tracker.player == false()))
-                        character_list = result.scalars().all()
-                elif character.lower() == "all characters":
-                    async with async_session() as session:
-                        result = await session.execute(select(EPF_tracker.name))
-                        character_list = result.scalars().all()
-            except NoResultFound:
-                return None
+
+        if raw is None:
+            if character.lower() in ["all pcs", "all npcs", "all characters"]:
+                EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                try:
+                    if character.lower() == "all pcs":
+                        async with async_session() as session:
+                            result = await session.execute(select(EPF_tracker.name).where(EPF_tracker.player == true()))
+                            character_list = result.scalars().all()
+                    elif character.lower() == "all npcs":
+                        async with async_session() as session:
+                            result = await session.execute(
+                                select(EPF_tracker.name).where(EPF_tracker.player == false())
+                            )
+                            character_list = result.scalars().all()
+                    elif character.lower() == "all characters":
+                        async with async_session() as session:
+                            result = await session.execute(select(EPF_tracker.name))
+                            character_list = result.scalars().all()
+                except NoResultFound:
+                    return None
+            else:
+                character_list = [character]
         else:
             character_list = [character]
+
         embed_list = []
         for item in character_list:
             # print(character)
             Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
-            dice_result = await Character_Model.roll_macro(macro_name, modifier)
+            if raw is not None:
+                dice_result = raw.get("result")
+            else:
+                dice_result = await Character_Model.roll_macro(macro_name, modifier)
             # print(dice_result)
             if dice_result == 0:
                 embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
@@ -82,9 +93,30 @@ class EPF_Macro(Macro):
 
         return embed_list
 
+    async def raw_roll_macro(self, character, macro_name, dc, modifier):
+        logging.info("EPF roll_macro")
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        dice_result = await Character_Model.roll_macro(macro_name, modifier)
+        # print(dice_result)
+        if dice_result == 0:
+            dice_result = super().raw_roll_macro(character, macro_name, dc, modifier)
+
+        if dc:
+            success = eval_success(dice_result, d20.roll(f"{dc}"))
+        else:
+            success = False
+
+        return {"result": dice_result, "success": success}
+
     async def set_vars(self, character, vars):
         await self.ctx.channel.send("This function is not available for the current system.")
         return False
+
+    async def get_macro_list(self, character: str):
+        logging.info("get_macro")
+        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        macro_list = await Character_Model.macro_list()
+        return macro_list
 
     async def show_vars(self, character):
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
