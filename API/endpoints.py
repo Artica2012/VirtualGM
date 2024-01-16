@@ -1,3 +1,5 @@
+# Utility Endpoints
+
 from fastapi import APIRouter
 
 

@@ -35,3 +35,10 @@ def get_username_by_id(id: int):
             username = ""
 
     return username
+
+
+def gm_check(user: str, guild: Global):
+    if user == guild.gm:
+        return True
+    else:
+        return False

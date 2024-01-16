@@ -31,10 +31,10 @@ class CreateMacro(BaseModel):
 
 
 @router.get("/macro/query")
-async def get_macros(user: int, character: str, guild: int):
+async def get_macros(user: int, character: str, guildid: int):
     try:
-        print(user, character, guild)
-        guild = await get_guild_by_id(guild)
+        print(user, character, guildid)
+        guild = await get_guild_by_id(guildid)
         Macro = await get_macro_object(None, engine, guild)
         macro_list = await Macro.get_macro_list(character.lower())
         return macro_list
