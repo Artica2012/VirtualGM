@@ -1,10 +1,10 @@
 import logging
 
 import d20
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, get_username_by_id
+from API.api_utils import get_guild_by_id, get_username_by_id, post_message
 from Bot import bot
 from error_handling_reporting import API_ErrorReport
 from utils.parsing import opposed_roll, eval_success
@@ -24,7 +24,7 @@ class RollData(BaseModel):
 
 
 @router.post("/roll")
-async def api_roll(roll_data: RollData):
+async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks):
     print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:
@@ -40,12 +40,12 @@ async def api_roll(roll_data: RollData):
                 username = get_username_by_id(roll_data.user)
 
                 if roll_data.secret:
-                    await bot.get_channel(int(guild.gm_tracker_channel)).send(
-                        f"```Secret Roll from {username}```\n{roll}\n{roll_str}"
+                    background_tasks.add_task(
+                        post_message, guild, message=f"```Secret Roll from {username}```\n{roll}\n{roll_str}", gm=True
                     )
                 else:
-                    await bot.get_channel(int(guild.tracker_channel)).send(
-                        f"```Roll from {username}```\n{roll}\n{roll_str}"
+                    background_tasks.add_task(
+                        post_message, guild, message=f"```Roll from {username}```\n{roll}\n{roll_str}"
                     )
                 post = True
             except Exception:

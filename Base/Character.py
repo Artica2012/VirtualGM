@@ -314,6 +314,12 @@ class Character:
         else:
             update = True
 
+        if self.char_name == self.guild.saved_order:
+            return (
+                f"Please wait until {self.char_name} is not the active character in initiative before "
+                "resetting its initiative."
+            )
+
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:
             raise LookupError("No guild reference")

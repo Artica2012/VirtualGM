@@ -1,4 +1,3 @@
-import json
 import logging
 
 from fastapi import APIRouter
@@ -8,13 +7,19 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from API.api_utils import get_guild_by_id, gm_check
-from Bot import bot
+from API.api_utils import get_guild_by_id, gm_check, api_hard_lock
 from database_models import get_tracker
 from database_operations import engine
-from utils.Macro_Getter import get_macro_object
+from utils.Char_Getter import get_character
+from utils.Util_Getter import get_utilities
 
 router = APIRouter()
+
+
+class CharData(BaseModel):
+    character: str
+    user: int | None = None
+    guild: int | None = None
 
 
 @router.get("/char/query")
@@ -40,3 +45,23 @@ async def get_chars(user: str, guildid: int):
         logging.warning(
             f"api/char/query: {e}",
         )
+
+
+@router.post("/char/delete")
+async def char_delete(char_data: CharData):
+    guild = await get_guild_by_id(char_data.guild)
+    Character_Model = await get_character(char_data.character, None, guild=guild, engine=engine)
+    if api_hard_lock(guild, char_data.user, Character_Model):
+        try:
+            Utilities = await get_utilities(None, guild, engine=engine)
+            success = await Utilities.delete_character(char_data.character)
+        except Exception as e:
+            success = False
+            logging.warning(f"api /char/delete: {e}")
+    else:
+        success = False
+
+    return {
+        "character": char_data.character,
+        "success": success,
+    }

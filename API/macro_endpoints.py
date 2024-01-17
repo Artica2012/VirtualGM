@@ -1,10 +1,9 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id
-from Bot import bot
+from API.api_utils import get_guild_by_id, post_message
 from database_operations import engine
 from utils.Macro_Getter import get_macro_object
 
@@ -43,7 +42,7 @@ async def get_macros(user: int, character: str, guildid: int):
 
 
 @router.post("/macro/roll")
-async def macro_roll(roll_data: MacroData):
+async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks):
     print(roll_data)
     guild = await get_guild_by_id(roll_data.guild)
     Macro = await get_macro_object(None, engine, guild)
@@ -62,9 +61,9 @@ async def macro_roll(roll_data: MacroData):
                 embed_list.append(post_output)
 
             if roll_data.secret:
-                await bot.get_channel(int(guild.gm_tracker_channel)).send(embeds=embed_list)
+                background_tasks.add_task(post_message, guild, embeds=embed_list, gm=True)
             else:
-                await bot.get_channel(int(guild.tracker_channel)).send(embeds=embed_list)
+                background_tasks.add_task(post_message, guild, embeds=embed_list)
             post = True
         except Exception:
             post = False
