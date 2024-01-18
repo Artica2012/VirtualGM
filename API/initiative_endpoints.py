@@ -4,9 +4,13 @@ import d20
 import discord
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
+from sqlalchemy import select, true
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id
 from Bot import bot
+from database_models import get_condition
 from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
@@ -153,6 +157,25 @@ async def hp_set(body: HPSet, background_tasks: BackgroundTasks):
     return output
 
 
+@router.get("/cc/query")
+async def get_cc_query(user: int, character: str, guildid: int, list: bool = True):
+    guild = await get_guild_by_id(guildid)
+    Character_Model = await get_character(character, None, guild=guild, engine=engine)
+    if list:
+        Condition = await get_condition(None, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition.title)
+                .where(Condition.character_id == Character_Model.id)
+                .where(Condition.visible == true())
+                .order_by(Condition.title.asc())
+            )
+            return result.scalars().all()
+    else:
+        return await Character_Model.conditions()
+
+
 @router.post("/cc/new")
 async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks):
     guild = await get_guild_by_id(body.guild)
@@ -190,3 +213,54 @@ async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks):
             background_tasks.add_task(update_trackers, guild)
 
     return output
+
+
+@router.delete("/cc/delete")
+async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+    guild = await get_guild_by_id(body.guild)
+    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    result = await Character_Model.delete_cc(body.title)
+    if result and body.discord_post:
+        embed = discord.Embed(
+            title=Character_Model.char_name.title(),
+            fields=[
+                discord.EmbedField(
+                    name=body.title.title(), value=f"{body.title} deleted from {Character_Model.char_name}."
+                )
+            ],
+            color=discord.Color.blurple(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+        embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
+
+        background_tasks.add_task(post_message, guild, embed=embed)
+        background_tasks.add_task(update_trackers, guild)
+
+    return {"success": result, "title": body.title}
+
+
+@router.post("/cc/modify")
+async def modify_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+    guild = await get_guild_by_id(body.guild)
+    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    success = False
+    if body.number is not None:
+        success = await Character_Model.edit_cc(body.title, body.number)
+
+    if success and body.discord_post:
+        embed = discord.Embed(
+            title=Character_Model.char_name.title(),
+            fields=[
+                discord.EmbedField(
+                    name=body.title.title(), value=f"{body.title} on {Character_Model.char_name} set to {body.number}."
+                )
+            ],
+            color=discord.Color.blurple(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+        embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
+
+        background_tasks.add_task(post_message, guild, embed=embed)
+        background_tasks.add_task(update_trackers, guild)
+
+    return {"success": success, "title": body.title}

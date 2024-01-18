@@ -535,9 +535,10 @@ class Character:
                 condition = result.scalars().one()
 
                 if condition.time:
-                    await self.ctx.send_followup(
-                        "Unable to edit time based conditions. Try again in a future update.", ephemeral=True
-                    )
+                    if self.ctx is not None:
+                        await self.ctx.send_followup(
+                            "Unable to edit time based conditions. Try again in a future update.", ephemeral=True
+                        )
                     return False
                 else:
                     condition.number = value
