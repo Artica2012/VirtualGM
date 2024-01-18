@@ -28,14 +28,14 @@ def get_username_by_id(id: int):
     :param id - integer:
     :return username - string or "" if no user is found:
     """
-    user = bot.get_user(id)
+    user = bot.get_user(int(id))
     if user is None:
-        username = ""
+        username = " "
     else:
         try:
             username = user.name
         except Exception:
-            username = ""
+            username = " "
 
     return username
 

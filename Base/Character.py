@@ -431,54 +431,54 @@ class Character:
                 return False
 
         # Write the condition to the table
-        try:
-            if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=number,
-                        counter=counter,
-                        auto_increment=auto_decrement,
-                        time=False,
-                        flex=flex,
-                        target=target_id,
-                    )
-                    session.add(condition)
-                await session.commit()
-                return True
+        # try:
+        if not self.guild.timekeeping or unit == "Round":  # If its not time based, then just write it
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=number,
+                    counter=counter,
+                    auto_increment=auto_decrement,
+                    time=False,
+                    flex=flex,
+                    target=target_id,
+                )
+                session.add(condition)
+            await session.commit()
+            return True
 
-            else:  # If its time based, then calculate the end time, before writing it
-                current_time = await get_time(self.ctx, self.engine)
-                if unit == "Minute":
-                    end_time = current_time + datetime.timedelta(minutes=number)
-                elif unit == "Hour":
-                    end_time = current_time + datetime.timedelta(hours=number)
-                else:
-                    end_time = current_time + datetime.timedelta(days=number)
+        else:  # If its time based, then calculate the end time, before writing it
+            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+            if unit == "Minute":
+                end_time = current_time + datetime.timedelta(minutes=number)
+            elif unit == "Hour":
+                end_time = current_time + datetime.timedelta(hours=number)
+            else:
+                end_time = current_time + datetime.timedelta(days=number)
 
-                timestamp = end_time.timestamp()
+            timestamp = end_time.timestamp()
 
-                async with session.begin():
-                    condition = Condition(
-                        character_id=self.id,
-                        title=title,
-                        number=timestamp,
-                        counter=counter,
-                        auto_increment=True,
-                        time=True,
-                        target=target_id,
-                    )
-                    session.add(condition)
-                await session.commit()
-                return True
+            async with session.begin():
+                condition = Condition(
+                    character_id=self.id,
+                    title=title,
+                    number=timestamp,
+                    counter=counter,
+                    auto_increment=True,
+                    time=True,
+                    target=target_id,
+                )
+                session.add(condition)
+            await session.commit()
+            return True
 
-        except NoResultFound:
-            await self.ctx.channel.send(error_not_initialized, delete_after=30)
-            return False
-        except Exception as e:
-            logging.warning(f"set_cc: {e}")
-            return False
+        # except NoResultFound:
+        #     await self.ctx.channel.send(error_not_initialized, delete_after=30)
+        #     return False
+        # except Exception as e:
+        #     logging.warning(f"set_cc: {e}")
+        #     return False
 
     # Delete CC
     async def delete_cc(self, condition):

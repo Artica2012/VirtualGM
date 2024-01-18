@@ -1,9 +1,11 @@
 import logging
 
+import d20
+import discord
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message
+from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id
 from Bot import bot
 from database_operations import engine
 from utils.Char_Getter import get_character
@@ -13,7 +15,7 @@ router = APIRouter()
 
 
 class InitManage(BaseModel):
-    user: int | None = None
+    user: int | None = 0
     guild: int | None = None
 
 
@@ -21,7 +23,31 @@ class InitSet(BaseModel):
     character: str
     roll: str
     guild: int | None = None
-    user: int | None = None
+    user: int | None = 0
+
+
+class HPSet(BaseModel):
+    character: str
+    roll: str
+    heal: bool | None = False
+    thp: bool | None = False
+    guild: int | None = None
+    user: int | None = 0
+
+
+class ConditionBody(BaseModel):
+    character: str
+    title: str
+    counter: bool | None = False  # True for counter, False for condition
+    number: int | None = None
+    unit: str | None = "Round"
+    auto: bool | None = False
+    flex: bool | None = False
+    data: str | None = ""
+    linked_character: str | None = None
+    guild: int | None = None
+    user: int | None = 0
+    discord_post: bool | None = True
 
 
 @router.post("/init/next")
@@ -72,3 +98,95 @@ async def init_set(request: InitSet, background_tasks: BackgroundTasks):
     background_tasks.add_task(update_trackers, guild)
 
     return {"success": success_string, "character": request.character, "roll": request.roll, "user": request.user}
+
+
+@router.post("/init/hp")
+async def hp_set(body: HPSet, background_tasks: BackgroundTasks):
+    guild = await get_guild_by_id(body.guild)
+    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    try:
+        rolled_value = int(d20.roll(body.roll).total)
+    except Exception:
+        return {"success": False}
+
+    if body.thp:
+        await Character_Model.add_thp(rolled_value)
+        success = True
+        output_string = f"{rolled_value} temporary hit points added to {Character_Model.char_name}"
+        color = discord.Color.dark_gold()
+    else:
+        success = await Character_Model.change_hp(rolled_value, body.heal, post=False)
+        if body.heal:
+            color = discord.Color.dark_green()
+        else:
+            color = discord.Color.dark_red()
+        output_string = f"{Character_Model.char_name} {'healed' if body.heal else 'damaged'} for {rolled_value}. "
+        if Character_Model.player:
+            output_string += f"\n New HP: {Character_Model.current_hp}/{Character_Model.max_hp}"
+        else:
+            output_string += f"\n {await Character_Model.calculate_hp()}"
+
+    # api raw output
+    output = {
+        "success": success,
+        "roll": body.roll,
+        "hp": Character_Model.current_hp,
+        "value": rolled_value,
+        "character": body.character,
+    }
+    # Discord posting nonsense
+    embed = discord.Embed(
+        title=f"{Character_Model.char_name}",
+        fields=[
+            discord.EmbedField(
+                name="HP: ",
+                value=output_string,
+                inline=False,
+            ),
+        ],
+        color=color,
+    )
+    embed.set_thumbnail(url=Character_Model.pic)
+    embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
+    background_tasks.add_task(post_message, guild, embed=embed)
+
+    return output
+
+
+@router.post("/cc/new")
+async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+    guild = await get_guild_by_id(body.guild)
+    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+
+    success = await Character_Model.set_cc(
+        body.title,
+        body.counter,
+        body.number,
+        body.unit,
+        body.auto,
+        flex=body.flex,
+        data=body.data,
+        target=body.linked_character,
+    )
+
+    output = {"success": success}
+    print(output)
+
+    # discord posting nonsense
+    if body.discord_post:
+        embed = discord.Embed(
+            title=Character_Model.char_name.title(),
+            fields=[
+                discord.EmbedField(
+                    name="Success", value=f"{body.title} {body.number if body.number != None else ''} added."
+                )
+            ],
+            color=discord.Color.blurple(),
+        )
+        embed.set_thumbnail(url=Character_Model.pic)
+        embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
+        if success:
+            background_tasks.add_task(post_message, guild, embed=embed)
+            background_tasks.add_task(update_trackers, guild)
+
+    return output
