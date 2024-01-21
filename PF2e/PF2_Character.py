@@ -91,7 +91,9 @@ class PF2_Character(Character):
         self.pic = character.pic if character.pic is not None else default_pic
         self.default_vars = PF2e.pf2_functions.default_vars
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
+    async def edit_character(
+        self, name: str, hp: int, pc: bool, init: str, active: bool, player: discord.User, img: str, bot
+    ):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -110,6 +112,8 @@ class PF2_Character(Character):
 
                 if hp is not None:
                     character.max_hp = hp
+                if pc is not None:
+                    character.player = pc
                 if init is not None:
                     character.init_string = str(init)
                 if player is not None:

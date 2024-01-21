@@ -189,7 +189,9 @@ class D4e_Character(Character):
             logging.warning(f"change_hp: {e}")
             return False
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
+    async def edit_character(
+        self, name: str, hp: int, pc: bool, init: str, active: bool, player: discord.User, img: str, bot
+    ):
         logging.info("edit_character")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -208,6 +210,8 @@ class D4e_Character(Character):
 
                 if hp is not None:
                     character.max_hp = hp
+                if pc is not None:
+                    character.player = pc
                 if init is not None:
                     character.init_string = str(init)
                 if player is not None:
