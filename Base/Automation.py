@@ -5,12 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Bot import bot
-from database_models import get_macro, Global
+from database_models import Global
 from database_operations import engine
 from utils.Char_Getter import get_character
+from utils.Macro_Getter import get_macro_object
 from utils.parsing import ParseModifiers
 from utils.utils import direct_message
-from utils.Macro_Getter import get_macro_object
+
+
+class AutoOutput:
+    def __init__(self, embed: discord.Embed, raw: dict):
+        self.embed = embed
+        self.raw = raw
 
 
 class Automation:
@@ -51,7 +57,6 @@ class Automation:
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")

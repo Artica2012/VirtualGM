@@ -75,7 +75,7 @@ class AutomationCog(commands.Cog):
                         embeds.append(
                             await Automation.attack(
                                 character, char.strip(), roll, vs, attack_modifier, target_modifier, multi=True
-                            )
+                            ).embed
                         )
 
                     except Exception:
@@ -85,7 +85,9 @@ class AutomationCog(commands.Cog):
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 await Tracker_Model.update_pinned_tracker()
             else:
-                embeds.append(await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier))
+                embeds.append(
+                    await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier).embed
+                )
             await ctx.send_followup(embeds=embeds)
         except Exception as e:
             logging.warning(f"attack_cog attack {e}")

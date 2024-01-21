@@ -4,7 +4,7 @@ import d20
 import discord
 from sqlalchemy.exc import NoResultFound
 
-from Base.Automation import Automation
+from Base.Automation import Automation, AutoOutput
 from PF2e.pf2_functions import PF2_base_dc, PF2_eval_succss
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
@@ -71,6 +71,13 @@ class PF2_Automation(Automation):
 
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
+        raw_output = {
+            "string": output_string,
+            "success": success_string,
+            "roll": str(dice_result.roll),
+            "roll_total": int(dice_result.total),
+        }
+
         embed = discord.Embed(
             title=f"{char_model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
@@ -78,7 +85,9 @@ class PF2_Automation(Automation):
         )
         embed.set_thumbnail(url=char_model.pic)
 
-        return embed
+        output = AutoOutput(embed=embed, raw=raw_output)
+
+        return output
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:

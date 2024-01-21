@@ -21,6 +21,7 @@ from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild, direct_message
 from Bot import bot
+from Base.Automation import AutoOutput
 
 
 class Attack_Data:
@@ -165,6 +166,13 @@ class AutoModel:
         else:
             output = Attack_Data.output
 
+        raw_output = {
+            "string": output,
+            "success": Attack_Data.success_string,
+            "roll": self.attack_name,
+            "roll_total": int(Attack_Data.total_damage),
+        }
+
         embed = discord.Embed(
             title=f"{self.character.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=self.attack_name.title(), value=output)],
@@ -174,7 +182,7 @@ class AutoModel:
         if self.heal:
             embed.color = discord.Color.green()
         # print(output)
-        self.output = embed
+        self.output = AutoOutput(embed=embed, raw=raw_output)
 
     async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
         # print("Complex Attack")
