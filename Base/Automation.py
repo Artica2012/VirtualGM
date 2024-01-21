@@ -55,6 +55,10 @@ class Automation:
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
+            if roll_result.total < 0:
+                total = 0
+            else:
+                total = roll_result.total
             output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         except Exception:
             try:
@@ -66,9 +70,15 @@ class Automation:
                     roll_result = d20.roll(f"(({macro_roll}){ParseModifiers(modifier)})*2")
                 else:
                     roll_result = d20.roll(f"({macro_roll}){ParseModifiers(modifier)}")
+
+                if roll_result.total < 0:
+                    total = 0
+                else:
+                    total = roll_result.total
+
                 output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
             except Exception:  # Error handling in case that a non-macro string in input
-                roll_result = d20.roll(0)
+                total = 0
                 output_string = "Error: Invalid Roll, Please try again."
 
         embed = discord.Embed(
@@ -77,7 +87,7 @@ class Automation:
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        await Target_Model.change_hp(roll_result.total, healing, post=False)
+        await Target_Model.change_hp(total, healing, post=False)
         # if not multi:
         #     await Tracker_Model.update_pinned_tracker()
         await self.gm_log(output_string, Target_Model)

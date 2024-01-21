@@ -8,7 +8,7 @@ import datetime
 import logging
 
 import discord
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -26,10 +26,8 @@ async def hard_lock(ctx: discord.ApplicationContext, name: str):
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
-            result = await session.execute(select(Tracker.user).where(Tracker.name == name))
+            result = await session.execute(select(Tracker.user).where(func.lower(Tracker.name) == name.lower()))
             user = result.scalars().one()
-            # print(user)
-            # print(ctx.user.id)
 
         if await gm_check(ctx, engine) or ctx.interaction.user.id == user:
             return True
