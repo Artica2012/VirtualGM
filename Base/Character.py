@@ -658,11 +658,14 @@ class Character:
         except Exception:
             await self.ctx.respond("Failed")
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
+    async def edit_character(
+        self, name: str, hp: int, pc: bool, init: str, active: bool, player: discord.User, img: str, bot
+    ):
         """
         Takes a series of values and applies any or all of them to the character in the database.
         :param name: string
         :param hp: integer - max hp
+        :param pc: boolean
         :param init: string
         :param active: boolean - if false, will move to the inactive list
         :param player: discord.User
@@ -694,6 +697,8 @@ class Character:
 
                 if hp is not None:
                     character.max_hp = hp
+                if pc is not None:
+                    character.player = pc
                 if init is not None:
                     character.init_string = str(init)
                 if player is not None:
