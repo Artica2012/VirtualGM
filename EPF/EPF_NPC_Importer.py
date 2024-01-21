@@ -303,7 +303,7 @@ async def write_resitances(
                 condition_string = f"{key} i {exceptions}"
             else:
                 condition_string = f"{key} i"
-            print(condition_string)
+            # print(condition_string)
 
             await Character_Model.set_cc(
                 key, True, 1, "Round", False, data=condition_string, visible=False, update=False

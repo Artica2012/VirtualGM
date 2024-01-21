@@ -212,7 +212,7 @@ class EPF_Utilities(Utilities):
                 query_char.attacks = attack_dict
                 await session.commit()
             Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
-            print(Character_Model.character_model.attacks)
+            # print(Character_Model.character_model.attacks)
             return True
         except Exception as e:
             logging.error(f"EPF utilities edit attack (write): {e}")

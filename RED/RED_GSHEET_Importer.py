@@ -32,7 +32,7 @@ async def red_g_sheet_import(
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
         # df = pd.read_csv(url, header=[0])
         df = pd.read_excel(url, header=[0])
-        print(df)
+        # print(df)
 
         guild = await get_guild(ctx, guild)
         if engine is None:
@@ -50,7 +50,7 @@ async def red_g_sheet_import(
         headers = list(df.columns.values)
         # print(headers)
         # print(headers[0])
-        print(df)
+        # print(df)
 
         decision_header = headers[0].strip()
 
@@ -195,12 +195,12 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
         except Exception:
             pass
 
-    print(stats)
+    # print(stats)
     character["stats"] = stats
 
     skills = {}
     for i in range(12, len(df.a)):
-        print(df.a[i])
+        # print(df.a[i])
         if type(df.a[i]) == str:
             try:
                 skill_name = str(df.a[i]).lower()
@@ -213,19 +213,19 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                     value = level
                 item = {"value": value, "stat": stat, "base": level}
                 skills[skill_name] = item
-                print(item)
+                # print(item)
             except Exception as e:
                 logging.error(f"red-g-sheet-import: {e}, {i}")
     character["skills"] = skills
-    print(skills)
+    # print(skills)
 
     attacks = {}
     net = {}
     for i in range(12, len(df.e)):
-        print(df.e[i], df.f[i], df.g[i], df.h[i])
+        # print(df.e[i], df.f[i], df.g[i], df.h[i])
         if type(df.e[i]) == str:
             if df.e[i] == "Name:":
-                print(df.e[i], str(df.f[i]))
+                # print(df.e[i], str(df.f[i]))
                 try:
                     dmg_string = f"{df.f[i + 2]}{df.g[i + 2]}"
                     name = str(df.f[i]).lower()
@@ -242,7 +242,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                         "attach": str(df.f[i + 7]),
                     }
                     attacks[name] = attack_data
-                    print(attack_data)
+                    # print(attack_data)
 
                     if attack_data["autofire"]:
                         autofire_attack = attack_data.copy()
@@ -266,8 +266,8 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 }
                 net[name] = net_data
 
-    print(attacks)
-    print(net)
+    # print(attacks)
+    # print(net)
     character["attacks"] = attacks
     character["net"] = net
 
@@ -285,7 +285,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
                 }
         except Exception:
             pass
-    print(armor)
+    # print(armor)
     character["armor"] = armor
     return character
 
@@ -339,7 +339,7 @@ async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str
         except Exception:
             pass
 
-    print(stats)
+    # print(stats)
     character["stats"] = stats
 
     skills = {}
@@ -354,7 +354,7 @@ async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str
     net_data = {"skill": None, "type": "net", "dmg": dmg_string, "attk_bonus": attack, "category": str(df.b[1])}
     net[name] = net_data
 
-    print(net)
+    # print(net)
     character["attacks"] = attacks
     character["net"] = net
 

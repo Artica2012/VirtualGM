@@ -101,11 +101,11 @@ class STF_Automation(Automation):
         except Exception:
             try:
                 roll_result = d20.roll(f"({await Character_Model.weapon_dmg(roll)}){ParseModifiers(modifier)}")
-                print(roll_result)
+                # print(roll_result)
                 weapon = await Character_Model.get_weapon(roll)
-            except Exception as e:
+            except Exception:
                 try:
-                    print(e)
+                    # print(e)
                     roll_result = d20.roll(f"{await Character_Model.get_roll(roll)}{ParseModifiers(modifier)}")
                 except Exception:
                     roll_result = d20.roll("0 [Error]")

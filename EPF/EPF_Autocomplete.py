@@ -23,7 +23,7 @@ class EPF_Autocmplete(AutoComplete):
         super().__init__(ctx, engine, guild)
 
     async def character_select(self, **kwargs):
-        print("Char Select")
+        # print("Char Select")
 
         if "all" in kwargs.keys():
             allnone = kwargs["all"]
@@ -209,11 +209,11 @@ class EPF_Autocmplete(AutoComplete):
             return EPF_DMG_Types
 
     async def npc_search(self, **kwargs):
-        print("NPC Search")
+        # print("NPC Search")
         # await self.engine.dispose()
         try:
             lookup_engine = database_operations.look_up_engine
-            print(lookup_engine)
+            # print(lookup_engine)
             async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
@@ -270,7 +270,7 @@ class EPF_Autocmplete(AutoComplete):
             except KeyError:
                 min_level = spell["lvl"]
 
-            print(min_level)
+            # print(min_level)
 
             # Cantrips are always at max spell rank
             if min_level == 0:

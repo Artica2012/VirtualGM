@@ -96,7 +96,7 @@ class Utilities:
                     except AttributeError:
                         success.set_thumbnail(url=Base.Character.default_pic)
                     embeds.append(success)
-            print(len(embeds))
+            # print(len(embeds))
             await self.ctx.respond(embeds=embeds[:9])
             embeds = embeds[9:]
             while len(embeds) > 0:
@@ -272,7 +272,7 @@ class Utilities:
                     select(Tracker).where(func.lower(Tracker.name) == char_name.lower())
                 )
                 character = result.scalars().one()
-                print(character.name)
+                # print(character.name)
                 try:
                     async with async_session() as write_session:
                         query = await write_session.execute(
@@ -289,7 +289,7 @@ class Utilities:
                         character_data.user = character.user
 
                         await write_session.commit()
-                        print("success old")
+                        # print("success old")
                 except Exception:
                     async with write_session.begin():
                         new_char = Character_Vault(
@@ -301,7 +301,7 @@ class Utilities:
                         )
                         write_session.add(new_char)
                     await write_session.commit()
-                    print("success new")
+                    # print("success new")
             return True
         except Exception:
             return False
@@ -332,7 +332,7 @@ class Utilities:
         split_name = char_name.split(",")
         name = split_name[0]
         guild_id = int(split_name[1])
-        print(guild_id)
+        # print(guild_id)
 
         Tracker = await get_tracker(self.ctx, self.engine, id=guild_id, system=self.guild.system)
 

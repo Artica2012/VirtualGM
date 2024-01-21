@@ -520,7 +520,7 @@ class EPF_Tracker(Tracker):
                 )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
 
     class NextButton(discord.ui.Button):

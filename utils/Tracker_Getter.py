@@ -58,5 +58,5 @@ class NextButton(discord.ui.Button):
             await Tracker_Model.advance_initiative()
             await Tracker_Model.block_post_init()
         except Exception as e:
-            print(f"Error: {e}")
+            # print(f"Error: {e}")
             logging.info(e)

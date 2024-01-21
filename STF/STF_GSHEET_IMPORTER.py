@@ -35,9 +35,9 @@ async def stf_g_sheet_import(
         sheet_id = parsed_url[5]
         logging.warning(f"G-sheet import: ID - {sheet_id}")
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
-        print(url)
+        # print(url)
         df = pd.read_csv(url, header=[0])
-        print(df)
+        # print(df)
         guild = await get_guild(ctx, guild)
         if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
@@ -52,8 +52,8 @@ async def stf_g_sheet_import(
         else:
             overwrite = False
         headers = list(df.columns.values)
-        print(headers)
-        print(df)
+        # print(headers)
+        # print(df)
         decision_header = headers[0].strip()
 
         if decision_header == "Starfinder Character Sheet:":
@@ -276,7 +276,7 @@ async def stf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     # Attacks
     for i in range(11, (len(df.d) - 1)):
         if df.d[i] == "Name" and type(df.e[i]) == str:
-            print(df.e[i])
+            # print(df.e[i])
 
             attack_data = {
                 "type": df.f[i],
@@ -377,7 +377,7 @@ async def stf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str
     # Attacks
     for i in range(11, (len(df.d) - 1)):
         if df.d[i] == "Name" and type(df.e[i]) == str:
-            print(df.e[i])
+            # print(df.e[i])
 
             attack_data = {
                 "type": df.f[i],

@@ -25,7 +25,7 @@ async def get_RED_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
         engine = database_operations.engine
     guild = await get_guild(ctx, guild)
-    print(guild.id)
+    # print(guild.id)
     RED_tracker = await get_tracker(ctx, engine, id=guild.id)
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -118,10 +118,10 @@ class RED_Character(Character):
     async def get_skill(self, item: str):
         item = item.lower()
         if item in self.skills.keys():
-            print(self.skills[item]["value"])
+            # print(self.skills[item]["value"])
             return self.skills[item]["value"]
         elif item in RED_SKills:
-            print(self.stats[RED_SKills[item]]["value"])
+            # print(self.stats[RED_SKills[item]]["value"])
             return self.stats[RED_SKills[item]]["value"]
         else:
             return 0
@@ -129,7 +129,7 @@ class RED_Character(Character):
     async def get_stat(self, item: str):
         item = item.lower()
         if item in self.stats.keys():
-            print(self.stats[item]["value"])
+            # print(self.stats[item]["value"])
             return self.stats[item]["value"]
         else:
             return None
@@ -139,7 +139,7 @@ class RED_Character(Character):
         if macro_string == 0:
             return 0
         roll_string = f"{macro_string}{ParseModifiers(modifier)}"
-        print(roll_string)
+        # print(roll_string)
         dice_result = RED_Roll_Result(d20.roll(roll_string))
         return dice_result
 
@@ -257,12 +257,12 @@ class RED_Character(Character):
                         pass
             else:
                 sp = armor[location]["sp"]
-                print("sp: ", sp)
+                # print("sp: ", sp)
                 new_sp = sp - amount
                 if new_sp < 0:
                     new_sp = 0
                 armor[location]["sp"] = new_sp
-                print(armor)
+                # print(armor)
 
             async with async_session() as session:
                 query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
@@ -276,12 +276,12 @@ class RED_Character(Character):
     async def damage_armor(self, amount: RED_Roll_Result, location: str):
         location = location.lower()
         try:
-            print(amount.total, location)
-            print(self.armor.keys())
+            # print(amount.total, location)
+            # print(self.armor.keys())
             if "cover" in self.armor.keys():
-                print("dmg_armor: cover")
+                # print("dmg_armor: cover")
                 cover_hp = int(self.armor["cover"]["sp"])
-                print(cover_hp, amount.total)
+                # print(cover_hp, amount.total)
                 if cover_hp > amount.total:
                     new_cover_hp = cover_hp - amount.total
                     await self.set_cover(new_cover_hp)
@@ -291,8 +291,8 @@ class RED_Character(Character):
                     return 0
             else:
                 sp = self.armor[location]["sp"]
-                print("Damage_Armor")
-                print(sp, amount.total)
+                # print("Damage_Armor")
+                # print(sp, amount.total)
                 if sp > amount.total:
                     return 0
                 else:
@@ -302,7 +302,7 @@ class RED_Character(Character):
                     await self.update()
                     return int(dmg)
         except Exception as e:
-            print(e)
+            # print(e)
             return 0
 
     @property
@@ -471,7 +471,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                 )
                 macro_data = result.scalars().all()
             macros.extend(macro_data)
-            print(macros)
+            # print(macros)
             character.macros = macros
 
             await session.commit()
@@ -496,7 +496,7 @@ async def calc_mods(stats: dict, skill_name: str, skills: dict, bonuses: dict):
 
 
 async def bonus_calc(skill, bonuses):
-    print(bonuses)
+    # print(bonuses)
     mod = 0
     if skill in bonuses["pos"]:
         mod += bonuses["pos"][skill]

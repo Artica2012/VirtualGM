@@ -16,7 +16,7 @@ async def get_autocomplete(ctx, guild=None, engine=None, id=id):
     try:
         guild = await get_guild(ctx, guild)
     except NoResultFound:
-        print(id)
+        # print(id)
         guild = await get_guild(ctx, guild, id=id)
 
     if guild.system == "EPF":

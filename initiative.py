@@ -130,6 +130,7 @@ class InitiativeCog(commands.Cog):
         autocomplete=character_select_gm,
     )
     @option("hp", description="Total HP", input_type=int, required=False)
+    @option("pc", description="PC or NPC", choices=["PC", "NPC"], input_type=str)
     @option("initiative", description="Initiative Roll (XdY+Z)", required=False, input_type=str)
     @option("active", description="Active State", required=False, input_type=bool)
     @option("image", description="Link to character portrait.")
@@ -138,6 +139,7 @@ class InitiativeCog(commands.Cog):
         ctx: discord.ApplicationContext,
         name: str,
         hp: int = None,
+        pc: str = None,
         initiative: str = None,
         active: bool = None,
         player: discord.User = None,
@@ -146,11 +148,19 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         response = False
+        if pc == "PC":
+            pc_bool = True
+        elif pc == "NPC":
+            pc_bool = False
+        else:
+            pc_bool = None
 
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
-                response = await Character_Model.edit_character(name, hp, initiative, active, player, image, self.bot)
+                response = await Character_Model.edit_character(
+                    name, hp, pc_bool, initiative, active, player, image, self.bot
+                )
             except Exception as e:
                 logging.warning(f"char edit {e}")
                 report = ErrorReport(ctx, "/char edit", e, self.bot)

@@ -322,7 +322,7 @@ class RED_Tracker(Tracker):
                 selector = "  "
 
                 # don't show an init if not in combat
-                print(character.char_name, character.init)
+                # print(character.char_name, character.init)
                 if character.init == 0 or character.active is False:
                     init_num = ""
                 else:
@@ -438,7 +438,7 @@ class RED_Tracker(Tracker):
         async def callback(self, interaction: discord.Interaction):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
-                print(interaction.message.id)
+                # print(interaction.message.id)
                 Tracker_model = RED_Tracker(
                     self.ctx,
                     self.engine,
@@ -448,7 +448,7 @@ class RED_Tracker(Tracker):
                 )
                 await Tracker_model.update_pinned_tracker()
             except Exception as e:
-                print(f"Error: {e}")
+                # print(f"Error: {e}")
                 logging.info(e)
 
     class NextButton(discord.ui.Button):

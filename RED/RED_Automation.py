@@ -74,7 +74,7 @@ class RED_Automation(Automation):
                 dmg = await Character_Model.weapon_damage(attack, dmg_modifier, iter=diff)
             else:
                 dmg = await Character_Model.weapon_damage(attack, dmg_modifier)
-            print("dmg: ", dmg)
+            # print("dmg: ", dmg)
 
             amt = await Target_Model.damage_armor(dmg, location)
             color = discord.Color.green()
@@ -100,7 +100,7 @@ class RED_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        print(multi)
+        # print(multi)
         # if not multi:
         #     print("Updating")
         #     await Tracker_Model.update_pinned_tracker()
@@ -120,7 +120,7 @@ class RED_Automation(Automation):
             dice_result = RED_Roll_Result(
                 d20.roll(f"{await char_model.get_roll(roll)}{ParseModifiers(attack_modifier)}")
             )
-            print(dice_result)
+            # print(dice_result)
         except Exception:
             roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
@@ -128,7 +128,7 @@ class RED_Automation(Automation):
         Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
 
         goal_value = await Target_Model.get_roll(vs)
-        print(goal_value)
+        # print(goal_value)
 
         try:
             goal_string: str = f"({goal_value}){ParseModifiers(target_modifier)}"
@@ -173,7 +173,7 @@ class RED_Automation(Automation):
         )
         success_string = RED_eval_success(dice_result, goal_result)
 
-        print(dice_result, goal_result, success_string)
+        # print(dice_result, goal_result, success_string)
 
         attk_output_string = (
             f"NET ACTION\n{character} attacks {target} {'' if target_modifier == '' else f'( {target_modifier})'} with "
@@ -203,7 +203,7 @@ class RED_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        print(multi)
+        # print(multi)
         # if not multi:
         #     print("Updating")
         #     await Tracker_Model.update_pinned_tracker()

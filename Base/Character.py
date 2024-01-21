@@ -157,13 +157,13 @@ class Character:
         :return: integer (Initiative Value)
         """
 
-        print("Rolling Initiative")
+        # print("Rolling Initiative")
         if self.char_name != self.guild.saved_order:
             try:
-                print(f"Trying {self.init_string}")
+                # print(f"Trying {self.init_string}")
                 init = d20.roll(self.init_string).total
             except Exception:
-                print("Variables")
+                # print("Variables")
                 macro = self.init_string.lower()
                 variables = self.character_model.variables
                 variables.update(self.default_vars)
@@ -175,7 +175,7 @@ class Character:
                     if key in macro:
                         macro = macro.replace(key, str(variables[key]))
 
-                print(macro)
+                # print(macro)
                 init = d20.roll(macro).total
 
             await self.set_init(init)
@@ -322,7 +322,7 @@ class Character:
                 roll = d20.roll(init)
                 init = roll.total
             except Exception:
-                print("Variables")
+                # print("Variables")
                 macro = init.lower()
                 variables = self.character_model.variables
                 variables.update(self.default_vars)
@@ -334,7 +334,7 @@ class Character:
                     if key in macro:
                         macro = macro.replace(key, str(variables[key]))
 
-                print(macro)
+                # print(macro)
                 init = d20.roll(macro).total
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
@@ -658,11 +658,14 @@ class Character:
         except Exception:
             await self.ctx.respond("Failed")
 
-    async def edit_character(self, name: str, hp: int, init: str, active: bool, player: discord.User, img: str, bot):
+    async def edit_character(
+        self, name: str, hp: int, pc: bool, init: str, active: bool, player: discord.User, img: str, bot
+    ):
         """
         Takes a series of values and applies any or all of them to the character in the database.
         :param name: string
         :param hp: integer - max hp
+        :param pc: boolean
         :param init: string
         :param active: boolean - if false, will move to the inactive list
         :param player: discord.User
@@ -694,6 +697,8 @@ class Character:
 
                 if hp is not None:
                     character.max_hp = hp
+                if pc is not None:
+                    character.player = pc
                 if init is not None:
                     character.init_string = str(init)
                 if player is not None:

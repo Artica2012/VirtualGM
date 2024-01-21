@@ -90,12 +90,12 @@ async def npc_lookup(
             try:
                 # print(f"Init: {init}")
                 initiative_num = int(data.init) + stat_mod
-                print(initiative_num)
+                # print(initiative_num)
             except Exception:
                 try:
                     roll = d20.roll(init_string)
                     initiative_num = roll.total
-                    print(initiative_num)
+                    # print(initiative_num)
                 except Exception:
                     initiative_num = 0
 
@@ -176,9 +176,9 @@ async def npc_lookup(
             for x, attack in enumerate(attack_list[:-1]):
                 await asyncio.sleep(0)
                 # split the attack
-                print(attack)
+                # print(attack)
                 split_string = attack.split(";")
-                print(split_string)
+                # print(split_string)
                 base_name = split_string[0].strip()
                 attack_string = split_string[1].strip()
                 damage_string = split_string[2].strip()
@@ -195,7 +195,7 @@ async def npc_lookup(
                         macro=f"{attack_string}+{stat_mod}",
                     )
                 session.add(attack_macro)
-                print("Attack Added")
+                # print("Attack Added")
                 if elite == "weak":
                     damage_macro = Macro(
                         character_id=character.id,
@@ -210,15 +210,10 @@ async def npc_lookup(
                     )
 
                 session.add(damage_macro)
-                print("Damage Added")
+                # print("Damage Added")
             await session.commit()
-        print("Committed")
+        # print("Committed")
 
-        # Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
-        # await Tracker_Model.update_pinned_tracker()
-        # output_string = f"{data.name} added as {name}"
-
-        # await ctx.send_followup(output_string)
     except Exception:
         await ctx.send_followup("Action Failed, please try again", delete_after=60)
 
