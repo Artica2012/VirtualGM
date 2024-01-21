@@ -85,13 +85,20 @@ class D4e_Automation(Automation):
             if dice_result.total >= D4e_base_roll.total:
                 await Character_Model.delete_cc(target)
 
+            raw_output = {
+                "string": output_string,
+                "success": success_string,
+                "roll": str(dice_result.roll),
+                "roll_total": int(dice_result.total),
+            }
+
             embed = discord.Embed(
                 title=f"{Character_Model.char_name}",
                 fields=[discord.EmbedField(name=save, value=output_string)],
             )
             embed.set_thumbnail(url=Character_Model.pic)
 
-            return embed
+            return AutoOutput(embed=embed, raw=raw_output)
 
         except NoResultFound:
             if self.ctx is not None:

@@ -152,6 +152,13 @@ class PF2_Automation(Automation):
                     f"{target} makes a {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
                 )
 
+            raw_output = {
+                "string": output_string,
+                "success": success_string,
+                "roll": str(dice_result.roll),
+                "roll_total": int(dice_result.total),
+            }
+
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
             return False
@@ -170,4 +177,4 @@ class PF2_Automation(Automation):
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        return embed
+        return AutoOutput(embed=embed, raw=raw_output)

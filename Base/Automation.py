@@ -76,6 +76,13 @@ class Automation:
                 roll_result = d20.roll(0)
                 output_string = "Error: Invalid Roll, Please try again."
 
+        raw_output = {
+            "string": output_string,
+            "success": "",
+            "roll": str(roll_result.roll),
+            "roll_total": int(roll_result.total),
+        }
+
         embed = discord.Embed(
             title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
@@ -86,7 +93,7 @@ class Automation:
         # if not multi:
         #     await Tracker_Model.update_pinned_tracker()
         await self.gm_log(output_string, Target_Model)
-        return embed
+        return AutoOutput(embed=embed, raw=raw_output)
 
     async def auto(
         self,

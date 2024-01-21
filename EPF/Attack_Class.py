@@ -125,7 +125,10 @@ class AutoModel:
             )
             embed.set_thumbnail(url=self.character.pic)
 
-            await self.ctx.channel.send(embed=embed)
+            if self.ctx is not None:
+                await self.ctx.channel.send(embed=embed)
+            else:
+                bot.get_channel(self.guild.tracker_channel).send(embed=embed)
 
         if "condition" in data.keys():
             embed = discord.Embed(
@@ -139,11 +142,16 @@ class AutoModel:
             )
             embed.set_thumbnail(url=self.character.pic)
 
-            await self.ctx.channel.send(embed=embed)
+            if self.ctx is not None:
+                await self.ctx.channel.send(embed=embed)
+            else:
+                bot.get_channel(self.guild.tracker_channel).send(embed=embed)
 
     async def format_output(self, Attack_Data, Target_Model: EPF_Character):
         # print("Formatting Output", Target_Model.current_hp, await Target_Model.calculate_hp())
         if Attack_Data.dmg_string is not None:
+            print(self.character.char_name)
+            print(Target_Model.char_name)
             dmg_output_string = (
                 f"{self.character.char_name} {'damages' if not self.heal else 'heals'} {Target_Model.char_name} for:"
             )
@@ -813,6 +821,7 @@ class Attack(AutoModel):
 
     async def damage(self, target, modifier, healing, damage_type: str, crit=False):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        print(Target_Model.char_name)
         self.heal = healing
 
         if self.complex:

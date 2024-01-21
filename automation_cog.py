@@ -123,13 +123,13 @@ class AutomationCog(commands.Cog):
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        embeds.append(await Automation.save(character, char.strip(), save, dc, modifier))
+                        embeds.append(await Automation.save(character, char.strip(), save, dc, modifier).embed)
                     except Exception:
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=save, value="Invalid Target")])
                         )
             else:
-                embeds.append(await Automation.save(character, target, save, dc, modifier))
+                embeds.append(await Automation.save(character, target, save, dc, modifier).embed)
             await ctx.send_followup(embeds=embeds)
         except Exception as e:
             logging.warning(f"attack_cog save {e}")
@@ -177,7 +177,7 @@ class AutomationCog(commands.Cog):
                                 damage_type,
                                 multi=True,
                                 crit=crit,
-                            )
+                            ).embed
                         )
                     except Exception:
                         embeds.append(
@@ -190,7 +190,7 @@ class AutomationCog(commands.Cog):
                 embeds.append(
                     await Automation.damage(
                         self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
-                    )
+                    ).embed
                 )
             await ctx.send_followup(embeds=embeds)
 
