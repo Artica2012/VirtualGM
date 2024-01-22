@@ -54,6 +54,17 @@ class ConditionBody(BaseModel):
     discord_post: bool | None = True
 
 
+@router.get("/init/tracker")
+async def get_tracker(user: str, guildid: int, gm: bool = False):
+    guild = await get_guild_by_id(guildid)
+    Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    output_string = await Tracker_Model.block_get_tracker(guild.initiative, gm=gm)
+    output_string = output_string.strip("```")
+    output = {"guild": guildid, "output": output_string, "init_pos": guild.initiative}
+
+    return output
+
+
 @router.post("/init/next")
 async def init_start(request: InitManage, background_tasks: BackgroundTasks):
     guild = await get_guild_by_id(request.guild)
