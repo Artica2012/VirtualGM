@@ -1105,6 +1105,7 @@ class EPF_Character(Character):
         else:
             # print("Not Eidolon")
             await super().change_hp(amount, heal, post)
+            print(self.character_model.partner)
             if self.character_model.partner is not None:
                 Eidolon = await get_EPF_Character(
                     self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
