@@ -74,7 +74,7 @@ class PF2_Automation(Automation):
         raw_output = {
             "string": output_string,
             "success": success_string,
-            "roll": str(dice_result.roll),
+            "roll": str(dice_result.result),
             "roll_total": int(dice_result.total),
         }
 
@@ -155,7 +155,7 @@ class PF2_Automation(Automation):
             raw_output = {
                 "string": output_string,
                 "success": success_string,
-                "roll": str(dice_result.roll),
+                "roll": str(dice_result.result),
                 "roll_total": int(dice_result.total),
             }
 

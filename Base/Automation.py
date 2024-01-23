@@ -89,7 +89,7 @@ class Automation:
         raw_output = {
             "string": output_string,
             "success": "",
-            "roll": str(roll_result.roll),
+            "roll": str(roll_result.result),
             "roll_total": int(roll_result.total),
         }
 
