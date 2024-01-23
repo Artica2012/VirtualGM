@@ -301,8 +301,7 @@ class AutomationCog(commands.Cog):
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        embeds.append(
-                            await Automation.cast(
+                        data = await Automation.cast(
                                 self.bot,
                                 character,
                                 char.strip(),
@@ -312,17 +311,15 @@ class AutomationCog(commands.Cog):
                                 target_modifier,
                                 damage_modifier,
                                 damage_type_override,
-                                multi=True,
-                            ).embed
-                        )
+                                multi=True) 
+                        embeds.append(data.emdeb)
                     except Exception:
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=spell, value="Invalid Target")])
                         )
 
             else:
-                embeds.append(
-                    await Automation.cast(
+                data = await Automation.cast(
                         self.bot,
                         character,
                         target,
@@ -331,9 +328,8 @@ class AutomationCog(commands.Cog):
                         attack_modifer,
                         target_modifier,
                         damage_modifier,
-                        damage_type_override,
-                    ).embed
-                )
+                        damage_type_override,) 
+                embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
