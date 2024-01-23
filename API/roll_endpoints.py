@@ -1,10 +1,11 @@
 import logging
 
 import d20
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, get_username_by_id, post_message
+from API.api_utils import get_guild_by_id, get_username_by_id, post_message, get_api_key
 from Bot import bot
 from error_handling_reporting import API_ErrorReport
 from utils.parsing import opposed_roll, eval_success
@@ -24,7 +25,7 @@ class RollData(BaseModel):
 
 
 @router.post("/roll")
-async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks):
+async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:

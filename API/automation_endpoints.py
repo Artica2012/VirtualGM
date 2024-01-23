@@ -1,9 +1,10 @@
 from math import ceil
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi.security.api_key import APIKey
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id
+from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
 from database_operations import engine
 from utils.Automation_Getter import get_automation
 from Bot import bot
@@ -32,7 +33,7 @@ class AutoRequest(BaseModel):
 
 
 @router.get("/auto/getattacks")
-async def get_attacks(user: str, guildid: int, character: str):
+async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     try:
         if guild.system == "EPF":
@@ -47,7 +48,7 @@ async def get_attacks(user: str, guildid: int, character: str):
 
 
 @router.get("/auto/getspells")
-async def get_spells(user: str, guildid: int, character: str):
+async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     # try:
     if guild.system == "EPF":
@@ -60,7 +61,7 @@ async def get_spells(user: str, guildid: int, character: str):
 
 
 @router.get("/auto/getspelllevel")
-async def get_spelllevel(user: str, guildid: int, character: str, spell: str):
+async def get_spelllevel(user: str, guildid: int, character: str, spell: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
 
     if guild.system == "EPF":
@@ -123,7 +124,7 @@ async def get_spelllevel(user: str, guildid: int, character: str, spell: str):
 
 
 @router.post("/auto/attack")
-async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks):
+async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
     try:
@@ -144,7 +145,7 @@ async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks):
 
 
 @router.post("/auto/save")
-async def api_save(body: AutoRequest, background_tasks: BackgroundTasks):
+async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
     try:
@@ -162,7 +163,7 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks):
 
 
 @router.post("/auto/damage")
-async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks):
+async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
     try:
@@ -182,7 +183,7 @@ async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks):
 
 
 @router.post("/auto/auto")
-async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks):
+async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
     try:
@@ -202,27 +203,24 @@ async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks):
 
 
 @router.post("/auto/cast")
-async def api_cast(body: AutoRequest, background_tasks: BackgroundTasks):
+async def api_cast(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
-    # try:
-    auto_data = await Automation.cast(
-        bot,
-        body.character,
-        body.target,
-        body.roll,
-        body.level,
-        body.attk_mod,
-        body.target_mod,
-        body.dmg_mod,
-        body.dmg_type,
-    )
-    # except Exception as e:
-    #     print(e)
-    #     return {
-    #         "success": "failure",
-    #         "output": e
-    #     }
+    try:
+        auto_data = await Automation.cast(
+            bot,
+            body.character,
+            body.target,
+            body.roll,
+            body.level,
+            body.attk_mod,
+            body.target_mod,
+            body.dmg_mod,
+            body.dmg_type,
+        )
+    except Exception as e:
+        print(e)
+        return {"success": "failure", "output": e}
 
     if body.discord_post:
         embed = auto_data.embed

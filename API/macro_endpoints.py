@@ -1,9 +1,10 @@
 import json
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, post_message
+from API.api_utils import get_guild_by_id, post_message, get_api_key
 from database_operations import engine
 from utils.Macro_Getter import get_macro_object
 
@@ -30,7 +31,7 @@ class CreateMacro(BaseModel):
 
 
 @router.get("/macro/query")
-async def get_macros(user: int, character: str, guildid: int):
+async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     try:
         print(user, character, guildid)
         guild = await get_guild_by_id(guildid)
@@ -42,7 +43,7 @@ async def get_macros(user: int, character: str, guildid: int):
 
 
 @router.post("/macro/roll")
-async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks):
+async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     print(roll_data)
     guild = await get_guild_by_id(roll_data.guild)
     Macro = await get_macro_object(None, engine, guild)
@@ -82,7 +83,7 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks):
 
 
 @router.post("/macro/create")
-async def create_macro(macro_data: CreateMacro):
+async def create_macro(macro_data: CreateMacro, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(macro_data.guild)
     Macro = await get_macro_object(None, engine, guild)
 

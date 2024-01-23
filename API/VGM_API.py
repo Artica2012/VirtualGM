@@ -1,12 +1,12 @@
-from fastapi import FastAPI
 import uvicorn
-import API.endpoints as endpoints
-import API.roll_endpoints as roll_endpoints
-import API.macro_endpoints as macro_endpoints
-import API.initiative_endpoints as initiative_endpoints
-import API.character_endpoints as character_endpoints
-import API.automation_endpoints as automation_endpoints
+from fastapi import FastAPI
 
+import API.automation_endpoints as automation_endpoints
+import API.character_endpoints as character_endpoints
+import API.endpoints as endpoints
+import API.initiative_endpoints as initiative_endpoints
+import API.macro_endpoints as macro_endpoints
+import API.roll_endpoints as roll_endpoints
 
 app = FastAPI()
 app.include_router(endpoints.router)

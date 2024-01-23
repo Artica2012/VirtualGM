@@ -31,15 +31,12 @@ from API.VGM_API import start_uvicorn
 # import database_operations
 
 
-# print(os.environ["PRODUCTION"])
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
-    # TOKEN = os.getenv("TOKEN")
     logging.basicConfig(level=logging.WARNING)
     logging.info("Script Started")
 
 else:
-    # TOKEN = os.getenv("BETA_TOKEN")
     logging.basicConfig(level=logging.INFO)
     logging.info("Script Started")
 
@@ -48,17 +45,6 @@ GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
 
 # tracemalloc.start()
-
-# set up the bot/intents
-# intents = discord.Intents.default()
-# intents.members = True
-# # intents.messages = True
-# # intents = discord.Intents.all()
-# bot = discord.Bot(
-#     intents=intents,
-#     allowed_mention=discord.AllowedMentions.all()
-#     # debug_guilds=[GUILD]
-# )
 
 
 # Print Status on Connected - Outputs to server log

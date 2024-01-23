@@ -2,13 +2,14 @@ import logging
 
 import d20
 import discord
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id
+from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id, get_api_key
 from Bot import bot
 from database_models import get_condition
 from database_operations import engine
@@ -55,7 +56,7 @@ class ConditionBody(BaseModel):
 
 
 @router.get("/init/tracker")
-async def get_tracker(user: str, guildid: int, gm: bool = False):
+async def get_tracker(user: str, guildid: int, gm: bool = False, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
     output_string = await Tracker_Model.block_get_tracker(guild.initiative, gm=gm)
@@ -66,7 +67,7 @@ async def get_tracker(user: str, guildid: int, gm: bool = False):
 
 
 @router.post("/init/next")
-async def init_start(request: InitManage, background_tasks: BackgroundTasks):
+async def init_start(request: InitManage, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
     try:
@@ -84,7 +85,7 @@ async def init_start(request: InitManage, background_tasks: BackgroundTasks):
 
 
 @router.post("/init/end")
-async def init_end(request: InitManage, background_tasks: BackgroundTasks):
+async def init_end(request: InitManage, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
     GM = gm_check(str(request.user), guild)
     if GM:
@@ -105,7 +106,7 @@ async def init_end(request: InitManage, background_tasks: BackgroundTasks):
 
 
 @router.post("/init/set")
-async def init_set(request: InitSet, background_tasks: BackgroundTasks):
+async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
     Character_Model = await get_character(request.character, None, guild=guild, engine=engine)
     success_string = await Character_Model.set_init(request.roll)
@@ -116,7 +117,7 @@ async def init_set(request: InitSet, background_tasks: BackgroundTasks):
 
 
 @router.post("/init/hp")
-async def hp_set(body: HPSet, background_tasks: BackgroundTasks):
+async def hp_set(body: HPSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
     try:
@@ -169,7 +170,9 @@ async def hp_set(body: HPSet, background_tasks: BackgroundTasks):
 
 
 @router.get("/cc/query")
-async def get_cc_query(user: int, character: str, guildid: int, list: bool = True):
+async def get_cc_query(
+    user: int, character: str, guildid: int, list: bool = True, api_key: APIKey = Depends(get_api_key)
+):
     guild = await get_guild_by_id(guildid)
     Character_Model = await get_character(character, None, guild=guild, engine=engine)
     if list:
@@ -188,7 +191,7 @@ async def get_cc_query(user: int, character: str, guildid: int, list: bool = Tru
 
 
 @router.post("/cc/new")
-async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
 
@@ -227,7 +230,7 @@ async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks):
 
 
 @router.delete("/cc/delete")
-async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
     result = await Character_Model.delete_cc(body.title)
@@ -251,7 +254,7 @@ async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks):
 
 
 @router.post("/cc/modify")
-async def modify_cc(body: ConditionBody, background_tasks: BackgroundTasks):
+async def modify_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
     success = False

@@ -1,3 +1,4 @@
+import os
 import discord.embeds
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -9,6 +10,20 @@ from Bot import bot
 from database_models import Global
 from database_operations import engine
 from utils.Tracker_Getter import get_tracker_model
+
+from fastapi import HTTPException, Security, status
+from fastapi.security import APIKeyHeader
+
+api_keys = os.environ.get("WEB_APP").split(",")
+
+
+api_key_header = APIKeyHeader(name="access_token", auto_error=False)
+
+
+def get_api_key(api_key_header: str = Security(api_key_header)):
+    if api_key_header in api_keys:
+        return api_key_header
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalide or missing API key")
 
 
 async def get_guild_by_id(id: int):

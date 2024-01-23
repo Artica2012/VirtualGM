@@ -1,13 +1,14 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from API.api_utils import get_guild_by_id, gm_check, api_hard_lock
+from API.api_utils import get_guild_by_id, gm_check, api_hard_lock, get_api_key
 from database_models import get_tracker
 from database_operations import engine
 from utils.Char_Getter import get_character
@@ -23,7 +24,7 @@ class CharData(BaseModel):
 
 
 @router.get("/char/query")
-async def get_chars(user: str, guildid: int):
+async def get_chars(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     GM = gm_check(user, guild)
 
@@ -48,7 +49,7 @@ async def get_chars(user: str, guildid: int):
 
 
 @router.post("/char/delete")
-async def char_delete(char_data: CharData):
+async def char_delete(char_data: CharData, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(char_data.guild)
     Character_Model = await get_character(char_data.character, None, guild=guild, engine=engine)
     if api_hard_lock(guild, char_data.user, Character_Model):
