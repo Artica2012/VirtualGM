@@ -15,6 +15,7 @@ from auto_complete import character_select_gm
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from initiative_functions import update_member_list
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
@@ -93,6 +94,7 @@ class STFCog(commands.Cog):
             if response:
                 logging.info("Writing to Vault")
                 guild = await get_guild(ctx, None)
+                await update_member_list(guild.id)
                 Character = await get_character(name, ctx, guild=guild, engine=engine)
                 if Character.player:
                     Utilities = await get_utilities(ctx, guild=guild, engine=engine)

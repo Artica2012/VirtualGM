@@ -5,12 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from Bot import bot
-from database_models import get_macro, Global
+from database_models import Global
 from database_operations import engine
 from utils.Char_Getter import get_character
+from utils.Macro_Getter import get_macro_object
 from utils.parsing import ParseModifiers
 from utils.utils import direct_message
-from utils.Macro_Getter import get_macro_object
+
+
+class AutoOutput:
+    def __init__(self, embed: discord.Embed, raw: dict):
+        self.embed = embed
+        self.raw = raw
 
 
 class Automation:
@@ -51,7 +57,6 @@ class Automation:
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
@@ -81,6 +86,13 @@ class Automation:
                 total = 0
                 output_string = "Error: Invalid Roll, Please try again."
 
+        raw_output = {
+            "string": output_string,
+            "success": "",
+            "roll": str(roll_result.roll),
+            "roll_total": int(roll_result.total),
+        }
+
         embed = discord.Embed(
             title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
@@ -91,7 +103,7 @@ class Automation:
         # if not multi:
         #     await Tracker_Model.update_pinned_tracker()
         await self.gm_log(output_string, Target_Model)
-        return embed
+        return AutoOutput(embed=embed, raw=raw_output)
 
     async def auto(
         self,

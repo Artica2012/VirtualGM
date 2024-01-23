@@ -7,6 +7,7 @@ from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from Bot import bot
 
 import Base.Character
 from database_models import get_tracker, get_condition, get_macro, Character_Vault
@@ -224,7 +225,7 @@ class Utilities:
 
             async with async_session() as session:
                 # print(character)
-                result = await session.execute(select(Tracker).where(Tracker.name == character))
+                result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == character.lower()))
                 char = result.scalars().one()
                 # print(char.id)
                 result = await session.execute(select(Condition).where(Condition.character_id == char.id))
@@ -248,7 +249,10 @@ class Utilities:
             async with async_session() as session:
                 await session.delete(char)
                 await session.commit()
-            await self.ctx.channel.send(f"{char.name} Deleted")
+            try:
+                await self.ctx.channel.send(f"{char.name} Deleted")
+            except Exception:
+                await bot.get_channel(self.guild.tracker_channel).send(f"{char.name} Deleted")
             return True
         except Exception as e:
             logging.warning(f"delete_character: {e}")

@@ -16,3 +16,10 @@ def opposed_roll(roll: d20.RollResult, dc: d20.RollResult):
         f"{':thumbsup:' if roll.total >= dc.total else ':thumbsdown:'}"
         f" {roll} >= {dc} {'Success' if roll.total >= dc.total else 'Failure'}!"
     )
+
+
+def eval_success(roll: d20.RollResult, dc: d20.RollResult):
+    if roll.total >= dc.total:
+        return True
+    else:
+        return False

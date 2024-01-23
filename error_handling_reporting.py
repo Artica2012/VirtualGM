@@ -47,6 +47,18 @@ class ErrorReport:
         await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)
 
 
+class API_ErrorReport:
+    def __init__(self, data, function_name, error, bot):
+        self.data = data.dict()
+        self.function_name = function_name
+        self.error = error
+        self.bot = bot
+
+    async def report(self):
+        output_string = f"```\n{self.function_name}, {self.error}\n{self.data}```"
+        await self.bot.get_guild(int(error_server)).get_channel(int(error_channel)).send(output_string)
+
+
 error_not_initialized = (
     "The VirtualGM Initiative Tracker is not set up in this channel, assure you are in the "
     "proper channel or run `/admin start` to setup the initiative tracker"

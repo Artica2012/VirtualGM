@@ -277,7 +277,10 @@ class Tracker:
                 async with async_session() as session:
                     await session.delete(char)
                     await session.commit()
-                await self.ctx.channel.send(f"{char.name} Deleted")
+                try:
+                    await self.ctx.channel.send(f"{char.name} Deleted")
+                except AttributeError:
+                    await self.bot.get_channel(int(guild.tracker_channel)).send(f"{char.name} Deleted")
 
         # Set all initiatives to 0
         async with async_session() as session:

@@ -1105,6 +1105,7 @@ class EPF_Character(Character):
         else:
             # print("Not Eidolon")
             await super().change_hp(amount, heal, post)
+            print(self.character_model.partner)
             if self.character_model.partner is not None:
                 Eidolon = await get_EPF_Character(
                     self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
@@ -1121,6 +1122,12 @@ class EPF_Character(Character):
             update = kwargs["update"]
         else:
             update = True
+
+        if self.char_name == self.guild.saved_order:
+            return (
+                f"Please wait until {self.char_name} is not the active character in initiative before "
+                "resetting its initiative."
+            )
 
         logging.info(f"set_init {self.char_name} {init}")
         if self.ctx is None and self.guild is None:

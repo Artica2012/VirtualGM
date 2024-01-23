@@ -71,7 +71,7 @@ def get_db_engine(user, password, host, port, db):
 async def update_global_manager():
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        alter_string = text('ALTER TABLE "global_manager" ADD column "audit_log" varchar')
+        alter_string = text('ALTER TABLE "global_manager" ADD column "members" json')
         async with async_session() as session:
             await session.execute(alter_string)
             await session.commit()

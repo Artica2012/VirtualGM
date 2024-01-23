@@ -6,8 +6,8 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import get_tracker, get_condition
-from database_operations import get_asyncio_db_engine
+from database_models import get_tracker, get_condition, Global
+from database_operations import get_asyncio_db_engine, engine
 from error_handling_reporting import error_not_initialized, ErrorReport
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from utils.Tracker_Getter import get_tracker_model
@@ -173,3 +173,21 @@ class ConditionAdd(discord.ui.Button):
         except Exception as e:
             # print(f"Error: {e}")
             logging.info(e)
+
+
+async def update_member_list(guild_id):
+    member_list = []
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(None, engine, id=guild_id)
+    async with async_session() as session:
+        result = await session.execute(select(Tracker))
+    char_list = result.scalars().all()
+    for char in char_list:
+        if char.user not in member_list:
+            member_list.append(char.user)
+
+    async with async_session() as session:
+        result = await session.execute(select(Global).where(Global.id == guild_id))
+        active_guild = result.scalars().one()
+        active_guild.members = member_list
+        await session.commit()

@@ -30,7 +30,7 @@ from database_models import get_tracker
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
-from initiative_functions import edit_cc_interface
+from initiative_functions import edit_cc_interface, update_member_list
 from time_keeping_functions import check_timekeeper
 from utils import utils
 from utils.Char_Getter import get_character
@@ -121,6 +121,8 @@ class InitiativeCog(commands.Cog):
                 await Utilities.add_to_vault(name)
         except Exception:
             await ctx.respond("Error Adding Character", ephemeral=True)
+        guild = await get_guild(ctx, None)
+        await update_member_list(guild.id)
 
     @char.command(description="Edit PC on NPC")
     @option(
@@ -171,6 +173,7 @@ class InitiativeCog(commands.Cog):
             else:
                 Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
                 await Tracker_Model.update_pinned_tracker()
+
         else:
             await ctx.respond("You do not have the appropriate permissions to edit this character.")
 
@@ -219,6 +222,8 @@ class InitiativeCog(commands.Cog):
         await ctx.send_followup(embeds=embeds)
         Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
         await Tracker_Model.update_pinned_tracker()
+        guild = await get_guild(ctx, None)
+        await update_member_list(guild.id)
 
     @char.command(description="Delete NPC")
     @option(
@@ -252,6 +257,8 @@ class InitiativeCog(commands.Cog):
                         await ctx.send_followup(f"{name} deleted", ephemeral=True)
                         Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
                         await Tracker_Model.update_pinned_tracker()
+                        guild = await get_guild(ctx, None)
+                        await update_member_list(guild.id)
                     else:
                         await ctx.send_followup("Delete Operation Failed", ephemeral=True)
             except NoResultFound:

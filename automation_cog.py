@@ -72,11 +72,10 @@ class AutomationCog(commands.Cog):
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        embeds.append(
-                            await Automation.attack(
-                                character, char.strip(), roll, vs, attack_modifier, target_modifier, multi=True
-                            )
+                        data = await Automation.attack(
+                            character, char.strip(), roll, vs, attack_modifier, target_modifier, multi=True
                         )
+                        embeds.append(data.embed)
 
                     except Exception:
                         embeds.append(
@@ -85,7 +84,8 @@ class AutomationCog(commands.Cog):
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
                 await Tracker_Model.update_pinned_tracker()
             else:
-                embeds.append(await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier))
+                data = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
+                embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
         except Exception as e:
             logging.warning(f"attack_cog attack {e}")
@@ -121,13 +121,15 @@ class AutomationCog(commands.Cog):
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        embeds.append(await Automation.save(character, char.strip(), save, dc, modifier))
+                        data = await Automation.save(character, char.strip(), save, dc, modifier)
+                        embeds.append(data.embed)
                     except Exception:
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=save, value="Invalid Target")])
                         )
             else:
-                embeds.append(await Automation.save(character, target, save, dc, modifier))
+                data = await Automation.save(character, target, save, dc, modifier)
+                embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
         except Exception as e:
             logging.warning(f"attack_cog save {e}")
@@ -164,19 +166,18 @@ class AutomationCog(commands.Cog):
                 multi_target = target.split(",")
                 for char in multi_target:
                     try:
-                        embeds.append(
-                            await Automation.damage(
-                                self.bot,
-                                character,
-                                char.strip(),
-                                user_roll_str,
-                                modifier,
-                                healing,
-                                damage_type,
-                                multi=True,
-                                crit=crit,
-                            )
+                        data = await Automation.damage(
+                            self.bot,
+                            character,
+                            char.strip(),
+                            user_roll_str,
+                            modifier,
+                            healing,
+                            damage_type,
+                            multi=True,
+                            crit=crit,
                         )
+                        embeds.append(data.embed)
                     except Exception:
                         embeds.append(
                             discord.Embed(
@@ -185,11 +186,11 @@ class AutomationCog(commands.Cog):
                         )
 
             else:
-                embeds.append(
-                    await Automation.damage(
-                        self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
-                    )
+                data = await Automation.damage(
+                    self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
                 )
+
+                embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
 
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
@@ -222,54 +223,52 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        try:
-            Automation = await get_automation(ctx, engine=engine)
-            embeds = []
-            if "," in target:
-                multi_target = target.split(",")
-                for char in multi_target:
-                    try:
-                        embeds.append(
-                            await Automation.auto(
-                                self.bot,
-                                character,
-                                char.strip(),
-                                attack,
-                                attack_modifer,
-                                target_modifier,
-                                damage_modifier,
-                                damage_type_override,
-                                multi=True,
-                            )
-                        )
-                    except Exception:
-                        embeds.append(
-                            discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
-                        )
-
-            else:
-                embeds.append(
-                    await Automation.auto(
+        # try:
+        Automation = await get_automation(ctx, engine=engine)
+        embeds = []
+        if "," in target:
+            multi_target = target.split(",")
+            for char in multi_target:
+                try:
+                    data = await Automation.auto(
                         self.bot,
                         character,
-                        target,
+                        char.strip(),
                         attack,
                         attack_modifer,
                         target_modifier,
                         damage_modifier,
                         damage_type_override,
+                        multi=True,
                     )
-                )
-            await ctx.send_followup(embeds=embeds)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-        except KeyError:
-            await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
-        except Exception as e:
-            logging.warning(f"attack_cog auto {e}")
-            report = ErrorReport(ctx, "/a auto", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
+                    embeds.append(data.embed)
+                except Exception:
+                    embeds.append(
+                        discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
+                    )
+
+        else:
+            data = await Automation.auto(
+                self.bot,
+                character,
+                target,
+                attack,
+                attack_modifer,
+                target_modifier,
+                damage_modifier,
+                damage_type_override,
+            )
+            embeds.append(data.embed)
+        await ctx.send_followup(embeds=embeds)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
+        # except KeyError:
+        #     await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
+        # except Exception as e:
+        #     logging.warning(f"attack_cog auto {e}")
+        #     report = ErrorReport(ctx, "/a auto", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error. Ensure that you selected a valid target and attack.")
 
     @att.command(description="Cast a Spell (EPF Only)")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -314,7 +313,7 @@ class AutomationCog(commands.Cog):
                                 damage_modifier,
                                 damage_type_override,
                                 multi=True,
-                            )
+                            ).embed
                         )
                     except Exception:
                         embeds.append(
@@ -333,7 +332,7 @@ class AutomationCog(commands.Cog):
                         target_modifier,
                         damage_modifier,
                         damage_type_override,
-                    )
+                    ).embed
                 )
             await ctx.send_followup(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
