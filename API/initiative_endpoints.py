@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id, get_api_key
 from Bot import bot
-from database_models import get_condition
+from database_models import get_condition, Global
 from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
@@ -62,6 +62,21 @@ async def get_tracker(user: str, guildid: int, gm: bool = False, api_key: APIKey
     output_string = await Tracker_Model.block_get_tracker(guild.initiative, gm=gm)
     output_string = output_string.strip("```")
     output = {"guild": guildid, "output": output_string, "init_pos": guild.initiative}
+
+    return output
+
+
+@router.get("/init/user_tables")
+async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
+    output = []
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global))
+        all_guilds = result.scalars().all()
+
+    for guild in all_guilds:
+        if int(user) in guild.members:
+            output.append(guild.id)
 
     return output
 
