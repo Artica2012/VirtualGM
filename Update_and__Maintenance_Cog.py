@@ -144,6 +144,8 @@ class Update_and_Maintenance_Cog(commands.Cog):
                         except Exception:
                             pass
 
+        await guild_audit_members()
+
         logging.warning("U&M Complete")
 
         # Commented out until needed again
@@ -242,3 +244,30 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
 def setup(bot):
     bot.add_cog(Update_and_Maintenance_Cog(bot))
+
+
+async def guild_audit_members():
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session() as session:
+        result = await session.execute(select(Global))
+        all_guilds = result.scalars().all()
+
+    for guild in all_guilds:
+        try:
+            print(guild.id)
+            member_list = []
+            Tracker = await get_tracker(None, engine, id=guild.id)
+            async with async_session() as session:
+                result = await session.execute(select(Tracker))
+            char_list = result.scalars().all()
+            for char in char_list:
+                if char.user not in member_list:
+                    member_list.append(char.user)
+
+            async with async_session() as session:
+                result = await session.execute(select(Global).where(Global.id == guild.id))
+                active_guild = result.scalars().one()
+                active_guild.members = member_list
+                await session.commit()
+        except Exception as e:
+            print(f"{guild.id}: {e}")

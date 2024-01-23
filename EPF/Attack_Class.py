@@ -21,6 +21,7 @@ from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
 from utils.utils import get_guild, direct_message
 from Bot import bot
+from Base.Automation import AutoOutput
 
 
 class Attack_Data:
@@ -124,7 +125,10 @@ class AutoModel:
             )
             embed.set_thumbnail(url=self.character.pic)
 
-            await self.ctx.channel.send(embed=embed)
+            if self.ctx is not None:
+                await self.ctx.channel.send(embed=embed)
+            else:
+                bot.get_channel(self.guild.tracker_channel).send(embed=embed)
 
         if "condition" in data.keys():
             embed = discord.Embed(
@@ -138,11 +142,16 @@ class AutoModel:
             )
             embed.set_thumbnail(url=self.character.pic)
 
-            await self.ctx.channel.send(embed=embed)
+            if self.ctx is not None:
+                await self.ctx.channel.send(embed=embed)
+            else:
+                bot.get_channel(self.guild.tracker_channel).send(embed=embed)
 
     async def format_output(self, Attack_Data, Target_Model: EPF_Character):
         # print("Formatting Output", Target_Model.current_hp, await Target_Model.calculate_hp())
         if Attack_Data.dmg_string is not None:
+            print(self.character.char_name)
+            print(Target_Model.char_name)
             dmg_output_string = (
                 f"{self.character.char_name} {'damages' if not self.heal else 'heals'} {Target_Model.char_name} for:"
             )
@@ -165,6 +174,13 @@ class AutoModel:
         else:
             output = Attack_Data.output
 
+        raw_output = {
+            "string": output,
+            "success": Attack_Data.success_string,
+            "roll": self.attack_name,
+            "roll_total": int(Attack_Data.total_damage),
+        }
+
         embed = discord.Embed(
             title=f"{self.character.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=self.attack_name.title(), value=output)],
@@ -174,7 +190,7 @@ class AutoModel:
         if self.heal:
             embed.color = discord.Color.green()
         # print(output)
-        self.output = embed
+        self.output = AutoOutput(embed=embed, raw=raw_output)
 
     async def auto_complex(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
         # print("Complex Attack")
@@ -805,6 +821,7 @@ class Attack(AutoModel):
 
     async def damage(self, target, modifier, healing, damage_type: str, crit=False):
         Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        print(Target_Model.char_name)
         self.heal = healing
 
         if self.complex:

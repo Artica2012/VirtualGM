@@ -22,6 +22,7 @@ from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_sea
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from initiative_functions import update_member_list
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 from utils.Util_Getter import get_utilities
@@ -150,6 +151,7 @@ class PF2Cog(commands.Cog):
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
             Character = await get_character(name, ctx, guild=guild, engine=engine)
+            await update_member_list(guild.id)
             if Character.player == True:
                 Utilities = await get_utilities(ctx, guild=guild, engine=engine)
                 await Utilities.add_to_vault(name)
@@ -216,6 +218,8 @@ class PF2Cog(commands.Cog):
         await ctx.send_followup(embeds=embeds)
         Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Model.update_pinned_tracker()
+        guild = await get_guild(ctx, None)
+        await update_member_list(guild.id)
         if not response:
             await ctx.send_followup("Import Failed")
 

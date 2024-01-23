@@ -21,6 +21,7 @@ from auto_complete import (
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
+from initiative_functions import update_member_list
 from utils.Automation_Getter import get_automation
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
@@ -86,6 +87,7 @@ class REDCog(commands.Cog):
         try:
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
+            await update_member_list(guild.id)
             Character = await get_character(name, ctx, guild=guild, engine=engine)
             if Character.player:
                 Utilities = await get_utilities(ctx, guild=guild, engine=engine)

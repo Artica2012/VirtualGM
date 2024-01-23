@@ -59,6 +59,7 @@ class Global(Base):
     # Extra
     block_data = Column(JSON(), nullable=True)
     audit_log = Column(String(), default="GM")
+    members = Column(JSON(), default=[])
 
 
 #########################################

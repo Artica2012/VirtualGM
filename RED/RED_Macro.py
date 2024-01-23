@@ -21,7 +21,7 @@ class RED_Macro(Macro):
     def __init__(self, ctx, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None):
+    async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info("RED roll_macro")
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)

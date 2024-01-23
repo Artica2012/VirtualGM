@@ -4,7 +4,7 @@ import d20
 import discord
 from sqlalchemy.exc import NoResultFound
 
-from Base.Automation import Automation
+from Base.Automation import Automation, AutoOutput
 from STF.STF_Character import get_STF_Character, STF_Character
 from STF.STF_Support import STF_eval_success
 from error_handling_reporting import error_not_initialized
@@ -39,13 +39,20 @@ class STF_Automation(Automation):
         success_string = STF_eval_success(dice_result, goal_result)
         output_string = f"{character} rolls {roll} vs {target} {vs} {target_modifier}:\n{dice_result}\n{success_string}"
 
+        raw_output = {
+            "string": output_string,
+            "success": success_string,
+            "roll": str(dice_result.roll),
+            "roll_total": int(dice_result.total),
+        }
+
         embed = discord.Embed(
             title=f"{char_model.char_name} vs {opponent.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
         )
         embed.set_thumbnail(url=char_model.pic)
 
-        return embed
+        return AutoOutput(embed=embed, raw=raw_output)
 
     async def save(self, character, target, save, dc, modifier):
         if target is None:
@@ -76,6 +83,13 @@ class STF_Automation(Automation):
                     f"{target} makes a {save} save!\n{character} forced the save.\n{dice_result}\n{success_string}"
                 )
 
+            raw_output = {
+                "string": output_string,
+                "success": success_string,
+                "roll": str(dice_result.roll),
+                "roll_total": int(dice_result.total),
+            }
+
         except NoResultFound:
             await self.ctx.channel.send(error_not_initialized, delete_after=30)
             return False
@@ -89,7 +103,7 @@ class STF_Automation(Automation):
         )
         embed.set_thumbnail(url=attacker.pic)
 
-        return embed
+        return AutoOutput(embed=embed, raw=raw_output)
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
@@ -114,6 +128,13 @@ class STF_Automation(Automation):
             dmg = await damage_calc_resist(dmg, damage_type, Target_Model, weapon=weapon)
         output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
 
+        raw_output = {
+            "string": output_string,
+            "success": "",
+            "roll": str(roll_result.roll),
+            "roll_total": int(roll_result.total),
+        }
+
         embed = discord.Embed(
             title=f"{Character_Model.char_name} vs {Target_Model.char_name}",
             fields=[discord.EmbedField(name=roll, value=output_string)],
@@ -121,9 +142,8 @@ class STF_Automation(Automation):
         embed.set_thumbnail(url=Character_Model.pic)
 
         await Target_Model.change_hp(dmg, healing, post=True)
-        # if not multi:
-        #     await Tracker_Model.update_pinned_tracker()
-        return embed
+
+        return AutoOutput(embed=embed, raw=raw_output)
 
 
 async def damage_calc_resist(dmg_roll, dmg_type, target: STF_Character, weapon=None):
