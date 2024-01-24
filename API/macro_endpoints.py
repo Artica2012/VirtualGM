@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
-from API.api_utils import get_guild_by_id, post_message, get_api_key
+from API.api_utils import get_guild_by_id, post_message, get_api_key, get_username_by_id
 from database_operations import engine
 from utils.Macro_Getter import get_macro_object
 
@@ -19,7 +19,7 @@ class MacroData(BaseModel):
     mod: str | None = ""
     secret: bool | None = False
     guild: int | None = None
-    discord_post: bool | None = False
+    discord_post: bool | None = True
 
 
 class CreateMacro(BaseModel):
@@ -56,9 +56,14 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, ap
             post_output = await Macro.roll_macro(
                 roll_data.character, roll_data.macro, roll_data.dc, roll_data.mod, raw=raw_result
             )
+
             try:
+                user_name = get_username_by_id(roll_data.user)
+                for post in post_output:
+                    post.set_footer(text=f"via Web by {user_name}")
                 embed_list.extend(post_output)
             except TypeError:
+                post_output.set_footer(text=f"via Web by {get_username_by_id(roll_data.user)}")
                 embed_list.append(post_output)
 
             if roll_data.secret:

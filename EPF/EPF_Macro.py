@@ -35,6 +35,8 @@ class EPF_Macro(Macro):
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info("EPF roll_macro")
+        if dc is None:
+            dc = 0
 
         if raw is None:
             if character.lower() in ["all pcs", "all npcs", "all characters"]:
