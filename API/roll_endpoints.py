@@ -26,7 +26,7 @@ class RollData(BaseModel):
 
 @router.post("/roll")
 async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
-    print(roll_data)
+    # print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:
         roll_result = d20.roll(roll)
@@ -63,7 +63,7 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
         }
         #
         json_op = json.dumps(output)
-        print(json_op)
+        # print(json_op)
         # return output
         return json_op
 

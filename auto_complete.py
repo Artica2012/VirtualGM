@@ -22,9 +22,10 @@ from utils.utils import get_guild
 
 async def hard_lock(ctx: discord.ApplicationContext, name: str):
     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    Tracker = await get_tracker(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
+        Tracker = await get_tracker(ctx, engine)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
         async with async_session() as session:
             result = await session.execute(select(Tracker.user).where(func.lower(Tracker.name) == name.lower()))
             user = result.scalars().one()
