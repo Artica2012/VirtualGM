@@ -33,7 +33,7 @@ class CreateMacro(BaseModel):
 @router.get("/macro/query")
 async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     try:
-        print(user, character, guildid)
+        # print(user, character, guildid)
         guild = await get_guild_by_id(guildid)
         Macro = await get_macro_object(None, engine, guild)
         macro_list = await Macro.get_macro_list(character.lower())
@@ -44,7 +44,7 @@ async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = 
 
 @router.post("/macro/roll")
 async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
-    print(roll_data)
+    # print(roll_data)
     guild = await get_guild_by_id(roll_data.guild)
     Macro = await get_macro_object(None, engine, guild)
 

@@ -254,7 +254,7 @@ async def guild_audit_members():
 
     for guild in all_guilds:
         try:
-            print(guild.id)
+            # print(guild.id)
             member_list = []
             Tracker = await get_tracker(None, engine, id=guild.id)
             async with async_session() as session:
@@ -270,4 +270,4 @@ async def guild_audit_members():
                 active_guild.members = member_list
                 await session.commit()
         except Exception as e:
-            print(f"{guild.id}: {e}")
+            logging.error(f"{guild.id}: {e}")

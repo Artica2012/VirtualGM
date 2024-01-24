@@ -133,7 +133,7 @@ async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks, api_k
         )
         background_tasks.add_task(update_trackers, guild)
     except Exception as e:
-        print(e)
+        # print(e)
         return {"success": "failure", "output": e}
 
     if body.discord_post:
@@ -151,7 +151,7 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key
     try:
         auto_data = await Automation.save(body.character, body.target, body.roll, body.vs, body.attk_mod)
     except Exception as e:
-        print(e)
+        # print(e)
         return {"success": "failure", "output": e}
 
     if body.discord_post:
@@ -171,7 +171,7 @@ async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_k
             bot, body.character, body.target, body.roll, body.dmg_mod, body.healing, body.dmg_type, crit=body.crit
         )
     except Exception as e:
-        print(e)
+        # print(e)
         return {"success": "failure", "output": e}
 
     if body.discord_post:
@@ -191,7 +191,7 @@ async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks, api_key
             bot, body.character, body.target, body.roll, body.attk_mod, body.target_mod, body.dmg_mod, body.dmg_type
         )
     except Exception as e:
-        print(e)
+        # print(e)
         return {"success": "failure", "output": e}
 
     if body.discord_post:
@@ -219,7 +219,7 @@ async def api_cast(body: AutoRequest, background_tasks: BackgroundTasks, api_key
             body.dmg_type,
         )
     except Exception as e:
-        print(e)
+        # print(e)
         return {"success": "failure", "output": e}
 
     if body.discord_post:

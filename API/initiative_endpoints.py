@@ -222,7 +222,7 @@ async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api
     )
 
     output = {"success": success}
-    print(output)
+    # print(output)
 
     # discord posting nonsense
     if body.discord_post:

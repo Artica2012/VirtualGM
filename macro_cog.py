@@ -206,14 +206,16 @@ class MacroCog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
-        char_split = character.split(",")
-        if len(char_split) > 1:
-            character = char_split[0]
-            guild = await get_guild(ctx, None, id=int(char_split[1]))
-        else:
-            guild = await get_guild(ctx, None)
-        Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
+
         try:
+            char_split = character.split(",")
+            if len(char_split) > 1:
+                character = char_split[0]
+                guild = await get_guild(ctx, None, id=int(char_split[1]))
+            else:
+                guild = await get_guild(ctx, None)
+            Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
+
             output = await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
             if type(output) != list:
                 output = [output]
