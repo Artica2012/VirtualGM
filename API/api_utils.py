@@ -43,14 +43,17 @@ def get_username_by_id(id: int):
     :param id - integer:
     :return username - string or "" if no user is found:
     """
-    user = bot.get_user(int(id))
-    if user is None:
-        username = " "
-    else:
-        try:
-            username = user.name
-        except Exception:
-            username = " "
+    try:
+        user = bot.get_user(int(id))
+        if user is None:
+            username = "WebAPI"
+        else:
+            try:
+                username = user.name
+            except Exception:
+                username = "WebAPI"
+    except TypeError:
+        username = "WebAPI"
 
     return username
 
