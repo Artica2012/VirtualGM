@@ -73,10 +73,15 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
+    print(len(all_guilds))
+    print(all_guilds)
 
     for guild in all_guilds:
-        if int(user) in guild.members:
-            output.append(guild.id)
+        try:
+            if int(user) in guild.members:
+                output.append(guild.id)
+        except TypeError:
+            print(guild.id)
 
     return output
 
