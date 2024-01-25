@@ -56,12 +56,12 @@ class ConditionBody(BaseModel):
 
 
 @router.get("/init/tracker")
-async def get_tracker(user: str, guildid: int, gm: bool = False, api_key: APIKey = Depends(get_api_key)):
+async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
-    output_string = await Tracker_Model.block_get_tracker(guild.initiative, gm=gm)
-    output_string = output_string.strip("```")
-    output = {"guild": guildid, "output": output_string, "init_pos": guild.initiative}
+    output_model = await Tracker_Model.raw_tracker_output(guild.initiative)
+    print(output_model)
+    output = {"guild": guildid, "output": output_model, "init_pos": guild.initiative}
 
     return output
 
@@ -73,10 +73,15 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
+    # print(len(all_guilds))
+    # print(all_guilds)
 
     for guild in all_guilds:
-        if int(user) in guild.members:
-            output.append(guild.id)
+        try:
+            if int(user) in guild.members:
+                output.append(guild.id)
+        except TypeError:
+            pass
 
     return output
 

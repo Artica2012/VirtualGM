@@ -799,6 +799,159 @@ class Tracker:
             logging.info(f"block_get_tracker 2: {e}")
             return "ERROR"
 
+    async def raw_tracker_output(self, selected: int):
+        tracker_output = {
+            "date_time": "",
+            "tracker": [],
+            "round": "",
+        }
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        if self.guild.block and self.guild.initiative is not None:
+            turn_list = await self.get_turn_list()
+            block = True
+        else:
+            block = False
+
+        # Code for appending the inactive list onto the init_list
+        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        active_length = len(total_list)
+        # print(f'Active Length: {active_length}')
+        inactive_list = await self.get_inactive_list()
+        if len(inactive_list) > 0:
+            total_list.extend(inactive_list)
+
+        try:
+            if self.guild.timekeeping:
+                tracker_output["datetime"] = (
+                    f"{await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
+                )
+        except NoResultFound:
+            logging.info("Channel Not Set Up")
+        except Exception as e:
+            logging.error(f"raw_tracker_output: {e}")
+
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+
+        # if round = 0, were not in initiative, and act accordingly
+        if self.guild.round != 0:
+            tracker_output["round"] = f"{self.guild.round}"
+
+        try:
+            for x, row in enumerate(total_list):
+                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+
+                if len(total_list) > active_length and x == active_length:
+                    tracker_output["tracker"].append("Inactive List")  # Put in the divider
+
+                output_obj = {
+                    "init": "",
+                    "selected": False,
+                    "conditions": [],
+                }
+
+                async with async_session() as session:
+                    result = await session.execute(
+                        select(Condition)
+                        .where(Condition.character_id == character.id)
+                        .where(Condition.visible == true())
+                    )
+                    condition_list = result.scalars().all()
+
+                await asyncio.sleep(0)  # ensure the loop doesn't lock the bot in case of an error
+                sel_bool = False
+
+                # don't show an init if not in combat
+                if character.init == 0 or character.active is False:
+                    init_num = ""
+                else:
+                    init_num = f"{character.init}"
+
+                if block:
+                    for (
+                        char
+                    ) in (
+                        turn_list
+                    ):  # ignore this error, turn list is gotten if block is true, so this will always apply
+                        # print(f'character.id = {character.id}')
+                        if character.id == char.id:
+                            sel_bool = True
+                else:
+                    if x == selected:
+                        sel_bool = True
+
+                # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+                output_obj["init"] = (init_num,)
+                output_obj["selected"] = sel_bool
+
+                character_output = {
+                    "hp": character.current_hp,
+                    "max_hp": character.max_hp,
+                    "temp_hp": character.temp_hp,
+                    "name": character.char_name,
+                    "pc": character.player,
+                    "hp_string": str(await character.calculate_hp()),
+                }
+
+                try:
+                    character_output["ac"] = character.ac
+                except AttributeError:
+                    pass
+
+                output_obj["character"] = character_output
+
+                for con_row in condition_list:
+                    condition_object = {"counter": con_row.counter, "title": con_row.title}
+
+                    if con_row.time:
+                        time_stamp = datetime.fromtimestamp(con_row.number)
+                        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                        time_left = time_stamp - current_time
+                        days_left = time_left.days
+                        processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                        processed_hours_left = divmod(processed_minutes_left, 60)[0]
+                        processed_minutes_left = divmod(processed_minutes_left, 60)[1]
+                        processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                        if processed_seconds_left < 10:
+                            processed_seconds_left = f"0{processed_seconds_left}"
+                        if processed_minutes_left < 10:
+                            processed_minutes_left = f"0{processed_minutes_left}"
+                        if days_left != 0:
+                            con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
+                        else:
+                            if processed_hours_left != 0:
+                                con_string = (
+                                    f"{processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
+                                )
+                            else:
+                                con_string = f"{processed_minutes_left}:{processed_seconds_left}\n"
+                        condition_object["duration"] = con_string
+                        condition_object["time"] = True
+                    else:
+                        condition_object["duration"] = con_row.number
+                        condition_object["time"] = False
+                    try:
+                        condition_object["value"] = con_row.value
+                    except AttributeError:
+                        condition_object["value"] = con_row.number
+
+                    try:
+                        if con_row.action != "":
+                            condition_object["data"] = True
+                        else:
+                            condition_object["data"] = False
+                    except AttributeError:
+                        condition_object["data"] = False
+
+                    output_obj["conditions"].append(condition_object)
+                tracker_output["tracker"].append(output_obj)
+
+        except Exception:
+            pass
+
+        return tracker_output
+
     # Note: Works backwards
     # This is the turn list, a list of all of characters that are part of the turn in block initiative
     async def get_turn_list(self):

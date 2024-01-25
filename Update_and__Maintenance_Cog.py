@@ -270,4 +270,4 @@ async def guild_audit_members():
                 active_guild.members = member_list
                 await session.commit()
         except Exception as e:
-            logging.error(f"{guild.id}: {e}")
+            logging.warning(f"{guild.id}: {e}")
