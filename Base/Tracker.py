@@ -919,14 +919,12 @@ class Tracker:
                         if processed_minutes_left < 10:
                             processed_minutes_left = f"0{processed_minutes_left}"
                         if days_left != 0:
-                            con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
+                            con_string = f"{days_left} Days, {processed_minutes_left}:{processed_seconds_left}"
                         else:
                             if processed_hours_left != 0:
-                                con_string = (
-                                    f"{processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}\n"
-                                )
+                                con_string = f"{processed_hours_left}:{processed_minutes_left}:{processed_seconds_left}"
                             else:
-                                con_string = f"{processed_minutes_left}:{processed_seconds_left}\n"
+                                con_string = f"{processed_minutes_left}:{processed_seconds_left}"
                         condition_object["duration"] = con_string
                         condition_object["time"] = True
                     else:
