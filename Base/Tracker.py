@@ -892,6 +892,7 @@ class Tracker:
                     "name": character.char_name,
                     "pc": character.player,
                     "hp_string": str(await character.calculate_hp()),
+                    "pic": character.pic,
                 }
 
                 try:
