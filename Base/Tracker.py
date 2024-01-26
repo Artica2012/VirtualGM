@@ -896,7 +896,7 @@ class Tracker:
                 }
 
                 try:
-                    character_output["ac"] = character.ac
+                    character_output["ac"] = character.ac_total
                 except AttributeError:
                     pass
 
