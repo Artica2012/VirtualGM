@@ -8,13 +8,19 @@ primary_region = "sjc"
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = false
-  min_machines_running = 1
-  [http_service.concurrency]
-    type = "requests"
-    soft_limit = 200
-    hard_limit = 250
+[[services]]
+    internal_port = 8080
+    protocol = 'tcp'
+
+    [[services.ports]]
+        handlers = ['http']
+        port = 8080
+
+
+[[services]]
+    internal_port = 6270
+    protocol = 'tcp'
+
+    [[services.ports]]
+        handlers = ['http']
+        port = 6270

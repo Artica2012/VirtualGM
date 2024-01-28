@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from database_models import get_tracker, Global, get_condition, get_macro
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine, socket
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import advance_time, output_datetime, get_time
 from utils.Char_Getter import get_character
@@ -1121,6 +1121,11 @@ class Tracker:
                 report = ErrorReport(self.ctx, "block_post_init", e, self.bot)
                 await report.report()
 
+        try:
+            await socket.broadcast(self.guild.id)
+        except Exception as e:
+            logging.error(f"socket.broadcast: {e}")
+
     # Updates the active initiative tracker (not the pinned tracker)
     async def update_pinned_tracker(self):
         """
@@ -1204,6 +1209,11 @@ class Tracker:
             logging.error(f"update_pinned_tracker: {e}")
             report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
             await report.report()
+
+        try:
+            await socket.broadcast(self.guild.id)
+        except Exception as e:
+            logging.error(f"socket.broadcast: {e}")
 
     async def repost_trackers(self):
         """
