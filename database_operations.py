@@ -1,6 +1,8 @@
 # database_operations.py
 import logging
 import os
+import asyncio
+import websockets
 
 import sqlalchemy as db
 from dotenv import load_dotenv
@@ -145,3 +147,40 @@ def create_reminder_table():
         logging.warning("Creating Reminder Table")
     except Exception as e:
         logging.warning(e)
+
+
+def async_partial(async_func, *args):
+    async def wrapped(async_func, *args):
+        return await async_func(*args)
+
+    return wrapped
+
+
+class WebsocketHandler:
+    def __init__(self):
+        self.connections = set()
+
+    async def handle(self, websocket):
+        self.connections.add(websocket)
+        await websocket.send("Connected")
+        while True:
+            try:
+                async for message in websocket:
+                    print(message)
+
+                    match message.lower():  # noqa
+                        case "ping":
+                            await self.ping(websocket)
+
+                await websocket.wait_closed()
+            finally:
+                self.connections.remove(websocket)
+
+    async def ping(self, websocket):
+        await websocket.send("Pong")
+
+    async def broadcast(self, message):
+        await websockets.broadcast(self.connections, str(message))
+
+
+socket = WebsocketHandler()
