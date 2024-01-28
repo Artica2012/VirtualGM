@@ -2,21 +2,22 @@
 
 # Main file to VirtualGM - a discord bot written with the pycord library
 
+import asyncio
 import logging
 
 # imports
 import os
 import sys
-import asyncio
 
+import websockets
 from dotenv import load_dotenv
 
 import EPF.Data.Kineticist_DB
 import EPF.Data.Spell_DB
+from API.VGM_API import start_uvicorn
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
-from API.VGM_API import start_uvicorn
-
+from database_operations import socket
 
 # import tracemalloc
 
@@ -63,6 +64,13 @@ async def on_ready():
     logging.warning(f"{bot.user} is connected.")
     loop = asyncio.get_running_loop()
     start_uvicorn(loop)
+    # loop.create_task( async_partial(socket.start))
+    # loop.run_forever()
+    # await socket.start()
+    serve = await websockets.serve(socket.handle, "localhost", 6270)
+    # loop = asyncio.get_running_loop()
+    # loop.create_task(async_partial(self.handle))
+    await serve.wait_closed()
 
 
 @bot.event
