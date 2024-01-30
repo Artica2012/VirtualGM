@@ -7,8 +7,26 @@ import API.endpoints as endpoints
 import API.initiative_endpoints as initiative_endpoints
 import API.macro_endpoints as macro_endpoints
 import API.roll_endpoints as roll_endpoints
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = [
+    r"http://.*\.fly\.dev",
+    r"http://localhost",
+    r"http://localhost:8000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_origin_regex=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.include_router(endpoints.router)
 app.include_router(roll_endpoints.router)
 app.include_router(macro_endpoints.router)
