@@ -1,3 +1,4 @@
+import json
 from math import ceil
 
 from fastapi import APIRouter, BackgroundTasks, Depends
@@ -42,7 +43,7 @@ async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey =
         else:
             Macro = await get_macro_object(None, engine, guild)
             macro_list = await Macro.get_macro_list(character.lower())
-            return macro_list
+            return json.dumps(macro_list)
     except Exception:
         return []
 
@@ -50,14 +51,14 @@ async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey =
 @router.get("/auto/getspells")
 async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
-    # try:
-    if guild.system == "EPF":
-        Character_Model = await get_character(character, None, guild=guild, engine=engine)
-        return list(Character_Model.character_model.spells.keys())
-    else:
+    try:
+        if guild.system == "EPF":
+            Character_Model = await get_character(character, None, guild=guild, engine=engine)
+            return json.dumps(list(Character_Model.character_model.spells.keys()))
+        else:
+            return []
+    except Exception:
         return []
-    # except Exception:
-    #     return []
 
 
 @router.get("/auto/getspelllevel")
@@ -118,7 +119,7 @@ async def get_spelllevel(user: str, guildid: int, character: str, spell: str, ap
             level_list = []
             for num in range(min_level, max_level + 1, interval_level):
                 level_list.append(num)
-            return level_list
+            return json.dumps(level_list)
         except Exception:
             return []
 
@@ -141,7 +142,7 @@ async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks, api_k
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
-    return auto_data.raw
+    return json.dumps(auto_data.raw)
 
 
 @router.post("/auto/save")
@@ -159,7 +160,7 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
-    return auto_data.raw
+    return json.dumps(auto_data.raw)
 
 
 @router.post("/auto/damage")
@@ -179,7 +180,7 @@ async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_k
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
-    return auto_data.raw
+    return json.dumps(auto_data.raw)
 
 
 @router.post("/auto/auto")
@@ -199,7 +200,7 @@ async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
-    return auto_data.raw
+    return json.dumps(auto_data.raw)
 
 
 @router.post("/auto/cast")
@@ -227,4 +228,4 @@ async def api_cast(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
-    return auto_data.raw
+    return json.dumps(auto_data.raw)

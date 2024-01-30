@@ -1,3 +1,4 @@
+import json
 import logging
 
 import d20
@@ -60,10 +61,11 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
     guild = await get_guild_by_id(guildid)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
     output_model = await Tracker_Model.raw_tracker_output(guild.initiative)
-    print(output_model)
+    # print(output_model)
     output = {"guild": guildid, "output": output_model, "init_pos": guild.initiative}
-
-    return output
+    op = json.dumps(output)
+    # print(op)
+    return op
 
 
 @router.get("/init/user_tables")
@@ -83,7 +85,7 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
         except TypeError:
             pass
 
-    return output
+    return json.dumps(output)
 
 
 @router.post("/init/next")
@@ -133,7 +135,9 @@ async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key:
 
     background_tasks.add_task(update_trackers, guild)
 
-    return {"success": success_string, "character": request.character, "roll": request.roll, "user": request.user}
+    return json.dumps(
+        {"success": success_string, "character": request.character, "roll": request.roll, "user": request.user}
+    )
 
 
 @router.post("/init/hp")
@@ -186,7 +190,7 @@ async def hp_set(body: HPSet, background_tasks: BackgroundTasks, api_key: APIKey
     embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
     background_tasks.add_task(post_message, guild, embed=embed)
 
-    return output
+    return json.dumps(output)
 
 
 @router.get("/cc/query")
@@ -207,7 +211,7 @@ async def get_cc_query(
             )
             return result.scalars().all()
     else:
-        return await Character_Model.conditions()
+        return await json.dumps(Character_Model.conditions())
 
 
 @router.post("/cc/new")

@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import APIRouter, Depends
@@ -39,7 +40,7 @@ async def get_chars(user: str, guildid: int, api_key: APIKey = Depends(get_api_k
                 char_result = await session.execute(
                     select(Tracker.name).where(Tracker.user == int(user)).order_by(Tracker.name.asc())
                 )
-            return char_result.scalars().all()
+            return json.dumps(char_result.scalars().all())
     except NoResultFound:
         return []
     except Exception as e:
@@ -62,7 +63,9 @@ async def char_delete(char_data: CharData, api_key: APIKey = Depends(get_api_key
     else:
         success = False
 
-    return {
-        "character": char_data.character,
-        "success": success,
-    }
+    return json.dumps(
+        {
+            "character": char_data.character,
+            "success": success,
+        }
+    )
