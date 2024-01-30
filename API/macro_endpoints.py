@@ -37,7 +37,7 @@ async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = 
         guild = await get_guild_by_id(guildid)
         Macro = await get_macro_object(None, engine, guild)
         macro_list = await Macro.get_macro_list(character.lower())
-        return macro_list
+        return json.dumps(macro_list)
     except Exception:
         return []
 
