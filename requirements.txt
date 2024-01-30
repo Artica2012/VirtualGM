@@ -1,5 +1,5 @@
 aiofiles==23.2.1
-aiohttp==3.9.1
+aiohttp
 aiosignal==1.2.0
 aiosmtpd==1.4.4.post2
 alembic==1.10.4

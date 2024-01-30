@@ -67,7 +67,7 @@ async def on_ready():
     # loop.create_task( async_partial(socket.start))
     # loop.run_forever()
     # await socket.start()
-    serve = await websockets.serve(socket.handle, "localhost", 6270)
+    serve = await websockets.serve(socket.handle, "0.0.0.0", 6270)
     # loop = asyncio.get_running_loop()
     # loop.create_task(async_partial(self.handle))
     await serve.wait_closed()

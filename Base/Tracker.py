@@ -801,7 +801,6 @@ class Tracker:
 
     async def raw_tracker_output(self, selected: int):
         tracker_output = {
-            "date_time": "",
             "tracker": [],
             "round": "",
         }
