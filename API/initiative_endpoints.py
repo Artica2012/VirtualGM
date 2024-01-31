@@ -81,7 +81,14 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     for guild in all_guilds:
         try:
             if int(user) in guild.members:
-                output.append(guild.id)
+                g = {
+                    "id": guild.id,
+                    "server": bot.get_guild(guild.guild_id).name,
+                    "channel": bot.get_channel(guild.tracker_channel).name,
+                }
+
+                output.append(g)
+
         except TypeError:
             pass
 
