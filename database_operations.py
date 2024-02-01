@@ -1,4 +1,6 @@
 # database_operations.py
+import datetime
+import json
 import logging
 import os
 import asyncio
@@ -159,6 +161,7 @@ def async_partial(async_func, *args):
 class WebsocketHandler:
     def __init__(self):
         self.connections = set()
+        self.library = {}
 
     async def handle(self, websocket):
         self.connections.add(websocket)
@@ -168,16 +171,64 @@ class WebsocketHandler:
                 async for message in websocket:
                     print(message)
 
-                    match message.lower():  # noqa
-                        case "ping":
+                    match message[:3].lower():  # noqa
+                        case "pin":
                             await self.ping(websocket)
+                        case "con":
+                            await self.register(websocket, message)
+                        case "clo":
+                            await self.disconnect(websocket)
 
                 await websocket.wait_closed()
             finally:
-                self.connections.remove(websocket)
+                await self.disconnect(websocket)
+
+    async def disconnect(self, websocket):
+        self.connections.remove(websocket)
+        for g in self.library.keys():
+            if websocket in self.library[g]:
+                self.library[g].remove(websocket)
+                if len(self.library[g]) == 0:
+                    del self.library[g]
 
     async def ping(self, websocket):
-        await websocket.send("Pong")
+        timestamp = datetime.datetime.now()
+        await websocket.send(f"Pong {timestamp}")
+
+    async def register(self, websocket, message):
+        try:
+            guild_id = int(message.split(":")[1])
+        except ValueError as e:
+            logging.error(f"Value Error:websocket {message}{e}")
+            return False
+        except TypeError as e:
+            logging.error(f"Type Error: websocket {message}{e}")
+            return False
+        except Exception as e:
+            logging.error(f"Error: websocket {message}{e}")
+            return False
+
+        if guild_id in self.library.keys():
+            self.library[guild_id].append(websocket)
+        else:
+            self.library[guild_id] = [websocket]
+
+        await websocket.send(f"Connected to: {guild_id}")
+
+    async def stream_channel(self, guild_id, tracker_data):
+        output = json.dumps(tracker_data)
+        channel = self.library[guild_id]
+        for ws in channel:
+            try:
+                await ws.send(output)
+            except Exception as e:
+                logging.error(f"Websocket stream_channel error: {e}")
+
+    async def library_check(self, guild_id):
+        if guild_id in self.library.keys():
+            return True
+        else:
+            return False
 
     async def broadcast(self, message):
         await websockets.broadcast(self.connections, str(message))

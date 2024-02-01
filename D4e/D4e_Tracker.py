@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from Base.Tracker import Tracker
 from D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 from database_models import Global, get_condition, get_tracker
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, socket
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport, error_not_initialized
 from time_keeping_functions import output_datetime, get_time
@@ -174,10 +174,7 @@ class D4e_Tracker(Tracker):
             report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
             await report.report()
 
-        try:
-            await socket.broadcast(self.guild.id)
-        except Exception as e:
-            logging.error(f"socket.broadcast: {e}")
+        await self.websocket_stream()
 
     async def block_post_init(self):
         logging.info("D4e block_post_init")
@@ -282,10 +279,7 @@ class D4e_Tracker(Tracker):
                 report = ErrorReport(self.ctx, "block_post_init", e, self.bot)
                 await report.report()
 
-        try:
-            await socket.broadcast(self.guild.id)
-        except Exception as e:
-            logging.error(f"socket.broadcast: {e}")
+        await self.websocket_stream()
 
     async def block_get_tracker(self, selected: int, gm: bool = False):
         # Get the datetime

@@ -800,10 +800,7 @@ class Tracker:
             return "ERROR"
 
     async def raw_tracker_output(self, selected: int):
-        tracker_output = {
-            "tracker": [],
-            "round": "",
-        }
+        tracker_output = {"tracker": [], "round": "", "gm": self.guild.gm}
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         if self.guild.block and self.guild.initiative is not None:
@@ -1120,10 +1117,7 @@ class Tracker:
                 report = ErrorReport(self.ctx, "block_post_init", e, self.bot)
                 await report.report()
 
-        try:
-            await socket.broadcast(self.guild.id)
-        except Exception as e:
-            logging.error(f"socket.broadcast: {e}")
+        await self.websocket_stream()
 
     # Updates the active initiative tracker (not the pinned tracker)
     async def update_pinned_tracker(self):
@@ -1209,10 +1203,16 @@ class Tracker:
             report = ErrorReport(self.ctx, "update_pinned_tracker", e, self.bot)
             await report.report()
 
+        await self.websocket_stream()
+
+    async def websocket_stream(self):
         try:
-            await socket.broadcast(self.guild.id)
+            if await socket.library_check(self.guild.id):
+                output_model = await self.raw_tracker_output(self.guild.initiative)
+                output = {"guild": self.guild.id, "output": output_model, "init_pos": self.guild.initiative}
+                await socket.stream_channel(self.guild.id, output)
         except Exception as e:
-            logging.error(f"socket.broadcast: {e}")
+            logging.error(f"websocker_stream {e}")
 
     async def repost_trackers(self):
         """
