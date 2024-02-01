@@ -91,6 +91,8 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
 
         except TypeError:
             pass
+        except AttributeError:
+            pass
 
     return json.dumps(output)
 
