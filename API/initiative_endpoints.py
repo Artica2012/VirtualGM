@@ -70,7 +70,7 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
 
 @router.get("/init/user_tables")
 async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
-    output = []
+    output = {}
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
@@ -87,7 +87,7 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
                     "channel": bot.get_channel(guild.tracker_channel).name,
                 }
 
-                output.append(g)
+                output[guild.id] = g
 
         except TypeError:
             pass
