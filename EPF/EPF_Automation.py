@@ -3,7 +3,7 @@ import logging
 import d20
 import discord
 
-from Base.Automation import Automation
+from Base.Automation import Automation, AutoOutput
 from EPF.Attack_Class import get_attack, get_spell
 from EPF.EPF_Character import get_EPF_Character
 from PF2e.pf2_functions import PF2_eval_succss
@@ -80,6 +80,7 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
     Target_Model = await get_EPF_Character(target, ctx, engine=engine, guild=guild)
     # print("treat wounds")
     guild = await get_guild(ctx, guild)
+    total = 0
     roll_string = f"{await Character_Model.get_roll('Medicine')}{ParseModifiers(modifier)}"
     # print(roll_string)
     medicine_roll = d20.roll(roll_string)
@@ -121,6 +122,7 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
             healing = d20.roll("4d8+10")
         else:
             healing = d20.roll("4d8")
+        total = healing
 
         await Target_Model.change_hp(healing.total, heal=True, post=False)
         output_string = (
@@ -138,6 +140,7 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
             f"{medicine_roll} {success_string}.\n {dmg}\n"
             f"{Target_Model.char_name} damaged for {dmg.total}."
         )
+        total = dmg
     else:
         output_string = (
             f"{Character_Model.char_name} uses Treat Wounds on {Target_Model.char_name}.\n"
@@ -158,4 +161,10 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
     embed = discord.Embed(title="Treat Wounds", description=output_string)
     embed.set_thumbnail(url=Character_Model.pic)
 
-    return embed
+    raw_output = {
+        "string": output_string,
+        "success": success_string,
+        "roll": f"Treat Wounds {dc}",
+        "roll_total": int(total),
+    }
+    return AutoOutput(embed=embed, raw=raw_output)
