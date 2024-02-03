@@ -292,9 +292,14 @@ class EPF_Character(Character):
                         ui = False
                     # print(f"Int Mod: {self.itl_mod}, Prof: {parsed_lore[1]}, Level: {self.character_model.level}")
 
-                    return (
-                        f"1d20+{await skill_mod_calc(self.itl_mod, 'lore', int(parsed_lore[1]), self.character_model.level, self.character_model.bonuses, ui)} "
-                    )
+                    if lore.lower() == "esoteric":
+                        return (
+                            f"1d20+{await skill_mod_calc(self.cha_mod, 'esoteric', int(parsed_lore[1]), self.character_model.level, self.character_model.bonuses, ui)} "
+                        )
+                    else:
+                        return (
+                            f"1d20+{await skill_mod_calc(self.itl_mod, 'lore', int(parsed_lore[1]), self.character_model.level, self.character_model.bonuses, ui)} "
+                        )
 
         else:
             try:
