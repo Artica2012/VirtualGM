@@ -184,12 +184,16 @@ class WebsocketHandler:
                 await self.disconnect(websocket)
 
     async def disconnect(self, websocket):
+        del_list = []
         self.connections.remove(websocket)
         for g in self.library.keys():
             if websocket in self.library[g]:
                 self.library[g].remove(websocket)
                 if len(self.library[g]) == 0:
-                    del self.library[g]
+                    del_list.append(g)
+
+        for g in del_list:
+            del self.library[g]
 
     async def ping(self, websocket):
         timestamp = datetime.datetime.now()
