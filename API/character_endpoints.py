@@ -14,6 +14,7 @@ from database_models import get_tracker
 from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.Util_Getter import get_utilities
+from cache import AsyncTTL
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class CharData(BaseModel):
     guild: int | None = None
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/char/query")
 async def get_chars(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)

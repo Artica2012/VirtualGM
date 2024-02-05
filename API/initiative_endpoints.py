@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from cache import AsyncTTL
 
 from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id, get_api_key
 from Bot import bot
@@ -16,6 +17,7 @@ from database_models import get_condition, Global
 from database_operations import engine
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
+
 
 router = APIRouter()
 
@@ -68,6 +70,7 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
     return op
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/init/user_tables")
 async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     output = {}

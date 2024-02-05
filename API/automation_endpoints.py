@@ -4,6 +4,7 @@ from math import ceil
 from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.security.api_key import APIKey
 from pydantic import BaseModel
+from cache import AsyncTTL
 
 from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
 from database_operations import engine
@@ -33,6 +34,7 @@ class AutoRequest(BaseModel):
     discord_post: bool | None = True
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/auto/getattacks")
 async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
@@ -48,6 +50,7 @@ async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey =
         return []
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/auto/getspells")
 async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
@@ -61,6 +64,7 @@ async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = 
         return []
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/auto/getspelllevel")
 async def get_spelllevel(user: str, guildid: int, character: str, spell: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)

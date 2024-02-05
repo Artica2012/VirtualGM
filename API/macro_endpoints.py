@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from API.api_utils import get_guild_by_id, post_message, get_api_key, get_username_by_id
 from database_operations import engine
 from utils.Macro_Getter import get_macro_object
+from cache import AsyncTTL
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ class CreateMacro(BaseModel):
     guild: int | None = None
 
 
+@AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/macro/query")
 async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     try:
