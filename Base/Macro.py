@@ -182,22 +182,24 @@ class Macro:
                 macro_list = result.scalars().all()
             # print(macro_list)
 
-            macro_data = macro_list[0]
-
         try:
-            raw_macro = f"{macro_data.macro}"
-            d20.roll(raw_macro)
-        except Exception:
+            macro_data = macro_list[0]
             try:
-                raw_macro = f"{relabel_roll(macro_data.macro)}"
+                raw_macro = f"{macro_data.macro}"
                 d20.roll(raw_macro)
             except Exception:
-                raw_macro = macro_data.macro
-                variables = Character_Model.character_model.variables
-                replaced_macro = macro_replace_vars(raw_macro, variables, self.default_vars)
+                try:
+                    raw_macro = f"{relabel_roll(macro_data.macro)}"
+                    d20.roll(raw_macro)
+                except Exception:
+                    raw_macro = macro_data.macro
+                    variables = Character_Model.character_model.variables
+                    replaced_macro = macro_replace_vars(raw_macro, variables, self.default_vars)
 
-                raw_macro = f"{replaced_macro}"
-                d20.roll(raw_macro)
+                    raw_macro = f"{replaced_macro}"
+                    d20.roll(raw_macro)
+        except Exception:
+            raw_macro = d20.roll("0")
 
         return raw_macro
 
@@ -230,7 +232,7 @@ class Macro:
     async def raw_roll_macro(self, character, macro_name, dc, modifier):
         logging.info(f"roll_macro {character}, {macro_name}")
         raw_macro = await self.raw_macro(character, macro_name)
-
+        print(raw_macro)
         dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
 
         if dc:

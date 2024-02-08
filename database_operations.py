@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database_models import Global, Base
+from database_models import Global, Base, RollLogBase, Log
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -47,17 +47,9 @@ look_up_engine = create_async_engine(
 
 # Get the engine
 def get_asyncio_db_engine(user, password, host, port, db):
-    # url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
-    # # print(url)
-    # # if not database_exists(url):
-    # #     create_database(url)
-    # engine = create_async_engine(url, echo=False, pool_size=5, max_overflow=-1, query_cache_size=80)
-    # return engine
     if db == SERVER_DATA:
-        # print("engine")
         return engine
     elif db == DATABASE:
-        # print("lookup")
         return look_up_engine
     else:
         return None
@@ -65,9 +57,6 @@ def get_asyncio_db_engine(user, password, host, port, db):
 
 def get_db_engine(user, password, host, port, db):
     url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
-    # print(url)
-    # if not database_exists(url):
-    #     create_database(url)
     engine = create_engine(url, pool_size=10, echo=False)
     return engine
 
@@ -151,6 +140,16 @@ def create_reminder_table():
         logging.warning(e)
 
 
+def create_roll_log():
+    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+    db.MetaData()
+    try:
+        RollLogBase.metadata.create_all(engine)
+        logging.warning("Creating Roll Log")
+    except Exception as e:
+        logging.warning(e)
+
+
 def async_partial(async_func, *args):
     async def wrapped(async_func, *args):
         return await async_func(*args)
@@ -185,7 +184,7 @@ class WebsocketHandler:
 
     async def disconnect(self, websocket):
         del_list = []
-        self.connections.remove(websocket)
+
         for g in self.library.keys():
             if websocket in self.library[g]:
                 self.library[g].remove(websocket)
@@ -194,6 +193,11 @@ class WebsocketHandler:
 
         for g in del_list:
             del self.library[g]
+
+        try:
+            self.connections.remove(websocket)
+        except KeyError:
+            pass
 
     async def ping(self, websocket):
         timestamp = datetime.datetime.now()
@@ -219,8 +223,10 @@ class WebsocketHandler:
 
         await websocket.send(f"Connected to: {guild_id}")
 
-    async def stream_channel(self, guild_id, tracker_data):
-        output = json.dumps(tracker_data)
+    async def stream_channel(self, guild_id, tracker_data, header):
+        processed_data = {"type": header, "data": tracker_data}
+
+        output = json.dumps(processed_data)
         channel = self.library[guild_id]
         for ws in channel:
             try:
@@ -235,7 +241,35 @@ class WebsocketHandler:
             return False
 
     async def broadcast(self, message):
-        await websockets.broadcast(self.connections, str(message))
+        websockets.broadcast(self.connections, str(message))
+
+    async def stream(self, guild_id, message, header: str):
+        try:
+            if await self.library_check(guild_id):
+                await socket.stream_channel(guild_id, message, header)
+        except Exception as e:
+            logging.error(f"websocket stream {e}")
 
 
 socket = WebsocketHandler()
+
+
+async def log_roll(guild, character, message, secret=False):
+    try:
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        timestamp = int(datetime.datetime.utcnow().timestamp())
+        print(timestamp)
+        async with async_session() as session:
+            async with session.begin():
+                log = Log(guild_id=guild, character=character, message=message, timestamp=timestamp, secret=secret)
+                session.add(log)
+            await session.commit()
+        ws_output = json.dumps(
+            {"guildID": guild, "character": character, "message": message, "timestamp": timestamp, "secret": secret}
+        )
+        await socket.stream(guild, ws_output, "log")
+
+        return True
+    except Exception as e:
+        logging.error(f"log_roll: {e}")
+        return False

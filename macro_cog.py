@@ -10,7 +10,7 @@ from discord.ext import commands
 from auto_complete import character_select, macro_select, character_select_gm, character_select_player
 
 # define global variables
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, log_roll
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from utils.Macro_Getter import get_macro_object
@@ -225,9 +225,11 @@ class MacroCog(commands.Cog):
                 output = output[10:]
 
             if secret == "Open":
+                secBool = False
                 for item in output_list:
                     await ctx.send_followup(embeds=item)
             else:
+                secBool = True
                 if guild.gm_tracker_channel is not None:
                     await ctx.send_followup(f"Secret Dice Rolled.{character}: {macro}")
                     for item in output_list:
@@ -236,6 +238,12 @@ class MacroCog(commands.Cog):
                     await ctx.send_followup("No GM Channel Initialized. Secret rolls not possible", ephemeral=True)
                     for item in output_list:
                         await ctx.channel.send(embeds=item)
+
+            print("Logging")
+            for item in output_list:
+                log_output = f"{macro}:\n{item[0].fields[0].value}"
+                await log_roll(guild.id, character, log_output, secret=secBool)
+
         except Exception as e:
             logging.error(f"roll_macro: {e}")
             report = ErrorReport(ctx, "roll_macro", e, self.bot)

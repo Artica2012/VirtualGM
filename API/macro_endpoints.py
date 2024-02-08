@@ -5,7 +5,7 @@ from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
 from API.api_utils import get_guild_by_id, post_message, get_api_key, get_username_by_id
-from database_operations import engine
+from database_operations import engine, log_roll
 from utils.Macro_Getter import get_macro_object
 from cache import AsyncTTL
 
@@ -85,6 +85,9 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, ap
         "success": raw_result.get("success"),
         "posted": post,
     }
+    log_output = f"{output['macro']}:\n{output['roll_result']}"
+    await log_roll(guild.id, roll_data.character, log_output, secret=roll_data.secret)
+
     json_op = json.dumps(output)
     return json_op
 

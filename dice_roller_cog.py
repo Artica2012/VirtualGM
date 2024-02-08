@@ -8,6 +8,8 @@ import discord
 from discord import option
 from discord.ext import commands
 
+from database_operations import log_roll
+
 # import initiative
 from error_handling_reporting import ErrorReport
 from utils.parsing import opposed_roll
@@ -24,6 +26,7 @@ class DiceRollerCog(commands.Cog):
     @option("dc", description="Number to which dice result will be compared", required=False)
     async def post(self, ctx: discord.ApplicationContext, roll: str, dc: int = None, secret: str = "Open"):
         roll = relabel_roll(roll)
+        guild = await get_guild(ctx, None)
         try:
             # print('Rolling')
             try:
@@ -32,7 +35,6 @@ class DiceRollerCog(commands.Cog):
                 # print(f"{roll_result =} {roll_str =}")
 
                 if secret == "Secret":
-                    guild = await get_guild(ctx, None)
                     if guild.gm_tracker_channel is not None:
                         await ctx.respond("Secret Dice Rolled")
                         await self.bot.get_channel(int(guild.gm_tracker_channel)).send(
@@ -43,6 +45,16 @@ class DiceRollerCog(commands.Cog):
                         await ctx.channel.send(f"_{roll}_\n{roll_str}")
                 else:
                     await ctx.respond(f"_{roll}_\n{roll_str}")
+
+                print("Logging")
+                if secret == "Secret":
+                    secBool = True
+                else:
+                    secBool = False
+                user = ctx.user.name
+                log_output = f"{roll}:\n{roll_result}"
+                await log_roll(guild.id, user, log_output, secret=secBool)
+
             except Exception as e:
                 logging.warning(f"dice_roller_cog, post: {e}")
                 report = ErrorReport(ctx, "dice_roller", e, self.bot)

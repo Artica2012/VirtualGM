@@ -20,6 +20,7 @@ from STF import STF_Support
 
 Base = declarative_base()
 LookupBase = declarative_base()
+RollLogBase = declarative_base()
 
 
 # Database Models
@@ -921,3 +922,13 @@ class PF2_Lookup(LookupBase):
     name = Column(String(), unique=True)
     endpoint = Column(String())
     data = Column(JSON())
+
+
+class Log(RollLogBase):
+    __tablename__ = "roll_log"
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    guild_id = Column(Integer(), nullable=False)
+    character = Column(String(), nullable=False)
+    message = Column(String(), nullable=False)
+    timestamp = Column(BigInteger())
+    secret = Column(Boolean(), default=False)

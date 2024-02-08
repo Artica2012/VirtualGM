@@ -1210,7 +1210,7 @@ class Tracker:
             if await socket.library_check(self.guild.id):
                 output_model = await self.raw_tracker_output(self.guild.initiative)
                 output = {"guild": self.guild.id, "output": output_model, "init_pos": self.guild.initiative}
-                await socket.stream_channel(self.guild.id, output)
+                await socket.stream_channel(self.guild.id, output, "tracker")
         except Exception as e:
             logging.error(f"websocker_stream {e}")
 

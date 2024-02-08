@@ -19,6 +19,8 @@ def opposed_roll(roll: d20.RollResult, dc: d20.RollResult):
 
 
 def eval_success(roll: d20.RollResult, dc: d20.RollResult):
+    print(roll)
+    print(dc)
     if roll.total >= dc.total:
         return True
     else:

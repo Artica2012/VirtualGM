@@ -97,11 +97,14 @@ class EPF_Macro(Macro):
 
     async def raw_roll_macro(self, character, macro_name, dc, modifier):
         logging.info("EPF roll_macro")
+        print(character)
         Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
+        print(f"dice_result: {dice_result}")
         # print(dice_result)
         if dice_result == 0:
-            dice_result = super().raw_roll_macro(character, macro_name, dc, modifier)
+            dice_result = await super().raw_roll_macro(character, macro_name, dc, modifier)
+            print(dice_result)
 
         if dc:
             success = eval_success(dice_result, d20.roll(f"{dc}"))

@@ -21,7 +21,7 @@ from auto_complete import (
     character_select_multi,
     dmg_type,
 )
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, log_roll
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from utils.Automation_Getter import get_automation
@@ -32,6 +32,7 @@ from utils.Automation_Getter import get_automation
 
 # Checks to see if the user of the slash command is the GM, returns a boolean
 from utils.Tracker_Getter import get_tracker_model
+from utils.utils import get_guild
 
 
 class AutomationCog(commands.Cog):
@@ -64,9 +65,10 @@ class AutomationCog(commands.Cog):
     ):
         logging.info("attack_cog attack")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        guild = await get_guild(ctx, None)
         try:
             await ctx.response.defer()
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx, engine=engine, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -87,6 +89,12 @@ class AutomationCog(commands.Cog):
                 data = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
+
+            print("Logging")
+            for item in embeds:
+                log_output = f"{roll}:\n{item.fields[0].value}"
+                await log_roll(guild.id, character, log_output)
+
         except Exception as e:
             logging.warning(f"attack_cog attack {e}")
             report = ErrorReport(ctx, "/a attack", e, self.bot)
@@ -114,8 +122,9 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog save")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx, engine=engine, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -131,6 +140,11 @@ class AutomationCog(commands.Cog):
                 data = await Automation.save(character, target, save, dc, modifier)
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
+            print("Logging")
+            for item in embeds:
+                log_output = f"{save}:\n{item.fields[0].value}"
+                await log_roll(guild.id, character, log_output)
+
         except Exception as e:
             logging.warning(f"attack_cog save {e}")
             report = ErrorReport(ctx, "/a save", e, self.bot)
@@ -159,8 +173,9 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog damage")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx, engine=engine, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -195,6 +210,11 @@ class AutomationCog(commands.Cog):
 
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
+            print("Logging")
+            for item in embeds:
+                log_output = f"{user_roll_str}:\n{item.fields[0].value}"
+                await log_roll(guild.id, character, log_output)
+
         except Exception as e:
             logging.warning(f"attack_cog damage {e}")
             report = ErrorReport(ctx, "/a damage", e, self.bot)
@@ -223,6 +243,7 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog auto")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         try:
             Automation = await get_automation(ctx, engine=engine)
             embeds = []
@@ -262,6 +283,11 @@ class AutomationCog(commands.Cog):
             await ctx.send_followup(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
+            print("Logging")
+            for item in embeds:
+                log_output = f"{attack}:\n{item.fields[0].value}"
+                await log_roll(guild.id, character, log_output)
+
         except KeyError:
             await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
         except Exception as e:
@@ -294,8 +320,9 @@ class AutomationCog(commands.Cog):
         logging.info("attack_cog cast")
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
+        guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx, engine=engine, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -337,6 +364,12 @@ class AutomationCog(commands.Cog):
             await ctx.send_followup(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
+
+            print("Logging")
+            for item in embeds:
+                log_output = f"{spell}:\n{item.fields[0].value}"
+                await log_roll(guild.id, character, log_output)
+
         except Exception as e:
             logging.warning(f"attack_cog cast {e}")
             report = ErrorReport(ctx, "/a cast", e, self.bot)
