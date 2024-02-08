@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 import EPF.Data.Kineticist_DB
 import EPF.Data.Spell_DB
+import database_operations
 from API.VGM_API import start_uvicorn
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
@@ -52,6 +53,8 @@ DATABASE = os.getenv("DATABASE")
 @bot.event
 async def on_ready():
     logging.warning("Updating tables...")
+    database_operations.create_roll_log()
+
     await upload_data(EPF.Data.Kineticist_DB.Kineticist_DB)
     await upload_data(EPF.Data.Spell_DB.Cantrips)
     await upload_data((EPF.Data.Spell_DB.Psychic_Cantrips))

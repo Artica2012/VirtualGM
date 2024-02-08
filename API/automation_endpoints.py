@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from cache import AsyncTTL
 
 from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
-from database_operations import engine
+from database_operations import engine, log_roll
 from utils.Automation_Getter import get_automation
 from Bot import bot
 from utils.Char_Getter import get_character
@@ -146,6 +146,9 @@ async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks, api_k
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
+    log_output = f"{auto_data.raw['roll']}:\n{auto_data.raw['string']}"
+    await log_roll(guild.id, body.character, log_output)
+
     return json.dumps(auto_data.raw)
 
 
@@ -163,6 +166,9 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed = auto_data.embed
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
+
+    log_output = f"{auto_data.raw['roll']}:\n{auto_data.raw['string']}"
+    await log_roll(guild.id, body.character, log_output)
 
     return json.dumps(auto_data.raw)
 
@@ -184,6 +190,9 @@ async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_k
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
 
+    log_output = f"{auto_data.raw['roll']}:\n{auto_data.raw['string']}"
+    await log_roll(guild.id, body.character, log_output)
+
     return json.dumps(auto_data.raw)
 
 
@@ -203,6 +212,9 @@ async def api_auto(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed = auto_data.embed
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
+
+    log_output = f"{auto_data.raw['roll']}:\n{auto_data.raw['string']}"
+    await log_roll(guild.id, body.character, log_output)
 
     return json.dumps(auto_data.raw)
 
@@ -231,5 +243,8 @@ async def api_cast(body: AutoRequest, background_tasks: BackgroundTasks, api_key
         embed = auto_data.embed
         embed.set_footer(text=f"via Web by {get_username_by_id(body.user)}")
         background_tasks.add_task(post_message, guild, embed=embed)
+
+    log_output = f"{auto_data.raw['roll']}:\n{auto_data.raw['string']}"
+    await log_roll(guild.id, body.character, log_output)
 
     return json.dumps(auto_data.raw)

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from API.api_utils import get_guild_by_id, get_username_by_id, post_message, get_api_key
 from Bot import bot
+from database_operations import log_roll
 from error_handling_reporting import API_ErrorReport
 from utils.parsing import opposed_roll, eval_success
 from utils.utils import relabel_roll
@@ -29,6 +30,9 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
     # print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:
+        guild = await get_guild_by_id(roll_data.guild)
+        username = get_username_by_id(roll_data.user)
+
         roll_result = d20.roll(roll)
         roll_str = opposed_roll(roll_result, d20.roll(f"{roll_data.dc}")) if roll_data.dc else roll_result
         if roll_data.dc is not None:
@@ -37,9 +41,6 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
             success = None
         if roll_data.discord_post:
             try:
-                guild = await get_guild_by_id(roll_data.guild)
-                username = get_username_by_id(roll_data.user)
-
                 if roll_data.secret:
                     background_tasks.add_task(
                         post_message, guild, message=f"```Secret Roll from {username}```\n{roll}\n{roll_str}", gm=True
@@ -61,6 +62,10 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
             "success": success,
             "posted": post,
         }
+
+        log_output = f"{output['roll']}:\n{output['roll_result']}"
+        await log_roll(guild.id, username, log_output, secret=roll_data.secret)
+
         #
         json_op = json.dumps(output)
         # print(json_op)
