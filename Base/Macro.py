@@ -164,14 +164,16 @@ class Macro:
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
-        async with async_session() as session:
-            result = await session.execute(
-                select(Macro)
-                .where(Macro.character_id == Character_Model.id)
-                .where(func.lower(Macro.name) == macro_name.split(":")[0].lower())
-            )
         try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Macro)
+                    .where(Macro.character_id == Character_Model.id)
+                    .where(func.lower(Macro.name) == macro_name.split(":")[0].lower())
+                )
+
             macro_data = result.scalars().one()
+            print(macro_data.macro)
         except Exception:
             async with async_session() as session:
                 result = await session.execute(
@@ -181,9 +183,9 @@ class Macro:
                 )
                 macro_list = result.scalars().all()
             # print(macro_list)
-
-        try:
             macro_data = macro_list[0]
+            print(macro_data.macro)
+        try:
             try:
                 raw_macro = f"{macro_data.macro}"
                 d20.roll(raw_macro)
