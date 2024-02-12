@@ -493,6 +493,187 @@ class EPF_Tracker(Tracker):
             logging.info(f"block_get_tracker: {e}")
             return "ERROR"
 
+    async def efficient_block_get_tracker(self, selected: int, gm: bool = False):
+        # print("PF2 Get Tracker")
+        # Get the datetime
+        datetime_string = ""
+
+        logging.info(f"BGT1: Guild: {self.guild.id}")
+        if self.guild.block and self.guild.initiative is not None:
+            turn_list = await self.get_turn_list()
+            block = True
+        else:
+            turn_list = []
+            block = False
+        logging.info(f"BGT2: round: {self.guild.round}")
+        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        # for item in total_list:
+        #     print(item.name)
+        active_length = len(total_list)
+        # print(f'Active Length: {active_length}')
+        inactive_list = await self.get_inactive_list()
+        if len(inactive_list) > 0:
+            total_list.extend(inactive_list)
+            # print(f'Total Length: {len(init_list)}')
+
+        try:
+            if self.guild.timekeeping:
+                datetime_string = (
+                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n__________________\n"
+                )
+        except NoResultFound:
+            if self.ctx is not None:
+                await self.ctx.channel.send(error_not_initialized, delete_after=30)
+            logging.info("Channel Not Set Up")
+        except Exception as e:
+            logging.error(f"get_tracker: {e}")
+            if self.ctx is not None and self.bot is not None:
+                report = ErrorReport(self.ctx, "get_tracker", e, self.bot)
+                await report.report()
+
+        try:
+            if self.guild.round != 0:
+                round_string = f"Round: {self.guild.round}"
+            else:
+                round_string = ""
+
+            output_string = f"```{datetime_string}Initiative: {round_string}\n"
+            gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
+
+            for x, row in enumerate(total_list):
+                logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
+                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                if len(total_list) > active_length and x == active_length:
+                    output_string += "-----------------\n"  # Put in the divider
+                    gm_output_string += "-----------------\n"  # Put in the divider
+
+                condition_list = await character.conditions()
+
+                await asyncio.sleep(0)
+                sel_bool = False
+                selector = "  "
+
+                # don't show an init if not in combat
+                if row.init == 0 or row.active is False:
+                    init_num = ""
+                else:
+                    if character.init <= 9:
+                        init_num = f" {character.init}"
+                    else:
+                        init_num = f"{character.init}"
+
+                if block:
+                    for char in turn_list:
+                        if character.id == char.id:
+                            sel_bool = True
+                else:
+                    if x == selected:
+                        sel_bool = True
+
+                # print(f"{row['name']}: x: {x}, selected: {selected}")
+
+                if sel_bool:
+                    selector = ">>"
+
+                if row.temp_hp != 0:
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" {character.current_hp}/{character.max_hp} ({character.temp_hp} Temp)"
+                        f" AC:{character.ac_total}\n "
+                    )
+                else:
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" {character.current_hp}/{character.max_hp} AC: {character.ac_total}\n"
+                    )
+                gm_output_string += string
+                if character.player:
+                    output_string += string
+                else:
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" {await character.calculate_hp()} \n"
+                    )
+                    output_string += string
+
+                for con_row in condition_list:
+                    logging.info(f"BGT5: con_row in row[cc] {con_row.title} {con_row.id}")
+                    # print(con_row)
+                    await asyncio.sleep(0)
+
+                    if con_row.number is not None and con_row.number > 0:
+                        if con_row.time:
+                            time_stamp = datetime.fromtimestamp(con_row.number)
+                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            time_left = time_stamp - current_time
+                            days_left = time_left.days
+                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                            processed_hours_left = divmod(processed_minutes_left, 60)[0]
+                            processed_minutes_left = divmod(processed_minutes_left, 60)[1]
+                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                            if processed_seconds_left < 10:
+                                processed_seconds_left = f"0{processed_seconds_left}"
+                            if processed_minutes_left < 10:
+                                processed_minutes_left = f"0{processed_minutes_left}"
+                            if days_left != 0:
+                                con_string = (
+                                    "      "
+                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                    f"{con_row.value if con_row.value is not None else ''}:"
+                                    f" {days_left} Days, {processed_minutes_left}:{processed_seconds_left}\n "
+                                )
+                            else:
+                                if processed_hours_left != 0:
+                                    con_string = (
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}:"
+                                        f" {processed_hours_left}:{processed_minutes_left}:"
+                                        f"{processed_seconds_left}\n"
+                                    )
+                                else:
+                                    con_string = (
+                                        "      "
+                                        f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                        f"{con_row.value if con_row.value is not None else ''}:"
+                                        f" {processed_minutes_left}:{processed_seconds_left}\n"
+                                    )
+
+                        else:
+                            if con_row.auto_increment:
+                                con_string = (
+                                    "      "
+                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                    f"{con_row.value if con_row.value is not None else ''}:"
+                                    f" {con_row.number} Rounds\n"
+                                )
+                            else:
+                                con_string = (
+                                    "      "
+                                    f" {con_row.title}{'*' if con_row.action != '' else ''} "
+                                    f"{con_row.value if con_row.value is not None else ''}\n"
+                                )
+                    elif con_row.number != 0:
+                        con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}: {con_row.number}\n"
+                    else:
+                        con_string = f"       {con_row.title}{'*' if con_row.action != '' else ''}\n"
+
+                    gm_output_string += con_string
+
+                    if con_row.counter is True and sel_bool and row.player:
+                        output_string += con_string
+                    elif not con_row.counter:
+                        output_string += con_string
+
+                    # print(output_string)
+            output_string += "```"
+            gm_output_string += "```"
+            # print(output_string)
+            return {"tracker": output_string, "gm_tracker": gm_output_string}
+        except Exception as e:
+            logging.info(f"block_get_tracker: {e}")
+            return "ERROR"
+
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx

@@ -69,12 +69,14 @@ class STF_Tracker(Tracker):
                 round_string = ""
 
             output_string = f"```{datetime_string}Initiative: {round_string}\n"
+            gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
 
             for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
+                    gm_output_string += "-----------------\n"  # Put in the divider
 
                 condition_list = await character.conditions()
 
@@ -103,82 +105,85 @@ class STF_Tracker(Tracker):
 
                 if sel_bool:
                     selector = ">>"
-                if character.player or gm:
-                    if row.temp_hp != 0:
-                        string = (
-                            f"{selector}  {init_num} {str(character.char_name).title()}:"
-                            f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
-                            f"{character.max_stamina} (Temp:"
-                            f" {character.temp_hp}) \n     KAC:{character.kac}, EAC: {character.eac}, RP:"
-                            f" {character.current_resolve}\n"
-                        )
-                    else:
-                        string = (
-                            f"{selector}  {init_num} {str(character.char_name).title()}:"
-                            f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
-                            f"{character.max_stamina} \n"
-                            f"     KAC:{character.kac}, EAC: {character.eac}, RP: {character.current_resolve}\n"
-                        )
+
+                if row.temp_hp != 0:
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
+                        f"{character.max_stamina} (Temp:"
+                        f" {character.temp_hp}) \n     KAC:{character.kac}, EAC: {character.eac}, RP:"
+                        f" {character.current_resolve}\n"
+                    )
+                else:
+                    string = (
+                        f"{selector}  {init_num} {str(character.char_name).title()}:"
+                        f" H:{character.current_hp}/{character.max_hp} S:{character.current_stamina}/"
+                        f"{character.max_stamina} \n"
+                        f"     KAC:{character.kac}, EAC: {character.eac}, RP: {character.current_resolve}\n"
+                    )
+                gm_output_string += string
+                if character.player:
+                    output_string += string
                 else:
                     string = (
                         f"{selector}  {init_num} {str(character.char_name).title()}:"
                         f" {await character.calculate_hp()} \n"
                     )
-                output_string += string
+                    output_string += string
 
                 for con_row in condition_list:
                     logging.info(f"BGT5: con_row in row[cc] {con_row.title} {con_row.id}")
                     # print(con_row)
                     await asyncio.sleep(0)
-                    if gm or not con_row.counter:
-                        if con_row.number is not None and con_row.number > 0:
-                            if con_row.time:
-                                time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
-                                time_left = time_stamp - current_time
-                                days_left = time_left.days
-                                processed_minutes_left = divmod(time_left.seconds, 60)[0]
-                                processed_hours_left = divmod(processed_minutes_left, 60)[0]
-                                processed_minutes_left = divmod(processed_minutes_left, 60)[1]
-                                processed_seconds_left = divmod(time_left.seconds, 60)[1]
-                                if processed_seconds_left < 10:
-                                    processed_seconds_left = f"0{processed_seconds_left}"
-                                if processed_minutes_left < 10:
-                                    processed_minutes_left = f"0{processed_minutes_left}"
-                                if days_left != 0:
+
+                    if con_row.number is not None and con_row.number > 0:
+                        if con_row.time:
+                            time_stamp = datetime.fromtimestamp(con_row.number)
+                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            time_left = time_stamp - current_time
+                            days_left = time_left.days
+                            processed_minutes_left = divmod(time_left.seconds, 60)[0]
+                            processed_hours_left = divmod(processed_minutes_left, 60)[0]
+                            processed_minutes_left = divmod(processed_minutes_left, 60)[1]
+                            processed_seconds_left = divmod(time_left.seconds, 60)[1]
+                            if processed_seconds_left < 10:
+                                processed_seconds_left = f"0{processed_seconds_left}"
+                            if processed_minutes_left < 10:
+                                processed_minutes_left = f"0{processed_minutes_left}"
+                            if days_left != 0:
+                                con_string = (
+                                    f"       {con_row.title}: {days_left} Days,"
+                                    f" {processed_minutes_left}:{processed_seconds_left}\n "
+                                )
+                            else:
+                                if processed_hours_left != 0:
                                     con_string = (
-                                        f"       {con_row.title}: {days_left} Days,"
-                                        f" {processed_minutes_left}:{processed_seconds_left}\n "
+                                        f"       {con_row.title}:"
+                                        f" {processed_hours_left}:{processed_minutes_left}:"
+                                        f"{processed_seconds_left}\n"
                                     )
                                 else:
-                                    if processed_hours_left != 0:
-                                        con_string = (
-                                            f"       {con_row.title}:"
-                                            f" {processed_hours_left}:{processed_minutes_left}:"
-                                            f"{processed_seconds_left}\n"
-                                        )
-                                    else:
-                                        con_string = (
-                                            f"       {con_row.title}:"
-                                            f" {processed_minutes_left}:{processed_seconds_left}\n"
-                                        )
-                            else:
-                                con_string = f"       {con_row.title}: {con_row.number}\n"
+                                    con_string = (
+                                        f"       {con_row.title}: {processed_minutes_left}:{processed_seconds_left}\n"
+                                    )
                         else:
-                            con_string = f"       {con_row.title}\n"
-
-                    elif con_row.counter is True and sel_bool and row.player:
-                        if con_row.number != 0:
                             con_string = f"       {con_row.title}: {con_row.number}\n"
-                        else:
-                            con_string = f"       {con_row.title}\n"
+                    elif con_row.number != 0:
+                        con_string = f"       {con_row.title}: {con_row.number}\n"
                     else:
-                        con_string = ""
-                    output_string += con_string
+                        con_string = f"       {con_row.title}\n"
+
+                    gm_output_string += con_string
+
+                    if con_row.counter is True and sel_bool and row.player:
+                        output_string += con_string
+                    elif not con_row.counter:
+                        output_string += con_string
                     # print(output_string)
             output_string += "```"
+            gm_output_string += "```"
             # print(output_string)
-            return output_string
+            return {"tracker": output_string, "gm_tracker": gm_output_string}
         except Exception as e:
             logging.info(f"block_get_tracker: {e}")
             return "ERROR"
