@@ -588,7 +588,7 @@ class D4e_Tracker(Tracker):
 
                         if con_row.counter is True and sel_bool and row.player:
                             output_string += con_string
-                        elif not con_row.couter:
+                        elif not con_row.counter:
                             output_string += con_string
 
             output_string += "```"

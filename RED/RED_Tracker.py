@@ -250,7 +250,9 @@ class RED_Tracker(Tracker):
                 report = ErrorReport(self.ctx, "block_advance_initiative", e, self.bot)
                 await report.report()
 
-    async def block_get_tracker(self, selected: int, gm: bool = False):  # Probably should rename this eventually
+    async def efficient_block_get_tracker(
+        self, selected: int, gm: bool = False
+    ):  # Probably should rename this eventually
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""

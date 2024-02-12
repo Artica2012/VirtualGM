@@ -26,7 +26,7 @@ class STF_Tracker(Tracker):
     def __init__(self, ctx, engine, init_list, bot, guild=None):
         super().__init__(ctx, engine, init_list, bot, guild)
 
-    async def block_get_tracker(self, selected: int, gm: bool = False):
+    async def efficient_block_get_tracker(self, selected: int, gm: bool = False):
         # print("PF2 Get Tracker")
         # Get the datetime
         datetime_string = ""
