@@ -63,8 +63,15 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
     guild = await get_guild_by_id(guildid)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
     output_model = await Tracker_Model.raw_tracker_output(guild.initiative)
+    guild_info = {
+        "id": guild.id,
+        "system": guild.system,
+        "gm": guild.gm,
+        "members": guild.members,
+    }
+
     # print(output_model)
-    output = {"guild": guildid, "output": output_model, "init_pos": guild.initiative}
+    output = {"guild": guildid, "output": output_model, "init_pos": guild.initiative, "guild_info": guild_info}
     op = json.dumps(output)
     # print(op)
     return op
