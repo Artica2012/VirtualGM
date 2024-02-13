@@ -239,7 +239,8 @@ class MacroCog(commands.Cog):
                     for item in output_list:
                         await ctx.channel.send(embeds=item)
 
-            print("Logging")
+            if int(ctx.channel.id) == int(guild.gm_tracker_channel):
+                secBool = True
             for item in output_list:
                 log_output = f"{macro}:\n{item[0].fields[0].value}"
                 await log_roll(guild.id, character, log_output, secret=secBool)

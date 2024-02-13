@@ -51,6 +51,9 @@ class DiceRollerCog(commands.Cog):
                     secBool = True
                 else:
                     secBool = False
+                if int(ctx.channel.id) == int(guild.gm_tracker_channel):
+                    secBool = True
+
                 user = ctx.user.name
                 log_output = f"{roll}:\n{roll_result}"
                 await log_roll(guild.id, user, log_output, secret=secBool)

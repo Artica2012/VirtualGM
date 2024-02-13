@@ -258,7 +258,6 @@ async def log_roll(guild, character, message, secret=False):
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         timestamp = int(datetime.datetime.utcnow().timestamp())
-        print(timestamp)
         async with async_session() as session:
             async with session.begin():
                 log = Log(guild_id=guild, character=character, message=message, timestamp=timestamp, secret=secret)
