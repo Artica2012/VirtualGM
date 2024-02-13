@@ -1450,8 +1450,11 @@ class Tracker:
                     init_pos = int(guild.initiative)
                 except Exception:
                     init_pos = None
-                display_string = await self.block_get_tracker(init_pos, gm=gm)
-
+                tracker = await self.efficient_block_get_tracker(init_pos, gm=gm)
+                if gm:
+                    display_string = tracker["gm_tracker"]
+                else:
+                    display_string = tracker["tracker"]
                 interaction = await self.bot.get_channel(channel.id).send(display_string)
                 await interaction.pin()
                 if gm:
