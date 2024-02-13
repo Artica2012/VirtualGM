@@ -15,6 +15,14 @@ from utils.Macro_Getter import get_macro_object
 
 router = APIRouter()
 
+system_funcs = {
+    None: ["Damage"],
+    "PF2": ["Attack", "Save", "Damage"],
+    "D4e": ["Attack", "Save", "Damage"],
+    "STF": ["Attack", "Save", "Damage"],
+    "EPF": ["Auto", "Cast", "Attack", "Save", "Damage"],
+}
+
 
 class AutoRequest(BaseModel):
     character: str
@@ -32,6 +40,25 @@ class AutoRequest(BaseModel):
     healing: bool | None = False
     level: int | None = None
     discord_post: bool | None = True
+
+
+@AsyncTTL(time_to_live=60, maxsize=64)
+@router.get("/auto/system_auto")
+async def system_auto(guildid: int, api_key: APIKey = Depends(get_api_key)):
+    guild = await get_guild_by_id(guildid)
+    try:
+        guild_info = {
+            "id": guild.id,
+            "system": guild.system,
+            "gm": guild.gm,
+            "members": guild.members,
+        }
+        output = {"guild_info": guild_info, "functions": system_funcs.get(guild.system)}
+        print(output)
+        return json.dumps(output)
+
+    except Exception:
+        return []
 
 
 @AsyncTTL(time_to_live=60, maxsize=64)

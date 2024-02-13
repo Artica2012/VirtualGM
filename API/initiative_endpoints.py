@@ -91,10 +91,17 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     for guild in all_guilds:
         try:
             if int(user) in guild.members:
+                guild_info = {
+                    "system": guild.system,
+                    "gm": guild.gm,
+                    "members": guild.members,
+                }
+
                 g = {
                     "id": guild.id,
                     "server": bot.get_guild(guild.guild_id).name,
                     "channel": bot.get_channel(guild.tracker_channel).name,
+                    "guild_info": guild_info,
                 }
 
                 output[guild.id] = g
