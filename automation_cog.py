@@ -174,52 +174,52 @@ class AutomationCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
-        try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
-            embeds = []
-            if "," in target:
-                multi_target = target.split(",")
-                for char in multi_target:
-                    try:
-                        data = await Automation.damage(
-                            self.bot,
-                            character,
-                            char.strip(),
-                            user_roll_str,
-                            modifier,
-                            healing,
-                            damage_type,
-                            multi=True,
-                            crit=crit,
+        # try:
+        Automation = await get_automation(ctx, engine=engine, guild=guild)
+        embeds = []
+        if "," in target:
+            multi_target = target.split(",")
+            for char in multi_target:
+                try:
+                    data = await Automation.damage(
+                        self.bot,
+                        character,
+                        char.strip(),
+                        user_roll_str,
+                        modifier,
+                        healing,
+                        damage_type,
+                        multi=True,
+                        crit=crit,
+                    )
+                    embeds.append(data.embed)
+                except Exception:
+                    embeds.append(
+                        discord.Embed(
+                            title=char, fields=[discord.EmbedField(name=user_roll_str, value="Invalid Target")]
                         )
-                        embeds.append(data.embed)
-                    except Exception:
-                        embeds.append(
-                            discord.Embed(
-                                title=char, fields=[discord.EmbedField(name=user_roll_str, value="Invalid Target")]
-                            )
-                        )
+                    )
 
-            else:
-                data = await Automation.damage(
-                    self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
-                )
+        else:
+            data = await Automation.damage(
+                self.bot, character, target, user_roll_str, modifier, healing, damage_type, crit=crit
+            )
 
-                embeds.append(data.embed)
-            await ctx.send_followup(embeds=embeds)
+            embeds.append(data.embed)
+        await ctx.send_followup(embeds=embeds)
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-            await Tracker_Model.update_pinned_tracker()
-            print("Logging")
-            for item in embeds:
-                log_output = f"{user_roll_str}:\n{item.fields[0].value}"
-                await log_roll(guild.id, character, log_output)
+        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        await Tracker_Model.update_pinned_tracker()
+        print("Logging")
+        for item in embeds:
+            log_output = f"{user_roll_str}:\n{item.fields[0].value}"
+            await log_roll(guild.id, character, log_output)
 
-        except Exception as e:
-            logging.warning(f"attack_cog damage {e}")
-            report = ErrorReport(ctx, "/a damage", e, self.bot)
-            await report.report()
-            await ctx.send_followup("Error. Ensure that your input was a valid dice roll or value.")
+        # except Exception as e:
+        #     logging.warning(f"attack_cog damage {e}")
+        #     report = ErrorReport(ctx, "/a damage", e, self.bot)
+        #     await report.report()
+        #     await ctx.send_followup("Error. Ensure that your input was a valid dice roll or value.")
 
     @att.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)

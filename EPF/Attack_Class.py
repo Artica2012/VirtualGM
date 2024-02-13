@@ -89,7 +89,7 @@ class AutoModel:
         elif success_string == "Critical Failure":
             color = discord.Color.dark_red()
         else:
-            color = discord.Color.dark_gray
+            color = discord.Color.dark_gray()
 
         return color
 
