@@ -10,7 +10,7 @@ import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,7 @@ from auto_complete import (
     initiative,
     character_select_con,
 )
-from database_models import get_tracker
+from database_models import get_tracker, get_condition
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from database_operations import get_asyncio_db_engine
 from error_handling_reporting import error_not_initialized, ErrorReport
@@ -583,13 +583,29 @@ class InitiativeCog(commands.Cog):
         self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: int = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        await ctx.response.defer(ephemeral=True)
-        Character_Model = await get_character(character, ctx, engine=engine)
+        guild = await get_guild(ctx, None)
+        Character_Model = await get_character(character, ctx, engine=engine, guild=guild)
+        Condition = await get_condition(ctx, engine, id=guild.id)
+        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
         try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(Condition)
+                    .where(Condition.character_id == Character_Model.id)
+                    .where(func.lower(Condition.title) == condition.lower())
+                )
+                conditionObject = result.scalars().one()
+
+            if int(ctx.channel.id) != int(guild.gm_tracker_channel) and conditionObject.counter:
+                await ctx.response.defer(ephemeral=True)
+            else:
+                await ctx.response.defer()
+
             if mode == "delete":
                 result = await Character_Model.delete_cc(condition)
                 if result:
-                    await ctx.send_followup("Successful Delete", ephemeral=True)
+                    await ctx.send_followup("Successful Delete")
                     await ctx.send(f"{condition} on {character} deleted.")
             elif mode == "edit":
                 if value is not None:
@@ -601,16 +617,16 @@ class InitiativeCog(commands.Cog):
                 else:
                     output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
                     if output[0] is not None:
-                        await ctx.send_followup(output[0], view=output[1], ephemeral=True)
+                        await ctx.send_followup(output[0], view=output[1])
                     else:
                         await ctx.send_followup("Error")
             else:
-                await ctx.send_followup("Invalid Input", ephemeral=True)
+                await ctx.send_followup("Invalid Input")
 
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
-            await ctx.send_followup("Error", ephemeral=True)
+            await ctx.send_followup("Error")
             logging.warning(f"/cc modify: {e}")
             report = ErrorReport(ctx, "slash command /cc modify", e, self.bot)
             await report.report()
