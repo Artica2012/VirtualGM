@@ -335,46 +335,53 @@ class EPF_Character(Character):
         logging.info("weapon_attack")
         weapon = self.character_model.attacks[item]
 
-        attk_stat = self.str_mod
-        match weapon["attk_stat"]:
-            case "dex":
-                attk_stat = self.dex_mod
-            case "con":
-                attk_stat = self.con_mod
-            case "itl":
-                attk_stat = self.itl_mod
-            case "wis":
-                attk_stat = self.wis_mod
-            case "cha":
-                attk_stat = self.cha_mod
-            case "None":
-                attk_stat = 0
-        proficiency = 0
-        if "override_prof" in weapon.keys():
-            proficiency = weapon["override_prof"]
+        if await self.is_complex_attack(item):
+            if weapon["category"] == "kineticist":
+                roll_string = f"1d20+{await self.get_mod_bonus('class_dc', 'impulse-attack')}"
+            else:
+                roll_string = f"(1d20+{await self.get_roll('class_dc')})"
+            return roll_string
         else:
-            match weapon["prof"]:
-                case "unarmed":
-                    proficiency = self.character_model.unarmed_prof
-                case "simple":
-                    proficiency = self.character_model.simple_prof
-                case "martial":
-                    proficiency = self.character_model.martial_prof
-                case "advanced":
-                    proficiency = self.character_model.advanced_prof
+            attk_stat = self.str_mod
+            match weapon["attk_stat"]:
+                case "dex":
+                    attk_stat = self.dex_mod
+                case "con":
+                    attk_stat = self.con_mod
+                case "itl":
+                    attk_stat = self.itl_mod
+                case "wis":
+                    attk_stat = self.wis_mod
+                case "cha":
+                    attk_stat = self.cha_mod
+                case "None":
+                    attk_stat = 0
+            proficiency = 0
+            if "override_prof" in weapon.keys():
+                proficiency = weapon["override_prof"]
+            else:
+                match weapon["prof"]:
+                    case "unarmed":
+                        proficiency = self.character_model.unarmed_prof
+                    case "simple":
+                        proficiency = self.character_model.simple_prof
+                    case "martial":
+                        proficiency = self.character_model.martial_prof
+                    case "advanced":
+                        proficiency = self.character_model.advanced_prof
 
-        if weapon["prof"] == "NPC":
-            attack_mod = attk_stat + self.character_model.level + weapon["pot"]
-        elif weapon["prof"] == "NPC_C":
-            attack_mod = weapon["pot"]
-        elif proficiency > 0:
-            attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
-        else:
-            attack_mod = attk_stat
+            if weapon["prof"] == "NPC":
+                attack_mod = attk_stat + self.character_model.level + weapon["pot"]
+            elif weapon["prof"] == "NPC_C":
+                attack_mod = weapon["pot"]
+            elif proficiency > 0:
+                attack_mod = attk_stat + self.character_model.level + proficiency + weapon["pot"]
+            else:
+                attack_mod = attk_stat
 
-        bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses, item_name=item)
+            bonus_mod = await bonus_calc(0, "attack", self.character_model.bonuses, item_name=item)
 
-        return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
+            return f"1d20+{attack_mod}{ParseModifiers(f'{bonus_mod}')}"
 
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         weapon = self.character_model.attacks[item]

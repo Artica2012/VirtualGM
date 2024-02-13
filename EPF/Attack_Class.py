@@ -86,8 +86,10 @@ class AutoModel:
             color = discord.Color.green()
         elif success_string == "Failure":
             color = discord.Color.red()
-        else:
+        elif success_string == "Critical Failure":
             color = discord.Color.dark_red()
+        else:
+            color = discord.Color.dark_gray
 
         return color
 
@@ -181,11 +183,18 @@ class AutoModel:
             "roll_total": int(Attack_Data.total_damage),
         }
 
-        embed = discord.Embed(
-            title=f"{self.character.char_name} vs {Target_Model.char_name}",
-            fields=[discord.EmbedField(name=self.attack_name.title(), value=output)],
-            color=self.success_color(Attack_Data.success_string),
-        )
+        if Target_Model is None:
+            embed = discord.Embed(
+                title=f"{self.character.char_name}",
+                fields=[discord.EmbedField(name=self.attack_name.title(), value=output)],
+                color=self.success_color(Attack_Data.success_string),
+            )
+        else:
+            embed = discord.Embed(
+                title=f"{self.character.char_name} vs {Target_Model.char_name}",
+                fields=[discord.EmbedField(name=self.attack_name.title(), value=output)],
+                color=self.success_color(Attack_Data.success_string),
+            )
         embed.set_thumbnail(url=self.character.pic)
         if self.heal:
             embed.color = discord.Color.green()
@@ -431,6 +440,39 @@ class AutoModel:
         attk_output_string = f"{self.attack_name.title()} on {Target_Model.char_name}."
 
         return Attack_Data(dmg_string, total_damage, "Success", attk_output_string)
+
+    async def get_complex_attack(self):
+        if self.attack["category"] == "kineticist":
+            roll_string = f"1d20+{await self.character.get_mod_bonus('class_dc', 'impulse-attack')}"
+        elif self.attack["category"] == "spell":
+            roll_string = f"(1d20+{await self.character.get_spell_mod(self.attack_name, True)})"
+        else:
+            roll_string = f"(1d20+{await self.character.get_roll('class_dc')})"
+
+        return roll_string
+
+    async def complex_roll_attack(self, attack_modifier, dc=None):
+        roll_string = self.get_complex_attack()
+
+        # print(roll_string)
+        dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
+
+        if dc is not None:
+            goal_result = d20.roll(str(dc))
+            success_string = PF2_eval_succss(dice_result, goal_result)
+            vs_string = f"vs DC{dc}"
+        else:
+            success_string = ""
+            vs_string = ""
+
+        attk_output_string = (
+            f"{self.character.char_name} rolls a"
+            f" {self.attack_name.title()}:\n{dice_result} {vs_string}\n{success_string}"
+        )
+
+        data = Attack_Data(None, 0, "Success", attk_output_string)
+        await self.format_output(data, None)
+        return self.output
 
     async def heighten(self, Target_Model, success_string):
         # heightening code
