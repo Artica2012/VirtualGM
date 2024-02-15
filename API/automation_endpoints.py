@@ -6,6 +6,7 @@ from fastapi.security.api_key import APIKey
 from pydantic import BaseModel
 from cache import AsyncTTL
 
+import EPF.EPF_Support
 from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
 from database_operations import engine, log_roll
 from utils.Automation_Getter import get_automation
@@ -55,6 +56,21 @@ async def system_auto(guildid: int, api_key: APIKey = Depends(get_api_key)):
         }
         output = {"guild_info": guild_info, "functions": system_funcs.get(guild.system)}
         print(output)
+        return json.dumps(output)
+
+    except Exception:
+        return []
+
+
+@AsyncTTL(time_to_live=60, maxsize=64)
+@router.get("/auto/dmg_types")
+async def dmg_types(guildid: int, api_key: APIKey = Depends(get_api_key)):
+    try:
+        guild = await get_guild_by_id(guildid)
+        if guild.system == "EPF":
+            output = EPF.EPF_Support.EPF_DMG_Types
+        else:
+            output = []
         return json.dumps(output)
 
     except Exception:
