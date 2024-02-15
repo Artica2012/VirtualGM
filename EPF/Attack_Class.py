@@ -79,6 +79,7 @@ class AutoModel:
             gm_channel = bot.get_channel(int(self.guild.gm_tracker_channel))
             await gm_channel.send(message)
 
+    @classmethod
     def success_color(self, success_string):
         if success_string == "Critical Success":
             color = discord.Color.gold()

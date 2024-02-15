@@ -4,7 +4,7 @@ import d20
 import discord
 
 from Base.Automation import Automation, AutoOutput
-from EPF.Attack_Class import get_attack, get_spell
+from EPF.Attack_Class import get_attack, get_spell, AutoModel
 from EPF.EPF_Character import get_EPF_Character
 from PF2e.pf2_functions import PF2_eval_succss
 from utils.Tracker_Getter import get_tracker_model
@@ -158,7 +158,12 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
     Tracker_Model = await get_tracker_model(ctx, None, guild=guild, engine=engine)
     await Tracker_Model.update_pinned_tracker()
 
-    embed = discord.Embed(title="Treat Wounds", description=output_string)
+    embed = discord.Embed(
+        title=f"{character} treats wounds on {Target_Model.char_name}",
+        fields=[discord.EmbedField(name="Treat Wounds", value=output_string)],
+        color=AutoModel.success_color(success_string),
+    )
+
     embed.set_thumbnail(url=Character_Model.pic)
 
     raw_output = {
