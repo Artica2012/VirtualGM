@@ -27,7 +27,7 @@ class CharData(BaseModel):
 
 @AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/char/query")
-async def get_chars(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
+async def get_chars(user: str, guildid: int, all_char: bool = False, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     GM = gm_check(user, guild)
 
@@ -35,7 +35,7 @@ async def get_chars(user: str, guildid: int, api_key: APIKey = Depends(get_api_k
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(None, engine, id=guild.id)
         async with async_session() as session:
-            if GM:
+            if GM or all_char:
                 char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
             else:
                 # print("Not the GM")
