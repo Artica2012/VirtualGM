@@ -12,10 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 origins = [
-    # "http://localhost",
-    # "http://localhost:8000",
-    # "98.63.202.128"
-    "*"
+    "http://localhost",
+    "http://localhost:3000",
+    "https://corsproxy.io",
 ]
 
 app.add_middleware(
