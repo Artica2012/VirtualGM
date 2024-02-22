@@ -15,6 +15,8 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "https://corsproxy.io",
+    # "*",
+    "shiny-twilight-83afc1.netlify.app",
 ]
 
 app.add_middleware(
