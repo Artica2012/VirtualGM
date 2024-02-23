@@ -8,10 +8,11 @@ from sqlalchemy.orm import sessionmaker
 
 import EPF.EPF_Character
 import database_operations
+import engine
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from EPF.EPF_Character import EPF_Weapon
 from database_models import get_EPF_tracker
-from database_operations import engine
+from engine import engine
 from utils.utils import get_guild
 
 
@@ -409,7 +410,7 @@ class WandererImporter:
             await session.commit()
 
     async def attack_lookup(self, attack):
-        lookup_engine = database_operations.look_up_engine
+        lookup_engine = engine.look_up_engine
         async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
         # print(attack["display"])
         try:

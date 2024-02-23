@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 import D4e.D4e_Tracker
 import D4e.d4e_functions
 from database_models import Global, Character_Vault, Base, get_tracker
-from database_operations import engine
+from engine import engine
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 

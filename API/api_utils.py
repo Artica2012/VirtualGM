@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 import Base.Character
 from Bot import bot
 from database_models import Global
-from database_operations import engine
+from engine import engine
 from utils.Tracker_Getter import get_tracker_model
 
 from fastapi import HTTPException, Security, status

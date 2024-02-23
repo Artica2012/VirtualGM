@@ -11,6 +11,7 @@ from discord.ext import commands
 from discord.ext.pages import Paginator
 import EPF.EPF_GSHEET_Importer
 import database_operations
+import engine
 import initiative
 import utils.utils
 from EPF.EPF_Character import pb_import
@@ -265,7 +266,7 @@ class PF2Cog(commands.Cog):
         self, ctx: discord.ApplicationContext, character, attack, new_name: str, bonus_roll: str, dmg_type
     ):
         await ctx.response.defer(ephemeral=True)
-        engine = database_operations.engine
+        engine = engine.engine
         response = False
 
         try:

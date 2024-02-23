@@ -10,6 +10,7 @@ from discord.ext import commands
 
 import auto_complete
 import database_operations
+import engine
 from STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
 from auto_complete import character_select_gm
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -37,7 +38,7 @@ class STFCog(commands.Cog):
     )
     async def restore_stamina(self, ctx: discord.ApplicationContext, name: str):
         await ctx.response.defer()
-        engine = database_operations.engine
+        engine = engine.engine
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx, engine=engine)

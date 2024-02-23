@@ -9,7 +9,9 @@ kill_signal = "SIGINT"
 kill_timeout = "5s"
 
 [[services]]
+    [[http_services]]
     internal_port = 8080
+    force_https = true
     protocol = 'tcp'
 
     [[services.ports]]

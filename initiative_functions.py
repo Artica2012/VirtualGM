@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from database_models import get_tracker, get_condition, Global
-from database_operations import get_asyncio_db_engine, engine
+from database_operations import get_asyncio_db_engine
+from engine import engine
 from error_handling_reporting import error_not_initialized, ErrorReport
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from utils.Tracker_Getter import get_tracker_model

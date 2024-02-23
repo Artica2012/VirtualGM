@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.operators import ilike_op
 
 from database_models import PF2_Lookup
-from database_operations import look_up_engine
+from engine import look_up_engine
 
 
 class WandererLookup:

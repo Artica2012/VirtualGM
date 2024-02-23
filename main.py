@@ -18,7 +18,7 @@ import database_operations
 from API.VGM_API import start_uvicorn
 from Bot import bot
 from EPF.EPF_Automation_Data import upload_data
-from database_operations import socket
+from WebsocketHandler import socket
 
 # import tracemalloc
 

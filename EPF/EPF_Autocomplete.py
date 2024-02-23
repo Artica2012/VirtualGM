@@ -7,7 +7,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import database_operations
+import engine
 from Base.Autocomplete import AutoComplete
 from EPF import EPF_Support
 from EPF.EPF_Character import get_EPF_Character
@@ -212,7 +212,7 @@ class EPF_Autocmplete(AutoComplete):
         # print("NPC Search")
         # await self.engine.dispose()
         try:
-            lookup_engine = database_operations.look_up_engine
+            lookup_engine = engine.look_up_engine
             # print(lookup_engine)
             async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:

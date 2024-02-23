@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from Bot import bot
 from database_models import Global
-from database_operations import engine
+from engine import engine
 from utils.Char_Getter import get_character
 from utils.Macro_Getter import get_macro_object
 from utils.parsing import ParseModifiers

@@ -5,7 +5,8 @@ from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
 from API.api_utils import get_guild_by_id, post_message, get_api_key, get_username_by_id
-from database_operations import engine, log_roll
+from database_operations import log_roll
+from engine import engine
 from utils.Macro_Getter import get_macro_object
 from cache import AsyncTTL
 
