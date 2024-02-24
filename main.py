@@ -42,6 +42,8 @@ else:
     logging.basicConfig(level=logging.INFO)
     logging.info("Script Started")
 
+# logging.basicConfig(level=logging.DEBUG)
+
 TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
@@ -71,6 +73,7 @@ async def on_ready():
     # loop.run_forever()
     # await socket.start()
     serve = await websockets.serve(socket.handle, "0.0.0.0", 6270)
+    # serve = await LogSocket.serve(socket.handle, "0.0.0.0", 6270)
     # loop = asyncio.get_running_loop()
     # loop.create_task(async_partial(self.handle))
     await serve.wait_closed()

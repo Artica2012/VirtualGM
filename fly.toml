@@ -15,7 +15,7 @@ kill_timeout = "5s"
     protocol = 'tcp'
 
     [[services.ports]]
-        handlers = ['http']
+        handlers = ['http', 'tls']
         port = 8080
 
 
@@ -24,7 +24,7 @@ kill_timeout = "5s"
     protocol = 'tcp'
 
     [[services.ports]]
-        handlers = ['http']
+        handlers = ['http', 'tls']
         port = 6270
 
     [[services.tcp_checks]]

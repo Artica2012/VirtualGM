@@ -21,26 +21,26 @@ class WebsocketHandler:
             try:
                 async for message in websocket:
                     print(message)
-
-                    msg = json.loads(message)
-                    if msg["auth"] in api_keys:
-                        match msg["header"].lower():  # noqa
-                            case "init":
-                                match msg["func"]:
-                                    case "user_tables":
-                                        print("user tables")
-                                        print(msg)
-                                        await websocket.send(await get_user_tables(msg))
-                    else:
-                        await websocket.send(json.dumps({"result": False}))
-
-                    match message[:3].lower():  # noqa
-                        case "pin":
-                            await self.ping(websocket)
-                        case "con":
-                            await self.register(websocket, message)
-                        case "clo":
-                            await self.disconnect(websocket)
+                    try:
+                        msg = json.loads(message)
+                        if msg["auth"] in api_keys:
+                            match msg["header"].lower():  # noqa
+                                case "init":
+                                    match msg["func"]:
+                                        case "user_tables":
+                                            print("user tables")
+                                            print(msg)
+                                            await websocket.send(await get_user_tables(msg))
+                        else:
+                            await websocket.send(json.dumps({"result": False}))
+                    except json.decoder.JSONDecodeError:
+                        match message[:3].lower():  # noqa
+                            case "pin":
+                                await self.ping(websocket)
+                            case "con":
+                                await self.register(websocket, message)
+                            case "clo":
+                                await self.disconnect(websocket)
 
                 await websocket.wait_closed()
             finally:
@@ -116,3 +116,14 @@ class WebsocketHandler:
 
 
 socket = WebsocketHandler()
+
+
+class LogSocket(WebsocketHandler):
+    async def process_request(self, path, request_headers):
+        print(path)
+        print(request_headers)
+
+
+async def log_request(path, request_headers):
+    print(path)
+    print(request_headers)

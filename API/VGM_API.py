@@ -15,7 +15,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "https://corsproxy.io",
-    # "*",
+    "https://virtualgm.dev",
     "shiny-twilight-83afc1.netlify.app",
 ]
 
