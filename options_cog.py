@@ -139,7 +139,7 @@ class OptionsCog(commands.Cog):
                 else:
                     await ctx.send_followup("Error setting trackers")
             else:
-                if not await gm_check(ctx, engine) or ctx.user.guild_permissions.administrator:
+                if not await gm_check(ctx, engine) and not ctx.user.guild_permissions.administrator:
                     await ctx.respond("GM Restricted Command", ephemeral=True)
                     return
                 else:
