@@ -8,7 +8,8 @@ from cache import AsyncTTL
 
 import EPF.EPF_Support
 from API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
-from database_operations import engine, log_roll
+from database_operations import log_roll
+from engine import engine
 from utils.Automation_Getter import get_automation
 from Bot import bot
 from utils.Char_Getter import get_character

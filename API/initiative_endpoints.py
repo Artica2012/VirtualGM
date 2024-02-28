@@ -14,7 +14,7 @@ from cache import AsyncTTL
 from API.api_utils import get_guild_by_id, gm_check, update_trackers, post_message, get_username_by_id, get_api_key
 from Bot import bot
 from database_models import get_condition, Global
-from database_operations import engine
+from engine import engine
 from utils.Char_Getter import get_character
 from utils.Tracker_Getter import get_tracker_model
 

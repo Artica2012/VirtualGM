@@ -5,7 +5,7 @@ from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from database_operations import look_up_engine
+from engine import look_up_engine
 
 Base = declarative_base()
 

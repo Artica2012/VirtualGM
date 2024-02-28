@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import database_operations
+import engine
 import time_keeping_functions
 from Base.Character import Character
 from EPF.EPF_Automation_Data import EPF_retreive_complex_data
@@ -28,7 +29,8 @@ from database_models import (
     LookupBase,
     get_macro,
 )
-from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, engine
+from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from engine import engine
 from database_operations import get_asyncio_db_engine, DATABASE
 from error_handling_reporting import error_not_initialized
 from time_keeping_functions import get_time
@@ -72,7 +74,7 @@ default_pic = (
 async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating PF2_Character Class")
     if engine is None:
-        engine = database_operations.engine
+        engine = engine.engine
     guild = await get_guild(ctx, guild)
     EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

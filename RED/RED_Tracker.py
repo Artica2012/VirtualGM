@@ -8,7 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-import database_operations
+import engine
 from Base.Tracker import Tracker
 from database_models import get_condition, get_tracker, Global
 from error_handling_reporting import ErrorReport, error_not_initialized
@@ -19,7 +19,7 @@ from utils.utils import get_guild
 
 async def get_RED_Tracker(ctx, engine, init_list, bot, guild=None):
     if engine is None:
-        engine = database_operations.engine
+        engine = engine.engine
     guild = await get_guild(ctx, guild)
     init_list = await get_init_list(ctx, engine, guild=guild)
     return RED_Tracker(ctx, engine, init_list, bot, guild=guild)
@@ -436,7 +436,7 @@ class RED_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = database_operations.engine
+            self.engine = engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -459,7 +459,7 @@ class RED_Tracker(Tracker):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = database_operations.engine
+            self.engine = engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(

@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from API.api_utils import get_api_key, get_guild_by_id
 from database_models import Log
-from database_operations import engine
+from engine import engine
 
 router = APIRouter()
 

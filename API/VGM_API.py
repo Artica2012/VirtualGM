@@ -14,7 +14,9 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "https://corsproxy.io",
+    "http://localhost:5173",
+    "https://localhost:5173",
+    "https://virtualgm.dev",
 ]
 
 app.add_middleware(

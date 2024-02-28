@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from API.api_utils import get_guild_by_id, gm_check, api_hard_lock, get_api_key
 from database_models import get_tracker
-from database_operations import engine
+from engine import engine
 from utils.Char_Getter import get_character
 from utils.Util_Getter import get_utilities
 from cache import AsyncTTL

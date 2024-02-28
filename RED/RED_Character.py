@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 import database_operations
+import engine
 from Base.Character import Character
 from database_models import get_tracker, get_condition, get_RED_tracker, get_macro
 from utils.parsing import ParseModifiers
@@ -23,7 +24,7 @@ default_pic = (
 
 async def get_RED_Character(char_name, ctx, guild=None, engine=None):
     if engine is None:
-        engine = database_operations.engine
+        engine = engine.engine
     guild = await get_guild(ctx, guild)
     # print(guild.id)
     RED_tracker = await get_tracker(ctx, engine, id=guild.id)

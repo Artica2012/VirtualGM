@@ -15,7 +15,7 @@ from EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from EPF.Lark import attack_grammer
 from PF2e.pf2_functions import PF2_eval_succss
 from database_models import Global
-from database_operations import engine
+from engine import engine
 from error_handling_reporting import error_not_initialized
 from utils.Char_Getter import get_character
 from utils.parsing import ParseModifiers
