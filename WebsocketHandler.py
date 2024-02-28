@@ -23,16 +23,18 @@ class WebsocketHandler:
                     print(message)
                     try:
                         msg = json.loads(message)
-                        if msg["auth"] in api_keys:
-                            match msg["header"].lower():  # noqa
-                                case "init":
-                                    match msg["func"]:
-                                        case "user_tables":
-                                            print("user tables")
-                                            print(msg)
-                                            await websocket.send(await get_user_tables(msg))
-                        else:
-                            await websocket.send(json.dumps({"result": False}))
+                        match msg["header"].lower():  # noqa
+                            case "init":
+                                match msg["func"]:
+                                    case "user_tables":
+                                        print("user tables")
+                                        print(msg)
+                                        await websocket.send(await get_user_tables(msg))
+                            case "connect":
+                                self.register(websocket, msg)
+                            case "disconnect":
+                                self.unregister(websocket)
+
                     except json.decoder.JSONDecodeError:
                         match message[:3].lower():  # noqa
                             case "pin":
@@ -47,16 +49,7 @@ class WebsocketHandler:
                 await self.disconnect(websocket)
 
     async def disconnect(self, websocket):
-        del_list = []
-
-        for g in self.library.keys():
-            if websocket in self.library[g]:
-                self.library[g].remove(websocket)
-                if len(self.library[g]) == 0:
-                    del_list.append(g)
-
-        for g in del_list:
-            del self.library[g]
+        await self.unregister(websocket)
 
         try:
             self.connections.remove(websocket)
@@ -69,7 +62,8 @@ class WebsocketHandler:
 
     async def register(self, websocket, message):
         try:
-            guild_id = int(message.split(":")[1])
+            # guild_id = int(message.split(":")[1])
+            guild_id = message["data"]
         except ValueError as e:
             logging.error(f"Value Error:websocket {message}{e}")
             return False
@@ -86,6 +80,18 @@ class WebsocketHandler:
             self.library[guild_id] = [websocket]
 
         await websocket.send(f"Connected to: {guild_id}")
+
+    async def unregister(self, websocket):
+        del_list = []
+
+        for g in self.library.keys():
+            if websocket in self.library[g]:
+                self.library[g].remove(websocket)
+                if len(self.library[g]) == 0:
+                    del_list.append(g)
+
+        for g in del_list:
+            del self.library[g]
 
     async def stream_channel(self, guild_id, tracker_data, header):
         processed_data = {"type": header, "data": tracker_data}
