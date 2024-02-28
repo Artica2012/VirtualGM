@@ -127,6 +127,8 @@ class OptionsCog(commands.Cog):
         delete: str = "",
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        # print(ctx.user.guild_permissions.administrator)
+
         try:
             if mode == "reset trackers":
                 await ctx.response.defer(ephemeral=True)
@@ -137,7 +139,7 @@ class OptionsCog(commands.Cog):
                 else:
                     await ctx.send_followup("Error setting trackers")
             else:
-                if not await gm_check(ctx, engine):
+                if not await gm_check(ctx, engine) or ctx.user.guild_permissions.administrator:
                     await ctx.respond("GM Restricted Command", ephemeral=True)
                     return
                 else:
