@@ -21,7 +21,7 @@ class RollData(BaseModel):
     user: int | None = None
     dc: int | None = None
     secret: bool | None = False
-    guild: int | None = None
+    guildid: int | None = None
     discord_post: bool | None = False
 
 
@@ -30,7 +30,7 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
     # print(roll_data)
     roll = relabel_roll(roll_data.roll)
     try:
-        guild = await get_guild_by_id(roll_data.guild)
+        guild = await get_guild_by_id(roll_data.guildid)
         username = get_username_by_id(roll_data.user)
 
         roll_result = d20.roll(roll)
@@ -61,6 +61,7 @@ async def api_roll(roll_data: RollData, background_tasks: BackgroundTasks, api_k
             "total": int(roll_result.total),
             "success": success,
             "posted": post,
+            "secret": roll_data.secret,
         }
 
         log_output = f"{output['roll']}:\n{output['roll_result']}"

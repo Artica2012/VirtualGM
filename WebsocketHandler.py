@@ -31,9 +31,9 @@ class WebsocketHandler:
                                         print(msg)
                                         await websocket.send(await get_user_tables(msg))
                             case "connect":
-                                self.register(websocket, msg)
+                                await self.register(websocket, msg)
                             case "disconnect":
-                                self.unregister(websocket)
+                                await self.unregister(websocket)
 
                     except json.decoder.JSONDecodeError:
                         match message[:3].lower():  # noqa

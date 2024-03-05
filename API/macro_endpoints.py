@@ -85,6 +85,7 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, ap
         "total": int(raw_result.get("result").total),
         "success": raw_result.get("success"),
         "posted": post,
+        "secret": roll_data.secret,
     }
     log_output = f"{output['macro']}:\n{output['roll_result']}"
     await log_roll(guild.id, roll_data.character, log_output, secret=roll_data.secret)
