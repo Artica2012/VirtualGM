@@ -81,7 +81,7 @@ break: ","
 
 
 
-roll_string: PAREN? (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER) PAREN? (POS_NEG (NUMBER | STAT_VAR))? 
+roll_string: PAREN? (ROLL (POS_NEG ROLL)* (POS_NEG (NUMBER | STAT_VAR))* | STAT_VAR (POS_NEG (NUMBER| STAT_VAR))* | NUMBER) PAREN? (POS_NEG (NUMBER | STAT_VAR))?
 !save_string: "reflex" | "fort" | "will" | "flat"
 
 ROLL: NUMBER "d" NUMBER

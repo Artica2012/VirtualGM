@@ -3,7 +3,7 @@ import d20
 
 
 def ParseModifiers(modifier_st: str):
-    if modifier_st == None:
+    if modifier_st is None:
         return ""
     try:
         output = f"{'+' if modifier_st and modifier_st[0] not in ['+', '-', '*', '/'] else ''}{modifier_st}"
