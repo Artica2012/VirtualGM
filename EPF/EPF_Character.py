@@ -388,6 +388,12 @@ class EPF_Character(Character):
     async def weapon_dmg(self, item, crit: bool = False, flat_bonus: str = ""):
         weapon = self.character_model.attacks[item]
 
+        # Bonus Damage Correction Factor
+        print(weapon.get("dmg_bonus"))
+        bonus_base = 0
+        if weapon.get("dmg_bonus") != None:
+            bonus_base = weapon.get("dmg_bonus")
+
         bonus_mod = await bonus_calc(0, "dmg", self.character_model.bonuses, item_name=item)
         # print(f"dmg die. {weapon['die_num']}")
         die_mod = await bonus_calc(int(weapon["die_num"]), "dmg_die", self.character_model.bonuses, item_name=item)
@@ -1385,6 +1391,7 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 "attk_stat": "str",
                 "traits": [],
                 "mat": mat,
+                "dmg_bonus": item["damageBonus"],
             }
 
             if item["name"] in pb["build"]["specificProficiencies"]["trained"]:
@@ -1397,6 +1404,27 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                 attacks[item["display"]]["override_prof"] = 8
 
             edited_attack = await attack_lookup(attacks[item["display"]], pb)
+            print("Bonus Damage")
+            print(edited_attack["dmg_bonus"])
+
+            match edited_attack["stat"]:
+                case "str":
+                    stat_bonus = floor((pb["build"]["abilities"]["str"] - 10) / 2)
+                case "dex":
+                    stat_bonus = floor((pb["build"]["abilities"]["dex"] - 10) / 2)
+                case "con":
+                    stat_bonus = floor((pb["build"]["abilities"]["con"] - 10) / 2)
+                case "itl":
+                    stat_bonus = floor((pb["build"]["abilities"]["int"] - 10) / 2)
+                case "wis":
+                    stat_bonus = floor((pb["build"]["abilities"]["wis"] - 10) / 2)
+                case "cha":
+                    stat_bonus = floor((pb["build"]["abilities"]["cha"] - 10) / 2)
+                case _:
+                    stat_bonus = 0
+
+            edited_attack["dmg_bonus"] = edited_attack["dmg_bonus"] - stat_bonus
+            print(edited_attack["dmg_bonus"])
 
             double_attacks = False
             # Check for two handed and fatal

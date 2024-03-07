@@ -11,7 +11,7 @@ from discord.ext import commands
 from discord.ext.pages import Paginator
 import EPF.EPF_GSHEET_Importer
 import database_operations
-import engine
+from engine import engine, look_up_engine
 import initiative
 import utils.utils
 from EPF.EPF_Character import pb_import
@@ -21,7 +21,6 @@ from PF2e.pathbuilder_importer import pathbuilder_import
 from PF2e.pf2_db_lookup import WandererLookup
 from auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
 from database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
-from database_operations import get_asyncio_db_engine
 from error_handling_reporting import ErrorReport
 from initiative_functions import update_member_list
 from utils.Char_Getter import get_character
@@ -51,7 +50,6 @@ class PF2Cog(commands.Cog):
         wanderer: discord.Attachment = None,
         image: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
         success = discord.Embed(
@@ -60,11 +58,11 @@ class PF2Cog(commands.Cog):
             color=discord.Color.dark_gold(),
         )
         if wanderer is not None:
-            try:
-                Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
-                response = await Wanderer.import_character()
-            except Exception:
-                response = False
+            # try:
+            Wanderer = await get_WandeerImporter(ctx, name, wanderer, image=image)
+            response = await Wanderer.import_character()
+            # except Exception:
+            #     response = False
 
             if response:
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
@@ -173,8 +171,6 @@ class PF2Cog(commands.Cog):
         number: int = 1,
         image: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         response = False
@@ -192,7 +188,7 @@ class PF2Cog(commands.Cog):
             try:
                 if guild.system == "PF2":
                     response = await npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
 
                     this_success = success.copy()
@@ -203,7 +199,7 @@ class PF2Cog(commands.Cog):
                     embeds.append(this_success)
                 elif guild.system == "EPF":
                     response = await epf_npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
 
                     this_success = success.copy()
@@ -243,7 +239,6 @@ class PF2Cog(commands.Cog):
         proficiency: int = None,
     ):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         try:
             Utilities = await get_utilities(ctx, engine=engine)
@@ -266,7 +261,6 @@ class PF2Cog(commands.Cog):
         self, ctx: discord.ApplicationContext, character, attack, new_name: str, bonus_roll: str, dmg_type
     ):
         await ctx.response.defer(ephemeral=True)
-        engine = engine.engine
         response = False
 
         try:
@@ -288,7 +282,6 @@ class PF2Cog(commands.Cog):
     @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Character = await get_character(character, ctx, engine=engine)
 
         match resist_weak:  # noqa
