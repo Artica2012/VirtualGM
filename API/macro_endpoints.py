@@ -20,7 +20,7 @@ class MacroData(BaseModel):
     dc: int | None = None
     mod: str | None = ""
     secret: bool | None = False
-    guild: int | None = None
+    guildid: int | None = None
     discord_post: bool | None = True
 
 
@@ -48,8 +48,9 @@ async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = 
 @router.post("/macro/roll")
 async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     # print(roll_data)
-    guild = await get_guild_by_id(roll_data.guild)
+    guild = await get_guild_by_id(roll_data.guildid)
     Macro = await get_macro_object(None, engine, guild)
+    print(roll_data)
 
     raw_result = await Macro.raw_roll_macro(roll_data.character, roll_data.macro, roll_data.dc, roll_data.mod)
 

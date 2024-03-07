@@ -849,7 +849,7 @@ class EPF_Character(Character):
         if macro_string == 0:
             return 0
         roll_string = f"{macro_string}{ParseModifiers(modifier)}"
-        # print(roll_string)
+        print(roll_string)
         dice_result = d20.roll(roll_string)
         return dice_result
 
