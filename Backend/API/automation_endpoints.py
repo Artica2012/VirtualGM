@@ -11,6 +11,7 @@ from Backend.API.api_utils import get_guild_by_id, update_trackers, post_message
 from Backend.Database.database_operations import log_roll
 from Backend.Database.engine import engine
 from Backend.utils.Automation_Getter import get_automation
+from Backend.utils.Fetch_Getter import fetchGetter
 from Discord.Bot import bot
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Macro_Getter import get_macro_object
@@ -104,6 +105,17 @@ async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = 
             return json.dumps(list(Character_Model.character_model.spells.keys()))
         else:
             return []
+    except Exception:
+        return []
+
+
+@AsyncTTL(time_to_live=60, maxsize=64)
+@router.get("/auto/getattributes")
+async def get_attrib(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
+    guild = await get_guild_by_id(guildid)
+    try:
+        Fetch = await fetchGetter(guild.id)
+        return json.dumps(await Fetch.get_attributes(character))
     except Exception:
         return []
 
