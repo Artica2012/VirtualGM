@@ -26,7 +26,7 @@ from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
 from Backend.utils.utils import get_guild, NPC_Iterator
 from Systems.EPF.Wanderer_Import import get_WandeerImporter
-from Backend.Database.engine import engine
+from Backend.Database.engine import engine, look_up_engine
 
 
 class PF2Cog(commands.Cog):
@@ -49,7 +49,6 @@ class PF2Cog(commands.Cog):
         wanderer: discord.Attachment = None,
         image: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
         success = discord.Embed(
@@ -171,8 +170,6 @@ class PF2Cog(commands.Cog):
         number: int = 1,
         image: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         response = False
@@ -190,7 +187,7 @@ class PF2Cog(commands.Cog):
             try:
                 if guild.system == "PF2":
                     response = await npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
 
                     this_success = success.copy()
@@ -201,7 +198,7 @@ class PF2Cog(commands.Cog):
                     embeds.append(this_success)
                 elif guild.system == "EPF":
                     response = await epf_npc_lookup(
-                        ctx, engine, lookup_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
+                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
                     )
 
                     this_success = success.copy()
@@ -241,7 +238,6 @@ class PF2Cog(commands.Cog):
         proficiency: int = None,
     ):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         try:
             Utilities = await get_utilities(ctx, engine=engine)
@@ -285,7 +281,6 @@ class PF2Cog(commands.Cog):
     @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Character = await get_character(character, ctx, engine=engine)
 
         match resist_weak:  # noqa

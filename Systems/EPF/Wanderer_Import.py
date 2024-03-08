@@ -11,7 +11,7 @@ from Backend.Database import engine
 from Systems.EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from Systems.EPF.EPF_Character import EPF_Weapon
 from Backend.Database.database_models import get_EPF_tracker
-from Backend.Database.engine import engine
+from Backend.Database.engine import engine, look_up_engine
 from Backend.utils.utils import get_guild
 
 
@@ -144,6 +144,14 @@ class WandererImporter:
         feats = ", ".join(feat_list)
         output["feats"] = feats
 
+        weap_spec = None
+        # weapon Specialization
+        for item in self.data["metaData"]:
+            if item["source"] == "weaponSpecialization":
+                weap_spec = "spec"
+            elif item["source"] == "greaterWeaponSpecialization":
+                weap_spec = "greater"
+
         # Attacks
         weapons = {}
         # Parsing Inventory
@@ -177,6 +185,38 @@ class WandererImporter:
                 }
 
                 edited_attack = await self.attack_lookup(weapon)
+
+                # Handle Weapon Specialization Bonus Damage
+                dmg_bonus = 0
+                # print(output['proficiencies'])
+                # print(edited_attack['display'])
+                # print(edited_attack['prof'])
+
+                try:
+                    prof_lvl = output["proficiencies"][edited_attack["prof"]]
+                    # print(prof_lvl)
+                except KeyError as e:
+                    logging.error(f"Wanderer Prociency Error:, {e}")
+                    prof_lvl = 0
+
+                if weap_spec == "spec":
+                    match prof_lvl:  # noqa
+                        case 4:
+                            dmg_bonus = 2
+                        case 6:
+                            dmg_bonus = 3
+                        case 8:
+                            dmg_bonus = 4
+                if weap_spec == "greater":
+                    match prof_lvl:  # noqa
+                        case 4:
+                            dmg_bonus = 4
+                        case 6:
+                            dmg_bonus = 6
+                        case 8:
+                            dmg_bonus = 8
+
+                edited_attack["dmg_bonus"] = dmg_bonus
                 # print(weapon)
                 weapons[item["name"]] = edited_attack
         # print(weapons)
@@ -409,8 +449,7 @@ class WandererImporter:
             await session.commit()
 
     async def attack_lookup(self, attack):
-        lookup_engine = engine.look_up_engine
-        async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
         # print(attack["display"])
         try:
             display_name = attack["display"].strip()
@@ -431,8 +470,6 @@ class WandererImporter:
             except Exception:
                 return attack
         # print(data.name, data.range, data.traits)
-
-        # await lookup_engine.dispose()
 
         if data.range is not None:
             if "thrown" in data.traits:
