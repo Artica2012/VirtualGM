@@ -114,10 +114,11 @@ async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = 
 async def get_attrib(user: str, guildid: int, character: str, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
     try:
-        Fetch = await fetchGetter(guild.id)
+        Fetch = await fetchGetter(guild)
+        print(await Fetch.get_attributes(character))
         return json.dumps(await Fetch.get_attributes(character))
     except Exception:
-        return []
+        return ["Error"]
 
 
 @AsyncTTL(time_to_live=60, maxsize=64)
