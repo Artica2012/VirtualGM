@@ -97,11 +97,13 @@ async def epf_npc_lookup(
             hp_mod = 30
         stat_mod = 2
     if elite == "weak":
-        if data.level <= 1:
+        if data.level < 1:
+            pass
+        elif data.level <= 2:
             hp_mod = -10
-        elif data.level <= 4:
+        elif data.level <= 5:
             hp_mod = -15
-        elif data.level <= 19:
+        elif data.level <= 20:
             hp_mod = -20
         else:
             hp_mod = -30
@@ -208,20 +210,26 @@ async def epf_npc_lookup(
             # print("Write the elite/weak modifiers")
             stat_mod = ParseModifiers(f"{stat_mod}")
             await Charater_Model.update()
+
+            ewdata = (
+                f"attack {stat_mod} i, dmg {stat_mod} i, fort {stat_mod} i, reflex {stat_mod} i, will {stat_mod} i,"
+                f" acrobatics {stat_mod} i,  arcana {stat_mod} i, athletics {stat_mod} i,"
+                f" crafting {stat_mod} i, deception {stat_mod} i, diplomacy {stat_mod} i, intimidation"
+                f" {stat_mod} i, medicine {stat_mod} i, nature {stat_mod} i, occultism {stat_mod} i,"
+                f"  performance {stat_mod} i, religion {stat_mod} i, society {stat_mod} i, stealth"
+                f" {stat_mod} i, survival {stat_mod} i, thievery {stat_mod} i"
+            )
+            # Only effect perception for elite
+            if stat_mod > 0:
+                ewdata += f", perception {stat_mod} i,"
+
             result = await Charater_Model.set_cc(
                 elite,
                 True,
                 0,
                 "Round",
                 False,
-                data=(
-                    f"attack {stat_mod} i, dmg {stat_mod} i, fort {stat_mod} i, reflex {stat_mod} i, will {stat_mod} i,"
-                    f" perception {stat_mod} i, acrobatics {stat_mod} i,  arcana {stat_mod} i, athletics {stat_mod} i,"
-                    f" crafting {stat_mod} i, deception {stat_mod} i, diplomacy {stat_mod} i, intimidation"
-                    f" {stat_mod} i, medicine {stat_mod} i, nature {stat_mod} i, occultism {stat_mod} i, perception"
-                    f" {stat_mod} i, performance {stat_mod} i, religion {stat_mod} i, society {stat_mod} i, stealth"
-                    f" {stat_mod} i, survival {stat_mod} i, thievery {stat_mod} i"
-                ),
+                data=ewdata,
                 visible=False,
                 update=False,
             )
