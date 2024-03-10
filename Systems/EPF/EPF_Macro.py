@@ -69,9 +69,13 @@ class EPF_Macro(Macro):
             # print(character)
             Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
             if raw is not None:
+                # print("Raw")
                 dice_result = raw.get("result")
+                # print(dice_result)
             else:
+                # print("Not Raw")
                 dice_result = await Character_Model.roll_macro(macro_name, modifier)
+                # print(dice_result)
             # print(dice_result)
             if dice_result == 0:
                 embed = await super().roll_macro(character, macro_name, dc, modifier, guild)
@@ -107,11 +111,11 @@ class EPF_Macro(Macro):
             print(dice_result)
 
         if dc:
-            success = eval_success(dice_result, d20.roll(f"{dc}"))
+            success = eval_success(dice_result.get("result"), d20.roll(f"{dc}"))
         else:
             success = False
 
-        return {"result": dice_result, "success": success}
+        return {"result": dice_result.get("result"), "success": success}
 
     async def set_vars(self, character, vars):
         await self.ctx.channel.send("This function is not available for the current system.")

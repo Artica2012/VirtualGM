@@ -212,9 +212,14 @@ class Macro:
         if raw is not None:
             raw_result = raw
         else:
+            # print("Not Raw")
             raw_result = await self.raw_roll_macro(character, macro_name, dc, modifier)
+            # print(f"raw result {raw_result}")
 
         if dc:
+            # result = raw_result['result']
+            # print(result)
+            # print(f"result.get(result): {result.get('result')}")
             roll_str = self.opposed_roll(raw_result.get("result"), d20.roll(f"{dc}"))
             output_string = f"{roll_str[0]}"
             color = roll_str[1]
@@ -236,6 +241,7 @@ class Macro:
         raw_macro = await self.raw_macro(character, macro_name)
         print(raw_macro)
         dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
+        print(f"dice_result {dice_result}")
 
         if dc:
             success = eval_success(dice_result, d20.roll(f"{dc}"))
