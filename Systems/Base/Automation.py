@@ -86,6 +86,13 @@ class Automation:
                 total = 0
                 output_string = "Error: Invalid Roll, Please try again."
 
+        await Target_Model.change_hp(total, healing, post=False)
+        if Target_Model.player:
+            health_string = f"\n{Target_Model.current_hp}/{Target_Model.max_hp}"
+        else:
+            health_string = f"\n{await Target_Model.calculate_hp()}"
+        output_string += health_string
+
         raw_output = {
             "string": output_string,
             "success": "",
@@ -99,9 +106,6 @@ class Automation:
         )
         embed.set_thumbnail(url=Character_Model.pic)
 
-        await Target_Model.change_hp(total, healing, post=False)
-        # if not multi:
-        #     await Tracker_Model.update_pinned_tracker()
         await self.gm_log(output_string, Target_Model)
         return AutoOutput(embed=embed, raw=raw_output)
 

@@ -2,6 +2,7 @@ import logging
 
 import discord
 
+import Systems.STF.STF_Support
 from Systems.Base.Autocomplete import AutoComplete
 from Systems.STF.STF_Character import get_STF_Character
 from Systems.STF.STF_Support import STF_Conditions, STF_Saves, STF_Stats, STF_DMG_Types, STF_Skills
@@ -61,8 +62,7 @@ class STF_Autocomplete(AutoComplete):
         return STF_Saves
 
     async def get_attributes(self, **kwargs):
-        # await self.engine.dispose()
-        option_list = ["KAC", "EAC", "DC"]
+        option_list = Systems.STF.STF_Support.STF_Attributes
         if self.ctx.value != "":
             # print(EPF_SKills)
             # print(option_list)

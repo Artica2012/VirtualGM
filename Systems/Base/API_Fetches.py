@@ -36,3 +36,6 @@ class APIFetches:
             logging.warning(f"get_attributes, {e}")
             # await self.engine.dispose()
             return []
+
+    def get_saves(self):
+        return []

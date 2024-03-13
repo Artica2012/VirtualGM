@@ -44,6 +44,13 @@ class AutoRequest(BaseModel):
     level: int | None = None
     discord_post: bool | None = True
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.attk_mod = self.target_mod or ""
+        self.dmg_mod = self.dmg_mod or ""
+        self.target_mod = self.target_mod or ""
+        self.dmg_type = self.dmg_type or ""
+
 
 @AsyncTTL(time_to_live=60, maxsize=64)
 @router.get("/auto/system_auto")
@@ -57,7 +64,7 @@ async def system_auto(guildid: int, api_key: APIKey = Depends(get_api_key)):
             "members": guild.members,
         }
         output = {"guild_info": guild_info, "functions": system_funcs.get(guild.system)}
-        print(output)
+        # print(output)
         return json.dumps(output)
 
     except Exception:
@@ -115,8 +122,18 @@ async def get_attrib(user: str, guildid: int, character: str, api_key: APIKey = 
     guild = await get_guild_by_id(guildid)
     try:
         Fetch = await fetchGetter(guild)
-        print(await Fetch.get_attributes(character))
         return json.dumps(await Fetch.get_attributes(character))
+    except Exception:
+        return ["Error"]
+
+
+@AsyncTTL(time_to_live=60, maxsize=64)
+@router.get("/auto/getsaves")
+async def get_saves(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
+    guild = await get_guild_by_id(guildid)
+    try:
+        Fetch = await fetchGetter(guild)
+        return json.dumps(Fetch.get_saves())
     except Exception:
         return ["Error"]
 
@@ -189,6 +206,7 @@ async def get_spelllevel(user: str, guildid: int, character: str, spell: str, ap
 async def api_attack(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
+    # print(body)
     try:
         auto_data = await Automation.attack(
             body.character, body.target, body.roll, body.vs, body.attk_mod, body.target_mod
@@ -234,13 +252,14 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key
 async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild, engine=engine)
-    try:
-        auto_data = await Automation.damage(
-            bot, body.character, body.target, body.roll, body.dmg_mod, body.healing, body.dmg_type, crit=body.crit
-        )
-    except Exception as e:
-        # print(e)
-        return {"success": "failure", "output": e}
+    print(body)
+    # try:
+    auto_data = await Automation.damage(
+        bot, body.character, body.target, body.roll, body.dmg_mod, body.healing, body.dmg_type, crit=body.crit
+    )
+    # except Exception as e:
+    #     # print(e)
+    #     return {"success": "failure", "output": e}
 
     if body.discord_post:
         embed = auto_data.embed
