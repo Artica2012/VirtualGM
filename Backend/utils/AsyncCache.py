@@ -10,24 +10,26 @@ class AsyncCache:
 
     def ac_cache(self, func):
         async def wrapper_func(*args, **kwargs):
-            hashed_args = hash(f"{args[0].guild.id}{func.__name__}{kwargs}")
-            if hashed_args in self.cache:
-                if (time.time() - self.cache[hashed_args]["TS"]) > self.ttl:
-                    output = await func(*args, **kwargs)
+            # hashed_args = hash(f"{args[0].guild.id}{func.__name__}{kwargs}")
+            # if hashed_args in self.cache:
+            #     if (time.time() - self.cache[hashed_args]["TS"]) > self.ttl:
+            #         output = await func(*args, **kwargs)
+            #
+            #         self.cache[hashed_args] = {"TS": time.time(), "output": output}
+            #
+            #     else:
+            #         output = self.cache[hashed_args]["output"]
+            # else:
+            #     output = await func(*args, **kwargs)
+            #     self.cache[hashed_args] = {"TS": time.time(), "output": output}
+            #
+            # self.cache.move_to_end(hashed_args)
+            # if len(self.cache) > self.capacity:
+            #     self.cache.popitem(last=False)
+            #
+            # return output
 
-                    self.cache[hashed_args] = {"TS": time.time(), "output": output}
-
-                else:
-                    output = self.cache[hashed_args]["output"]
-            else:
-                output = await func(*args, **kwargs)
-                self.cache[hashed_args] = {"TS": time.time(), "output": output}
-
-            self.cache.move_to_end(hashed_args)
-            if len(self.cache) > self.capacity:
-                self.cache.popitem(last=False)
-
-            return output
+            return await func(*args, **kwargs)
 
         return wrapper_func
 
