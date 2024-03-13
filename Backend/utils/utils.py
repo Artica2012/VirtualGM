@@ -4,9 +4,9 @@ import os
 import discord
 from dotenv import load_dotenv
 from sqlalchemy import or_, select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import NoResultFound
 
 from Backend.Database.database_models import Global, get_tracker
 from Backend.Database.database_operations import get_asyncio_db_engine
@@ -154,9 +154,9 @@ async def direct_message(user: discord.User, message: str, embeds=[]):
     if dm_channel is None:
         await user.create_dm()
         dm_channel = user.dm_channel
-        await dm_channel.send(
-            "This is the beginning of your audit log with VirtualGM.  If you do not wish to see "
-            "these messages, it can be turned off in the `/admin options` command."
-        )
+        # await dm_channel.send(
+        #     "This is the beginning of your audit log with VirtualGM.  If you do not wish to see "
+        #     "these messages, it can be turned off in the `/admin options` command."
+        # )
 
     await dm_channel.send(message, embeds=embeds)

@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, get_macro, get_condition, Character_Vault
 from Backend.utils.Char_Getter import get_character
+from Backend.utils.AsyncCache import cache
 
 
 class AutoComplete:
@@ -16,6 +17,7 @@ class AutoComplete:
         self.engine = engine
         self.guild = guild
 
+    @cache.ac_cache
     async def character_select(self, **kwargs):
         if "gm" in kwargs.keys():
             gm = kwargs["gm"]
@@ -59,6 +61,7 @@ class AutoComplete:
             logging.warning(f"epf character_select: {e}")
             return []
 
+    @cache.ac_cache
     async def vault_search(self, **kwargs):
         # print("vault search")
         output_list = []
@@ -93,6 +96,7 @@ class AutoComplete:
         else:
             return output_list
 
+    @cache.ac_cache
     async def npc_select(self, **kwargs):
         logging.info("character_select")
         try:
@@ -118,6 +122,7 @@ class AutoComplete:
         # await self.engine.dispose()
         return []
 
+    @cache.ac_cache
     async def macro_select(self, **kwargs):
         if "attk" in kwargs.keys():
             attk = kwargs["attk"]
@@ -162,6 +167,7 @@ class AutoComplete:
             # await self.engine.dispose()
             return []
 
+    @cache.ac_cache
     async def cc_select(self, **kwargs):
         character = self.ctx.options["character"]
 
@@ -192,9 +198,9 @@ class AutoComplete:
             return []
 
     async def save_select(self, **kwargs):
-        # await self.engine.dispose()
         return []
 
+    @cache.ac_cache
     async def get_attributes(self, **kwargs):
         logging.info("get_attributes")
         try:

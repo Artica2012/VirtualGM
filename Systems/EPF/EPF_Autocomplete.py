@@ -7,7 +7,10 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Backend.Database import engine
+from Backend.Database.database_models import get_tracker
+from Backend.Database.engine import look_up_engine
+from Backend.utils.AsyncCache import cache
+from Backend.utils.Char_Getter import get_character
 from Systems.Base.Autocomplete import AutoComplete
 from Systems.EPF import EPF_Support
 from Systems.EPF.EPF_Character import get_EPF_Character
@@ -21,14 +24,13 @@ from Systems.EPF.EPF_Support import (
     EPF_attributes,
 )
 from Systems.PF2e.pf2_functions import PF2_saves
-from Backend.Database.database_models import get_tracker
-from Backend.utils.Char_Getter import get_character
 
 
 class EPF_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
+    @cache.ac_cache
     async def character_select(self, **kwargs):
         # print("Char Select")
 
@@ -92,6 +94,7 @@ class EPF_Autocmplete(AutoComplete):
             # await self.engine.dispose()
             return key_list
 
+    @cache.ac_cache
     async def macro_select(self, **kwargs):
         if "attk" in kwargs.keys():
             attk = kwargs["attk"]
@@ -154,7 +157,6 @@ class EPF_Autocmplete(AutoComplete):
             return []
 
     async def save_select(self, **kwargs):
-        # await self.engine.dispose()
         return PF2_saves
 
     async def get_attributes(self, **kwargs):
@@ -169,6 +171,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_attributes
 
+    @cache.ac_cache
     async def attacks(self, **kwargs):
         try:
             Character_Model = await get_EPF_Character(
@@ -219,9 +222,8 @@ class EPF_Autocmplete(AutoComplete):
         # print("NPC Search")
         # await self.engine.dispose()
         try:
-            lookup_engine = engine.look_up_engine
             # print(lookup_engine)
-            async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+            async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
                     select(EPF_NPC.name)
@@ -237,6 +239,7 @@ class EPF_Autocmplete(AutoComplete):
             # await lookup_engine.dispose()
             return []
 
+    @cache.ac_cache
     async def spell_list(self, **kwargs):
         try:
             Character = await get_EPF_Character(
@@ -253,6 +256,7 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return spell_list
 
+    @cache.ac_cache
     async def spell_level(self, **kwargs):
         try:
             Character = await get_EPF_Character(

@@ -6,12 +6,14 @@ from sqlalchemy.exc import NoResultFound
 from Systems.Base.Autocomplete import AutoComplete
 from Backend.utils.Char_Getter import get_character
 from Systems.D4e.d4e_functions import D4e_attributes, D4e_Conditions
+from Backend.utils.AsyncCache import cache
 
 
 class D4e_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
+    @cache.ac_cache
     async def cc_select(self, **kwargs):
         if "no_time" in kwargs.keys():
             no_time = kwargs["no_time"]
