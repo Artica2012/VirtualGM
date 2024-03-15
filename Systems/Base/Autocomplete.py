@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, get_macro, get_condition, Character_Vault
 from Backend.utils.Char_Getter import get_character
-from Backend.utils.AsyncCache import cache
+from Backend.utils.AsyncCache import Cache
 
 
 class AutoComplete:
@@ -17,7 +17,23 @@ class AutoComplete:
         self.engine = engine
         self.guild = guild
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def character_query(self, user, gm):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine)
+        async with async_session() as session:
+            if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
+                # print("You are the GM")
+                char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+            elif not gm:
+                char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
+            else:
+                # print("Not the GM")
+                char_result = await session.execute(
+                    select(Tracker.name).where(Tracker.user == user).order_by(Tracker.name.asc())
+                )
+            return char_result.scalars().all()
+
     async def character_select(self, **kwargs):
         if "gm" in kwargs.keys():
             gm = kwargs["gm"]
@@ -31,22 +47,7 @@ class AutoComplete:
 
         logging.info("character_select")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine)
-            async with async_session() as session:
-                if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
-                    # print("You are the GM")
-                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-                elif not gm:
-                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-                else:
-                    # print("Not the GM")
-                    char_result = await session.execute(
-                        select(Tracker.name)
-                        .where(Tracker.user == self.ctx.interaction.user.id)
-                        .order_by(Tracker.name.asc())
-                    )
-                character = char_result.scalars().all()
+            character = await self.character_query(self.ctx.interaction.user.id, gm)
 
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
@@ -61,7 +62,18 @@ class AutoComplete:
             logging.warning(f"epf character_select: {e}")
             return []
 
-    @cache.ac_cache
+    async def get_vault_chars(self, user):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Character_Vault)
+                .where(Character_Vault.user == user)
+                .where(Character_Vault.system == self.guild.system)
+                .where(Character_Vault.guild_id != self.guild.id)
+            )
+            return result.scalars().all()
+
     async def vault_search(self, **kwargs):
         # print("vault search")
         output_list = []
@@ -71,19 +83,10 @@ class AutoComplete:
             gm = False
 
         # vault search
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        vault_chars = await self.get_vault_chars(self.ctx.interaction.user.id)
 
-        async with async_session() as session:
-            result = await session.execute(
-                select(Character_Vault)
-                .where(Character_Vault.user == self.ctx.interaction.user.id)
-                .where(Character_Vault.system == self.guild.system)
-                .where(Character_Vault.guild_id != self.guild.id)
-            )
-            vault_chars = result.scalars().all()
-
-            for item in vault_chars:
-                output_list.append(f"{item.name}, {item.guild_id}")
+        for item in vault_chars:
+            output_list.append(f"{item.name}, {item.guild_id}")
 
         if gm:
             char_list = await self.character_select(gm=gm)
@@ -96,7 +99,6 @@ class AutoComplete:
         else:
             return output_list
 
-    @cache.ac_cache
     async def npc_select(self, **kwargs):
         logging.info("character_select")
         try:
@@ -119,10 +121,32 @@ class AutoComplete:
             return []
 
     async def add_condition_select(self, **kwargs):
-        # await self.engine.dispose()
         return []
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def get_macro_list(self, character, attk):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+
+        async with async_session() as session:
+            char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
+            char = char_result.scalars().one()
+
+        async with async_session() as session:
+            if not attk:
+                macro_result = await session.execute(
+                    select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc())
+                )
+            else:
+                macro_result = await session.execute(
+                    select(Macro.name)
+                    .where(Macro.character_id == char)
+                    .where(not_(Macro.macro.contains(",")))
+                    .order_by(Macro.name.asc())
+                )
+            return macro_result.scalars().all()
+
     async def macro_select(self, **kwargs):
         if "attk" in kwargs.keys():
             attk = kwargs["attk"]
@@ -134,29 +158,8 @@ class AutoComplete:
         if len(char_split) > 1:
             character = char_split[0]
 
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
         try:
-            async with async_session() as session:
-                char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
-                char = char_result.scalars().one()
-
-            async with async_session() as session:
-                if not attk:
-                    macro_result = await session.execute(
-                        select(Macro.name).where(Macro.character_id == char).order_by(Macro.name.asc())
-                    )
-                else:
-                    macro_result = await session.execute(
-                        select(Macro.name)
-                        .where(Macro.character_id == char)
-                        .where(not_(Macro.macro.contains(",")))
-                        .order_by(Macro.name.asc())
-                    )
-                macro_list = macro_result.scalars().all()
-            # await self.engine.dispose()
+            macro_list = await self.get_macro_list(character, attk)
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
@@ -167,58 +170,59 @@ class AutoComplete:
             # await self.engine.dispose()
             return []
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def get_conditions(self, character):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition.title)
+                .where(Condition.character_id == Character_Model.id)
+                .where(Condition.visible == true())
+                .order_by(Condition.title.asc())
+            )
+            return result.scalars().all()
+
     async def cc_select(self, **kwargs):
         character = self.ctx.options["character"]
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Condition.title)
-                    .where(Condition.character_id == Character_Model.id)
-                    .where(Condition.visible == true())
-                    .order_by(Condition.title.asc())
-                )
-                condition = result.scalars().all()
-            # await self.engine.dispose()
+            condition = await self.get_conditions(character)
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in condition if val in option.lower()]
             else:
                 return condition
         except NoResultFound:
-            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"cc_select: {e}")
-            # await self.engine.dispose()
             return []
 
     async def save_select(self, **kwargs):
         return []
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def query_attributes(self, target):
+        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        async with async_session() as session:
+            result = await session.execute(select(Tracker).where(Tracker.name == target))
+            tar_char = result.scalars().one()
+        async with async_session() as session:
+            result = await session.execute(
+                select(Condition.title).where(Condition.character_id == tar_char.id).where(Condition.visible == false())
+            )
+            return result.scalars().all()
+
     async def get_attributes(self, **kwargs):
         logging.info("get_attributes")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             target = self.ctx.options["target"]
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-            async with async_session() as session:
-                result = await session.execute(select(Tracker).where(Tracker.name == target))
-                tar_char = result.scalars().one()
-            async with async_session() as session:
-                result = await session.execute(
-                    select(Condition.title)
-                    .where(Condition.character_id == tar_char.id)
-                    .where(Condition.visible == false())
-                )
-                invisible_conditions = result.scalars().all()
-            # await self.engine.dispose()
+            invisible_conditions = await self.query_attributes(target)
+
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in invisible_conditions if val in option.lower()]

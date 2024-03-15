@@ -7,9 +7,8 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from Backend.Database.database_models import get_tracker
 from Backend.Database.engine import look_up_engine
-from Backend.utils.AsyncCache import cache
+from Backend.utils.AsyncCache import Cache
 from Backend.utils.Char_Getter import get_character
 from Systems.Base.Autocomplete import AutoComplete
 from Systems.EPF import EPF_Support
@@ -30,7 +29,6 @@ class EPF_Autocmplete(AutoComplete):
     def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
         super().__init__(ctx, engine, guild)
 
-    @cache.ac_cache
     async def character_select(self, **kwargs):
         # print("Char Select")
 
@@ -51,24 +49,9 @@ class EPF_Autocmplete(AutoComplete):
 
         logging.info("character_select")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine)
-            async with async_session() as session:
-                if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
-                    # print("You are the GM")
-                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-                elif not gm:
-                    char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
-                else:
-                    # print("Not the GM")
-                    char_result = await session.execute(
-                        select(Tracker.name)
-                        .where(Tracker.user == self.ctx.interaction.user.id)
-                        .order_by(Tracker.name.asc())
-                    )
-                character = char_result.scalars().all()
-                if allnone:
-                    character.extend(["All PCs", "All NPCs", "All Characters"])
+            character = await self.character_query(self.ctx.interaction.user.id, gm)
+            if allnone:
+                character.extend(["All PCs", "All NPCs", "All Characters"])
 
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
@@ -94,7 +77,16 @@ class EPF_Autocmplete(AutoComplete):
             # await self.engine.dispose()
             return key_list
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def get_macro_list(self, character, attk):
+        EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        return await EPF_Char.macro_list()
+
+    @Cache.ac_cache
+    async def get_attack_list(self, character):
+        EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        return await EPF_Char.attack_list()
+
     async def macro_select(self, **kwargs):
         if "attk" in kwargs.keys():
             attk = kwargs["attk"]
@@ -125,15 +117,13 @@ class EPF_Autocmplete(AutoComplete):
 
         try:
             EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
-            macro_list = await EPF_Char.macro_list()
+            macro_list = await self.get_macro_list(character, attk)
             if EPF_Char.character_model.medicine_prof > 0 and dmg:
                 # print("Trained in Med")
                 macro_list.append("Treat Wounds")
 
-            # await self.engine.dispose()
-
             if attk and auto:
-                attk_list = await EPF_Char.attack_list()
+                attk_list = await self.get_attack_list(character)
                 if self.ctx.value != "":
                     val = self.ctx.value.lower()
                     return [option for option in attk_list if val in option.lower()]
@@ -145,7 +135,7 @@ class EPF_Autocmplete(AutoComplete):
                 return [option for option in macro_list if val in option.lower()]
             else:
                 if attk:
-                    attk_list = await EPF_Char.attack_list()
+                    attk_list = await self.get_attack_list(character)
                     if EPF_Char.character_model.medicine_prof > 0 and dmg:
                         # print("Trained in Med")
                         attk_list.append("Treat Wounds")
@@ -171,18 +161,15 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return EPF_attributes
 
-    @cache.ac_cache
     async def attacks(self, **kwargs):
         try:
             Character_Model = await get_EPF_Character(
                 self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
             )
-            # await self.engine.dispose()
         except Exception:
-            # await self.engine.dispose()
             return []
         if self.ctx.value != "":
-            option_list = await Character_Model.attack_list()
+            option_list = await self.get_attack_list()
             val = self.ctx.value.lower()
             return [option for option in option_list if val in option.lower()]
         else:
@@ -239,13 +226,19 @@ class EPF_Autocmplete(AutoComplete):
             # await lookup_engine.dispose()
             return []
 
-    @cache.ac_cache
+    @Cache.ac_cache
+    async def get_spell_list(self, character):
+        Character = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        return Character.character_model.spells.keys()
+
+    @Cache.ac_cache
+    async def get_spell(self, character, spell):
+        Character = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        return Character.get_spell(spell)
+
     async def spell_list(self, **kwargs):
         try:
-            Character = await get_EPF_Character(
-                self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
-            )
-            spell_list = Character.character_model.spells.keys()
+            spell_list = await self.get_spell_list(self.ctx.options["character"])
             # await self.engine.dispose()
         except Exception:
             # await self.engine.dispose()
@@ -256,16 +249,13 @@ class EPF_Autocmplete(AutoComplete):
         else:
             return spell_list
 
-    @cache.ac_cache
     async def spell_level(self, **kwargs):
         try:
             Character = await get_EPF_Character(
                 self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
             )
-            spell_name = self.ctx.options["spell"]
-            spell = Character.get_spell(spell_name)
-            # print(spell_name)
-            # print(spell)
+            spell = await self.get_spell(self.ctx.options["character"], self.ctx.options["spell"])
+
         except Exception:
             return []
 
