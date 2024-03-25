@@ -65,7 +65,7 @@ class AsyncCache:
     async def clean_loop(self, delay):
         while True:
             self.timeoutClean()
-            # print("Cache Cleaned")
+            print("Cache Cleaned")
             await asyncio.sleep(delay)
 
 

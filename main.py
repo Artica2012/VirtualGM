@@ -16,7 +16,6 @@ import Systems.EPF.Data.Kineticist_DB
 import Systems.EPF.Data.Spell_DB
 from Backend.Database import database_operations
 from Backend.API.VGM_API import start_uvicorn
-from Backend.utils.AsyncCache import Cache
 from Discord.Bot import bot
 from Systems.EPF.EPF_Automation_Data import upload_data
 from Backend.WS.WebsocketHandler import socket
@@ -70,7 +69,6 @@ async def on_ready():
     logging.warning(f"{bot.user} is connected.")
     loop = asyncio.get_running_loop()
     start_uvicorn(loop)
-    await loop.create_task(Cache.clean_loop(360))
     # loop.create_task( async_partial(socket.start))
     # loop.run_forever()
     # await socket.start()

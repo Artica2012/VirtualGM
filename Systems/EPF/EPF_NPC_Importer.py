@@ -1,7 +1,7 @@
 import logging
 
 import discord
-from sqlalchemy import Column, Integer, String, JSON, select
+from sqlalchemy import Column, Integer, String, JSON, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -76,8 +76,18 @@ class EPF_NPC(LookupBase):
 async def epf_npc_lookup(
     ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
 ):
-    async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+    # Check to make sure name is not in use
+
+    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    Tracker = await get_tracker(ctx, engine)
     async with async_session() as session:
+        result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
+        character = result.scalars().all()
+    if len(character) > 0:
+        raise NameError
+
+    lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+    async with lookup_session() as session:
         result = await session.execute(select(EPF_NPC).where(EPF_NPC.name == lookup))
         data = result.scalars().one()
 
@@ -124,7 +134,6 @@ async def epf_npc_lookup(
             spell_book[spell] = data.spells[spell]
 
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
         initiative_num = 0
         perception = 0
@@ -135,7 +144,6 @@ async def epf_npc_lookup(
             class_dc = data.class_dc
 
         async with async_session() as session:
-            Tracker = await get_tracker(ctx, engine, id=guild.id)
             async with session.begin():
                 tracker = Tracker(
                     name=name,

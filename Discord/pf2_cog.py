@@ -211,6 +211,7 @@ class PF2Cog(commands.Cog):
                 logging.info(f"pb_import: {e}")
                 report = ErrorReport(ctx, "add npc", f"{e} - {lookup}", self.bot)
                 await report.report()
+                return
         await ctx.send_followup(embeds=embeds)
         Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
         await Tracker_Model.update_pinned_tracker()
