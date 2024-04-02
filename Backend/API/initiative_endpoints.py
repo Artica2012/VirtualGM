@@ -126,8 +126,8 @@ async def init_start(request: InitManage, background_tasks: BackgroundTasks, api
     guild = await get_guild_by_id(request.guild)
     Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
     try:
-        await Tracker_Model.advance_initiative()
-        success = True
+        # await Tracker_Model.advance_initiative()
+        success = await Tracker_Model.block_next(None, request.user)
 
     except Exception as e:
         logging.warning(f"api /init/next: {e}")
@@ -136,7 +136,7 @@ async def init_start(request: InitManage, background_tasks: BackgroundTasks, api
     if success:
         background_tasks.add_task(Tracker_Model.block_post_init)
 
-    return {"success": success}
+    return json.dumps({"success": success})
 
 
 @router.post("/init/end")

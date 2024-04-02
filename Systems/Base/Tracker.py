@@ -86,22 +86,26 @@ class Tracker:
         await self.advance_initiative()
         await self.block_post_init()
 
-    async def block_next(self, interaction: discord.Interaction):
+    async def block_next(self, interaction: discord.Interaction, id=None):
         """
         Intelligent next command for the next button on the block tracker. Should only be by a button.
 
         :param interaction: (discord.Interaction from a button press)
         :return: No return value
         """
+        success = False
+
+        if id is None:
+            id = interaction.user.id
 
         advance = True
         if self.guild.block:
             advance = False
-            if interaction.user.id in self.guild.block_data:
+            if id in self.guild.block_data:
                 # If the player has not yet pressed the button this block, and they are in the block list, then remove
                 # their name from the list of players that still need to go.
                 new_block = self.guild.block_data.copy()
-                new_block.remove(interaction.user.id)
+                new_block.remove(id)
 
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
@@ -113,25 +117,31 @@ class Tracker:
                 if len(new_block) == 0:
                     advance = True  # If the block list is now empty, advance the turn
                 else:
-                    await interaction.response.send_message(
-                        (
-                            "Turn Marked Complete. Initiative Will Advance once all players have marked"
-                            " themselves complete"
-                        ),
-                        ephemeral=True,
-                    )
+                    if interaction is not None:
+                        await interaction.response.send_message(
+                            (
+                                "Turn Marked Complete. Initiative Will Advance once all players have marked"
+                                " themselves complete"
+                            ),
+                            ephemeral=True,
+                        )
                     await self.block_post_init()
-                if interaction.user.id == int(self.guild.gm):
+                if id == int(self.guild.gm):
                     # If the player is the gm, automatically advance the turn even if the block list isn't empty
                     advance = True
+                success = True
             else:
                 advance = False
-                await interaction.response.send_message(
-                    "Either it is not your turn, or you have already marked yourself complete", ephemeral=True
-                )
+                if interaction is not None:
+                    await interaction.response.send_message(
+                        "Either it is not your turn, or you have already marked yourself complete", ephemeral=True
+                    )
         if advance:
-            await interaction.response.send_message("Initiative Advanced", ephemeral=True)
+            if interaction is not None:
+                await interaction.response.send_message("Initiative Advanced", ephemeral=True)
             await self.next()
+
+        return success
 
     async def reroll_init(self):
         """
