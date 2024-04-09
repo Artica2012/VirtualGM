@@ -600,24 +600,24 @@ class InitiativeCog(commands.Cog):
             try:
                 # Process value
                 if value is None:
-                    value = 0
-
-                if value[0] == "+":
-                    value = int(value)
-                    try:
-                        current_value = conditionObject.value
-                    except AttributeError:
-                        current_value = conditionObject.number
-                    set_value = current_value + value
-                elif value[0] == "-":
-                    value = int(value)
-                    try:
-                        current_value = conditionObject.value
-                    except AttributeError:
-                        current_value = conditionObject.number
-                    set_value = current_value + value
+                    set_value = 0
                 else:
-                    set_value = int(value)
+                    if value[0] == "+":
+                        value = int(value)
+                        try:
+                            current_value = conditionObject.value
+                        except AttributeError:
+                            current_value = conditionObject.number
+                        set_value = current_value + value
+                    elif value[0] == "-":
+                        value = int(value)
+                        try:
+                            current_value = conditionObject.value
+                        except AttributeError:
+                            current_value = conditionObject.number
+                        set_value = current_value + value
+                    else:
+                        set_value = int(value)
             except ValueError:
                 await ctx.respond(
                     "Invalid Value. Use whole integer values (e.g 1,2,3) or a relative value (e.g. +1,-3).",
@@ -641,13 +641,13 @@ class InitiativeCog(commands.Cog):
                     if result:
                         await ctx.send_followup(f"{condition} on {character} updated to {set_value}.")
                     else:
-                        await ctx.send_followup("Error")
+                        await ctx.send_followup("Error. Please supply a valid value or an increment (e.g. +2, -3).")
                 else:  # This should be unreachable for now. This interface is being buggy
-                    output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
-                    if output[0] is not None:
-                        await ctx.send_followup(output[0], view=output[1])
-                    else:
-                        await ctx.send_followup("Error")
+                    #     output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
+                    #     if output[0] is not None:
+                    #         await ctx.send_followup(output[0], view=output[1])
+                    #     else:
+                    await ctx.send_followup("Error. Please supply a valid value or an increment (e.g. +2, -3).")
             else:
                 await ctx.send_followup("Invalid Input")
 
