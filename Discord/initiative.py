@@ -580,7 +580,7 @@ class InitiativeCog(commands.Cog):
     @option("condition", description="Condition", autocomplete=cc_select)
     @option("value", description="Value (optional)", required=False)
     async def modify(
-        self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: int = None
+        self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: str = None
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
@@ -597,6 +597,34 @@ class InitiativeCog(commands.Cog):
                 )
                 conditionObject = result.scalars().one()
 
+            try:
+                # Process value
+                if value is None:
+                    value = 0
+
+                if value[0] == "+":
+                    value = int(value)
+                    try:
+                        current_value = conditionObject.value
+                    except AttributeError:
+                        current_value = conditionObject.number
+                    set_value = current_value + value
+                elif value[0] == "-":
+                    value = int(value)
+                    try:
+                        current_value = conditionObject.value
+                    except AttributeError:
+                        current_value = conditionObject.number
+                    set_value = current_value + value
+                else:
+                    set_value = int(value)
+            except ValueError:
+                await ctx.respond(
+                    "Invalid Value. Use whole integer values (e.g 1,2,3) or a relative value (e.g. +1,-3).",
+                    ephemeral=True,
+                )
+                return
+
             if int(ctx.channel.id) != int(guild.gm_tracker_channel) and conditionObject.counter:
                 await ctx.response.defer(ephemeral=True)
             else:
@@ -609,12 +637,12 @@ class InitiativeCog(commands.Cog):
                     await ctx.send(f"{condition} on {character} deleted.")
             elif mode == "edit":
                 if value is not None:
-                    result = await Character_Model.edit_cc(condition, value)
+                    result = await Character_Model.edit_cc(condition, set_value)
                     if result:
-                        await ctx.send_followup(f"{condition} on {character} updated to {value}.")
+                        await ctx.send_followup(f"{condition} on {character} updated to {set_value}.")
                     else:
                         await ctx.send_followup("Error")
-                else:
+                else:  # This should be unreachable for now. This interface is being buggy
                     output = await edit_cc_interface(ctx, engine, character, condition, self.bot)
                     if output[0] is not None:
                         await ctx.send_followup(output[0], view=output[1])
