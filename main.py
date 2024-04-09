@@ -12,12 +12,13 @@ import sys
 import websockets
 from dotenv import load_dotenv
 
-import EPF.Data.Kineticist_DB
-import EPF.Data.Spell_DB
-from API.VGM_API import start_uvicorn
-from Bot import bot
-from EPF.EPF_Automation_Data import upload_data
-from database_operations import socket
+import Systems.EPF.Data.Kineticist_DB
+import Systems.EPF.Data.Spell_DB
+from Backend.Database import database_operations
+from Backend.API.VGM_API import start_uvicorn
+from Discord.Bot import bot
+from Systems.EPF.EPF_Automation_Data import upload_data
+from Backend.WS.WebsocketHandler import socket
 
 # import tracemalloc
 
@@ -41,6 +42,8 @@ else:
     logging.basicConfig(level=logging.INFO)
     logging.info("Script Started")
 
+# logging.basicConfig(level=logging.DEBUG)
+
 TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
@@ -52,9 +55,11 @@ DATABASE = os.getenv("DATABASE")
 @bot.event
 async def on_ready():
     logging.warning("Updating tables...")
-    await upload_data(EPF.Data.Kineticist_DB.Kineticist_DB)
-    await upload_data(EPF.Data.Spell_DB.Cantrips)
-    await upload_data((EPF.Data.Spell_DB.Psychic_Cantrips))
+    database_operations.create_roll_log()
+
+    await upload_data(Systems.EPF.Data.Kineticist_DB.Kineticist_DB)
+    await upload_data(Systems.EPF.Data.Spell_DB.Cantrips)
+    await upload_data((Systems.EPF.Data.Spell_DB.Psychic_Cantrips))
     # await database_operations.update_global_manager()
     # await database_operations.update_tracker_table()
     # await database_operations.update_con_table()
@@ -68,6 +73,7 @@ async def on_ready():
     # loop.run_forever()
     # await socket.start()
     serve = await websockets.serve(socket.handle, "0.0.0.0", 6270)
+    # serve = await LogSocket.serve(socket.handle, "0.0.0.0", 6270)
     # loop = asyncio.get_running_loop()
     # loop.create_task(async_partial(self.handle))
     await serve.wait_closed()
@@ -89,18 +95,18 @@ async def on_error():
 
 # Load the bot
 # bot.load_extension("Query.query_results")
-bot.load_extension("dice_roller_cog")
-bot.load_extension("initiative")
-bot.load_extension("error_reporting_cog")
-bot.load_extension("help_cog")
-bot.load_extension("timekeeping")
-bot.load_extension("macro_cog")
-bot.load_extension("options_cog")
-bot.load_extension("PF2e.pf2_cog")
-bot.load_extension("automation_cog")
-bot.load_extension("Update_and__Maintenance_Cog")
-bot.load_extension("reminder_cog")
-bot.load_extension("STF.stf_cog")
-bot.load_extension("RED.RED_cog")
+bot.load_extension("Discord.dice_roller_cog")
+bot.load_extension("Discord.initiative")
+bot.load_extension("Discord.error_reporting_cog")
+bot.load_extension("Discord.help_cog")
+bot.load_extension("Discord.timekeeping")
+bot.load_extension("Discord.macro_cog")
+bot.load_extension("Discord.options_cog")
+bot.load_extension("Discord.pf2_cog")
+bot.load_extension("Discord.automation_cog")
+bot.load_extension("Discord.Update_and__Maintenance_Cog")
+bot.load_extension("Discord.reminder_cog")
+bot.load_extension("Discord.stf_cog")
+bot.load_extension("Discord.RED_cog")
 
 bot.run(TOKEN)

@@ -74,6 +74,7 @@ pydantic==2.5.2
 pydantic-core==2.14.5
 pyflakes==3.0.1
 PyJWT==2.8.0
+Pympler==1.0.1
 pyparsing==3.0.9
 python-dateutil==2.8.2
 python-dotenv==0.20.0
