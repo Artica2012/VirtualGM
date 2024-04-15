@@ -73,7 +73,7 @@ class STF_Tracker(Tracker):
 
             for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
                     gm_output_string += "-----------------\n"  # Put in the divider
@@ -202,7 +202,7 @@ class STF_Tracker(Tracker):
                 # print(interaction.message.id)
                 init_list = await get_init_list(self.ctx, self.engine, self.guild)
                 for char in init_list:
-                    Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
+                    Character_Model = await get_character(char.name, self.ctx, guild=self.guild)
                     await Character_Model.update()
                 Tracker_model = STF_Tracker(
                     self.ctx,

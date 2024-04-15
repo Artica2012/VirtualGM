@@ -55,8 +55,8 @@ class Automation:
         return "Save Function not set up for current system."
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")

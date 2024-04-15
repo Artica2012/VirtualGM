@@ -9,14 +9,13 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer, BigInteger
 from sqlalchemy import String, Boolean
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
 
-# from EPF import EPF_Support
+
 import Systems.RED.RED_Support
 from Systems.EPF import EPF_Support
 from Systems.STF import STF_Support
+from Backend.Database.engine import async_session
 
 Base = declarative_base()
 LookupBase = declarative_base()
@@ -74,7 +73,6 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
         raise Exception
 
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -86,15 +84,12 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
             )
             guild = result.scalars().one()
             system = guild.system
-            # print(f"From CTX:{guild.id}")
         id = guild.id
     else:
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild = result.scalars().one()
-                # print(f"From ID:{guild.id}")
                 system = guild.system
         except Exception:
             pass
@@ -137,7 +132,6 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
 
 # Old Tracker Get Fuctcion
 async def get_tracker_table(ctx, metadata, engine, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
 
@@ -201,7 +195,6 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global.id).where(
@@ -351,7 +344,6 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global.id).where(
@@ -479,7 +471,6 @@ async def get_RED_tracker(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global.id).where(
@@ -554,7 +545,6 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         raise Exception
 
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -565,10 +555,8 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
                 )
             )
             guild = result.scalars().one()
-            # print(f"From CTX:{guild.id}")
         id = guild.id
     else:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.id == id))
             guild = result.scalars().one()
@@ -604,7 +592,6 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global.id).where(
@@ -647,7 +634,6 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
 
 
 async def get_condition_table(ctx, metadata, engine, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild is None:
         async with async_session() as session:
             result = await session.execute(
@@ -711,7 +697,6 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global.id).where(
@@ -744,7 +729,6 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
 
 
 async def get_macro_table(ctx, metadata, engine, guild=None):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild is None:
         async with async_session() as session:
             result = await session.execute(

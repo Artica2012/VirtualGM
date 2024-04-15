@@ -39,7 +39,7 @@ class Macro:
         logging.info("create_macro")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
             async with async_session() as session:
@@ -70,7 +70,7 @@ class Macro:
         logging.info("macro_mass_add")
         try:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
             async with async_session() as session:
@@ -107,7 +107,7 @@ class Macro:
     async def delete_macro(self, character: str, macro_name: str):
         logging.info("delete_macro")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine)
 
         try:
@@ -131,7 +131,7 @@ class Macro:
     async def delete_macro_all(self, character: str):
         logging.info("delete_macro_all")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine)
         try:
             async with async_session() as session:
@@ -153,7 +153,7 @@ class Macro:
     async def get_macro_list(self, character: str):
         logging.info("get_macro")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(select(Macro.name).where(Macro.character_id == Character_Model.id))
@@ -162,7 +162,7 @@ class Macro:
 
     async def raw_macro(self, character: str, macro_name: str):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
         try:
             async with async_session() as session:
@@ -207,7 +207,7 @@ class Macro:
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info(f"roll_macro {character}, {macro_name}")
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
 
         if raw is not None:
             raw_result = raw
@@ -254,7 +254,7 @@ class Macro:
         try:
             # print(vars)
             failure = False
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             if Character_Model.character_model.variables is None:
                 variables = {}
             else:
@@ -275,7 +275,7 @@ class Macro:
             # print(variables)
 
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
 
             async with async_session() as session:
@@ -307,7 +307,7 @@ class Macro:
             return False
 
     async def show_vars(self, character):
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         display_string = macro_vars_show(Character_Model.character_model.variables)
 
         embed = discord.Embed(
@@ -325,7 +325,7 @@ class Macro:
         logging.info(f"get_macro {character}, {macro_name}")
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if Character_Model is None:
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
         async with async_session() as session:
@@ -354,7 +354,7 @@ class Macro:
 
     async def show(self, character):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
 
         async with async_session() as session:

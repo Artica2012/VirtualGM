@@ -38,7 +38,7 @@ class RED_Autocomplete(AutoComplete):
 
         # print(character)
         try:
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             macro_list = Character_Model.macros
             # print(macro_list)
 
@@ -95,7 +95,7 @@ class RED_Autocomplete(AutoComplete):
 
         # print(character)
         try:
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             macro_list = Character_Model.macros
             # print(macro_list)
 

@@ -332,7 +332,7 @@ class D4e_Tracker(Tracker):
             output_string = f"```{datetime_string}Initiative: {round_string}\n"
 
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
@@ -491,7 +491,7 @@ class D4e_Tracker(Tracker):
             gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
 
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
@@ -711,12 +711,10 @@ class D4eConditionButton(discord.ui.Button):
             self.bot,
             guild=self.guild,
         )
-        if interaction.user.id == self.character.user or gm_check(self.ctx, self.engine):
+        if interaction.user.id == self.character.user or gm_check(self.ctx):
             try:
                 try:
-                    Character_Model = await get_character(
-                        self.character.name, self.ctx, engine=self.engine, guild=self.guild
-                    )
+                    Character_Model = await get_character(self.character.name, self.ctx, guild=self.guild)
                     roll_string = "1d20"
                     dice_result = d20.roll(roll_string)
                     success_string = D4e_eval_success(dice_result, D4e_base_roll)

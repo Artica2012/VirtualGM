@@ -23,7 +23,7 @@ class RED_Macro(Macro):
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info("RED roll_macro")
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
 
         if dice_result == 0:
@@ -98,7 +98,7 @@ class RED_Macro(Macro):
         return False
 
     async def show_vars(self, character):
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         embed = discord.Embed(
             title=Character_Model.char_name,
             fields=[

@@ -163,7 +163,7 @@ async def init_end(request: InitManage, background_tasks: BackgroundTasks, api_k
 @router.post("/init/set")
 async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
-    Character_Model = await get_character(request.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(request.character, None, guild=guild)
     success_string = await Character_Model.set_init(request.roll)
 
     background_tasks.add_task(update_trackers, guild)
@@ -176,7 +176,7 @@ async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key:
 @router.post("/init/hp")
 async def hp_set(body: HPSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     try:
         rolled_value = int(d20.roll(body.roll).total)
     except Exception:
@@ -231,7 +231,7 @@ async def get_cc_query(
     user: int, character: str, guildid: int, list: bool = True, api_key: APIKey = Depends(get_api_key)
 ):
     guild = await get_guild_by_id(guildid)
-    Character_Model = await get_character(character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(character, None, guild=guild)
     if list:
         Condition = await get_condition(None, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -250,7 +250,7 @@ async def get_cc_query(
 @router.post("/cc/new")
 async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
 
     success = await Character_Model.set_cc(
         body.title,
@@ -289,7 +289,7 @@ async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api
 @router.delete("/cc/delete")
 async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     result = await Character_Model.delete_cc(body.title)
     if result and body.discord_post:
         embed = discord.Embed(
@@ -313,7 +313,7 @@ async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_
 @router.post("/cc/modify")
 async def modify_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     success = False
     if body.number is not None:
         success = await Character_Model.edit_cc(body.title, body.number)

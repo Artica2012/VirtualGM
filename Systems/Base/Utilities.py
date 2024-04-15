@@ -92,7 +92,7 @@ class Utilities:
                         color=discord.Color.dark_gold(),
                     )
                     try:
-                        Character_Model = await get_character(item_name, self.ctx, engine=self.engine)
+                        Character_Model = await get_character(item_name, self.ctx)
                         success.set_thumbnail(url=Character_Model.pic)
                     except AttributeError:
                         success.set_thumbnail(url=Systems.Base.Character.default_pic)

@@ -213,7 +213,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                 char_list = result.scalars().all()
 
                 for char in char_list:
-                    Character_Model = await get_character(char.name, None, engine=engine, guild=guild)
+                    Character_Model = await get_character(char.name, None, guild=guild)
                     await Character_Model.update()
 
                     # if guild.system == "EPF":

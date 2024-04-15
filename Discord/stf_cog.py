@@ -37,7 +37,7 @@ class STFCog(commands.Cog):
         await ctx.response.defer()
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, engine=engine)
+                Character_Model = await get_character(name, ctx)
                 result = await Character_Model.restore_stamina()
                 if result:
                     await ctx.send_followup(
@@ -92,7 +92,7 @@ class STFCog(commands.Cog):
                 logging.info("Writing to Vault")
                 guild = await get_guild(ctx, None)
                 await update_member_list(guild.id)
-                Character = await get_character(name, ctx, guild=guild, engine=engine)
+                Character = await get_character(name, ctx, guild=guild)
                 if Character.player:
                     Utilities = await get_utilities(ctx, guild=guild, engine=engine)
                     await Utilities.add_to_vault(name)
@@ -108,7 +108,7 @@ class STFCog(commands.Cog):
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Character = await get_character(character, ctx, engine=engine)
+        Character = await get_character(character, ctx)
 
         match resist_weak:  # noqa
             case "Resistance":

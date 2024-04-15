@@ -28,8 +28,8 @@ class RED_Automation(Automation):
     ):
         logging.info("/red auto")
 
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         # Attack
         roll_string = f"({await Character_Model.get_roll(attack)})"
@@ -115,7 +115,7 @@ class RED_Automation(Automation):
         else:
             roll = roll_list[1]
 
-        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        char_model = await get_character(character, self.ctx, guild=self.guild)
         try:
             dice_result = RED_Roll_Result(
                 d20.roll(f"{await char_model.get_roll(roll)}{ParseModifiers(attack_modifier)}")
@@ -125,7 +125,7 @@ class RED_Automation(Automation):
             roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
 
-        Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         goal_value = await Target_Model.get_roll(vs)
         # print(goal_value)
@@ -160,8 +160,8 @@ class RED_Automation(Automation):
         self, bot, character, target, net, attack_modifier, target_modifier, damage_modifier, multi=False
     ):
         logging.info("/red net_auto")
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         # Attack
 

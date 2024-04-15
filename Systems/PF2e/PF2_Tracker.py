@@ -82,7 +82,7 @@ class PF2_Tracker(Tracker):
 
             for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
 
@@ -255,7 +255,7 @@ class PF2_Tracker(Tracker):
             gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
             # Iterate through the init list
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 # If there is an inactive list, and this is at the transition, place the line marker
                 if len(total_list) > active_length and x == active_length:
@@ -408,7 +408,7 @@ class PF2_Tracker(Tracker):
                     first_pass = True
                     for char in character:
                         await asyncio.sleep(0)
-                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        model = await get_character(char.name, self.ctx, guild=self.guild)
                         if model.init == 0:
                             await asyncio.sleep(0)
                             try:
@@ -423,13 +423,9 @@ class PF2_Tracker(Tracker):
             logging.info("BAI3: Updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(
-                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[0].name, self.ctx, guild=self.guild)
             else:
-                current_character = await get_character(
-                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.guild.saved_order, self.ctx, guild=self.guild)
 
             # Process the conditions with the after trait (Flex = False) for the current character
             await self.init_con(current_character, False)
@@ -460,9 +456,7 @@ class PF2_Tracker(Tracker):
                     # await current_character.check_time_cc(self.bot)
                     logging.info("BAI8: cc checked")
 
-            current_character = await get_character(
-                self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
-            )
+            current_character = await get_character(self.init_list[init_pos].name, self.ctx, guild=self.guild)
 
             # Delete the before conditions on the new current_character
             await self.init_con(current_character, True)

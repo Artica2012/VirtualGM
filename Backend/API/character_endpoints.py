@@ -54,7 +54,7 @@ async def get_chars(user: str, guildid: int, all_char: bool = False, api_key: AP
 @router.post("/char/delete")
 async def char_delete(char_data: CharData, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(char_data.guild)
-    Character_Model = await get_character(char_data.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(char_data.character, None, guild=guild)
     if api_hard_lock(guild, char_data.user, Character_Model):
         try:
             Utilities = await get_utilities(None, guild, engine=engine)

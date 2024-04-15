@@ -67,7 +67,7 @@ class EPF_Macro(Macro):
         embed_list = []
         for item in character_list:
             # print(character)
-            Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(item, self.ctx, guild=self.guild)
             if raw is not None:
                 # print("Raw")
                 dice_result = raw.get("result")
@@ -102,7 +102,7 @@ class EPF_Macro(Macro):
     async def raw_roll_macro(self, character, macro_name, dc, modifier):
         logging.info("EPF roll_macro")
         print(character)
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
         print(f"dice_result: {dice_result}")
         # print(dice_result)
@@ -123,12 +123,12 @@ class EPF_Macro(Macro):
 
     async def get_macro_list(self, character: str):
         logging.info("get_macro")
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         macro_list = await Character_Model.macro_list()
         return macro_list
 
     async def show_vars(self, character):
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         embed = discord.Embed(
             title=Character_Model.char_name,
             fields=[

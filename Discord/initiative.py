@@ -159,7 +159,7 @@ class InitiativeCog(commands.Cog):
 
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
+                Character_Model = await get_character(name, ctx, guild=guild)
                 response = await Character_Model.edit_character(
                     name, hp, pc_bool, initiative, active, player, image, self.bot
                 )
@@ -205,7 +205,7 @@ class InitiativeCog(commands.Cog):
                 if response:
                     this_success = success.copy()
                     this_success.add_field(name=f"{new_name}{modifier}", value=f"Successfully copied.")
-                    Character_Model = await get_character(f"{new_name}{modifier}", ctx, engine=engine)
+                    Character_Model = await get_character(f"{new_name}{modifier}", ctx)
                     if Character_Model.player:
                         await Utilities.add_to_vault(Character_Model.char_name)
                         this_success.set_thumbnail(url=Character_Model.pic)
@@ -283,7 +283,7 @@ class InitiativeCog(commands.Cog):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, engine=engine)
+                Character_Model = await get_character(name, ctx)
                 embed = await Character_Model.get_char_sheet(bot=self.bot)
                 await ctx.send_followup(embeds=embed)
             except Exception as e:
@@ -305,7 +305,7 @@ class InitiativeCog(commands.Cog):
         try:
             guild = await get_guild(ctx, None)
             Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
-            if not await gm_check(ctx, engine):
+            if not await gm_check(ctx):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             else:
@@ -398,7 +398,7 @@ class InitiativeCog(commands.Cog):
             )
         else:
             try:
-                model = await get_character(character, ctx, guild=guild, engine=engine)
+                model = await get_character(character, ctx, guild=guild)
                 output = await model.set_init(initiative)
                 await ctx.respond(output)
                 Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
@@ -423,7 +423,7 @@ class InitiativeCog(commands.Cog):
 
         try:
             guild = await get_guild(ctx, None)
-            model = await get_character(name, ctx, guild=guild, engine=engine)
+            model = await get_character(name, ctx, guild=guild)
             if mode == "Temporary HP":
                 response = await model.add_thp(rolled_amount)
                 if response:
@@ -531,7 +531,7 @@ class InitiativeCog(commands.Cog):
             embeds = []
             for char in item:
                 try:
-                    model = await get_character(char, ctx, guild=guild, engine=engine)
+                    model = await get_character(char, ctx, guild=guild)
                     response = await model.set_cc(
                         title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
                     )
@@ -584,7 +584,7 @@ class InitiativeCog(commands.Cog):
     ):
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
-        Character_Model = await get_character(character, ctx, engine=engine, guild=guild)
+        Character_Model = await get_character(character, ctx, guild=guild)
         Condition = await get_condition(ctx, engine, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 

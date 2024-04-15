@@ -115,7 +115,7 @@ class RED_Tracker(Tracker):
                     first_pass = True
                     for char in character:
                         await asyncio.sleep(0)
-                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        model = await get_character(char.name, self.ctx, guild=self.guild)
                         # print(model.char_name, model.init)
                         if model.init == 0:
                             await asyncio.sleep(0)
@@ -132,13 +132,9 @@ class RED_Tracker(Tracker):
             logging.info("BAI3: updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(
-                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[0].name, self.ctx, guild=self.guild)
             else:
-                current_character = await get_character(
-                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.guild.saved_order, self.ctx, guild=self.guild)
 
             # Record the initial to break an infinite loop
             iterations = 0
@@ -213,9 +209,7 @@ class RED_Tracker(Tracker):
                     block_done = True
 
                 turn_list.append(self.init_list[init_pos].name)
-                current_character = await get_character(
-                    self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[init_pos].name, self.ctx, guild=self.guild)
                 iterations += 1
                 if iterations >= len(self.init_list):  # stop an infinite loop
                     block_done = True
@@ -305,7 +299,7 @@ class RED_Tracker(Tracker):
             gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
             # Iterate through the init list
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 # If there is an inactive list, and this is at the transition, place the line marker
                 if len(total_list) > active_length and x == active_length:

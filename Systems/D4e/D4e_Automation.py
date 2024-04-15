@@ -25,7 +25,7 @@ class D4e_Automation(Automation):
         else:
             roll = roll_list[1]
 
-        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        char_model = await get_character(character, self.ctx, guild=self.guild)
 
         try:
             Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
@@ -35,7 +35,7 @@ class D4e_Automation(Automation):
             roll_string: str = f"({roll}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
 
-        Target_Model = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
         con_vs = 0
         match vs:  # noqa
             case "AC":
@@ -75,7 +75,7 @@ class D4e_Automation(Automation):
 
     async def save(self, character, target, save, dc, modifier):
         try:
-            Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             roll_string = f"1d20{ParseModifiers(modifier)}"
             dice_result = d20.roll(roll_string)
             success_string = D4e_eval_success(dice_result, D4e_base_roll)

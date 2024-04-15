@@ -79,12 +79,12 @@ class EPF_Autocmplete(AutoComplete):
 
     @Cache.ac_cache
     async def get_macro_list(self, character, attk):
-        EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        EPF_Char = await get_character(character, self.ctx, guild=self.guild)
         return await EPF_Char.macro_list()
 
     @Cache.ac_cache
     async def get_attack_list(self, character):
-        EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        EPF_Char = await get_character(character, self.ctx, guild=self.guild)
         return await EPF_Char.attack_list()
 
     async def macro_select(self, **kwargs):
@@ -116,7 +116,7 @@ class EPF_Autocmplete(AutoComplete):
             return [item.title() for item in EPF_Support.EPF_SKills]
 
         try:
-            EPF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            EPF_Char = await get_character(character, self.ctx, guild=self.guild)
             macro_list = await self.get_macro_list(character, attk)
             if EPF_Char.character_model.medicine_prof > 0 and dmg:
                 # print("Trained in Med")

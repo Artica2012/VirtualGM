@@ -65,7 +65,7 @@ class PF2Cog(commands.Cog):
 
             if response:
                 Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
-                Character_Model = await get_character(name, ctx, engine=engine)
+                Character_Model = await get_character(name, ctx)
                 success.set_thumbnail(url=Character_Model.pic)
                 await ctx.send_followup(embed=success)
                 await Tracker_Model.update_pinned_tracker()
@@ -85,7 +85,7 @@ class PF2Cog(commands.Cog):
                     if type(response) == str:
                         success.clear_fields()
                         success.add_field(name="Success", value=response)
-                        Character_Model = await get_character(name, ctx, engine=engine)
+                        Character_Model = await get_character(name, ctx)
                         success.set_thumbnail(url=Character_Model.pic)
                         await ctx.send_followup(embed=success)
                         await Tracker_Model.update_pinned_tracker()
@@ -97,7 +97,7 @@ class PF2Cog(commands.Cog):
                     logging.info("Imported")
                     # print(response)
                     if response:
-                        Character_Model = await get_character(name, ctx, engine=engine)
+                        Character_Model = await get_character(name, ctx)
                         success.set_thumbnail(url=Character_Model.pic)
                         await ctx.send_followup(embed=success)
                         await Tracker_Model.update_pinned_tracker()
@@ -129,7 +129,7 @@ class PF2Cog(commands.Cog):
                 else:
                     response = False
                 if response:
-                    Character_Model = await get_character(name, ctx, engine=engine)
+                    Character_Model = await get_character(name, ctx)
                     success.set_thumbnail(url=Character_Model.pic)
                     await ctx.send_followup(embed=success)
                     await Tracker_Model.update_pinned_tracker()
@@ -148,7 +148,7 @@ class PF2Cog(commands.Cog):
         try:
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
-            Character = await get_character(name, ctx, guild=guild, engine=engine)
+            Character = await get_character(name, ctx, guild=guild)
             await update_member_list(guild.id)
             if Character.player == True:
                 Utilities = await get_utilities(ctx, guild=guild, engine=engine)
@@ -192,7 +192,7 @@ class PF2Cog(commands.Cog):
 
                     this_success = success.copy()
                     this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
-                    Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
+                    Character_Model = await get_character(f"{name}{modifier}", ctx)
                     # print(Character_Model.pic)
                     this_success.set_thumbnail(url=Character_Model.pic)
                     embeds.append(this_success)
@@ -203,7 +203,7 @@ class PF2Cog(commands.Cog):
 
                     this_success = success.copy()
                     this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
-                    Character_Model = await get_character(f"{name}{modifier}", ctx, engine=engine)
+                    Character_Model = await get_character(f"{name}{modifier}", ctx)
                     this_success.set_thumbnail(url=Character_Model.pic)
                     embeds.append(this_success)
             except Exception as e:
@@ -264,7 +264,7 @@ class PF2Cog(commands.Cog):
         response = False
 
         try:
-            Character_Model = await get_character(character, ctx, engine=engine)
+            Character_Model = await get_character(character, ctx)
             response = await Character_Model.clone_attack(attack, new_name, bonus_roll, dmg_type)
         except Exception as e:
             await ctx.send_followup("Error cloning attack")
@@ -282,7 +282,7 @@ class PF2Cog(commands.Cog):
     @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
-        Character = await get_character(character, ctx, engine=engine)
+        Character = await get_character(character, ctx)
 
         match resist_weak:  # noqa
             case "Resistance":

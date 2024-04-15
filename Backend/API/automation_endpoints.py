@@ -92,7 +92,7 @@ async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey =
     guild = await get_guild_by_id(guildid)
     try:
         if guild.system == "EPF":
-            Character_Model = await get_character(character, None, guild=guild, engine=engine)
+            Character_Model = await get_character(character, None, guild=guild)
             return await Character_Model.attack_list()
         else:
             Macro = await get_macro_object(None, engine, guild)
@@ -108,7 +108,7 @@ async def get_spells(user: str, guildid: int, character: str, api_key: APIKey = 
     guild = await get_guild_by_id(guildid)
     try:
         if guild.system == "EPF":
-            Character_Model = await get_character(character, None, guild=guild, engine=engine)
+            Character_Model = await get_character(character, None, guild=guild)
             return json.dumps(list(Character_Model.character_model.spells.keys()))
         else:
             return []
@@ -145,7 +145,7 @@ async def get_spelllevel(user: str, guildid: int, character: str, spell: str, ap
 
     if guild.system == "EPF":
         try:
-            Character_Model = await get_character(character, None, guild=guild, engine=engine)
+            Character_Model = await get_character(character, None, guild=guild)
             spell_name = spell
             spell = Character_Model.get_spell(spell_name)
             # print(spell_name)

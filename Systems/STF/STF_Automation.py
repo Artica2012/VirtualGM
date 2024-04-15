@@ -17,7 +17,7 @@ class STF_Automation(Automation):
         super().__init__(ctx, engine, guild)
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
-        char_model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        char_model = await get_character(character, self.ctx, guild=self.guild)
         try:
             roll_string: str = f"{roll}{ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
@@ -25,7 +25,7 @@ class STF_Automation(Automation):
             roll_string = f"({await char_model.get_roll(roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
 
-        opponent = await get_character(target, self.ctx, guild=self.guild, engine=self.engine)
+        opponent = await get_character(target, self.ctx, guild=self.guild)
         goal_value = await opponent.get_dc(vs)
 
         try:
@@ -106,8 +106,8 @@ class STF_Automation(Automation):
         return AutoOutput(embed=embed, raw=raw_output)
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
         weapon = None
 
         try:

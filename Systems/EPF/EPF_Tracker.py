@@ -233,7 +233,7 @@ class EPF_Tracker(Tracker):
                         await asyncio.sleep(0)
                         if char.init == 0:
                             await asyncio.sleep(0)
-                            model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                            model = await get_character(char.name, self.ctx, guild=self.guild)
                             try:
                                 await model.roll_initiative()
                             except ValueError:
@@ -245,13 +245,9 @@ class EPF_Tracker(Tracker):
             logging.info("BAI3: Updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(
-                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[0].name, self.ctx, guild=self.guild)
             else:
-                current_character = await get_character(
-                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.guild.saved_order, self.ctx, guild=self.guild)
 
             # Process the conditions with the after trait (Flex = False) for the current character
             await self.init_con(current_character, False)
@@ -283,7 +279,7 @@ class EPF_Tracker(Tracker):
                     logging.info("BAI8: cc checked")
 
             current_character = await get_character(
-                self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
+                self.init_list[init_pos].name, self.ctx, guild=self.guild
             )  # Update the new current_character
 
             # Delete the before conditions on the new current_character
@@ -366,7 +362,7 @@ class EPF_Tracker(Tracker):
 
             for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
 
@@ -542,7 +538,7 @@ class EPF_Tracker(Tracker):
 
             for x, row in enumerate(total_list):
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 if len(total_list) > active_length and x == active_length:
                     output_string += "-----------------\n"  # Put in the divider
                     gm_output_string += "-----------------\n"  # Put in the divider
@@ -690,7 +686,7 @@ class EPF_Tracker(Tracker):
                 # print(interaction.message.id)
                 init_list = await get_init_list(self.ctx, self.engine, self.guild)
                 for char in init_list:
-                    Character_Model = await get_character(char.name, self.ctx, engine=self.engine, guild=self.guild)
+                    Character_Model = await get_character(char.name, self.ctx, guild=self.guild)
                     await Character_Model.update()
                 Tracker_model = EPF_Tracker(
                     self.ctx,

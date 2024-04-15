@@ -173,7 +173,7 @@ class AutoComplete:
     @Cache.ac_cache
     async def get_conditions(self, character):
         async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(

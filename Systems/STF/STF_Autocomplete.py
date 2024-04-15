@@ -40,7 +40,7 @@ class STF_Autocomplete(AutoComplete):
             return []
 
         try:
-            STF_Char = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            STF_Char = await get_character(character, self.ctx, guild=self.guild)
             macro_list = await STF_Char.macro_list()
 
             # await self.engine.dispose()

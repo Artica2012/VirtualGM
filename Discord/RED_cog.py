@@ -69,7 +69,7 @@ class REDCog(commands.Cog):
                 else:
                     response = False
                 if response:
-                    Character_Model = await get_character(name, ctx, engine=engine)
+                    Character_Model = await get_character(name, ctx)
                     success.set_thumbnail(url=Character_Model.pic)
                     await ctx.send_followup(embed=success)
                 else:
@@ -88,7 +88,7 @@ class REDCog(commands.Cog):
             logging.info("Writing to Vault")
             guild = await get_guild(ctx, None)
             await update_member_list(guild.id)
-            Character = await get_character(name, ctx, guild=guild, engine=engine)
+            Character = await get_character(name, ctx, guild=guild)
             if Character.player:
                 Utilities = await get_utilities(ctx, guild=guild, engine=engine)
                 await Utilities.add_to_vault(name)

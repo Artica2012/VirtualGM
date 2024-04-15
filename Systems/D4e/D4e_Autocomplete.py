@@ -26,7 +26,7 @@ class D4e_Autocmplete(AutoComplete):
         character = self.ctx.options["character"]
 
         try:
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             condition = await Character_Model.conditions(no_time=no_time, flex=flex)
             # await self.engine.dispose()
             if self.ctx.value != "":
