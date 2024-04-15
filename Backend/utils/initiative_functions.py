@@ -3,15 +3,13 @@ import logging
 import discord
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, get_condition, Global
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.Database.engine import engine
-from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
 from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import engine, async_session
 from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
 from Backend.utils.utils import get_guild
 
 
@@ -22,8 +20,6 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
         guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
         async with async_session() as session:
             result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = result.scalars().one()
@@ -77,7 +73,6 @@ async def increment_cc(
         guild = await get_guild(ctx, guild)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker.id).where(Tracker.name == character))
@@ -178,7 +173,6 @@ class ConditionAdd(discord.ui.Button):
 
 async def update_member_list(guild_id):
     member_list = []
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(None, engine, id=guild_id)
     async with async_session() as session:
         result = await session.execute(select(Tracker))

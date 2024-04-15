@@ -2,6 +2,7 @@ import logging
 
 import discord
 
+import Backend.Database.engine
 from Discord import Bot
 from Systems.RED.RED_Tracker import get_RED_Tracker
 from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
@@ -27,7 +28,7 @@ async def get_tracker_model(ctx, bot, guild=None, engine=None):
     if bot is None:
         bot = Bot.bot
     if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+        engine = Backend.Database.engine.engine
     guild = await get_guild(ctx, guild)
     init_list = await get_init_list(ctx, engine, guild)
     if guild.system == "EPF":
