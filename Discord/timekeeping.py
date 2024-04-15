@@ -1,7 +1,5 @@
 # timekeeping.py
 
-
-# imports
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
@@ -9,8 +7,7 @@ from discord.ext import commands
 from sqlalchemy.exc import NoResultFound
 from typing import Optional
 
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import engine
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.time_keeping_functions import output_datetime, set_datetime, advance_time
 from Backend.utils.Tracker_Getter import get_tracker_model
@@ -32,7 +29,6 @@ class TimekeeperCog(commands.Cog):
         day: Optional[int] = None,
         month: Optional[int] = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             result = await set_datetime(
                 ctx, engine, self.bot, second=0, minute=minute, hour=hour, day=day, month=month, year=None
@@ -53,7 +49,6 @@ class TimekeeperCog(commands.Cog):
                 ephemeral=True,
             )
         except Exception as e:
-            # print(f"set_time: {e}")
             report = ErrorReport(ctx, "/set_time", e, self.bot)
             await report.report()
             await ctx.respond("Setup Failed")
@@ -62,7 +57,6 @@ class TimekeeperCog(commands.Cog):
     @option("amount", description="Amount to advance")
     @option("unit", choices=["minute", "hour", "day"])
     async def advance(self, ctx: discord.ApplicationContext, amount: int, unit: str = "minute"):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             if unit == "minute":
                 result = await advance_time(ctx, engine, self.bot, minute=amount)

@@ -1,24 +1,10 @@
 # error_reporting_cog.py
 
-import os
-
-# imports
 import discord
 from discord import option
 from discord.ext import commands
-from dotenv import load_dotenv
 
 from Backend.utils.error_handling_reporting import ErrorReport
-
-# define global variables
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
 
 
 class ErrorReportingCog(commands.Cog):

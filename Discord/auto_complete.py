@@ -3,28 +3,21 @@
 # Consolidating all the autocompletes into one place.
 
 import datetime
-
-# imports
 import logging
 
 import discord
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, Character_Vault
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import engine, async_session
 from Backend.utils.Auto_Complete_Getter import get_autocomplete
 from Backend.utils.utils import get_guild
 
 
 async def hard_lock(ctx: discord.ApplicationContext, name: str):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     try:
         Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker.user).where(func.lower(Tracker.name) == name.lower()))
@@ -40,7 +33,6 @@ async def hard_lock(ctx: discord.ApplicationContext, name: str):
 
 
 async def gm_check(ctx, engine):
-    # bughunt code
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
     try:
         guild = await get_guild(ctx, None)
@@ -114,27 +106,20 @@ async def character_vault_search(ctx: discord.AutocompleteContext):
 
 
 async def character_select_player(ctx: discord.AutocompleteContext):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     try:
         try:
             guild = await get_guild(ctx, None)
             AutoComplete = await get_autocomplete(ctx, guild=guild)
-            # await engine.dispose()
             return await AutoComplete.character_select(gm=True, all=True)
         except NoResultFound:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 logging.info("Searching Character Vault")
-                # print(ctx.interaction.user.id)
-                # print(ctx.interaction.guild.id)
                 result = await session.execute(
                     select(Character_Vault)
                     .where(Character_Vault.user == ctx.interaction.user.id)
                     .where(Character_Vault.disc_guild_id == ctx.interaction.guild.id)
-                    # .order_by(Character_Vault.name.desc()) # This is causing duplicates - BUG
                 )
                 charcter_list = result.scalars().all()
-                # await engine.dispose()
                 if ctx.value != "":
                     val = ctx.value.lower()
                     return [f"{char.name}, {char.guild_id}" for char in charcter_list if val in char.name.lower()]
@@ -148,9 +133,7 @@ async def character_select_con(ctx: discord.AutocompleteContext):
     try:
         AutoComplete = await get_autocomplete(ctx)
         char_list: list = await AutoComplete.character_select()
-        # print(char_list)
         char_list.extend(["All PCs", "All NPCs"])
-        # print(char_list)
         return char_list
     except Exception:
         return []

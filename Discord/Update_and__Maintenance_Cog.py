@@ -7,18 +7,13 @@ import logging
 import discord
 from discord.ext import commands, tasks
 from sqlalchemy import select, true
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.D4e.D4e_Tracker
 import Systems.D4e.d4e_functions
 from Backend.Database.database_models import Global, Character_Vault, Base, get_tracker
-from Backend.Database.engine import engine
+from Backend.Database.engine import engine, async_session
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
-
-
-# from main import tracemalloc
 
 
 # ---------------------------------------------------------------
@@ -35,7 +30,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
     @tasks.loop(minutes=1)
     async def update_status(self):
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 guild = await session.execute(select(Global))
                 result = guild.scalars().all()
@@ -67,7 +61,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.last_tracker.isnot(None)))
             guild_list = result.scalars().all()
@@ -155,7 +148,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
     async def get_stats(self):
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 guild = await session.execute(select(Global))
                 result = guild.scalars().all()
@@ -198,8 +190,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
             return ""
 
     async def force_refresh(self):
-        # print("Forcing Refresh")
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global))
             all_guilds = result.scalars().all()
@@ -247,14 +237,12 @@ def setup(bot):
 
 
 async def guild_audit_members():
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
 
     for guild in all_guilds:
         try:
-            # print(guild.id)
             member_list = []
             Tracker = await get_tracker(None, engine, id=guild.id)
             async with async_session() as session:

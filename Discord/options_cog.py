@@ -8,21 +8,13 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import Global, get_tracker_table, get_condition_table, get_macro_table
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import set_datetime
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.utils import gm_check, get_guild
-
-
-# imports
-
-# define global variables
+from Backend.Database.engine import engine, async_session
 
 
 async def option_autocomplete(ctx: discord.AutocompleteContext):
@@ -51,7 +43,6 @@ class OptionsCog(commands.Cog):
 
     @setup.command(
         description="Administrative Commands",
-        # guild_ids=[GUILD]
     )
     @discord.default_permissions(manage_messages=True)
     @option("gm", description="@Player to transfer GM permissions to.", required=True)
@@ -77,7 +68,6 @@ class OptionsCog(commands.Cog):
         gm: discord.User,
         system: str = "",
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         try:
             response = await setup_tracker(ctx, engine, self.bot, gm, channel, gm_channel, system)
@@ -126,9 +116,6 @@ class OptionsCog(commands.Cog):
         gm: discord.User = discord.ApplicationContext.user,
         delete: str = "",
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        # print(ctx.user.guild_permissions.administrator)
-
         try:
             if mode == "reset trackers":
                 await ctx.response.defer(ephemeral=True)
@@ -167,7 +154,6 @@ class OptionsCog(commands.Cog):
                     except NoResultFound:
                         await ctx.respond(error_not_initialized, ephemeral=True)
                     except Exception as e:
-                        # print(f"/admin tracker: {e}")
                         report = ErrorReport(ctx, "slash command /admin start", e, self.bot)
                         await report.report()
         except NoResultFound as e:
@@ -187,15 +173,12 @@ class OptionsCog(commands.Cog):
     @option("toggle", autocomplete=option_autocomplete, required=False)
     @option("time", description="Number of Seconds per round (optional)", required=False)
     async def options(self, ctx: discord.ApplicationContext, module: str, toggle: str, time: int = 6):
-        # logging.info(f"{datetime.now()} - {inspect.stack()[0][3]}")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         if toggle == "On":
             toggler = True
         else:
             toggler = False
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
                     select(Global).where(
@@ -309,7 +292,6 @@ async def setup_tracker(
     try:
         metadata = db.MetaData()
         # Build the row in Global first, because the other tables reference it
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             async with session.begin():
                 guild = Global(
@@ -338,17 +320,14 @@ async def setup_tracker(
         except Exception:
             await ctx.respond("Please check permissions and try again")
             await delete_tracker(ctx, engine, bot)
-            # await engine.dispose()
             return False
 
         guild = await get_guild(ctx, None, refresh=True)
         if guild.tracker is None or guild.gm_tracker is None:
             await delete_tracker(ctx, engine, bot, guild=guild)
             await ctx.respond("Please check permissions and try again")
-            # await engine.dispose()
             return False
 
-        # await engine.dispose()
         return True
 
     except Exception as e:
@@ -362,7 +341,6 @@ async def setup_tracker(
 async def set_gm(ctx: discord.ApplicationContext, new_gm: discord.User, engine, bot):
     logging.info("set_gm")
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -411,7 +389,6 @@ async def delete_tracker(ctx: discord.ApplicationContext, engine, bot, guild=Non
 
         try:
             # delete the row from Global
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
             async with async_session() as session:
                 result = await session.execute(

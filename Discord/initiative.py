@@ -13,10 +13,18 @@ from discord.ext import commands
 from sqlalchemy import select, func
 from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Discord.auto_complete as auto_complete
+from Backend.Database.database_models import get_tracker, get_condition
+from Backend.Database.engine import engine, async_session
+from Backend.utils import utils
+from Backend.utils.Char_Getter import get_character
+from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
+from Backend.utils.initiative_functions import update_member_list
+from Backend.utils.time_keeping_functions import check_timekeeper
+from Backend.utils.utils import gm_check, get_guild
 from Discord.auto_complete import (
     character_select,
     character_select_gm,
@@ -26,17 +34,6 @@ from Discord.auto_complete import (
     initiative,
     character_select_con,
 )
-from Backend.Database.database_models import get_tracker, get_condition
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
-from Backend.utils.initiative_functions import edit_cc_interface, update_member_list
-from Backend.utils.time_keeping_functions import check_timekeeper
-from Backend.utils import utils
-from Backend.utils.Char_Getter import get_character
-from Backend.utils.Tracker_Getter import get_tracker_model
-from Backend.utils.Util_Getter import get_utilities
-from Backend.utils.utils import gm_check, get_guild
 
 
 #############################################################################
@@ -55,12 +52,9 @@ class InitiativeCog(commands.Cog):
         pass
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await check_timekeeper(ctx, engine):
-            # await engine.dispose()
             return ["Round", "Minute", "Hour", "Day"]
         else:
-            # await engine.dispose()
             return ["Round"]
 
     # ---------------------------------------------------
@@ -91,7 +85,6 @@ class InitiativeCog(commands.Cog):
         image: str = None,
         number: int = 1,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         player_bool = False
         if player == "player":
             player_bool = True
@@ -105,7 +98,6 @@ class InitiativeCog(commands.Cog):
             Utilities = await get_utilities(ctx, engine=engine)
 
             try:
-                # new_hp = d20.roll(f"{hp}").total
                 await Utilities.add_character(
                     self.bot, f"{name}", hp, player_bool, initiative, image=image, multi=number
                 )
@@ -114,7 +106,6 @@ class InitiativeCog(commands.Cog):
                 report = ErrorReport(ctx, "/char add", e, self.bot)
                 await report.report()
 
-            # await ctx.respond("Creating Character")
             Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:
@@ -147,7 +138,6 @@ class InitiativeCog(commands.Cog):
         player: discord.User = None,
         image: str = "",
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         response = False
         if pc == "PC":
@@ -186,9 +176,7 @@ class InitiativeCog(commands.Cog):
     )
     @option("new_name", description="Name for the new NPC", input_type=str, required=True)
     async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str, number: int = 1):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
-        response = False
 
         if number > 26:
             number = 26
@@ -233,7 +221,6 @@ class InitiativeCog(commands.Cog):
         autocomplete=npc_select,
     )
     async def delete(self, ctx: discord.ApplicationContext, name: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         if await auto_complete.hard_lock(ctx, name):
             try:
@@ -280,7 +267,6 @@ class InitiativeCog(commands.Cog):
     )
     async def sheet(self, ctx: discord.ApplicationContext, name: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await auto_complete.hard_lock(ctx, name):
             try:
                 Character_Model = await get_character(name, ctx)
@@ -301,7 +287,6 @@ class InitiativeCog(commands.Cog):
     @option("mode", choices=["start", "stop", "delete character", "reroll initiative"], required=True)
     @option("character", description="Character to delete", required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ""):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             guild = await get_guild(ctx, None)
             Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
@@ -360,7 +345,6 @@ class InitiativeCog(commands.Cog):
         description="Advance Initiative",
     )
     async def next(self, ctx: discord.ApplicationContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             await ctx.response.defer()
             Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
@@ -386,7 +370,6 @@ class InitiativeCog(commands.Cog):
     )
     @option("initiative", autocomplete=initiative, description="Initiative")
     async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         if character == guild.saved_order:
             await ctx.respond(
@@ -412,7 +395,6 @@ class InitiativeCog(commands.Cog):
     @option("name", description="Character Name", autocomplete=character_select)
     @option("mode", choices=["Damage", "Heal", "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         await ctx.response.defer()
         try:
@@ -479,7 +461,6 @@ class InitiativeCog(commands.Cog):
         data: str = "",
         linked_character: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         match flex:  # noqa
@@ -510,7 +491,6 @@ class InitiativeCog(commands.Cog):
 
         success_string = f"Condition {title} added on:"
         embeds = []
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         Tracker = await get_tracker(ctx, engine, id=guild.id)
         if character == "All PCs":
             async with async_session() as session:
@@ -582,11 +562,9 @@ class InitiativeCog(commands.Cog):
     async def modify(
         self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: str = None
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         Character_Model = await get_character(character, ctx, guild=guild)
         Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         try:
             async with async_session() as session:

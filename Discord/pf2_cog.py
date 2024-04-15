@@ -3,12 +3,12 @@
 # system specific module
 
 import logging
-
 import discord
 import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 from discord.ext.pages import Paginator
+
 import Systems.EPF.EPF_GSHEET_Importer
 from Discord import initiative
 from Systems.EPF.EPF_Character import pb_import
@@ -17,8 +17,6 @@ from Systems.PF2e.NPC_importer import npc_lookup
 from Systems.PF2e.pathbuilder_importer import pathbuilder_import
 from Systems.PF2e.pf2_db_lookup import WandererLookup
 from Discord.auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, DATABASE
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.Char_Getter import get_character
@@ -50,7 +48,6 @@ class PF2Cog(commands.Cog):
         image: str = None,
     ):
         await ctx.response.defer()
-        response = False
         success = discord.Embed(
             title=name.title(),
             fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
@@ -193,7 +190,6 @@ class PF2Cog(commands.Cog):
                     this_success = success.copy()
                     this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
                     Character_Model = await get_character(f"{name}{modifier}", ctx)
-                    # print(Character_Model.pic)
                     this_success.set_thumbnail(url=Character_Model.pic)
                     embeds.append(this_success)
                 elif guild.system == "EPF":
@@ -314,8 +310,6 @@ class PF2Cog(commands.Cog):
     async def lookup(self, ctx: discord.ApplicationContext, query: str, private: bool = True):
         await ctx.response.defer(ephemeral=private)
         try:
-            # Wanderer = pf2_wanderer_lookup.Wanderer(os.environ["WANDERER_CLIENT_ID"], os.environ["WANDERER_API_KEY"])
-            # await ctx.send_followup(embeds=await Wanderer.wander(category, query=query))
             Lookup = WandererLookup()
             paginator = Paginator(pages=await Lookup.lookup(query))
             await paginator.respond(ctx.interaction, ephemeral=private)

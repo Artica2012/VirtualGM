@@ -21,16 +21,10 @@ from Discord.auto_complete import (
     character_select_multi,
     dmg_type,
 )
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, log_roll
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.database_operations import log_roll
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.Automation_Getter import get_automation
-
-# ---------------------------------------------------------------
-# ---------------------------------------------------------------
-# UTILITY FUNCTIONS
-
-# Checks to see if the user of the slash command is the GM, returns a boolean
+from Backend.Database.engine import engine
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.utils import get_guild
 
@@ -64,7 +58,6 @@ class AutomationCog(commands.Cog):
         target_modifier: str = "",
     ):
         logging.info("attack_cog attack")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         try:
             await ctx.response.defer()
@@ -120,7 +113,6 @@ class AutomationCog(commands.Cog):
         modifier: str = "",
     ):
         logging.info("attack_cog save")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
@@ -171,7 +163,6 @@ class AutomationCog(commands.Cog):
         crit: bool = False,
     ):
         logging.info("attack_cog damage")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
@@ -241,7 +232,6 @@ class AutomationCog(commands.Cog):
         damage_type_override: str = None,
     ):
         logging.info("attack_cog auto")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
@@ -318,7 +308,6 @@ class AutomationCog(commands.Cog):
         damage_type_override: str = None,
     ):
         logging.info("attack_cog cast")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:

@@ -10,8 +10,6 @@ from Backend.Database.engine import engine
 from Discord import auto_complete
 from Systems.STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
 from Discord.auto_complete import character_select_gm
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.Char_Getter import get_character
@@ -64,7 +62,6 @@ class STFCog(commands.Cog):
     @option("name", description="Character Name", required=True)
     @option("url", description="Public Google Sheet URL")
     async def import_character(self, ctx: discord.ApplicationContext, name: str, url: str = None, image=None):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
 
@@ -107,7 +104,6 @@ class STFCog(commands.Cog):
     @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         Character = await get_character(character, ctx)
 
         match resist_weak:  # noqa

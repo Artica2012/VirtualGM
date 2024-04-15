@@ -18,8 +18,6 @@ from Discord.auto_complete import (
     net_macro_select,
     red_net_character_select_gm,
 )
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.Automation_Getter import get_automation
@@ -27,6 +25,7 @@ from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
 from Backend.utils.utils import get_guild
+from Backend.Database.engine import engine
 
 
 class REDCog(commands.Cog):
@@ -43,7 +42,6 @@ class REDCog(commands.Cog):
     async def import_character(
         self, ctx: discord.ApplicationContext, name: str, url: str, player: str, image: str = None
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
         player_bool = False
@@ -94,8 +92,6 @@ class REDCog(commands.Cog):
                 await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"pb_import: {e}")
-            # report = ErrorReport(ctx, "write to vault", f"{e} - {url}", self.bot)
-            # await report.report()
 
     @red.command(description="Automatic Attack")
     @option("character", description="Character Attacking", autocomplete=character_select_gm)
@@ -119,7 +115,6 @@ class REDCog(commands.Cog):
         damage_modifier: str = "",
     ):
         logging.info("attack_cog auto")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)
@@ -191,7 +186,6 @@ class REDCog(commands.Cog):
         damage_modifier: str = "",
     ):
         logging.info("attack_cog auto")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         try:
             Automation = await get_automation(ctx, engine=engine)

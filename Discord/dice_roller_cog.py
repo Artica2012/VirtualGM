@@ -28,11 +28,9 @@ class DiceRollerCog(commands.Cog):
         roll = relabel_roll(roll)
         guild = await get_guild(ctx, None)
         try:
-            # print('Rolling')
             try:
                 roll_result = d20.roll(roll)
                 roll_str = opposed_roll(roll_result, d20.roll(f"{dc}")) if dc else roll_result
-                # print(f"{roll_result =} {roll_str =}")
 
                 if secret == "Secret":
                     if guild.gm_tracker_channel is not None:
