@@ -42,7 +42,7 @@ async def stf_g_sheet_import(
         if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        STF_tracker = await get_STF_tracker(ctx, engine, id=guild.id)
+        STF_tracker = await get_STF_tracker(ctx, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             query = await session.execute(select(STF_tracker).where(func.lower(STF_tracker.name) == char_name.lower()))
@@ -450,8 +450,8 @@ async def write_resitances(resistance: dict, Character_Model: STF_Character, ctx
     # First delete out all the old resistances
     if overwrite:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        STF_Tracker = await get_STF_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        STF_Tracker = await get_STF_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
         async with async_session() as session:
             char_result = await session.execute(
                 select(STF_Tracker.id).where(STF_Tracker.name == Character_Model.char_name)

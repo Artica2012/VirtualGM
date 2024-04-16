@@ -3,24 +3,23 @@ import logging
 import discord
 from sqlalchemy import select, false, not_, true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+import Backend.Database.engine
 from Backend.Database.database_models import get_tracker, get_macro, get_condition, Character_Vault
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.AsyncCache import Cache
+from Backend.Database.database_models import async_session
 
 
 class AutoComplete:
-    def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
+    def __init__(self, ctx: discord.AutocompleteContext, guild):
         self.ctx = ctx
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
         self.guild = guild
 
     @Cache.ac_cache
     async def character_query(self, user, gm):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine)
+        Tracker = await get_tracker(self.ctx)
         async with async_session() as session:
             if gm and int(self.guild.gm) == self.ctx.interaction.user.id:
                 # print("You are the GM")
@@ -63,8 +62,6 @@ class AutoComplete:
             return []
 
     async def get_vault_chars(self, user):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
         async with async_session() as session:
             result = await session.execute(
                 select(Character_Vault)
@@ -102,8 +99,7 @@ class AutoComplete:
     async def npc_select(self, **kwargs):
         logging.info("character_select")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine)
+            Tracker = await get_tracker(self.ctx)
             async with async_session() as session:
                 char_result = await session.execute(
                     select(Tracker.name).where(Tracker.player == false()).order_by(Tracker.name.asc())
@@ -125,9 +121,8 @@ class AutoComplete:
 
     @Cache.ac_cache
     async def get_macro_list(self, character, attk):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Macro = await get_macro(self.ctx, id=self.guild.id)
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker.id).where(Tracker.name == character))
@@ -172,9 +167,8 @@ class AutoComplete:
 
     @Cache.ac_cache
     async def get_conditions(self, character):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(
                 select(Condition.title)
@@ -205,9 +199,8 @@ class AutoComplete:
 
     @Cache.ac_cache
     async def query_attributes(self, target):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == target))
             tar_char = result.scalars().one()

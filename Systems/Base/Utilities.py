@@ -5,8 +5,6 @@ import d20
 import discord
 from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 from Discord.Bot import bot
 
 import Systems.Base.Character
@@ -14,6 +12,8 @@ from Backend.Database.database_models import get_tracker, get_condition, get_mac
 from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
 from Backend.utils import utils
 from Backend.utils.Char_Getter import get_character
+from Backend.Database.engine import async_session
+import Backend.Database.engine
 
 
 class Utilities:
@@ -24,7 +24,7 @@ class Utilities:
     def __init__(self, ctx, guild, engine):
         self.ctx = ctx
         self.guild = guild
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         """
@@ -47,8 +47,6 @@ class Utilities:
 
         logging.info("add_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
             for x in range(0, multi):
                 if multi > 1:
                     modifier = f" {utils.NPC_Iterator[x]}"
@@ -70,7 +68,7 @@ class Utilities:
                         initiative = 0
 
                 async with async_session() as session:
-                    Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                    Tracker = await get_tracker(self.ctx, id=self.guild.id)
                     async with session.begin():
                         tracker = Tracker(
                             name=item_name,
@@ -97,7 +95,6 @@ class Utilities:
                     except AttributeError:
                         success.set_thumbnail(url=Systems.Base.Character.default_pic)
                     embeds.append(success)
-            # print(len(embeds))
             await self.ctx.respond(embeds=embeds[:9])
             embeds = embeds[9:]
             while len(embeds) > 0:
@@ -116,11 +113,9 @@ class Utilities:
     async def copy_character(self, name: str, new_name: str):
         logging.info("copy_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
 
             # Load up the old character
 
@@ -166,7 +161,7 @@ class Utilities:
 
             # Copy conditions
             async with async_session() as session:
-                Search_Con = await get_condition(self.ctx, self.engine, id=guild_id)
+                Search_Con = await get_condition(self.ctx, id=guild_id)
                 con_result = await session.execute(
                     select(Search_Con)
                     .where(Search_Con.character_id == character.id)
@@ -191,7 +186,7 @@ class Utilities:
 
             # Copy Macros
             async with async_session() as session:
-                Search_Macro = await get_macro(self.ctx, self.engine, id=guild_id)
+                Search_Macro = await get_macro(self.ctx, id=guild_id)
                 macro_result = await session.execute(
                     select(Search_Macro).where(Search_Macro.character_id == character.id)
                 )
@@ -217,11 +212,10 @@ class Utilities:
         logging.info("delete_Character")
         try:
             # load tables
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 # print(character)
@@ -269,8 +263,7 @@ class Utilities:
     async def add_to_vault(self, char_name):
         try:
             logging.info(f"Writing {char_name} to Vault")
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as tracker_session:
                 result = await tracker_session.execute(
                     select(Tracker).where(func.lower(Tracker.name) == char_name.lower())
@@ -313,7 +306,6 @@ class Utilities:
     async def delete_from_vault(self, char_name):
         try:
             logging.info(f"Deleting {char_name} from Vault")
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -338,9 +330,8 @@ class Utilities:
         guild_id = int(split_name[1])
         # print(guild_id)
 
-        Tracker = await get_tracker(self.ctx, self.engine, id=guild_id, system=self.guild.system)
+        Tracker = await get_tracker(self.ctx, id=guild_id, system=self.guild.system)
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = result.scalars().one()

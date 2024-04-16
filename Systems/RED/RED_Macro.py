@@ -28,7 +28,7 @@ class RED_Macro(Macro):
 
         if dice_result == 0:
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            macro_table = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            macro_table = await get_macro(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -110,7 +110,7 @@ class RED_Macro(Macro):
         return embed
 
     async def show(self, character):
-        Character_Model = await get_RED_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_RED_Character(character, self.ctx, guild=self.guild)
 
         macro_list = Character_Model.macros
 

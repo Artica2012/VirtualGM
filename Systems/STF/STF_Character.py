@@ -7,18 +7,15 @@ import d20
 import discord
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Systems.Base.Character import Character
 from Systems.STF.STF_Support import STF_Skills, STF_Conditions, STF_DMG_Types
 from Backend.Database.database_models import get_tracker, get_condition, get_macro, get_STF_tracker
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import error_not_initialized
 from Backend.utils.time_keeping_functions import get_time
 from Backend.utils.parsing import ParseModifiers
 from Backend.utils.utils import get_guild
+from Backend.Database.engine import async_session
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1028702442927431720/1107193557267259464/artica_A_"
@@ -28,24 +25,22 @@ default_pic = (
 
 async def get_STF_Character(char_name, ctx, guild=None, engine=None):
     logging.info("Generating STF_Character Class")
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
     guild = await get_guild(ctx, guild)
-    tracker = await get_tracker(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    tracker = await get_tracker(ctx, id=guild.id)
     try:
         async with async_session() as session:
             result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
             character = result.scalars().one()
-        return STF_Character(char_name, ctx, engine, character, guild=guild)
+        return STF_Character(char_name, ctx, character, guild=guild)
 
     except NoResultFound:
         return None
 
 
 class STF_Character(Character):
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild):
-        super().__init__(char_name, ctx, engine, character, guild)
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, guild):
+        super().__init__(char_name, ctx, character, guild)
         self.current_resolve = character.resolve
         self.max_resolve = character.max_resolve
         self.current_stamina = character.current_stamina
@@ -163,8 +158,7 @@ class STF_Character(Character):
         self.pic = self.character_model.pic if self.character_model.pic is not None else default_pic
 
     async def set_stamina(self, amount: int):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
             character = char_result.scalars().one()
@@ -173,8 +167,7 @@ class STF_Character(Character):
             await self.update()
 
     async def set_resolve(self, amount: int):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
             character = char_result.scalars().one()
@@ -186,8 +179,7 @@ class STF_Character(Character):
         logging.info("Edit HP")
         orig_ammount = amount
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
                 character = char_result.scalars().one()
@@ -242,8 +234,7 @@ class STF_Character(Character):
 
     async def restore_stamina(self):
         if self.current_stamina < self.max_stamina and self.current_resolve > 0:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
                 character = char_result.scalars().one()
@@ -399,14 +390,13 @@ class STF_Character(Character):
         logging.info("set_cc")
         # Get the Character's data
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         if target is None:
             target = self.char_name
             target_id = self.character_model.id
         else:
-            Tracker = await get_STF_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_STF_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
                 target_id = result.scalars().one()
@@ -468,7 +458,7 @@ class STF_Character(Character):
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
-                current_time = await get_time(self.ctx, self.engine)
+                current_time = await get_time(self.ctx)
                 if unit == "Minute":
                     end_time = current_time + datetime.timedelta(minutes=number)
                 elif unit == "Hour":
@@ -510,12 +500,11 @@ class STF_Character(Character):
         return result
 
     async def update_resistance(self, weak, item, amount):
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
         try:
             updated_resistance = self.character_model.resistance
             # print(updated_resistance)
             if amount == 0:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
                     query = await session.execute(select(Condition).where(func.lower(Condition.item) == item.lower()))
                     condition_object = query.scalars().one()
@@ -538,11 +527,9 @@ async def calculate(ctx, engine, char_name, guild=None):
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        STF_tracker = await get_tracker(ctx, engine, id=guild.id)
+        STF_tracker = await get_tracker(ctx, id=guild.id)
     else:
-        STF_tracker = await get_tracker(ctx, engine)
-
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        STF_tracker = await get_tracker(ctx)
 
     bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
 
@@ -600,7 +587,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             #     macros.append(f"Spell Attack: {item['name']}")
             macros.extend(STF_Skills)
 
-            Macro = await get_macro(ctx, engine, id=guild.id)
+            Macro = await get_macro(ctx, id=guild.id)
             async with async_session() as macro_session:
                 result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
                 macro_list = result.scalars().all()
@@ -696,12 +683,11 @@ async def parse_bonuses(ctx, engine, char_name: str, guild=None):
     # Character_Model = await get_STF_Character(char_name, ctx, guild=guild, engine=engine)
     # Database boilerplate
     if guild is not None:
-        STF_tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        STF_tracker = await get_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
     else:
-        STF_tracker = await get_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        STF_tracker = await get_tracker(ctx)
+        Condition = await get_condition(ctx)
 
     try:
         async with async_session() as session:

@@ -1,16 +1,15 @@
 import d20
 import discord
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-from Discord.Bot import bot
+import Backend.Database.engine
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Macro_Getter import get_macro_object
 from Backend.utils.parsing import ParseModifiers
 from Backend.utils.utils import direct_message
+from Discord.Bot import bot
 
 
 class AutoOutput:
@@ -22,13 +21,11 @@ class AutoOutput:
 class Automation:
     def __init__(self, ctx, engine, guild):
         self.ctx = ctx
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
         self.guild = guild
 
     async def gm_log(self, output_string, Target_Model):
         if self.guild.audit_log is None:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == self.guild.id))
 

@@ -5,7 +5,7 @@ from sqlalchemy.exc import InterfaceError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from Backend.Database.engine import look_up_engine
+from Backend.Database.engine import look_up_engine, lookup_session
 
 Base = declarative_base()
 
@@ -33,7 +33,7 @@ async def create_data_table():
 
 
 async def load_complex_data(data: dict):
-    async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
+    async_session = lookup_session
     for key in data.keys():
         # print(key)
         async with async_session() as session:

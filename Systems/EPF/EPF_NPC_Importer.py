@@ -79,7 +79,7 @@ async def epf_npc_lookup(
     # Check to make sure name is not in use
 
     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(ctx, engine)
+    Tracker = await get_tracker(ctx)
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
         character = result.scalars().all()
@@ -213,7 +213,7 @@ async def epf_npc_lookup(
 
         # print("Committed")
         # print(f"Stat_Mod: {stat_mod}")
-        Charater_Model = await get_EPF_Character(name, ctx, guild=guild, engine=engine)
+        Charater_Model = await get_EPF_Character(name, ctx, guild=guild)
         if stat_mod != 0:
             # print("Write the elite/weak modifiers")
             stat_mod = ParseModifiers(f"{stat_mod}")
@@ -273,7 +273,7 @@ async def write_resitances(
     # print("write resistances")
     # First delete out all the old resistances
     if overwrite:
-        await delete_intested_items(Character_Model.char_name, ctx, guild, engine)
+        await delete_intested_items(Character_Model.char_name, ctx, guild)
 
     # Then write the new ones
     # print(resistance)

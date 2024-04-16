@@ -76,8 +76,8 @@ class EPF_Automation(Automation):
 
 
 async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None):
-    Character_Model = await get_EPF_Character(character, ctx, engine=engine, guild=guild)
-    Target_Model = await get_EPF_Character(target, ctx, engine=engine, guild=guild)
+    Character_Model = await get_EPF_Character(character, ctx, guild=guild)
+    Target_Model = await get_EPF_Character(target, ctx, guild=guild)
     # print("treat wounds")
     guild = await get_guild(ctx, guild)
     total = 0

@@ -68,7 +68,7 @@ class Global(Base):
 
 
 # Tracker Get Function
-async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=None):
+async def get_tracker(ctx: discord.ApplicationContext, id=None, system=None):
     if ctx is None and id is None:
         raise Exception
 
@@ -95,11 +95,11 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
             pass
 
     if system == "EPF":
-        return await get_EPF_tracker(ctx, engine, id=id)
+        return await get_EPF_tracker(ctx, id=id)
     elif system == "RED":
-        return await get_RED_tracker(ctx, engine, id=id)
+        return await get_RED_tracker(ctx, id=id)
     elif system == "STF":
-        return await get_STF_tracker(ctx, engine, id=id)
+        return await get_STF_tracker(ctx, id=id)
     else:
         tablename = f"Tracker_{id}"
         logging.info(f"get_tracker: Guild: {id}")
@@ -131,7 +131,7 @@ async def get_tracker(ctx: discord.ApplicationContext, engine, id=None, system=N
 
 
 # Old Tracker Get Fuctcion
-async def get_tracker_table(ctx, metadata, engine, guild=None):
+async def get_tracker_table(ctx, metadata, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
 
@@ -191,7 +191,7 @@ class TrackerTable:
         return emp
 
 
-async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
+async def get_EPF_tracker(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
@@ -340,7 +340,7 @@ async def get_EPF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     return Tracker
 
 
-async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
+async def get_STF_tracker(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
@@ -467,7 +467,7 @@ async def get_STF_tracker(ctx: discord.ApplicationContext, engine, id=None):
     return Tracker
 
 
-async def get_RED_tracker(ctx: discord.ApplicationContext, engine, id=None):
+async def get_RED_tracker(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
@@ -540,7 +540,7 @@ async def get_RED_tracker(ctx: discord.ApplicationContext, engine, id=None):
 
 
 # Condition Get Function
-async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
+async def get_condition(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
 
@@ -563,7 +563,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
             # print(f"From ID:{guild.id}")
 
     if guild.system == "EPF" or guild.system == "RED" or guild.system == "STF":
-        return await get_EPF_condition(ctx, engine, id=id)
+        return await get_EPF_condition(ctx, id=id)
     else:
         tablename = f"Condition_{id}"
 
@@ -588,7 +588,7 @@ async def get_condition(ctx: discord.ApplicationContext, engine, id=None):
         return Condition
 
 
-async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
+async def get_EPF_condition(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
@@ -633,7 +633,7 @@ async def get_EPF_condition(ctx: discord.ApplicationContext, engine, id=None):
     return Condition
 
 
-async def get_condition_table(ctx, metadata, engine, guild=None):
+async def get_condition_table(ctx, metadata, guild=None):
     if guild is None:
         async with async_session() as session:
             result = await session.execute(
@@ -693,7 +693,7 @@ class Macro(Base):
     macro = Column(String(), nullable=False, unique=False)
 
 
-async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
+async def get_macro(ctx: discord.ApplicationContext, id=None):
     if ctx is None and id is None:
         raise Exception
     if id is None:
@@ -728,7 +728,7 @@ async def get_macro(ctx: discord.ApplicationContext, engine, id=None):
     return Macro
 
 
-async def get_macro_table(ctx, metadata, engine, guild=None):
+async def get_macro_table(ctx, metadata, guild=None):
     if guild is None:
         async with async_session() as session:
             result = await session.execute(

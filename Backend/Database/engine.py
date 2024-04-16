@@ -31,4 +31,4 @@ look_up_engine = create_async_engine(
 )
 
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-lookup_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+lookup_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)

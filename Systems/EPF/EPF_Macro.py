@@ -40,7 +40,7 @@ class EPF_Macro(Macro):
 
         if raw is None:
             if character.lower() in ["all pcs", "all npcs", "all characters"]:
-                EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+                EPF_tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
                 async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 try:
                     if character.lower() == "all pcs":
@@ -140,7 +140,7 @@ class EPF_Macro(Macro):
         return embed
 
     async def show(self, character):
-        Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild)
         macro_list = await Character_Model.macro_list()
         # print(macro_list)
         view = discord.ui.View(timeout=None)

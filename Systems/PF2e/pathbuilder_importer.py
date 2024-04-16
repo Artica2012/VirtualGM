@@ -212,9 +212,9 @@ async def pathbuilder_import(
         # Start off by checking to see if the character already exists, and if so, delete it before importing
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        Macro = await get_macro(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
+        Macro = await get_macro(ctx, id=guild.id)
 
         initiative = 0
         if guild.initiative is not None:

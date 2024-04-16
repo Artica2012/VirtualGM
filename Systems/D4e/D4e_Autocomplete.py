@@ -9,8 +9,8 @@ from Systems.D4e.d4e_functions import D4e_attributes, D4e_Conditions
 
 
 class D4e_Autocmplete(AutoComplete):
-    def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx: discord.AutocompleteContext, guild):
+        super().__init__(ctx, guild)
 
     async def cc_select(self, **kwargs):
         if "no_time" in kwargs.keys():
@@ -28,7 +28,7 @@ class D4e_Autocmplete(AutoComplete):
         try:
             Character_Model = await get_character(character, self.ctx, guild=self.guild)
             condition = await Character_Model.conditions(no_time=no_time, flex=flex)
-            # await self.engine.dispose()
+
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in condition if val in option.lower()]

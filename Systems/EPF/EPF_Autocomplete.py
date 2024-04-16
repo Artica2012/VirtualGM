@@ -4,10 +4,8 @@ from math import ceil
 import discord
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-from Backend.Database.engine import look_up_engine
+from Backend.Database.engine import async_session
 from Backend.utils.AsyncCache import Cache
 from Backend.utils.Char_Getter import get_character
 from Systems.Base.Autocomplete import AutoComplete
@@ -26,8 +24,8 @@ from Systems.PF2e.pf2_functions import PF2_saves
 
 
 class EPF_Autocmplete(AutoComplete):
-    def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx: discord.AutocompleteContext, guild):
+        super().__init__(ctx, guild)
 
     async def character_select(self, **kwargs):
         # print("Char Select")
@@ -163,9 +161,7 @@ class EPF_Autocmplete(AutoComplete):
 
     async def attacks(self, **kwargs):
         try:
-            Character_Model = await get_EPF_Character(
-                self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
-            )
+            Character_Model = await get_EPF_Character(self.ctx.options["character"], self.ctx, guild=self.guild)
         except Exception:
             return []
         if self.ctx.value != "":
@@ -210,7 +206,6 @@ class EPF_Autocmplete(AutoComplete):
         # await self.engine.dispose()
         try:
             # print(lookup_engine)
-            async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
                     select(EPF_NPC.name)
@@ -228,12 +223,12 @@ class EPF_Autocmplete(AutoComplete):
 
     @Cache.ac_cache
     async def get_spell_list(self, character):
-        Character = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character = await get_EPF_Character(character, self.ctx, guild=self.guild)
         return Character.character_model.spells.keys()
 
     @Cache.ac_cache
     async def get_spell(self, character, spell):
-        Character = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character = await get_EPF_Character(character, self.ctx, guild=self.guild)
         return Character.get_spell(spell)
 
     async def spell_list(self, **kwargs):
@@ -251,9 +246,7 @@ class EPF_Autocmplete(AutoComplete):
 
     async def spell_level(self, **kwargs):
         try:
-            Character = await get_EPF_Character(
-                self.ctx.options["character"], self.ctx, engine=self.engine, guild=self.guild
-            )
+            Character = await get_EPF_Character(self.ctx.options["character"], self.ctx, guild=self.guild)
             spell = await self.get_spell(self.ctx.options["character"], self.ctx.options["spell"])
 
         except Exception:

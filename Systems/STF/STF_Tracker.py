@@ -139,7 +139,7 @@ class STF_Tracker(Tracker):
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            current_time = await get_time(self.ctx, guild=self.guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]

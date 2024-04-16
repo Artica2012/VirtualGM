@@ -28,21 +28,21 @@ async def get_character(char_name, ctx, guild=None):
     guild = await get_guild(ctx, guild)
 
     if guild.system == "EPF":
-        return await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
+        return await get_EPF_Character(char_name, ctx, guild=guild)
     elif guild.system == "D4e":
-        return await get_D4e_Character(char_name, ctx, guild=guild, engine=engine)
+        return await get_D4e_Character(char_name, ctx, guild=guild)
     elif guild.system == "PF2":
-        return await get_PF2_Character(char_name, ctx, guild=guild, engine=engine)
+        return await get_PF2_Character(char_name, ctx, guild=guild)
     elif guild.system == "STF":
         return await get_STF_Character(char_name, ctx, guild=guild, engine=engine)
     elif guild.system == "RED":
-        return await get_RED_Character(char_name, ctx, guild=guild, engine=engine)
+        return await get_RED_Character(char_name, ctx, guild=guild)
     else:
-        tracker = await get_tracker(ctx, engine, id=guild.id)
+        tracker = await get_tracker(ctx, id=guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
                 character = result.scalars().one()
-            return Character(char_name, ctx, engine, character, guild=guild)
+            return Character(char_name, ctx, character, guild=guild)
         except NoResultFound:
             return None

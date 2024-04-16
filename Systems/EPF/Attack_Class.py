@@ -206,7 +206,7 @@ class AutoModel:
         # print("Complex Attack")
         # print(self.attack)
 
-        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         if self.attack_type == "attack":
             Attk_Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
@@ -823,7 +823,7 @@ class Attack(AutoModel):
             self.output = embed
             return self.output
 
-        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         orig_dc = dc
 
@@ -1128,7 +1128,7 @@ class Spell(AutoModel):
         return Attack_Data(dmg_string, total_damage, success_string, "")
 
     async def cast(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        Target_Model = await get_EPF_Character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         if self.complex:
             spell_data = await self.auto_complex(

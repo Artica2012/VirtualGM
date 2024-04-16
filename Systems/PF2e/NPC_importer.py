@@ -100,7 +100,7 @@ async def npc_lookup(
                     initiative_num = 0
 
         async with async_session() as session:
-            Tracker = await get_tracker(ctx, engine, id=guild.id)
+            Tracker = await get_tracker(ctx, id=guild.id)
             async with session.begin():
                 tracker = Tracker(
                     name=name,
@@ -116,7 +116,7 @@ async def npc_lookup(
                 session.add(tracker)
             await session.commit()
 
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = char_result.scalars().one()
@@ -171,7 +171,7 @@ async def npc_lookup(
 
         # Parse Macros
         attack_list = data.macros.split("::")
-        Macro = await get_macro(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, id=guild.id)
         async with session.begin():
             for x, attack in enumerate(attack_list[:-1]):
                 await asyncio.sleep(0)

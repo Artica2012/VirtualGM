@@ -158,7 +158,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
 
             async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
-                Tracker = await get_tracker(self.ctx, self.engine, id=guild.id)
+                Tracker = await get_tracker(self.ctx, id=guild.id)
                 async with session.begin():
                     tracker = Tracker(
                         name=name,
@@ -177,7 +177,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
             async with async_session() as session:
                 result = await session.execute(select(Tracker.id).where(Tracker.name == name))
                 id = result.scalars().one()
-            Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+            Condition = await get_condition(self.ctx, id=guild.id)
 
             async with session.begin():
                 session.add(

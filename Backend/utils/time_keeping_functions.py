@@ -17,7 +17,7 @@ from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.utils import get_guild
 
 
-async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_time(ctx: discord.ApplicationContext, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
@@ -232,10 +232,10 @@ async def advance_time(
         return False
 
 
-async def time_left(ctx: discord.ApplicationContext, engine, bot, con_time):
+async def time_left(ctx: discord.ApplicationContext, con_time):
     try:
         time_stamp = datetime.datetime.fromtimestamp(con_time)
-        current_time = await get_time(ctx, engine)
+        current_time = await get_time(ctx)
         time_left = time_stamp - current_time
         days_left = time_left.days
         processed_minutes_left = divmod(time_left.seconds, 60)[0]

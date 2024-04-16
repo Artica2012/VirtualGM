@@ -43,7 +43,7 @@ class WandererImporter:
 
     async def import_character(self):
         guild = await get_guild(self.ctx, None)
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         output = await self.parse_char()
@@ -60,10 +60,10 @@ class WandererImporter:
             overwrite = False
             await self.write_character(output)
 
-        await Systems.EPF.EPF_Character.write_bonuses(self.ctx, engine, guild, self.char_name, [])
-        await Systems.EPF.EPF_Character.calculate(self.ctx, engine, self.char_name, guild=guild)
+        await Systems.EPF.EPF_Character.write_bonuses(self.ctx, guild, self.char_name, [])
+        await Systems.EPF.EPF_Character.calculate(self.ctx, self.char_name, guild=guild)
 
-        Character = await Systems.EPF.EPF_Character.get_EPF_Character(self.char_name, self.ctx, guild, engine)
+        Character = await Systems.EPF.EPF_Character.get_EPF_Character(self.char_name, self.ctx, guild)
         # await Character.update()
         if not overwrite:
             if guild.initiative is not None:
@@ -310,7 +310,7 @@ class WandererImporter:
         return output
 
     async def write_character(self, output):
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -378,7 +378,7 @@ class WandererImporter:
             await session.commit()
 
     async def overwrite_character(self, output):
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:

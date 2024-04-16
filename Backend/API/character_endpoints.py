@@ -33,7 +33,7 @@ async def get_chars(user: str, guildid: int, all_char: bool = False, api_key: AP
 
     try:
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(None, engine, id=guild.id)
+        Tracker = await get_tracker(None, id=guild.id)
         async with async_session() as session:
             if GM or all_char:
                 char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))

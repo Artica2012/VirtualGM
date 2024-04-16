@@ -17,7 +17,7 @@ from Backend.utils.utils import get_guild
 
 async def hard_lock(ctx: discord.ApplicationContext, name: str):
     try:
-        Tracker = await get_tracker(ctx, engine)
+        Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker.user).where(func.lower(Tracker.name) == name.lower()))

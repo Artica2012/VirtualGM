@@ -6,16 +6,15 @@ from datetime import datetime
 import discord
 from sqlalchemy import select, true, or_, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, Global, get_condition, get_macro
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
 from Backend.WS.WebsocketHandler import socket
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import advance_time, output_datetime, get_time
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
+from Backend.Database.engine import async_session
+import Backend.Database.engine
 
 
 async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
@@ -31,12 +30,11 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
     try:
         if guild is not None:
             try:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
+                Tracker = await get_tracker(ctx, id=guild.id)
             except Exception:
-                Tracker = await get_tracker(ctx, engine)
+                Tracker = await get_tracker(ctx)
         else:
-            Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             result = await session.execute(
@@ -68,13 +66,10 @@ class Tracker:
         """
 
         self.ctx = ctx
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
         self.init_list = init_list
         self.guild = guild
         self.bot = bot
-
-    # def __del__(self):
-    #     print("Destroying Tracker")
 
     async def next(self):
         """
@@ -107,7 +102,6 @@ class Tracker:
                 new_block = self.guild.block_data.copy()
                 new_block.remove(id)
 
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
                     result = await session.execute(select(Global).where(Global.id == self.guild.id))
                     guild = result.scalars().one()
@@ -170,12 +164,11 @@ class Tracker:
         try:
             if guild is not None:
                 try:
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Tracker = await get_tracker(ctx, id=guild.id)
                 except Exception:
-                    Tracker = await get_tracker(ctx, engine)
+                    Tracker = await get_tracker(ctx)
             else:
-                Tracker = await get_tracker(ctx, engine)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+                Tracker = await get_tracker(ctx)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -201,8 +194,7 @@ class Tracker:
         :return: Character Model (Character Class) or appropriate subclass
         """
 
-        Char_Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Char_Tracker = await get_tracker(self.ctx, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(select(Char_Tracker).where(Char_Tracker.id == char_id))
         character = result.scalars().one()
@@ -217,7 +209,6 @@ class Tracker:
         :return: No return value
         """
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
             old_tracker_msg = await tracker_channel.fetch_message(self.guild.last_tracker)
@@ -236,8 +227,8 @@ class Tracker:
             await session.commit()
         await self.update()
         # Update the tables
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         # tracker cleanup
         # Delete condition with round timers
@@ -260,7 +251,7 @@ class Tracker:
                     select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
                 )
                 delete_list = result.scalars().all()
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
             for npc in delete_list:
                 async with async_session() as session:
                     # print(character)
@@ -343,7 +334,6 @@ class Tracker:
         """
 
         logging.info("Checking Initiative Integrity")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:  # Pull the most updated data for the initiative
             result = await session.execute(select(Global).where(Global.id == self.guild.id))
             guild = result.scalars().one()
@@ -386,10 +376,9 @@ class Tracker:
         round = self.guild.round
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             logging.info(f"BAI1: guild: {self.guild.id}")
 
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker))
                 character = char_result.scalars().all()
@@ -548,11 +537,10 @@ class Tracker:
         logging.info(f"{current_character.char_name}, {before}")
         logging.info("Decrementing Conditions")
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         # Run through the conditions on the current character
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 if before is not None:
                     char_result = await session.execute(
@@ -610,8 +598,7 @@ class Tracker:
         """
 
         logging.info("get_inactive_list")
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -643,7 +630,6 @@ class Tracker:
         )
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
         if self.guild.block and self.guild.initiative is not None:
@@ -680,7 +666,7 @@ class Tracker:
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             # if round = 0, were not in initiative, and act accordingly
             if self.guild.round != 0:
@@ -762,7 +748,7 @@ class Tracker:
                         if con_row.number is not None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                                current_time = await get_time(self.ctx, guild=self.guild)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -821,7 +807,6 @@ class Tracker:
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
         if self.guild.block and self.guild.initiative is not None:
@@ -858,7 +843,7 @@ class Tracker:
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             # if round = 0, were not in initiative, and act accordingly
             if self.guild.round != 0:
@@ -945,7 +930,7 @@ class Tracker:
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            current_time = await get_time(self.ctx, guild=self.guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -992,7 +977,6 @@ class Tracker:
 
     async def raw_tracker_output(self, selected: int):
         tracker_output = {"tracker": [], "round": "", "gm": self.guild.gm}
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
@@ -1018,7 +1002,7 @@ class Tracker:
         except Exception as e:
             logging.error(f"raw_tracker_output: {e}")
 
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         # if round = 0, were not in initiative, and act accordingly
         if self.guild.round != 0:
@@ -1094,7 +1078,7 @@ class Tracker:
 
                     if con_row.time:
                         time_stamp = datetime.fromtimestamp(con_row.number)
-                        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                        current_time = await get_time(self.ctx, guild=self.guild)
                         time_left = time_stamp - current_time
                         days_left = time_left.days
                         processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -1203,7 +1187,6 @@ class Tracker:
         # Query the initiative position for the tracker and post it
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild.block:
                 block = True
                 # print(f"block_post_init: \n {turn_list}")
@@ -1452,7 +1435,6 @@ class Tracker:
 
         logging.info("set_pinned_tracker")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
                     select(Global).where(
@@ -1498,11 +1480,10 @@ class Tracker:
         :return: No return value
         """
         logging.info("check_cc")
-        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        current_time = await get_time(self.ctx, guild=self.guild)
 
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         async with async_session() as session:
             result = await session.execute(select(Condition).where(Condition.time == true()))
@@ -1532,9 +1513,7 @@ class Tracker:
 
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
+            self.engine = Backend.Database.engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -1561,9 +1540,7 @@ class Tracker:
         """
 
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
+            self.engine = Backend.Database.engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(

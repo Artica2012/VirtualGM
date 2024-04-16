@@ -233,7 +233,7 @@ async def get_cc_query(
     guild = await get_guild_by_id(guildid)
     Character_Model = await get_character(character, None, guild=guild)
     if list:
-        Condition = await get_condition(None, engine, id=guild.id)
+        Condition = await get_condition(None, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(

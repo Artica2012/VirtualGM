@@ -60,7 +60,7 @@ class EPF_Tracker(Tracker):
         # Run through the conditions on the current character
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 if before is not None:
                     char_result = await session.execute(
@@ -221,7 +221,7 @@ class EPF_Tracker(Tracker):
             logging.info(f"BAI1: guild: {self.guild.id}")
 
             if self.guild.initiative is None:
-                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                Tracker = await get_tracker(self.ctx, id=self.guild.id)
                 async with async_session() as session:
                     char_result = await session.execute(select(Tracker))
                     character = char_result.scalars().all()
@@ -420,7 +420,7 @@ class EPF_Tracker(Tracker):
                         if con_row.number is not None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                                current_time = await get_time(self.ctx, guild=self.guild)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -600,7 +600,7 @@ class EPF_Tracker(Tracker):
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            current_time = await get_time(self.ctx, guild=self.guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]

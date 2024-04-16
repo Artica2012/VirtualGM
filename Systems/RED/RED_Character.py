@@ -5,15 +5,13 @@ import d20
 import discord
 from sqlalchemy import select, func, true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-from Systems.Base.Character import Character
 from Backend.Database.database_models import get_tracker, get_condition, get_RED_tracker, get_macro
+from Backend.Database.engine import async_session
 from Backend.utils.parsing import ParseModifiers
 from Backend.utils.utils import get_guild
+from Systems.Base.Character import Character
 from Systems.RED.RED_Support import RED_SKills, RED_Roll_Result, RED_AF_DV, RED_SS_DV
-from Backend.Database.engine import engine
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1106097168181375066/1111774244808949760/artica"
@@ -21,27 +19,24 @@ default_pic = (
 )
 
 
-async def get_RED_Character(char_name, ctx, guild=None, engine=None):
-    if engine is None:
-        engine = engine
+async def get_RED_Character(char_name, ctx, guild=None):
     guild = await get_guild(ctx, guild)
     # print(guild.id)
-    RED_tracker = await get_tracker(ctx, engine, id=guild.id)
+    RED_tracker = await get_tracker(ctx, id=guild.id)
 
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
             result = await session.execute(select(RED_tracker).where(func.lower(RED_tracker.name) == char_name.lower()))
             character = result.scalars().one()
-            return RED_Character(char_name, ctx, engine, character, guild=guild)
+            return RED_Character(char_name, ctx, character, guild=guild)
 
     except NoResultFound:
         return None
 
 
 class RED_Character(Character):
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
-        super().__init__(char_name, ctx, engine, character)
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, guild=None):
+        super().__init__(char_name, ctx, character)
         self.guild = guild
         self.level = character.level
         self.humanity = character.humanity
@@ -59,7 +54,7 @@ class RED_Character(Character):
 
     async def update(self):
         logging.info(f"Updating character: {self.char_name}")
-        await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        await calculate(self.ctx, self.char_name, guild=self.guild)
         self.character_model = await self.character()
         self.char_name = self.character_model.name
         self.id = self.character_model.id
@@ -103,8 +98,7 @@ class RED_Character(Character):
             return f"1d10+{await self.get_skill(item)}"
         else:
             try:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-                macro_table = await get_macro(self.ctx, self.engine, id=self.guild.id)
+                macro_table = await get_macro(self.ctx, id=self.guild.id)
                 async with async_session() as macro_session:
                     result = await macro_session.execute(
                         select(macro_table.macro)
@@ -246,8 +240,7 @@ class RED_Character(Character):
 
     async def ablate_armor(self, amount: int, location: str, reset=False):
         try:
-            RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            RED_tracker = await get_RED_tracker(self.ctx, id=self.guild.id)
             armor = self.armor
             if reset:
                 for location in armor.keys():
@@ -327,8 +320,7 @@ class RED_Character(Character):
         try:
             # print("set_armor")
             amount = int(amount)
-            RED_tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            RED_tracker = await get_RED_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 query = await session.execute(select(RED_tracker).where(RED_tracker.id == self.id))
                 character = query.scalars().one()
@@ -353,8 +345,7 @@ class RED_Character(Character):
 
     async def roll_initiative(self):
         logging.info("RED roll_initiative")
-        Tracker = await get_RED_tracker(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_RED_tracker(self.ctx, id=self.guild.id)
         if self.net_status:
             async with async_session() as session:
                 result = await session.execute(
@@ -405,14 +396,12 @@ class RED_Character(Character):
             tie_breaker = RED_Roll_Result(d20.roll(await self.get_roll("ref"))).total
             # print("Tie Breaker", tie_breaker)
             try:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 if self.guild is None:
                     Tracker = await get_tracker(
                         self.ctx,
-                        self.engine,
                     )
                 else:
-                    Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                    Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
                 async with async_session() as session:
                     char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
@@ -428,17 +417,16 @@ class RED_Character(Character):
                 return f"Failed to set initiative: {e}"
 
 
-async def calculate(ctx, engine, char_name, guild=None):
+async def calculate(ctx, char_name, guild=None):
     logging.info("Updating Character Model")
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        RED_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
+        RED_tracker = await get_RED_tracker(ctx, id=guild.id)
     else:
-        RED_tracker = await get_RED_tracker(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        RED_tracker = await get_RED_tracker(ctx)
 
-    bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    bonuses, resistance = await parse_bonuses(ctx, char_name, guild=guild)
     try:
         async with async_session() as session:
             query = await session.execute(select(RED_tracker).where(func.lower(RED_tracker.name) == char_name.lower()))
@@ -464,7 +452,7 @@ async def calculate(ctx, engine, char_name, guild=None):
             macros = []
             macros.extend(character.skills.keys())
             macros.extend(character.attacks.keys())
-            macro_table = await get_macro(ctx, engine, id=guild.id)
+            macro_table = await get_macro(ctx, id=guild.id)
             async with async_session() as macro_session:
                 result = await macro_session.execute(
                     select(macro_table.name).where(macro_table.character_id == character.id)
@@ -505,17 +493,16 @@ async def bonus_calc(skill, bonuses):
     return mod
 
 
-async def parse_bonuses(ctx, engine, char_name: str, guild=None):
+async def parse_bonuses(ctx, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
-    Character_Model = await get_RED_Character(char_name, ctx, guild=guild, engine=engine)
+    Character_Model = await get_RED_Character(char_name, ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        RED_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        RED_tracker = await get_RED_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
     else:
-        RED_tracker = await get_RED_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        RED_tracker = await get_RED_tracker(ctx)
+        Condition = await get_condition(ctx)
 
     try:
         async with async_session() as session:

@@ -491,7 +491,7 @@ class InitiativeCog(commands.Cog):
 
         success_string = f"Condition {title} added on:"
         embeds = []
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, id=guild.id)
         if character == "All PCs":
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker.name).where(Tracker.player == true()))
@@ -564,7 +564,7 @@ class InitiativeCog(commands.Cog):
     ):
         guild = await get_guild(ctx, None)
         Character_Model = await get_character(character, ctx, guild=guild)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
 
         try:
             async with async_session() as session:

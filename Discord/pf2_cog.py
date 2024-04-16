@@ -90,7 +90,7 @@ class PF2Cog(commands.Cog):
                         await ctx.send_followup("Import Failed")
                 elif guild.system == "EPF":
                     logging.info("Beginning PF2-Enhanced import")
-                    response = await pb_import(ctx, engine, name, str(pathbuilder_id), guild=guild, image=image)
+                    response = await pb_import(ctx, name, str(pathbuilder_id), guild=guild, image=image)
                     logging.info("Imported")
                     # print(response)
                     if response:

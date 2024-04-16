@@ -4,25 +4,24 @@ import logging
 import d20
 import discord
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.Base.Character
 from Backend.Database.database_models import get_macro, get_tracker
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.parsing import ParseModifiers, eval_success
 from Backend.utils.utils import relabel_roll, get_guild
+import Backend.Database.engine
+from Backend.Database.engine import async_session
 
 
 class Macro:
     def __init__(self, ctx, engine, guild):
         self.ctx = ctx
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
         self.guild = guild
         self.default_vars = {}
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
-        # print(f"{roll} - {dc}")
         if roll.total >= dc.total:
             color = discord.Color.green()
         else:
@@ -38,9 +37,8 @@ class Macro:
     async def create_macro(self, character: str, macro_name: str, macro_string: str):
         logging.info("create_macro")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, guild=self.guild)
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -69,9 +67,8 @@ class Macro:
     async def mass_add(self, character: str, data: str):
         logging.info("macro_mass_add")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, guild=self.guild)
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 result = await session.execute(select(Macro.name).where(Macro.character_id == Character_Model.id))
@@ -106,9 +103,8 @@ class Macro:
 
     async def delete_macro(self, character: str, macro_name: str):
         logging.info("delete_macro")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine)
+        Macro = await get_macro(self.ctx)
 
         try:
             async with async_session() as session:
@@ -121,18 +117,15 @@ class Macro:
                 await session.delete(con)
                 await session.commit()
             await Character_Model.update()
-            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"delete_macro: {e}")
-            # await self.engine.dispose()
             return False
 
     async def delete_macro_all(self, character: str):
         logging.info("delete_macro_all")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine)
+        Macro = await get_macro(self.ctx)
         try:
             async with async_session() as session:
                 result = await session.execute(select(Macro).where(Macro.character_id == Character_Model.id))
@@ -143,27 +136,23 @@ class Macro:
                     await session.delete(row)
                     await session.commit()
             await Character_Model.update()
-            # await self.engine.dispose()
             return True
         except Exception as e:
             logging.error(f"delete_macro: {e}")
-            # await self.engine.dispose()
             return False
 
     async def get_macro_list(self, character: str):
         logging.info("get_macro")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(select(Macro.name).where(Macro.character_id == Character_Model.id))
             macro_list = result.scalars().all()
         return macro_list
 
     async def raw_macro(self, character: str, macro_name: str):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, id=self.guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -173,7 +162,7 @@ class Macro:
                 )
 
             macro_data = result.scalars().one()
-            print(macro_data.macro)
+            # print(macro_data.macro)
         except Exception:
             async with async_session() as session:
                 result = await session.execute(
@@ -182,9 +171,8 @@ class Macro:
                     .where(Macro.name == macro_name.split(":")[0])
                 )
                 macro_list = result.scalars().all()
-            # print(macro_list)
             macro_data = macro_list[0]
-            print(macro_data.macro)
+            # print(macro_data.macro)
         try:
             try:
                 raw_macro = f"{macro_data.macro}"
@@ -217,9 +205,6 @@ class Macro:
             # print(f"raw result {raw_result}")
 
         if dc:
-            # result = raw_result['result']
-            # print(result)
-            # print(f"result.get(result): {result.get('result')}")
             roll_str = self.opposed_roll(raw_result.get("result"), d20.roll(f"{dc}"))
             output_string = f"{roll_str[0]}"
             color = roll_str[1]
@@ -239,10 +224,7 @@ class Macro:
     async def raw_roll_macro(self, character, macro_name, dc, modifier):
         logging.info(f"roll_macro {character}, {macro_name}")
         raw_macro = await self.raw_macro(character, macro_name)
-        print(raw_macro)
         dice_result = d20.roll(f"({raw_macro}){ParseModifiers(modifier)}")
-        print(f"dice_result {dice_result}")
-
         if dc:
             success = eval_success(dice_result, d20.roll(f"{dc}"))
         else:
@@ -272,16 +254,12 @@ class Macro:
                 except Exception:
                     failure = True
 
-            # print(variables)
-
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             Character_Model = await get_character(character, self.ctx, guild=self.guild)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.id == Character_Model.id))
                 char = result.scalars().one()
-                # print(char.variables)
                 char.variables = variables
 
                 await session.commit()
@@ -297,7 +275,6 @@ class Macro:
             return True
 
         except Exception:
-            # print(e)
             await self.ctx.channel.send(
                 "```\n"
                 "One or more variables found in error. Syntax is name=value, name=value\n"
@@ -323,10 +300,9 @@ class Macro:
         self, character: str, macro_name: str, Character_Model: Systems.Base.Character.Character = None
     ):
         logging.info(f"get_macro {character}, {macro_name}")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if Character_Model is None:
             Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, id=self.guild.id)
 
         async with async_session() as session:
             result = await session.execute(
@@ -353,9 +329,8 @@ class Macro:
         return macro_data.macro
 
     async def show(self, character):
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         Character_Model = await get_character(character, self.ctx, guild=self.guild)
-        Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+        Macro = await get_macro(self.ctx, id=self.guild.id)
 
         async with async_session() as session:
             result = await session.execute(
@@ -376,7 +351,7 @@ class Macro:
     class MacroButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, engine, character, macro):
             self.ctx = ctx
-            self.engine = engine
+            self.engine = Backend.Database.engine.engine
             self.character = character
             self.macro = macro
             super().__init__(
@@ -386,7 +361,6 @@ class Macro:
             )
 
         async def callback(self, interaction: discord.Interaction):
-            # print(self.macro.macro)
             guild = await get_guild(self.ctx, None)
             MacroClass = Macro(self.ctx, self.engine, guild)
             output = await MacroClass.roll_macro(self.character.char_name, self.macro.name, 0, "", guild=guild)
@@ -394,10 +368,6 @@ class Macro:
                 output = [output]
 
             await interaction.response.send_message(embeds=output)
-
-            # dice_result = d20.roll(self.macro.macro)
-            # output_string = f"{self.character.char_name}:\n{self.macro.name.split(':')[0]}\n{dice_result}"
-            # await interaction.response.send_message(output_string)
 
 
 def macro_replace_vars(raw_macro: str, variables: dict, default_vars: dict):

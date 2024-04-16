@@ -10,8 +10,8 @@ from Backend.utils.Char_Getter import get_character
 
 
 class STF_Autocomplete(AutoComplete):
-    def __init__(self, ctx: discord.AutocompleteContext, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx: discord.AutocompleteContext, guild):
+        super().__init__(ctx, guild)
 
     async def add_condition_select(self, **kwargs):
         key_list = list(STF_Conditions.keys())

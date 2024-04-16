@@ -38,7 +38,7 @@ async def red_g_sheet_import(
         if engine is None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        red_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
+        red_tracker = await get_RED_tracker(ctx, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             query = await session.execute(select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower()))
@@ -120,7 +120,7 @@ async def red_g_sheet_import(
                     session.add(new_char)
                 await session.commit()
 
-        Character = await get_RED_Character(char_name, ctx, guild, engine)
+        Character = await get_RED_Character(char_name, ctx, guild)
         # Write the conditions
         # await write_resitances(resistance, Character, ctx, guild, engine)    if not overwrite:
         if not overwrite:

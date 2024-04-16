@@ -98,7 +98,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
             guild_list = result.scalars().all()
 
             for guild in guild_list:
-                Tracker = await get_tracker(None, engine, id=guild.id)
+                Tracker = await get_tracker(None, id=guild.id)
                 async with async_session() as tracker_session:
                     result = await tracker_session.execute(select(Tracker).where(Tracker.player == true()))
                     character_list = result.scalars().all()
@@ -196,7 +196,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
         for guild in all_guilds:
             try:
-                Tracker = await get_tracker(None, engine, id=guild.id)
+                Tracker = await get_tracker(None, id=guild.id)
                 # Condition = await get_condition(None, engine, id=guild.id)
                 async with async_session() as session:
                     result = await session.execute(select(Tracker))
@@ -244,7 +244,7 @@ async def guild_audit_members():
     for guild in all_guilds:
         try:
             member_list = []
-            Tracker = await get_tracker(None, engine, id=guild.id)
+            Tracker = await get_tracker(None, id=guild.id)
             async with async_session() as session:
                 result = await session.execute(select(Tracker))
             char_list = result.scalars().all()

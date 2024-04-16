@@ -34,11 +34,11 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
     try:
         if guild is not None:
             try:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
+                Tracker = await get_tracker(ctx, id=guild.id)
             except Exception:
-                Tracker = await get_tracker(ctx, engine)
+                Tracker = await get_tracker(ctx)
         else:
-            Tracker = await get_tracker(ctx, engine)
+            Tracker = await get_tracker(ctx)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
@@ -70,11 +70,11 @@ class D4e_Tracker(Tracker):
         try:
             if guild is not None:
                 try:
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Tracker = await get_tracker(ctx, id=guild.id)
                 except Exception:
-                    Tracker = await get_tracker(ctx, engine)
+                    Tracker = await get_tracker(ctx)
             else:
-                Tracker = await get_tracker(ctx, engine)
+                Tracker = await get_tracker(ctx)
             async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
             async with async_session() as session:
@@ -322,7 +322,7 @@ class D4e_Tracker(Tracker):
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             if round != 0:
                 round_string = f"Round: {round}"
@@ -390,7 +390,7 @@ class D4e_Tracker(Tracker):
                             if con_row.number is not None and con_row.number > 0:
                                 if con_row.time:
                                     time_stamp = datetime.fromtimestamp(con_row.number)
-                                    current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                                    current_time = await get_time(self.ctx, guild=self.guild)
                                     time_left = time_stamp - current_time
                                     days_left = time_left.days
                                     processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -480,7 +480,7 @@ class D4e_Tracker(Tracker):
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             if round != 0:
                 round_string = f"Round: {round}"
@@ -552,7 +552,7 @@ class D4e_Tracker(Tracker):
                         if con_row.number is not None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                                current_time = await get_time(self.ctx, guild=self.guild)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -662,8 +662,8 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     # print(guild.id)
     # print(guild.initiative)
     guild = await get_guild(ctx, guild, refresh=True)
-    tracker = await get_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
+    tracker = await get_tracker(ctx, id=guild.id)
+    Condition = await get_condition(ctx, id=guild.id)
     view = discord.ui.View(timeout=None)
 
     if guild.initiative is None:

@@ -54,7 +54,7 @@ async def epf_g_sheet_import(
         if engine == None:
             engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        EPF_tracker = await get_EPF_tracker(ctx, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
@@ -242,15 +242,15 @@ async def epf_g_sheet_import(
                 await session.commit()
 
         # This deletes both items and conditions
-        await delete_intested_items(char_name, ctx, guild, engine)
+        await delete_intested_items(char_name, ctx, guild)
         # Rewrite the items
         # print(f"Items: {items}")
         for item in items:
             # print(item)
-            result = await invest_items(item, char_name, ctx, guild, engine)
+            result = await invest_items(item, char_name, ctx, guild)
             # print(result)
 
-        Character = await get_EPF_Character(char_name, ctx, guild, engine)
+        Character = await get_EPF_Character(char_name, ctx, guild)
         # Write the conditions
         await write_resitances(resistance, Character, ctx, guild, engine)
         await Character.update()
@@ -558,7 +558,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
     if engine == None:
         engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     try:
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        EPF_tracker = await get_EPF_tracker(ctx, id=guild.id)
         async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         # print(df.b[1])
         partner_name: str = df.b[1]
@@ -570,7 +570,7 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
             partner_query = query.scalars().one()
             partner_query.partner = char_name
             await session.commit()
-        Partner = await get_EPF_Character(partner_name, ctx, engine=engine, guild=guild)
+        Partner = await get_EPF_Character(partner_name, ctx, guild=guild)
         # print(Partner.char_name)
     except:
         logging.warning("Import Error")

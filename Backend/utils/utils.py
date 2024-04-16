@@ -117,7 +117,7 @@ async def gm_check(ctx):
 async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
     logging.info("player_check")
     try:
-        Tracker = await get_tracker(ctx, engine)
+        Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == character))

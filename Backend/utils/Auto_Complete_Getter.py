@@ -20,14 +20,14 @@ async def get_autocomplete(ctx, guild=None, engine=None, id=id):
         guild = await get_guild(ctx, guild, id=id)
 
     if guild.system == "EPF":
-        return EPF_Autocmplete(ctx, engine, guild)
+        return EPF_Autocmplete(ctx, guild)
     elif guild.system == "D4e":
-        return D4e_Autocmplete(ctx, engine, guild)
+        return D4e_Autocmplete(ctx, guild)
     elif guild.system == "PF2":
-        return PF2_Autocmplete(ctx, engine, guild)
+        return PF2_Autocmplete(ctx, guild)
     elif guild.system == "STF":
-        return STF_Autocomplete(ctx, engine, guild)
+        return STF_Autocomplete(ctx, guild)
     elif guild.system == "RED":
         return RED_Autocomplete(ctx, engine, guild)
     else:
-        return AutoComplete(ctx, engine, guild)
+        return AutoComplete(ctx, guild)

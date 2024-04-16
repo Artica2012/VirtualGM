@@ -308,9 +308,9 @@ async def setup_tracker(
         # Build the tracker, con and macro tables
         try:
             async with engine.begin() as conn:  # Call the tables directly to save a database call
-                await get_tracker_table(ctx, metadata, engine)
-                await get_condition_table(ctx, metadata, engine)
-                await get_macro_table(ctx, metadata, engine)
+                await get_tracker_table(ctx, metadata)
+                await get_condition_table(ctx, metadata)
+                await get_macro_table(ctx, metadata)
                 await conn.run_sync(metadata.create_all)
 
             # Update the pinned trackers
