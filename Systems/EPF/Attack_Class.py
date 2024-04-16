@@ -7,15 +7,13 @@ import lark
 from lark import Lark
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Systems.EPF.EPF_Character import EPF_Character, get_EPF_Character, bonus_calc
 from Systems.EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from Systems.EPF.Lark import attack_grammer
 from Systems.PF2e.pf2_functions import PF2_eval_succss
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import error_not_initialized
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.parsing import ParseModifiers
@@ -54,8 +52,6 @@ class AutoModel:
 
     async def gm_log(self, Target_Model, Attack_Data):
         if self.guild.audit_log is None:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == self.guild.id))
 

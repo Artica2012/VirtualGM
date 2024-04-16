@@ -10,8 +10,8 @@ from Backend.utils.parsing import ParseModifiers
 
 
 class RED_Automation(Automation):
-    def __int__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __int__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def auto(
         self,

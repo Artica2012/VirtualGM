@@ -13,8 +13,8 @@ from Backend.utils.parsing import ParseModifiers
 
 
 class D4e_Automation(Automation):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
         # Strip a macro:

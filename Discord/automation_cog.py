@@ -61,7 +61,7 @@ class AutomationCog(commands.Cog):
         guild = await get_guild(ctx, None)
         try:
             await ctx.response.defer()
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -116,7 +116,7 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -166,7 +166,7 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -235,7 +235,7 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -311,7 +311,7 @@ class AutomationCog(commands.Cog):
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")

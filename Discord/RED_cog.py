@@ -117,7 +117,7 @@ class REDCog(commands.Cog):
         logging.info("attack_cog auto")
         await ctx.response.defer()
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -188,7 +188,7 @@ class REDCog(commands.Cog):
         logging.info("attack_cog auto")
         await ctx.response.defer()
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")

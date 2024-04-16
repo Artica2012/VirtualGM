@@ -19,7 +19,7 @@ class AutoOutput:
 
 
 class Automation:
-    def __init__(self, ctx, engine, guild):
+    def __init__(self, ctx, guild):
         self.ctx = ctx
         self.engine = Backend.Database.engine.engine
         self.guild = guild
