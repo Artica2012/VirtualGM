@@ -100,9 +100,7 @@ class D4eAddCharacterModal(discord.ui.Modal):
     async def callback(self, interaction: discord.Interaction):
         self.stop()
         await interaction.response.send_message("Success")
-        # await interaction.response.send_message(f"{self.name} Created")
         guild = await get_guild(self.ctx, None)
-        # Character_Model = await get_character(self.name, self.ctx, guild=guild, engine=self.engine)
         Tracker_Model = await get_tracker_model(self.ctx, guild=guild)
 
         for x in range(0, self.number):

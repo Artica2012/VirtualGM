@@ -26,9 +26,7 @@ class EPF_Automation(Automation):
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         if roll == "Treat Wounds":
-            return await treat_wounds(
-                self.ctx, character, target, damage_type, modifier, engine=self.engine, guild=self.guild
-            )
+            return await treat_wounds(self.ctx, character, target, damage_type, modifier, guild=self.guild)
 
         Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
         embed = await Attack.damage(target, modifier, healing, damage_type, crit)
@@ -75,7 +73,7 @@ class EPF_Automation(Automation):
         return await Spell.cast(target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override)
 
 
-async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None):
+async def treat_wounds(ctx, character, target, dc, modifier, guild=None):
     Character_Model = await get_EPF_Character(character, ctx, guild=guild)
     Target_Model = await get_EPF_Character(target, ctx, guild=guild)
     # print("treat wounds")

@@ -23,7 +23,7 @@ default_pic = (
 )
 
 
-async def get_STF_Character(char_name, ctx, guild=None, engine=None):
+async def get_STF_Character(char_name, ctx, guild=None):
     logging.info("Generating STF_Character Class")
 
     guild = await get_guild(ctx, guild)
@@ -94,7 +94,7 @@ class STF_Character(Character):
         self.pic = character.pic if character.pic is not None else default_pic
 
     async def update(self):
-        await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        await calculate(self.ctx, self.char_name, guild=self.guild)
         self.character_model = await self.character()
         self.id = self.character_model.id
         self.name = self.character_model.name
@@ -522,7 +522,7 @@ class STF_Character(Character):
             return False
 
 
-async def calculate(ctx, engine, char_name, guild=None):
+async def calculate(ctx, char_name, guild=None):
     logging.info("Updating Character Model")
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
@@ -531,7 +531,7 @@ async def calculate(ctx, engine, char_name, guild=None):
     else:
         STF_tracker = await get_tracker(ctx)
 
-    bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
+    bonuses, resistance = await parse_bonuses(ctx, char_name, guild=guild)
 
     async with async_session() as session:
         try:
@@ -678,9 +678,8 @@ async def skill_mod_calc(item: str, base_save, bonuses):
     return mod
 
 
-async def parse_bonuses(ctx, engine, char_name: str, guild=None):
+async def parse_bonuses(ctx, char_name: str, guild=None):
     guild = await get_guild(ctx, guild=guild)
-    # Character_Model = await get_STF_Character(char_name, ctx, guild=guild, engine=engine)
     # Database boilerplate
     if guild is not None:
         STF_tracker = await get_tracker(ctx, id=guild.id)

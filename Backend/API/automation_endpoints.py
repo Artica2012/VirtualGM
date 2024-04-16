@@ -9,7 +9,6 @@ from cache import AsyncTTL
 import Systems.EPF.EPF_Support
 from Backend.API.api_utils import get_guild_by_id, update_trackers, post_message, get_username_by_id, get_api_key
 from Backend.Database.database_operations import log_roll
-from Backend.Database.engine import engine
 from Backend.utils.Automation_Getter import get_automation
 from Backend.utils.Fetch_Getter import fetchGetter
 from Discord.Bot import bot
@@ -95,7 +94,7 @@ async def get_attacks(user: str, guildid: int, character: str, api_key: APIKey =
             Character_Model = await get_character(character, None, guild=guild)
             return await Character_Model.attack_list()
         else:
-            Macro = await get_macro_object(None, engine, guild)
+            Macro = await get_macro_object(None, guild)
             macro_list = await Macro.get_macro_list(character.lower())
             return json.dumps(macro_list)
     except Exception:

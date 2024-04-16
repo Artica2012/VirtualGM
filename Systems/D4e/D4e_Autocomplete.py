@@ -35,11 +35,9 @@ class D4e_Autocmplete(AutoComplete):
             else:
                 return condition
         except NoResultFound:
-            # await self.engine.dispose()
             return []
         except Exception as e:
             logging.warning(f"cc_select: {e}")
-            # await self.engine.dispose()
             return []
 
     async def get_attributes(self, **kwargs):

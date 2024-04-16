@@ -2,13 +2,11 @@ import os
 import discord.embeds
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.Base.Character
+from Backend.Database.engine import async_session
 from Discord.Bot import bot
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
 from Backend.utils.Tracker_Getter import get_tracker_model
 
 from fastapi import HTTPException, Security, status
@@ -27,8 +25,6 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
 
 
 async def get_guild_by_id(id: int):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
     try:
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.id == id))

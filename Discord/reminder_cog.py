@@ -1,4 +1,4 @@
-# options_cog.py
+# reminder_cog.py
 import asyncio
 import datetime as dt
 import logging
@@ -14,13 +14,12 @@ from sqlalchemy import select
 
 from Backend.Database.database_models import Reminder
 from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.Database.engine import engine, async_session
+from Backend.Database.engine import async_session
 
 
 class ReminderButton(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, reminder: Reminder, time: str):
         self.ctx = ctx
-        self.engine = engine
         self.bot = bot
 
         super().__init__(

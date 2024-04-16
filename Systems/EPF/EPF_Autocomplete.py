@@ -5,7 +5,7 @@ import discord
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 
-from Backend.Database.engine import async_session
+from Backend.Database.engine import lookup_session
 from Backend.utils.AsyncCache import Cache
 from Backend.utils.Char_Getter import get_character
 from Systems.Base.Autocomplete import AutoComplete
@@ -69,10 +69,8 @@ class EPF_Autocmplete(AutoComplete):
         key_list.sort()
         val = self.ctx.value.lower()
         if val != "":
-            # await self.engine.dispose()
             return [option for option in key_list if val in option.lower()]
         else:
-            # await self.engine.dispose()
             return key_list
 
     @Cache.ac_cache
@@ -107,7 +105,6 @@ class EPF_Autocmplete(AutoComplete):
             if len(char_split) > 1:
                 character = char_split[0]
         except Exception:
-            # await self.engine.dispose()
             return []
 
         if character.lower() in ["all pcs", "all npcs", "all characters"]:
@@ -141,14 +138,12 @@ class EPF_Autocmplete(AutoComplete):
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
-            # await self.engine.dispose()
             return []
 
     async def save_select(self, **kwargs):
         return PF2_saves
 
     async def get_attributes(self, **kwargs):
-        # await self.engine.dispose()
         if self.ctx.value != "":
             # print(EPF_SKills)
             option_list = ["AC"]
@@ -172,7 +167,6 @@ class EPF_Autocmplete(AutoComplete):
             return await Character_Model.attack_list()
 
     async def stats(self, **kwargs):
-        # await self.engine.dispose()
         if self.ctx.value != "":
             option_list = EPF_Stats
             val = self.ctx.value.lower()
@@ -185,14 +179,11 @@ class EPF_Autocmplete(AutoComplete):
             var = kwargs["var"]
         else:
             var = False
-
-        # await self.engine.dispose()
         try:
             if var:
                 if self.ctx.options["user_roll_str"] == "Treat Wounds":
                     return ["15", "20", "30", "40"]
         except Exception:
-            # await self.engine.dispose()
             return []
         if self.ctx.value != "":
             option_list = EPF_DMG_Types
@@ -202,11 +193,9 @@ class EPF_Autocmplete(AutoComplete):
             return EPF_DMG_Types
 
     async def npc_search(self, **kwargs):
-        # print("NPC Search")
-        # await self.engine.dispose()
         try:
             # print(lookup_engine)
-            async with async_session() as session:
+            async with lookup_session() as session:
                 result = await session.execute(
                     select(EPF_NPC.name)
                     .where(func.lower(EPF_NPC.name).contains(self.ctx.value.lower()))
@@ -234,9 +223,7 @@ class EPF_Autocmplete(AutoComplete):
     async def spell_list(self, **kwargs):
         try:
             spell_list = await self.get_spell_list(self.ctx.options["character"])
-            # await self.engine.dispose()
         except Exception:
-            # await self.engine.dispose()
             return []
         if self.ctx.value != "":
             val = self.ctx.value.lower()
@@ -298,11 +285,9 @@ class EPF_Autocmplete(AutoComplete):
                 level_list.append(num)
             return level_list
         except Exception:
-            # await self.engine.dispose()
             return []
 
     async def init(self, **kwargs):
-        # await self.engine.dispose()
         skills = EPF_SKills_NO_SAVE
         if self.ctx.value != "":
             val = self.ctx.value.lower()

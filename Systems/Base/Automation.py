@@ -2,7 +2,6 @@ import d20
 import discord
 from sqlalchemy import select
 
-import Backend.Database.engine
 from Backend.Database.database_models import Global
 from Backend.Database.engine import async_session
 from Backend.utils.Char_Getter import get_character
@@ -21,7 +20,7 @@ class AutoOutput:
 class Automation:
     def __init__(self, ctx, guild):
         self.ctx = ctx
-        self.engine = Backend.Database.engine.engine
+
         self.guild = guild
 
     async def gm_log(self, output_string, Target_Model):
@@ -64,7 +63,7 @@ class Automation:
             output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         except Exception:
             try:
-                Macro = await get_macro_object(self.ctx, self.engine, self.guild)
+                Macro = await get_macro_object(self.ctx, self.guild)
                 macro_roll = await Macro.raw_macro(character, roll)
                 # print(macro_roll)
 

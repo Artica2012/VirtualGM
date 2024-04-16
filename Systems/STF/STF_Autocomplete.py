@@ -18,10 +18,8 @@ class STF_Autocomplete(AutoComplete):
         key_list.sort()
         val = self.ctx.value.lower()
         if val != "":
-            # await self.engine.dispose()
             return [option for option in key_list if val in option.lower()]
         else:
-            # await self.engine.dispose()
             return key_list
 
     async def macro_select(self, **kwargs):
@@ -36,14 +34,11 @@ class STF_Autocomplete(AutoComplete):
             if len(char_split) > 1:
                 character = char_split[0]
         except Exception:
-            # await self.engine.dispose()
             return []
 
         try:
             STF_Char = await get_character(character, self.ctx, guild=self.guild)
             macro_list = await STF_Char.macro_list()
-
-            # await self.engine.dispose()
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 return [option for option in macro_list if val in option.lower()]
@@ -54,18 +49,14 @@ class STF_Autocomplete(AutoComplete):
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
-            # await self.engine.dispose()
             return []
 
     async def save_select(self, **kwargs):
-        # await self.engine.dispose()
         return STF_Saves
 
     async def get_attributes(self, **kwargs):
         option_list = Systems.STF.STF_Support.STF_Attributes
         if self.ctx.value != "":
-            # print(EPF_SKills)
-            # print(option_list)
             val = self.ctx.value.lower()
             return [option for option in option_list if val in option.lower()]
         else:
@@ -73,12 +64,8 @@ class STF_Autocomplete(AutoComplete):
 
     async def attacks(self, **kwargs):
         try:
-            Character_Model = await get_STF_Character(
-                self.ctx.options["character"], self.ctx, guild=self.guild, engine=self.engine
-            )
-            # await self.engine.dispose()
+            Character_Model = await get_STF_Character(self.ctx.options["character"], self.ctx, guild=self.guild)
         except Exception:
-            # await self.engine.dispose()
             return []
         option_list = await Character_Model.attack_list()
         if self.ctx.value != "":
@@ -88,7 +75,6 @@ class STF_Autocomplete(AutoComplete):
             return option_list
 
     async def stats(self, **kwargs):
-        # await self.engine.dispose()
         option_list = STF_Stats
         if self.ctx.value != "":
             val = self.ctx.value.lower()
@@ -97,7 +83,6 @@ class STF_Autocomplete(AutoComplete):
             return option_list
 
     async def dmg_types(self, **kwargs):
-        # await self.engine.dispose()
         option_list = STF_DMG_Types
         if self.ctx.value != "":
             val = self.ctx.value.lower()
@@ -106,7 +91,6 @@ class STF_Autocomplete(AutoComplete):
             return option_list
 
     async def init(self, **kwargs):
-        # await self.engine.dispose()
         skills = STF_Skills
         if self.ctx.value != "":
             val = self.ctx.value.lower()

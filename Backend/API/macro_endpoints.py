@@ -1,14 +1,13 @@
 import json
 
+from cache import AsyncTTL
 from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 
 from Backend.API.api_utils import get_guild_by_id, post_message, get_api_key, get_username_by_id
 from Backend.Database.database_operations import log_roll
-from Backend.Database.engine import engine
 from Backend.utils.Macro_Getter import get_macro_object
-from cache import AsyncTTL
 
 router = APIRouter()
 
@@ -38,7 +37,7 @@ async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = 
     try:
         # print(user, character, guildid)
         guild = await get_guild_by_id(guildid)
-        Macro = await get_macro_object(None, engine, guild)
+        Macro = await get_macro_object(None, guild)
         macro_list = await Macro.get_macro_list(character.lower())
         return json.dumps(macro_list)
     except Exception:
@@ -49,7 +48,7 @@ async def get_macros(user: int, character: str, guildid: int, api_key: APIKey = 
 async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     # print(roll_data)
     guild = await get_guild_by_id(roll_data.guildid)
-    Macro = await get_macro_object(None, engine, guild)
+    Macro = await get_macro_object(None, guild)
     print(roll_data)
 
     raw_result = await Macro.raw_roll_macro(roll_data.character, roll_data.macro, roll_data.dc, roll_data.mod)
@@ -98,7 +97,7 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, ap
 @router.post("/macro/create")
 async def create_macro(macro_data: CreateMacro, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(macro_data.guild)
-    Macro = await get_macro_object(None, engine, guild)
+    Macro = await get_macro_object(None, guild)
 
     response = await Macro.create_macro(macro_data.character, macro_data.macro, macro_data.roll)
 

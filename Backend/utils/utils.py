@@ -87,7 +87,6 @@ async def get_guild(ctx, guild, refresh=False, id=None):
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild_result = result.scalars().one()
-                # await engine.dispose()
                 return guild_result
         else:
             raise NoResultFound("No guild referenced")
@@ -114,7 +113,7 @@ async def gm_check(ctx):
         raise
 
 
-async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
+async def player_check(ctx: discord.ApplicationContext, bot, character: str):
     logging.info("player_check")
     try:
         Tracker = await get_tracker(ctx)

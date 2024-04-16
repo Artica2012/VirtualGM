@@ -150,7 +150,6 @@ class EPF_Macro(Macro):
                 await asyncio.sleep(0)
                 button = self.MacroButton(
                     self.ctx,
-                    self.engine,
                     self.guild,
                     Character_Model,
                     macro,
@@ -165,9 +164,8 @@ class EPF_Macro(Macro):
         return view
 
     class MacroButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, engine, guild, character, macro, title):
+        def __init__(self, ctx: discord.ApplicationContext, guild, character, macro, title):
             self.ctx = ctx
-            self.engine = engine
             self.character: EPF_Character = character
             self.macro = macro
             self.guild = guild

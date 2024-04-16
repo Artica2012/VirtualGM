@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 
 from Backend.Database.database_models import get_tracker, Character_Vault
-from Backend.Database.engine import engine, async_session
+from Backend.Database.engine import async_session
 from Backend.utils.Auto_Complete_Getter import get_autocomplete
 from Backend.utils.utils import get_guild
 
@@ -23,7 +23,7 @@ async def hard_lock(ctx: discord.ApplicationContext, name: str):
             result = await session.execute(select(Tracker.user).where(func.lower(Tracker.name) == name.lower()))
             user = result.scalars().one()
 
-        if await gm_check(ctx, engine) or ctx.interaction.user.id == user:
+        if await gm_check(ctx) or ctx.interaction.user.id == user:
             return True
         else:
             return False
@@ -32,7 +32,7 @@ async def hard_lock(ctx: discord.ApplicationContext, name: str):
         return False
 
 
-async def gm_check(ctx, engine):
+async def gm_check(ctx):
     logging.info(f"{datetime.datetime.now()} - attack_cog gm_check")
     try:
         guild = await get_guild(ctx, None)

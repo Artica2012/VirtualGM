@@ -197,7 +197,7 @@ class OptionsCog(commands.Cog):
                         if guild.system == "RED":
                             time = 3
                         await set_datetime(
-                            ctx, engine, self.bot, second=0, minute=0, hour=6, day=1, month=1, year=2001, time=time
+                            ctx, self.bot, second=0, minute=0, hour=6, day=1, month=1, year=2001, time=time
                         )
                     else:
                         guild.timekeeping = toggler

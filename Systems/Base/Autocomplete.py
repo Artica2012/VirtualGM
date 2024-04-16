@@ -4,7 +4,6 @@ import discord
 from sqlalchemy import select, false, not_, true
 from sqlalchemy.exc import NoResultFound
 
-import Backend.Database.engine
 from Backend.Database.database_models import get_tracker, get_macro, get_condition, Character_Vault
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.AsyncCache import Cache
@@ -14,7 +13,6 @@ from Backend.Database.database_models import async_session
 class AutoComplete:
     def __init__(self, ctx: discord.AutocompleteContext, guild):
         self.ctx = ctx
-        self.engine = Backend.Database.engine.engine
         self.guild = guild
 
     @Cache.ac_cache
@@ -162,7 +160,6 @@ class AutoComplete:
                 return macro_list
         except Exception as e:
             logging.warning(f"a_macro_select: {e}")
-            # await self.engine.dispose()
             return []
 
     @Cache.ac_cache
@@ -224,37 +221,28 @@ class AutoComplete:
 
         except Exception as e:
             logging.warning(f"get_attributes, {e}")
-            # await self.engine.dispose()
             return []
 
     async def attacks(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def stats(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def dmg_types(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def npc_lookup(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def spell_list(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def spell_level(self, **kwargs):
-        # await self.engine.dispose()
         return ["Not Available for this system"]
 
     async def init(self, **kwargs):
-        # await self.engine.dispose()
         return []
 
     async def flex(self, **kwargs):
-        # await self.engine.dispose()
         return ["Decrement at beginning of the Turn", "Decrement at end of the Turn"]

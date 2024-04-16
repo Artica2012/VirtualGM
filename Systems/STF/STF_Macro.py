@@ -55,7 +55,7 @@ class STF_Macro(Macro):
         return embed
 
     async def show(self, character):
-        Character_Model = await get_STF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_STF_Character(character, self.ctx, guild=self.guild)
 
         macro_list = await Character_Model.macro_list()
 

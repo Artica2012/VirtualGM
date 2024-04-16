@@ -34,7 +34,7 @@ class STF_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -208,7 +208,6 @@ class STF_Tracker(Tracker):
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
-            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):

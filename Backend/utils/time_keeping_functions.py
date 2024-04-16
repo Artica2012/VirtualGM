@@ -95,7 +95,7 @@ async def output_datetime(ctx: discord.ApplicationContext, bot, guild=None):
         return ""
 
 
-async def check_timekeeper(ctx, engine, guild=None):
+async def check_timekeeper(ctx, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
 
@@ -108,7 +108,6 @@ async def check_timekeeper(ctx, engine, guild=None):
 
 async def set_datetime(
     ctx: discord.ApplicationContext,
-    engine,
     bot,
     second: Optional[int],
     minute: Optional[int],
@@ -152,7 +151,6 @@ async def set_datetime(
                 # print(year)
                 guild.time_year = year
             await session.commit()
-            # await engine.dispose()
         return True
     except NoResultFound:
         await ctx.channel.send(
@@ -212,7 +210,6 @@ async def advance_time(
             guild.time_year = new_time.year
             await session.commit()
 
-        # await engine.dispose()
         return True
 
     except NoResultFound:

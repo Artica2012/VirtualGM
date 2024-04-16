@@ -60,8 +60,8 @@ class STF_Automation(Automation):
 
             return embed
 
-        attacker = await get_STF_Character(character, self.ctx, guild=self.guild, engine=self.engine)
-        opponent = await get_STF_Character(target, self.ctx, guild=self.guild, engine=self.engine)
+        attacker = await get_STF_Character(character, self.ctx, guild=self.guild)
+        opponent = await get_STF_Character(target, self.ctx, guild=self.guild)
 
         orig_dc = dc
 

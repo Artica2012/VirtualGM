@@ -5,8 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
 from Backend.Database.database_models import get_tracker, get_condition, Global
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.Database.engine import async_session
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
@@ -64,9 +62,7 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, character: str, con
         return [None, None]
 
 
-async def increment_cc(
-    ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
-):
+async def increment_cc(ctx: discord.ApplicationContext, character: str, condition: str, add: bool, bot, guild=None):
     logging.info("increment_cc")
 
     try:
@@ -128,7 +124,6 @@ async def increment_cc(
 class ConditionMinus(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         self.character = character
         self.condition = condition
@@ -139,7 +134,7 @@ class ConditionMinus(discord.ui.Button):
         try:
             Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
             await interaction.response.defer()
-            await increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
+            await increment_cc(self.ctx, self.character, self.condition, False, self.bot)
             output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()
@@ -151,7 +146,6 @@ class ConditionMinus(discord.ui.Button):
 class ConditionAdd(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         self.character = character
         self.condition = condition
@@ -162,7 +156,7 @@ class ConditionAdd(discord.ui.Button):
         await interaction.response.defer()
         try:
             Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
-            await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
+            await increment_cc(self.ctx, self.character, self.condition, True, self.bot)
             output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()

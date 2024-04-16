@@ -3,15 +3,12 @@ import logging
 
 import discord
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Character
-from Backend.Database import engine
+from Backend.Database.engine import async_session, lookup_session
 from Systems.EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from Systems.EPF.EPF_Character import EPF_Weapon
 from Backend.Database.database_models import get_EPF_tracker
-from Backend.Database.engine import engine, look_up_engine
 from Backend.utils.utils import get_guild
 
 
@@ -44,7 +41,6 @@ class WandererImporter:
     async def import_character(self):
         guild = await get_guild(self.ctx, None)
         EPF_Tracker = await get_EPF_tracker(self.ctx)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         output = await self.parse_char()
 
@@ -311,7 +307,6 @@ class WandererImporter:
 
     async def write_character(self, output):
         EPF_Tracker = await get_EPF_tracker(self.ctx)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             async with session.begin():
@@ -379,7 +374,6 @@ class WandererImporter:
 
     async def overwrite_character(self, output):
         EPF_Tracker = await get_EPF_tracker(self.ctx)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             query = await session.execute(
@@ -449,11 +443,10 @@ class WandererImporter:
             await session.commit()
 
     async def attack_lookup(self, attack):
-        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
         # print(attack["display"])
         try:
             display_name = attack["display"].strip()
-            async with async_session() as session:
+            async with lookup_session() as session:
                 result = await session.execute(
                     select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == display_name.lower())
                 )

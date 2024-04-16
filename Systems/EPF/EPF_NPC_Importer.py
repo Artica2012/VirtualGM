@@ -2,10 +2,9 @@ import logging
 
 import discord
 from sqlalchemy import Column, Integer, String, JSON, select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Character
+from Backend.Database.engine import async_session, lookup_session
 from Systems.EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from Systems.EPF.EPF_Character import get_EPF_Character, delete_intested_items
 from Backend.Database.database_models import get_tracker, LookupBase
@@ -73,12 +72,9 @@ class EPF_NPC(LookupBase):
     spells = Column(JSON())
 
 
-async def epf_npc_lookup(
-    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
-):
+async def epf_npc_lookup(ctx: discord.ApplicationContext, name: str, lookup: str, elite: str, image: str = None):
     # Check to make sure name is not in use
 
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     Tracker = await get_tracker(ctx)
     async with async_session() as session:
         result = await session.execute(select(Tracker).where(func.lower(Tracker.name) == name.lower()))
@@ -86,7 +82,6 @@ async def epf_npc_lookup(
     if len(character) > 0:
         raise NameError
 
-    lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
     async with lookup_session() as session:
         result = await session.execute(select(EPF_NPC).where(EPF_NPC.name == lookup))
         data = result.scalars().one()
@@ -209,7 +204,6 @@ async def epf_npc_lookup(
                 )
                 session.add(tracker)
             await session.commit()
-        # await engine.dispose()
 
         # print("Committed")
         # print(f"Stat_Mod: {stat_mod}")
@@ -247,7 +241,7 @@ async def epf_npc_lookup(
                 "Hazard", True, 0, "Round", False, data="init-skill stealth", visible=False, update=False
             )
         # print(data.resistance)
-        await write_resitances(data.resistance, Charater_Model, ctx, guild, engine, overwrite=False)
+        await write_resitances(data.resistance, Charater_Model, ctx, guild, overwrite=False)
 
         await Charater_Model.update()
         # Tracker_Model = await get_tracker_model(ctx, bot, engine=engine, guild=guild)
@@ -268,7 +262,7 @@ async def epf_npc_lookup(
 
 
 async def write_resitances(
-    resistance: dict, Character_Model: Systems.EPF.EPF_Character.EPF_Character, ctx, guild, engine, overwrite=True
+    resistance: dict, Character_Model: Systems.EPF.EPF_Character.EPF_Character, ctx, guild, overwrite=True
 ):
     # print("write resistances")
     # First delete out all the old resistances

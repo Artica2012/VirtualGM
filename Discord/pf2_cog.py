@@ -3,6 +3,7 @@
 # system specific module
 
 import logging
+
 import discord
 import sqlalchemy.exc
 from discord.commands import SlashCommandGroup, option
@@ -10,21 +11,20 @@ from discord.ext import commands
 from discord.ext.pages import Paginator
 
 import Systems.EPF.EPF_GSHEET_Importer
-from Discord import initiative
-from Systems.EPF.EPF_Character import pb_import
-from Systems.EPF.EPF_NPC_Importer import epf_npc_lookup
-from Systems.PF2e.NPC_importer import npc_lookup
-from Systems.PF2e.pathbuilder_importer import pathbuilder_import
-from Systems.PF2e.pf2_db_lookup import WandererLookup
-from Discord.auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
-from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.utils import get_guild, NPC_Iterator
+from Discord import initiative
+from Discord.auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
+from Systems.EPF.EPF_Character import pb_import
+from Systems.EPF.EPF_NPC_Importer import epf_npc_lookup
 from Systems.EPF.Wanderer_Import import get_WandeerImporter
-from Backend.Database.engine import engine, look_up_engine
+from Systems.PF2e.NPC_importer import npc_lookup
+from Systems.PF2e.pathbuilder_importer import pathbuilder_import
+from Systems.PF2e.pf2_db_lookup import WandererLookup
 
 
 class PF2Cog(commands.Cog):
@@ -78,7 +78,7 @@ class PF2Cog(commands.Cog):
                 Tracker_Model = await get_tracker_model(ctx, guild=guild)
 
                 if guild.system == "PF2":
-                    response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id), image=image)
+                    response = await pathbuilder_import(ctx, self.bot, name, str(pathbuilder_id), image=image)
                     if type(response) == str:
                         success.clear_fields()
                         success.add_field(name="Success", value=response)
@@ -183,9 +183,7 @@ class PF2Cog(commands.Cog):
                 modifier = ""
             try:
                 if guild.system == "PF2":
-                    response = await npc_lookup(
-                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
-                    )
+                    response = await npc_lookup(ctx, f"{name}{modifier}", lookup, elite_weak, image=image)
 
                     this_success = success.copy()
                     this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")
@@ -193,9 +191,7 @@ class PF2Cog(commands.Cog):
                     this_success.set_thumbnail(url=Character_Model.pic)
                     embeds.append(this_success)
                 elif guild.system == "EPF":
-                    response = await epf_npc_lookup(
-                        ctx, engine, look_up_engine, self.bot, f"{name}{modifier}", lookup, elite_weak, image=image
-                    )
+                    response = await epf_npc_lookup(ctx, f"{name}{modifier}", lookup, elite_weak, image=image)
 
                     this_success = success.copy()
                     this_success.add_field(name=f"{name}{modifier}", value=f"{lookup} successfully added")

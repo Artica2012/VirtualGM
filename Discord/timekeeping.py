@@ -1,16 +1,16 @@
 # timekeeping.py
 
+from typing import Optional
+
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 from sqlalchemy.exc import NoResultFound
-from typing import Optional
 
-from Backend.Database.engine import engine
+from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.time_keeping_functions import output_datetime, set_datetime, advance_time
-from Backend.utils.Tracker_Getter import get_tracker_model
 
 
 # Timekeeper Cog - For managing the time functions
@@ -31,7 +31,7 @@ class TimekeeperCog(commands.Cog):
     ):
         try:
             result = await set_datetime(
-                ctx, engine, self.bot, second=0, minute=minute, hour=hour, day=day, month=month, year=None
+                ctx, self.bot, second=0, minute=minute, hour=hour, day=day, month=month, year=None
             )
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)

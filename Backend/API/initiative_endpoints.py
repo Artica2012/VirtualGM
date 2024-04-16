@@ -7,8 +7,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 from sqlalchemy import select, true
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 from cache import AsyncTTL
 
 from Backend.API.api_utils import (
@@ -19,9 +17,9 @@ from Backend.API.api_utils import (
     get_username_by_id,
     get_api_key,
 )
+from Backend.Database.engine import async_session
 from Discord.Bot import bot
 from Backend.Database.database_models import get_condition, Global
-from Backend.Database.engine import engine
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 
@@ -88,7 +86,6 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
 @router.get("/init/user_tables")
 async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     output = {}
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
@@ -234,7 +231,6 @@ async def get_cc_query(
     Character_Model = await get_character(character, None, guild=guild)
     if list:
         Condition = await get_condition(None, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Condition.title)

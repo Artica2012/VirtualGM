@@ -28,7 +28,7 @@ class D4e_Automation(Automation):
         char_model = await get_character(character, self.ctx, guild=self.guild)
 
         try:
-            Macro_Model = await get_macro_object(self.ctx, engine=self.engine, guild=self.guild)
+            Macro_Model = await get_macro_object(self.ctx, guild=self.guild)
             roll_string: str = f"({await Macro_Model.raw_macro(character, roll)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
         except:

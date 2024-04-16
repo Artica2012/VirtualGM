@@ -16,7 +16,7 @@ from sqlalchemy.exc import NoResultFound
 
 import Discord.auto_complete as auto_complete
 from Backend.Database.database_models import get_tracker, get_condition
-from Backend.Database.engine import engine, async_session
+from Backend.Database.engine import async_session
 from Backend.utils import utils
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
@@ -52,7 +52,7 @@ class InitiativeCog(commands.Cog):
         pass
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
-        if await check_timekeeper(ctx, engine):
+        if await check_timekeeper(ctx):
             return ["Round", "Minute", "Hour", "Day"]
         else:
             return ["Round"]

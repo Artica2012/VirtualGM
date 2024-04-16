@@ -7,15 +7,12 @@ import discord
 import numpy
 import pandas as pd
 from sqlalchemy import select, func, false, true
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.STF.STF_Character import get_STF_Character, STF_Character
 from Backend.Database.database_models import get_STF_tracker, get_condition
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.parsing import ParseModifiers
 from Backend.utils.utils import get_guild
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 
 Interpreter = {"str": "str", "dex": "dex", "con": "con", "int": "itl", "wis": "wis", "cha": "cha"}
 
@@ -27,9 +24,7 @@ def interpret(item):
         return ""
 
 
-async def stf_g_sheet_import(
-    ctx: discord.ApplicationContext, char_name: str, base_url: str, engine=None, guild=None, image=None
-):
+async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, base_url: str, guild=None, image=None):
     try:
         parsed_url = base_url.split("/")
         sheet_id = parsed_url[5]
@@ -39,11 +34,8 @@ async def stf_g_sheet_import(
         df = pd.read_csv(url, header=[0])
         # print(df)
         guild = await get_guild(ctx, guild)
-        if engine is None:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
         STF_tracker = await get_STF_tracker(ctx, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             query = await session.execute(select(STF_tracker).where(func.lower(STF_tracker.name) == char_name.lower()))
             character = query.scalars().all()
@@ -57,13 +49,9 @@ async def stf_g_sheet_import(
         decision_header = headers[0].strip()
 
         if decision_header == "Starfinder Character Sheet:":
-            character, spells, attacks, items, resistance = await stf_g_sheet_character_import(
-                ctx, char_name, df, engine, guild
-            )
+            character, spells, attacks, items, resistance = await stf_g_sheet_character_import(df)
         elif decision_header == "Starfinder NPC Sheet:":
-            character, spells, attacks, items, resistance = await stf_g_sheet_npc_import(
-                ctx, char_name, df, engine, guild
-            )
+            character, spells, attacks, items, resistance = await stf_g_sheet_npc_import(df)
         else:
             return False
 
@@ -195,8 +183,8 @@ async def stf_g_sheet_import(
                     session.add(new_char)
                     await session.commit()
 
-            Character = await get_STF_Character(char_name, ctx, guild=guild, engine=engine)
-            await write_resitances(resistance, Character, ctx, guild, engine)
+            Character = await get_STF_Character(char_name, ctx, guild=guild)
+            await write_resitances(resistance, Character, ctx, guild)
             await Character.update()
 
         return True
@@ -206,7 +194,7 @@ async def stf_g_sheet_import(
         return False
 
 
-async def stf_g_sheet_character_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+async def stf_g_sheet_character_import(df):
     logging.info("g-sheet-char")
     try:
         df.rename(
@@ -300,7 +288,7 @@ async def stf_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     return character, spells, attacks, items, resistances
 
 
-async def stf_g_sheet_npc_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+async def stf_g_sheet_npc_import(df):
     logging.info("g-sheet-char")
     try:
         df.rename(
@@ -446,10 +434,9 @@ async def stat_from_mod(stat):
     return mod
 
 
-async def write_resitances(resistance: dict, Character_Model: STF_Character, ctx, guild, engine, overwrite=True):
+async def write_resitances(resistance: dict, Character_Model: STF_Character, ctx, guild, overwrite=True):
     # First delete out all the old resistances
     if overwrite:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         STF_Tracker = await get_STF_tracker(ctx, id=guild.id)
         Condition = await get_condition(ctx, id=guild.id)
         async with async_session() as session:
@@ -474,7 +461,6 @@ async def write_resitances(resistance: dict, Character_Model: STF_Character, ctx
 
     # Then write the new ones
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             for key, value in resistance["resist"].items():
                 condition_string = f"{key} r {value};"

@@ -3,19 +3,20 @@
 # system specific module
 
 import logging
+
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from Backend.Database.engine import engine
-from Discord import auto_complete
-from Systems.STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
-from Discord.auto_complete import character_select_gm
-from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.initiative_functions import update_member_list
+
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.utils import get_guild
+from Discord import auto_complete
+from Discord.auto_complete import character_select_gm
+from Systems.STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
 
 
 class STFCog(commands.Cog):
