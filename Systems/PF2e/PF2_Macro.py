@@ -6,8 +6,8 @@ from Systems.PF2e.pf2_functions import PF2_eval_succss, default_vars
 
 
 class PF2_Macro(Macro):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
         self.default_vars = default_vars
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):

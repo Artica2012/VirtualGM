@@ -14,11 +14,10 @@ from dotenv import load_dotenv
 
 import Systems.EPF.Data.Kineticist_DB
 import Systems.EPF.Data.Spell_DB
-from Backend.Database import database_operations
 from Backend.API.VGM_API import start_uvicorn
+from Backend.WS.WebsocketHandler import socket
 from Discord.Bot import bot
 from Systems.EPF.EPF_Automation_Data import upload_data
-from Backend.WS.WebsocketHandler import socket
 
 # import tracemalloc
 
@@ -54,28 +53,20 @@ DATABASE = os.getenv("DATABASE")
 # Print Status on Connected - Outputs to server log
 @bot.event
 async def on_ready():
-    logging.warning("Updating tables...")
-    database_operations.create_roll_log()
-
+    # logging.warning("Updating tables...")
+    #     # database_operations.create_roll_log()
+    #
     await upload_data(Systems.EPF.Data.Kineticist_DB.Kineticist_DB)
     await upload_data(Systems.EPF.Data.Spell_DB.Cantrips)
     await upload_data((Systems.EPF.Data.Spell_DB.Psychic_Cantrips))
-    # await database_operations.update_global_manager()
-    # await database_operations.update_tracker_table()
-    # await database_operations.update_con_table()
-    # database_operations.create_reminder_table()
-    # logging.warning("Tables updated")
     logging.warning(f"Connected to {len(bot.guilds)} servers.")
     logging.warning(f"{bot.user} is connected.")
     loop = asyncio.get_running_loop()
+
     start_uvicorn(loop)
-    # loop.create_task( async_partial(socket.start))
-    # loop.run_forever()
-    # await socket.start()
+    #
     serve = await websockets.serve(socket.handle, "0.0.0.0", 6270)
-    # serve = await LogSocket.serve(socket.handle, "0.0.0.0", 6270)
-    # loop = asyncio.get_running_loop()
-    # loop.create_task(async_partial(self.handle))
+    #
     await serve.wait_closed()
 
 

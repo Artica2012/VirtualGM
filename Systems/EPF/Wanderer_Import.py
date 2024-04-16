@@ -3,15 +3,12 @@ import logging
 
 import discord
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Character
-from Backend.Database import engine
+from Backend.Database.engine import async_session, lookup_session
 from Systems.EPF.EPF_Automation_Data import EPF_retreive_complex_data
 from Systems.EPF.EPF_Character import EPF_Weapon
 from Backend.Database.database_models import get_EPF_tracker
-from Backend.Database.engine import engine, look_up_engine
 from Backend.utils.utils import get_guild
 
 
@@ -43,8 +40,7 @@ class WandererImporter:
 
     async def import_character(self):
         guild = await get_guild(self.ctx, None)
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
 
         output = await self.parse_char()
 
@@ -60,10 +56,10 @@ class WandererImporter:
             overwrite = False
             await self.write_character(output)
 
-        await Systems.EPF.EPF_Character.write_bonuses(self.ctx, engine, guild, self.char_name, [])
-        await Systems.EPF.EPF_Character.calculate(self.ctx, engine, self.char_name, guild=guild)
+        await Systems.EPF.EPF_Character.write_bonuses(self.ctx, guild, self.char_name, [])
+        await Systems.EPF.EPF_Character.calculate(self.ctx, self.char_name, guild=guild)
 
-        Character = await Systems.EPF.EPF_Character.get_EPF_Character(self.char_name, self.ctx, guild, engine)
+        Character = await Systems.EPF.EPF_Character.get_EPF_Character(self.char_name, self.ctx, guild)
         # await Character.update()
         if not overwrite:
             if guild.initiative is not None:
@@ -310,8 +306,7 @@ class WandererImporter:
         return output
 
     async def write_character(self, output):
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
 
         async with async_session() as session:
             async with session.begin():
@@ -378,8 +373,7 @@ class WandererImporter:
             await session.commit()
 
     async def overwrite_character(self, output):
-        EPF_Tracker = await get_EPF_tracker(self.ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        EPF_Tracker = await get_EPF_tracker(self.ctx)
 
         async with async_session() as session:
             query = await session.execute(
@@ -449,11 +443,10 @@ class WandererImporter:
             await session.commit()
 
     async def attack_lookup(self, attack):
-        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
         # print(attack["display"])
         try:
             display_name = attack["display"].strip()
-            async with async_session() as session:
+            async with lookup_session() as session:
                 result = await session.execute(
                     select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == display_name.lower())
                 )

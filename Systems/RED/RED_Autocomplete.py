@@ -2,9 +2,8 @@ import logging
 
 from sqlalchemy import select, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.Base.Autocomplete import AutoComplete
 from Systems.RED.RED_Support import RED_SKills
 from Backend.Database.database_models import get_tracker
@@ -38,7 +37,7 @@ class RED_Autocomplete(AutoComplete):
 
         # print(character)
         try:
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             macro_list = Character_Model.macros
             # print(macro_list)
 
@@ -95,7 +94,7 @@ class RED_Autocomplete(AutoComplete):
 
         # print(character)
         try:
-            Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(character, self.ctx, guild=self.guild)
             macro_list = Character_Model.macros
             # print(macro_list)
 
@@ -141,8 +140,7 @@ class RED_Autocomplete(AutoComplete):
 
         logging.info("character_select")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine)
+            Tracker = await get_tracker(self.ctx)
             async with async_session() as session:
                 if net:
                     if gm and int(self.guild.gm) == self.ctx.interaction.user.id:

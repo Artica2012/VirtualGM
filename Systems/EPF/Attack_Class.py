@@ -7,15 +7,13 @@ import lark
 from lark import Lark
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Systems.EPF.EPF_Character import EPF_Character, get_EPF_Character, bonus_calc
 from Systems.EPF.EPF_resists import damage_calc_resist, roll_dmg_resist
 from Systems.EPF.Lark import attack_grammer
 from Systems.PF2e.pf2_functions import PF2_eval_succss
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import error_not_initialized
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.parsing import ParseModifiers
@@ -54,8 +52,6 @@ class AutoModel:
 
     async def gm_log(self, Target_Model, Attack_Data):
         if self.guild.audit_log is None:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == self.guild.id))
 
@@ -206,7 +202,7 @@ class AutoModel:
         # print("Complex Attack")
         # print(self.attack)
 
-        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         if self.attack_type == "attack":
             Attk_Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
@@ -735,7 +731,7 @@ class AutoModel:
 
 async def get_attack(character, attack_name, ctx, guild=None):
     guild = await get_guild(ctx, guild)
-    CharacterModel = await get_character(character, ctx, guild=guild, engine=engine)
+    CharacterModel = await get_character(character, ctx, guild=guild)
     try:
         attack_data = await CharacterModel.get_weapon(attack_name)
     except Exception:
@@ -781,7 +777,7 @@ class Attack(AutoModel):
             roll_string = f"({await self.character.get_roll(self.attack_name)}){ParseModifiers(attack_modifier)}"
             dice_result = d20.roll(roll_string)
 
-        opponent = await get_character(target, self.ctx, guild=self.guild, engine=engine)
+        opponent = await get_character(target, self.ctx, guild=self.guild)
         goal_value = await opponent.get_dc(vs)
 
         try:
@@ -804,7 +800,7 @@ class Attack(AutoModel):
         return self.output
 
     async def complex_attack(self, target, vs, attack_modifier, target_modifier):
-        Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
         if self.attack_type == "attack":
             Data = await self.auto_complex_attack_attk(Target_Model, attack_modifier, target_modifier)
         else:
@@ -823,7 +819,7 @@ class Attack(AutoModel):
             self.output = embed
             return self.output
 
-        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild, engine=engine)
+        opponent = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         orig_dc = dc
 
@@ -863,7 +859,7 @@ class Attack(AutoModel):
             return False
 
     async def damage(self, target, modifier, healing, damage_type: str, crit=False):
-        Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
         # print(Target_Model.char_name)
         self.heal = healing
 
@@ -923,7 +919,7 @@ class Attack(AutoModel):
         return Attack_Data(dmg_output, dmg, None, "")
 
     async def auto(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         if self.complex:
             Attack_Data = await self.auto_complex(
@@ -939,7 +935,7 @@ class Attack(AutoModel):
         return self.output
 
     async def auto_simple(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        Target_Model = await get_character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         roll_string = f"({await self.character.get_roll(self.attack_name)})"
         dice_result = d20.roll(f"{roll_string}{ParseModifiers(attack_modifier)}")
@@ -991,7 +987,7 @@ class Attack(AutoModel):
 async def get_spell(character, attack_name, level, ctx, guild=None):
     # print(attack_name)
     guild = await get_guild(ctx, guild)
-    CharacterModel = await get_character(character, ctx, guild=guild, engine=engine)
+    CharacterModel = await get_character(character, ctx, guild=guild)
     try:
         spell_data = CharacterModel.get_spell(attack_name)
     except Exception:
@@ -1128,7 +1124,7 @@ class Spell(AutoModel):
         return Attack_Data(dmg_string, total_damage, success_string, "")
 
     async def cast(self, target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override):
-        Target_Model = await get_EPF_Character(target, self.ctx, engine=engine, guild=self.guild)
+        Target_Model = await get_EPF_Character(target, self.ctx, guild=self.guild)
 
         if self.complex:
             spell_data = await self.auto_complex(

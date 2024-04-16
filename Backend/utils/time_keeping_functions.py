@@ -1,26 +1,26 @@
 # time_keeping_functions.py
 
 
+import datetime
+import logging
+from typing import Optional
+
 # imports
 import discord
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-import datetime
-import logging
-from typing import Optional
+
 from Backend.Database.database_models import Global
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.utils import get_guild
 
 
-async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_time(ctx: discord.ApplicationContext, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             if ctx is None:
                 result = await session.execute(select(Global).where(Global.id == guild.id))
@@ -43,7 +43,6 @@ async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
                 minute=guild.time_minute,
                 second=guild.time_second,
             )
-        # await engine.dispose()
         return time
 
     except NoResultFound:
@@ -61,7 +60,7 @@ async def get_time(ctx: discord.ApplicationContext, engine, guild=None):
         return None
 
 
-async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=None):
+async def output_datetime(ctx: discord.ApplicationContext, bot, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
@@ -76,7 +75,6 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=No
             second=guild.time_second,
         )
         output_string = time.strftime("Month: %m Day: %d, Year: %y: %I:%M:%S %p")
-        # print(output_string)
         return output_string
 
     except NoResultFound:
@@ -97,7 +95,7 @@ async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=No
         return ""
 
 
-async def check_timekeeper(ctx, engine, guild=None):
+async def check_timekeeper(ctx, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
 
@@ -110,7 +108,6 @@ async def check_timekeeper(ctx, engine, guild=None):
 
 async def set_datetime(
     ctx: discord.ApplicationContext,
-    engine,
     bot,
     second: Optional[int],
     minute: Optional[int],
@@ -121,7 +118,6 @@ async def set_datetime(
     time: Optional[int] = None,
 ):
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(
                 select(Global).where(
@@ -155,7 +151,6 @@ async def set_datetime(
                 # print(year)
                 guild.time_year = year
             await session.commit()
-            # await engine.dispose()
         return True
     except NoResultFound:
         await ctx.channel.send(
@@ -175,8 +170,6 @@ async def set_datetime(
 
 async def advance_time(
     ctx: discord.ApplicationContext,
-    engine,
-    bot,
     second: int = 0,
     minute: int = 0,
     hour: int = 0,
@@ -186,7 +179,6 @@ async def advance_time(
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             if ctx is None:
                 result = await session.execute(select(Global).where(Global.id == guild.id))
@@ -218,7 +210,6 @@ async def advance_time(
             guild.time_year = new_time.year
             await session.commit()
 
-        # await engine.dispose()
         return True
 
     except NoResultFound:
@@ -236,10 +227,10 @@ async def advance_time(
         return False
 
 
-async def time_left(ctx: discord.ApplicationContext, engine, bot, con_time):
+async def time_left(ctx: discord.ApplicationContext, con_time):
     try:
         time_stamp = datetime.datetime.fromtimestamp(con_time)
-        current_time = await get_time(ctx, engine)
+        current_time = await get_time(ctx)
         time_left = time_stamp - current_time
         days_left = time_left.days
         processed_minutes_left = divmod(time_left.seconds, 60)[0]

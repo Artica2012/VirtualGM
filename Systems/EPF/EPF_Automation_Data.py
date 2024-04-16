@@ -2,10 +2,9 @@ import logging
 
 from sqlalchemy import Column, Integer, String, JSON, select, func
 from sqlalchemy.exc import InterfaceError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base
 
-from Backend.Database.engine import look_up_engine
+from Backend.Database.engine import look_up_engine, lookup_session
 
 Base = declarative_base()
 
@@ -33,7 +32,7 @@ async def create_data_table():
 
 
 async def load_complex_data(data: dict):
-    async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
+    async_session = lookup_session
     for key in data.keys():
         # print(key)
         async with async_session() as session:
@@ -120,8 +119,7 @@ async def load_complex_data(data: dict):
 
 async def EPF_retreive_complex_data(search: str):
     try:
-        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
+        async with lookup_session() as session:
             query = await session.execute(
                 select(Automation_Data).where(func.lower(Automation_Data.name) == search.lower())
             )
@@ -129,8 +127,7 @@ async def EPF_retreive_complex_data(search: str):
     except InterfaceError as e:
         logging.error(f"Lookup Database was unexpectedly closed. {e}")
 
-        async_session = sessionmaker(look_up_engine, expire_on_commit=False, class_=AsyncSession)
-        async with async_session() as session:
+        async with lookup_session() as session:
             query = await session.execute(
                 select(Automation_Data).where(func.lower(Automation_Data.name) == search.lower())
             )

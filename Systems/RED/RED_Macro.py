@@ -4,9 +4,8 @@ import logging
 import d20
 import discord
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.Base.Macro import Macro
 from Systems.EPF.EPF_Character import EPF_Character
 from Systems.RED.RED_Character import get_RED_Character
@@ -18,17 +17,16 @@ from Backend.utils.utils import relabel_roll
 
 
 class RED_Macro(Macro):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def roll_macro(self, character: str, macro_name: str, dc, modifier: str, guild=None, raw=None):
         logging.info("RED roll_macro")
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
 
         if dice_result == 0:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            macro_table = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            macro_table = await get_macro(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -98,7 +96,7 @@ class RED_Macro(Macro):
         return False
 
     async def show_vars(self, character):
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         embed = discord.Embed(
             title=Character_Model.char_name,
             fields=[
@@ -110,7 +108,7 @@ class RED_Macro(Macro):
         return embed
 
     async def show(self, character):
-        Character_Model = await get_RED_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_RED_Character(character, self.ctx, guild=self.guild)
 
         macro_list = Character_Model.macros
 
@@ -121,9 +119,7 @@ class RED_Macro(Macro):
                 if roll_string == 0:
                     roll_string = await super().get_macro(character, macro, Character_Model=Character_Model)
                 await asyncio.sleep(0)
-                button = self.MacroButton(
-                    self.ctx, self.engine, self.guild, Character_Model, macro, f"{macro}: {roll_string}"
-                )
+                button = self.MacroButton(self.ctx, self.guild, Character_Model, macro, f"{macro}: {roll_string}")
                 if len(view.children) == 24:
                     await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
                     view.clear_items()
@@ -133,9 +129,8 @@ class RED_Macro(Macro):
         return view
 
     class MacroButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, engine, guild, character, macro, title):
+        def __init__(self, ctx: discord.ApplicationContext, guild, character, macro, title):
             self.ctx = ctx
-            self.engine = engine
             self.character: EPF_Character = character
             self.macro = macro
             self.guild = guild
@@ -147,7 +142,7 @@ class RED_Macro(Macro):
             )
 
         async def callback(self, interaction: discord.Interaction):
-            Macro = RED_Macro(self.ctx, self.engine, self.guild)
+            Macro = RED_Macro(self.ctx, self.guild)
             output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)
 
             await interaction.response.send_message(embed=output)

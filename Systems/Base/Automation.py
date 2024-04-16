@@ -1,16 +1,14 @@
 import d20
 import discord
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-from Discord.Bot import bot
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Macro_Getter import get_macro_object
 from Backend.utils.parsing import ParseModifiers
 from Backend.utils.utils import direct_message
+from Discord.Bot import bot
 
 
 class AutoOutput:
@@ -20,15 +18,13 @@ class AutoOutput:
 
 
 class Automation:
-    def __init__(self, ctx, engine, guild):
+    def __init__(self, ctx, guild):
         self.ctx = ctx
-        self.engine = engine
+
         self.guild = guild
 
     async def gm_log(self, output_string, Target_Model):
         if self.guild.audit_log is None:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == self.guild.id))
 
@@ -55,8 +51,8 @@ class Automation:
         return "Save Function not set up for current system."
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
-        Target_Model = await get_character(target, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
+        Target_Model = await get_character(target, self.ctx, guild=self.guild)
 
         try:
             roll_result: d20.RollResult = d20.roll(f"({roll}){ParseModifiers(modifier)}")
@@ -67,7 +63,7 @@ class Automation:
             output_string = f"{character} {'heals' if healing else 'damages'}  {target} for: \n{roll_result}"
         except Exception:
             try:
-                Macro = await get_macro_object(self.ctx, self.engine, self.guild)
+                Macro = await get_macro_object(self.ctx, self.guild)
                 macro_roll = await Macro.raw_macro(character, roll)
                 # print(macro_roll)
 

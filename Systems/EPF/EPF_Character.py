@@ -13,8 +13,6 @@ from lark import Lark
 from sqlalchemy import select
 from sqlalchemy import true, Column, Integer, String, JSON, false, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.utils import time_keeping_functions
 from Systems.Base.Character import Character
@@ -27,9 +25,8 @@ from Backend.Database.database_models import (
     LookupBase,
     get_macro,
 )
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT
-from Backend.Database.engine import engine
-from Backend.Database.database_operations import get_asyncio_db_engine, DATABASE
+
+from Backend.Database.engine import async_session, lookup_session
 from Backend.utils.error_handling_reporting import error_not_initialized
 from Backend.utils.time_keeping_functions import get_time
 from Backend.utils.parsing import ParseModifiers
@@ -69,18 +66,16 @@ default_pic = (
 # Getter function for creation of the PF2_character class.  Necessary to load the character stats asynchronously on
 # initialization of the class.
 # If the stats haven't been computed, then the getter will run the calculate function before initialization
-async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
+async def get_EPF_Character(char_name, ctx, guild=None):
     logging.info("Generating PF2_Character Class")
-    if engine is None:
-        engine = engine
     guild = await get_guild(ctx, guild)
-    EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    EPF_tracker = await get_EPF_tracker(ctx, id=guild.id)
+
     try:
         async with async_session() as session:
             result = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = result.scalars().one()
-            return EPF_Character(char_name, ctx, engine, character, guild=guild)
+            return EPF_Character(char_name, ctx, character, guild=guild)
 
     except NoResultFound:
         try:
@@ -90,7 +85,7 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
                     select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower())
                 )
                 character = result.scalars().one()
-                return EPF_Character(char_name, ctx, engine, character, guild=guild)
+                return EPF_Character(char_name, ctx, character, guild=guild)
 
         except NoResultFound:
             return None
@@ -98,8 +93,8 @@ async def get_EPF_Character(char_name, ctx, guild=None, engine=None):
 
 # A class to hold the data model and functions involved in the enhanced pf2 features
 class EPF_Character(Character):
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
-        super().__init__(char_name, ctx, engine, character, guild)
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, guild=None):
+        super().__init__(char_name, ctx, character, guild)
         self.str_mod = character.str_mod
         self.dex_mod = character.dex_mod
         self.con_mod = character.con_mod
@@ -142,16 +137,15 @@ class EPF_Character(Character):
     async def character(self):
         logging.info("Loading Character")
         if self.guild is not None:
-            PF2_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+            PF2_tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
         else:
-            PF2_tracker = await get_EPF_tracker(self.ctx, self.engine)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            PF2_tracker = await get_EPF_tracker(self.ctx)
         try:
             async with async_session() as session:
                 result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
                 character = result.scalars().one()
                 if character.str_mod is None or character.nature_mod is None or character.ac_total is None:
-                    await calculate(self.ctx, self.engine, self.char_name)
+                    await calculate(self.ctx, self.char_name)
                     result = await session.execute(select(PF2_tracker).where(PF2_tracker.name == self.char_name))
                     character = result.scalars().one()
                 return character
@@ -163,7 +157,7 @@ class EPF_Character(Character):
         logging.info(f"Updating character: {self.char_name}")
         # print("UPDATING!!!!!!!!!!!")
 
-        await calculate(self.ctx, self.engine, self.char_name, guild=self.guild)
+        await calculate(self.ctx, self.char_name, guild=self.guild)
         self.character_model = await self.character()
         self.char_name = self.character_model.name
         self.id = self.character_model.id
@@ -505,9 +499,7 @@ class EPF_Character(Character):
             attacks[f"{attack} ({new_name})"] = original_attk
             # print(attacks)
 
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
-            Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
@@ -890,14 +882,13 @@ class EPF_Character(Character):
         logging.info("set_cc")
         # Get the Character's data
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         if target is None:
             target = self.char_name
             target_id = self.character_model.id
         else:
-            Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
                 target_id = result.scalars().one()
@@ -979,7 +970,7 @@ class EPF_Character(Character):
                 if not stable:
                     value = None
 
-                current_time = await get_time(self.ctx, self.engine)
+                current_time = await get_time(self.ctx)
                 if unit == "Minute":
                     end_time = current_time + datetime.timedelta(minutes=number)
                 elif unit == "Hour":
@@ -1031,8 +1022,7 @@ class EPF_Character(Character):
         :return: boolean - True for success, False for failure
         """
         logging.info("edit_cc")
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         try:
             async with async_session() as session:
@@ -1061,11 +1051,10 @@ class EPF_Character(Character):
             return False
 
     async def update_resistance(self, weak, item, amount):
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
         try:
             updated_resistance = self.resistance
             if amount == 0:
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
                     query = await session.execute(select(Condition).where(func.lower(Condition.item) == item.lower()))
                     condition_object = query.scalars().one()
@@ -1111,9 +1100,7 @@ class EPF_Character(Character):
         # print(await self.calculate_hp())
         if self.character_model.eidolon:
             # print("eidolon")
-            Partner = await get_EPF_Character(
-                self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
-            )
+            Partner = await get_EPF_Character(self.character_model.partner, self.ctx, guild=self.guild)
             await Partner.change_hp(amount, heal, post)
             await self.set_hp(Partner.current_hp)
             await self.update()
@@ -1125,9 +1112,7 @@ class EPF_Character(Character):
             await super().change_hp(amount, heal, post)
             # print(self.character_model.partner)
             if self.character_model.partner is not None:
-                Eidolon = await get_EPF_Character(
-                    self.character_model.partner, self.ctx, engine=self.engine, guild=self.guild
-                )
+                Eidolon = await get_EPF_Character(self.character_model.partner, self.ctx, guild=self.guild)
                 await Eidolon.set_hp(self.current_hp)
             await self.update()
             # print(self.current_hp)
@@ -1157,14 +1142,12 @@ class EPF_Character(Character):
             roll = d20.roll(init)
             init = roll.total
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:
                 Tracker = await get_EPF_tracker(
                     self.ctx,
-                    self.engine,
                 )
             else:
-                Tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
+                Tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
@@ -1273,7 +1256,7 @@ class EPF_Character(Character):
                     condition_embed.fields.append(
                         discord.EmbedField(
                             name=item.title,
-                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number),
+                            value=await time_keeping_functions.time_left(self.ctx, item.number),
                         )
                     )
             output = [embed, counter_embed, condition_embed]
@@ -1288,7 +1271,7 @@ class EPF_Character(Character):
             await self.ctx.respond("Failed")
 
 
-async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None):
+async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
     paramaters = {"id": pb_char_code}
     overwrite = False
 
@@ -1303,14 +1286,11 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
 
     try:
         guild = await get_guild(ctx, guild)
-        EPF_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        EPF_tracker = await get_EPF_tracker(ctx, id=guild.id)
 
         initiative_num = 0
 
-        # print(initiative_num)
         # Check to see if character already exists, if it does, update instead of creating
-
         async with async_session() as session:
             query = await session.execute(select(EPF_tracker).where(func.lower(EPF_tracker.name) == char_name.lower()))
             character = query.scalars().all()
@@ -1799,14 +1779,14 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
                     session.add(new_char)
                 await session.commit()
 
-        await delete_intested_items(char_name, ctx, guild, engine)
+        await delete_intested_items(char_name, ctx, guild)
         for item in pb["build"]["equipment"]:
             # print(item)
-            await invest_items(item[0], char_name, ctx, guild, engine)
-        await write_bonuses(ctx, engine, guild, char_name, bonus_dmg_list)
+            await invest_items(item[0], char_name, ctx, guild)
+        await write_bonuses(ctx, guild, char_name, bonus_dmg_list)
 
-        await calculate(ctx, engine, char_name, guild=guild)
-        Character = await get_EPF_Character(char_name, ctx, guild, engine)
+        await calculate(ctx, char_name, guild=guild)
+        Character = await get_EPF_Character(char_name, ctx, guild)
         # await Character.update()
 
         if not overwrite:
@@ -1822,19 +1802,16 @@ async def pb_import(ctx, engine, char_name, pb_char_code, guild=None, image=None
         return False
 
 
-async def calculate(ctx, engine, char_name, guild=None):
+async def calculate(ctx, char_name, guild=None):
     logging.info("Updating Character Model")
     guild = await get_guild(ctx, guild=guild)
     # Database boilerplate
     if guild is not None:
-        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
+        PF2_tracker = await get_EPF_tracker(ctx, id=guild.id)
     else:
-        PF2_tracker = await get_EPF_tracker(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    # print(char_name)
-    # bonuses, resistance = await parse_bonuses(ctx, engine, char_name, guild=guild)
-    bonuses, resistance = await parse(ctx, engine, char_name, guild=guild)
-    # print(bonuses)
+        PF2_tracker = await get_EPF_tracker(ctx)
+
+    bonuses, resistance = await parse(ctx, char_name, guild=guild)
 
     async with async_session() as session:
         try:
@@ -2020,7 +1997,7 @@ async def calculate(ctx, engine, char_name, guild=None):
                     # print(parsed_item[0])
                     macros.append(f"Lore: {parsed_item[0]}")
 
-            Macro = await get_macro(ctx, engine, id=guild.id)
+            Macro = await get_macro(ctx, id=guild.id)
             async with async_session() as macro_session:
                 result = await macro_session.execute(select(Macro.name).where(Macro.character_id == character.id))
                 macro_list = result.scalars().all()
@@ -2149,12 +2126,9 @@ class EPF_Spells(LookupBase):
 
 
 async def attack_lookup(attack, pathbuilder):
-    lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-    async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-    # print(attack["display"])
     try:
         display_name = attack["display"].strip()
-        async with async_session() as session:
+        async with lookup_session() as session:
             result = await session.execute(
                 select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == display_name.lower())
             )
@@ -2163,16 +2137,13 @@ async def attack_lookup(attack, pathbuilder):
         try:
             # print(attack["name"])
             item_name = attack["name"].strip()
-            async with async_session() as session:
+            async with lookup_session() as session:
                 result = await session.execute(
                     select(EPF_Weapon).where(func.lower(EPF_Weapon.name) == item_name.lower())
                 )
                 data = result.scalars().one()
         except Exception as e:
             return attack
-    # print(data.name, data.range, data.traits)
-
-    # await lookup_engine.dispose()
 
     if data.range is not None:
         if "thrown" in data.traits:
@@ -2208,10 +2179,9 @@ async def attack_lookup(attack, pathbuilder):
     return attack
 
 
-async def delete_intested_items(character, ctx, guild, engine):
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
+async def delete_intested_items(character, ctx, guild):
+    EPF_Tracker = await get_EPF_tracker(ctx, id=guild.id)
+    Condition = await get_condition(ctx, id=guild.id)
     async with async_session() as session:
         char_result = await session.execute(
             select(EPF_Tracker.id).where(func.lower(EPF_Tracker.name) == character.lower())
@@ -2233,14 +2203,11 @@ async def delete_intested_items(character, ctx, guild, engine):
             await session.commit()
 
 
-async def invest_items(item, character, ctx, guild, engine):
-    lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-    lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-    write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+async def invest_items(item, character, ctx, guild):
     condition_string = ""
     try:
         item = item.strip()
-        async with lookup_session() as lookup_session:
+        async with lookup_session() as lp_session:
             result = await lookup_session.execute(
                 select(EPF_Equipment.data).where(func.lower(EPF_Equipment.name) == item.lower())
             )
@@ -2253,12 +2220,10 @@ async def invest_items(item, character, ctx, guild, engine):
 
                     if data[key]["mode"] == "item":
                         condition_string += f"{key} {ParseModifiers(str(data[key]['bonus']))} i, "
-        # await lookup_engine.dispose()
         if condition_string != "":
-            # print(condition_string)
-            EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-            Condition = await get_condition(ctx, engine, id=guild.id)
-            async with write_session() as write_session:
+            EPF_Tracker = await get_EPF_tracker(ctx, id=guild.id)
+            Condition = await get_condition(ctx, id=guild.id)
+            async with async_session() as write_session:
                 char_result = await write_session.execute(select(EPF_Tracker.id).where(EPF_Tracker.name == character))
                 id = char_result.scalars().one()
 
@@ -2282,13 +2247,12 @@ async def invest_items(item, character, ctx, guild, engine):
         return False
 
 
-async def write_bonuses(ctx, engine, guild, character: str, bonuses: list):
+async def write_bonuses(ctx, guild, character: str, bonuses: list):
     bonus_string = ", ".join(bonuses)
     # print(bonus_string)
-    EPF_Tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    write_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with write_session() as write_session:
+    EPF_Tracker = await get_EPF_tracker(ctx, id=guild.id)
+    Condition = await get_condition(ctx, id=guild.id)
+    async with async_session() as write_session:
         char_result = await write_session.execute(
             select(EPF_Tracker.id).where(func.lower(EPF_Tracker.name) == character.lower())
         )
@@ -2313,11 +2277,10 @@ async def spell_lookup(spell: str):
     :param spell: string
     :return: tuple of Success (Boolean), Data (dict)
     """
-    lookup_engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=DATABASE)
-    lookup_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
+
     try:
         spell = spell.strip()
-        async with lookup_session() as lookup_session:
+        async with lookup_session() as lp_session:
             result = await lookup_session.execute(
                 select(EPF_Spells).where(func.lower(EPF_Spells.name) == spell.lower())
             )
@@ -2481,8 +2444,7 @@ async def process_condition_tree(
             # print(f"output: stable {stable_value}")
 
             if not condition.stable:
-                async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-                Condition = await get_condition(ctx, engine, id=None)
+                Condition = await get_condition(ctx, id=None)
 
                 async with async_session() as session:
                     result = await session.execute(select(Condition).where(Condition.id == condition.id))
@@ -2599,20 +2561,19 @@ async def first_pass_process(ctx: discord.ApplicationContext, tree, character_na
     return data
 
 
-async def parse(ctx, engine, char_name: str, guild=None):
+async def parse(ctx, char_name: str, guild=None):
     bonuses = {}
     resistances = {}
     guild = await get_guild(ctx, guild=guild)
-    Character_Model = await get_EPF_Character(char_name, ctx, guild=guild, engine=engine)
+    Character_Model = await get_EPF_Character(char_name, ctx, guild=guild)
 
     # Database boilerplate
     if guild is not None:
-        PF2_tracker = await get_EPF_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        PF2_tracker = await get_EPF_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
     else:
-        PF2_tracker = await get_EPF_tracker(ctx, engine)
-        Condition = await get_condition(ctx, engine)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        PF2_tracker = await get_EPF_tracker(ctx)
+        Condition = await get_condition(ctx)
 
     try:
         async with async_session() as session:

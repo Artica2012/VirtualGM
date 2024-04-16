@@ -7,14 +7,11 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
-from Discord.auto_complete import character_select, macro_select, character_select_gm, character_select_player
-
-# define global variables
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, log_roll
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.Database.database_operations import log_roll
 from Backend.utils.Macro_Getter import get_macro_object
+from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.utils import get_guild
+from Discord.auto_complete import character_select, macro_select, character_select_gm, character_select_player
 
 
 class MacroCog(commands.Cog):
@@ -31,8 +28,7 @@ class MacroCog(commands.Cog):
     )
     async def create(self, ctx: discord.ApplicationContext, character: str, macro_name: str, macro: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         result = False
         try:
             result = await Macro_Model.create_macro(character, macro_name, macro)
@@ -45,7 +41,6 @@ class MacroCog(commands.Cog):
             await ctx.send_followup(f"Macro Created:\n{character}:{macro_name}: {macro}", ephemeral=True)
         else:
             await ctx.send_followup("Macro Creation Failed", ephemeral=True)
-        # await engine.dispose()
 
     @macro.command(description="Delete Macro")
     @option(
@@ -60,8 +55,7 @@ class MacroCog(commands.Cog):
     )
     async def remove(self, ctx: discord.ApplicationContext, character: str, macro: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         result = False
         try:
             result = await Macro_Model.delete_macro(character, macro)
@@ -73,7 +67,6 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macro Deleted Successfully")
         else:
             await ctx.send_followup("Delete Action Failed")
-        # await engine.dispose()
 
     @macro.command(description="Delete All Macros")
     @option(
@@ -83,8 +76,7 @@ class MacroCog(commands.Cog):
     )
     async def remove_all(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         result = False
         try:
             result = await Macro_Model.delete_macro_all(character)
@@ -96,7 +88,6 @@ class MacroCog(commands.Cog):
             await ctx.send_followup("Macro Deleted Successfully")
         else:
             await ctx.send_followup("Delete Action Failed")
-        # await engine.dispose()
 
     @macro.command(description="Mass Import")
     @option(
@@ -107,8 +98,7 @@ class MacroCog(commands.Cog):
     @option("data", description="Import CSV data", required=True)
     async def bulk_create(self, ctx: discord.ApplicationContext, character: str, data: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         result = False
         try:
             result = await Macro_Model.mass_add(character, data)
@@ -131,8 +121,7 @@ class MacroCog(commands.Cog):
     @option("data", description="Variable string (var=value, var=value)", required=True)
     async def set_var(self, ctx: discord.ApplicationContext, character: str, data: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         result = False
         try:
             result = await Macro_Model.set_vars(character, data)
@@ -153,8 +142,7 @@ class MacroCog(commands.Cog):
     )
     async def show(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         try:
             await ctx.send_followup(f"{character}: Macros", view=await Macro_Model.show(character), ephemeral=True)
         except Exception as e:
@@ -171,8 +159,7 @@ class MacroCog(commands.Cog):
     )
     async def show_vars(self, ctx: discord.ApplicationContext, character: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Macro_Model = await get_macro_object(ctx, engine=engine)
+        Macro_Model = await get_macro_object(ctx)
         try:
             await ctx.send_followup(embed=await Macro_Model.show_vars(character), ephemeral=True)
         except Exception as e:
@@ -204,7 +191,6 @@ class MacroCog(commands.Cog):
         dc: int = 0,
         secret: str = "Open",
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
 
         try:
@@ -214,7 +200,7 @@ class MacroCog(commands.Cog):
                 guild = await get_guild(ctx, None, id=int(char_split[1]))
             else:
                 guild = await get_guild(ctx, None)
-            Macro_Model = await get_macro_object(ctx, engine=engine, guild=guild)
+            Macro_Model = await get_macro_object(ctx, guild=guild)
 
             output = await Macro_Model.roll_macro(character, macro, dc, modifier, guild=guild)
             if type(output) != list:

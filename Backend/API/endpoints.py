@@ -5,12 +5,10 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from fastapi.openapi.models import APIKey
 from sqlalchemy import select, false
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.API.api_utils import get_api_key, get_guild_by_id
 from Backend.Database.database_models import Log
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 
 router = APIRouter()
 
@@ -33,8 +31,6 @@ async def get_logs(guildid: int, timestamp=None, secret=False, api_key: APIKey =
             now = datetime.utcnow()
             goal = now - timedelta(days=30)
             # print(f"{now} | {goal}")
-
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             if secret:

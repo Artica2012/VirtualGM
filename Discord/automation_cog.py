@@ -7,6 +7,11 @@ import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
 
+from Backend.Database.database_operations import log_roll
+from Backend.utils.Automation_Getter import get_automation
+from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.utils.utils import get_guild
 from Discord.auto_complete import (
     character_select_gm,
     a_macro_select,
@@ -21,18 +26,6 @@ from Discord.auto_complete import (
     character_select_multi,
     dmg_type,
 )
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, log_roll
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.Automation_Getter import get_automation
-
-# ---------------------------------------------------------------
-# ---------------------------------------------------------------
-# UTILITY FUNCTIONS
-
-# Checks to see if the user of the slash command is the GM, returns a boolean
-from Backend.utils.Tracker_Getter import get_tracker_model
-from Backend.utils.utils import get_guild
 
 
 class AutomationCog(commands.Cog):
@@ -64,11 +57,10 @@ class AutomationCog(commands.Cog):
         target_modifier: str = "",
     ):
         logging.info("attack_cog attack")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         try:
             await ctx.response.defer()
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -83,7 +75,7 @@ class AutomationCog(commands.Cog):
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=roll, value="Invalid Target")])
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.update_pinned_tracker()
             else:
                 data = await Automation.attack(character, target, roll, vs, attack_modifier, target_modifier)
@@ -120,11 +112,10 @@ class AutomationCog(commands.Cog):
         modifier: str = "",
     ):
         logging.info("attack_cog save")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -171,11 +162,10 @@ class AutomationCog(commands.Cog):
         crit: bool = False,
     ):
         logging.info("attack_cog damage")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -208,7 +198,7 @@ class AutomationCog(commands.Cog):
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
             print("Logging")
             for item in embeds:
@@ -241,11 +231,10 @@ class AutomationCog(commands.Cog):
         damage_type_override: str = None,
     ):
         logging.info("attack_cog auto")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine)
+            Automation = await get_automation(ctx)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -281,7 +270,7 @@ class AutomationCog(commands.Cog):
                 )
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
             print("Logging")
             for item in embeds:
@@ -318,11 +307,10 @@ class AutomationCog(commands.Cog):
         damage_type_override: str = None,
     ):
         logging.info("attack_cog cast")
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         try:
-            Automation = await get_automation(ctx, engine=engine, guild=guild)
+            Automation = await get_automation(ctx, guild=guild)
             embeds = []
             if "," in target:
                 multi_target = target.split(",")
@@ -362,7 +350,7 @@ class AutomationCog(commands.Cog):
 
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
 
             print("Logging")

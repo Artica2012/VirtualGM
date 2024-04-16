@@ -3,21 +3,20 @@
 # system specific module
 
 import logging
+
 import discord
 from discord.commands import SlashCommandGroup, option
 from discord.ext import commands
-from Backend.Database.engine import engine
-from Discord import auto_complete
-from Systems.STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
-from Discord.auto_complete import character_select_gm
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.initiative_functions import update_member_list
+
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.utils.initiative_functions import update_member_list
 from Backend.utils.utils import get_guild
+from Discord import auto_complete
+from Discord.auto_complete import character_select_gm
+from Systems.STF.STF_GSHEET_IMPORTER import stf_g_sheet_import
 
 
 class STFCog(commands.Cog):
@@ -37,7 +36,7 @@ class STFCog(commands.Cog):
         await ctx.response.defer()
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, engine=engine)
+                Character_Model = await get_character(name, ctx)
                 result = await Character_Model.restore_stamina()
                 if result:
                     await ctx.send_followup(
@@ -47,7 +46,7 @@ class STFCog(commands.Cog):
                         f"{Character_Model.max_stamina}\n"
                         f"Resolve Points: {Character_Model.current_resolve}```"
                     )
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    Tracker_Model = await get_tracker_model(ctx)
                     await Tracker_Model.update_pinned_tracker()
 
                 else:
@@ -64,7 +63,6 @@ class STFCog(commands.Cog):
     @option("name", description="Character Name", required=True)
     @option("url", description="Public Google Sheet URL")
     async def import_character(self, ctx: discord.ApplicationContext, name: str, url: str = None, image=None):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         response = False
 
@@ -72,7 +70,7 @@ class STFCog(commands.Cog):
             guild = await get_guild(ctx, None)
             if guild.system == "STF":
                 response = await stf_g_sheet_import(ctx, name, url, image=image)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.update_pinned_tracker()
 
             else:
@@ -92,9 +90,9 @@ class STFCog(commands.Cog):
                 logging.info("Writing to Vault")
                 guild = await get_guild(ctx, None)
                 await update_member_list(guild.id)
-                Character = await get_character(name, ctx, guild=guild, engine=engine)
+                Character = await get_character(name, ctx, guild=guild)
                 if Character.player:
-                    Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                    Utilities = await get_utilities(ctx, guild=guild)
                     await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"stf_import: {e}")
@@ -107,8 +105,7 @@ class STFCog(commands.Cog):
     @option("resist_weak", choices=["Resistance", "Weakness", "Immunity"])
     async def resistances(self, ctx: discord.ApplicationContext, character, element, resist_weak, amount: int):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        Character = await get_character(character, ctx, engine=engine)
+        Character = await get_character(character, ctx)
 
         match resist_weak:  # noqa
             case "Resistance":

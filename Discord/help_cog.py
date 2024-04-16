@@ -1,23 +1,9 @@
 # help_cog.py
 
-import os
-
-# imports
 import discord
 from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
-from dotenv import load_dotenv
-
-# define global variables
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
 
 
 class HelpCog(commands.Cog):

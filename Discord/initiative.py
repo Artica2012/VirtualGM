@@ -13,10 +13,18 @@ from discord.ext import commands
 from sqlalchemy import select, func
 from sqlalchemy import true, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Discord.auto_complete as auto_complete
+from Backend.Database.database_models import get_tracker, get_condition
+from Backend.Database.engine import async_session
+from Backend.utils import utils
+from Backend.utils.Char_Getter import get_character
+from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
+from Backend.utils.initiative_functions import update_member_list
+from Backend.utils.time_keeping_functions import check_timekeeper
+from Backend.utils.utils import gm_check, get_guild
 from Discord.auto_complete import (
     character_select,
     character_select_gm,
@@ -26,17 +34,6 @@ from Discord.auto_complete import (
     initiative,
     character_select_con,
 )
-from Backend.Database.database_models import get_tracker, get_condition
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
-from Backend.utils.initiative_functions import edit_cc_interface, update_member_list
-from Backend.utils.time_keeping_functions import check_timekeeper
-from Backend.utils import utils
-from Backend.utils.Char_Getter import get_character
-from Backend.utils.Tracker_Getter import get_tracker_model
-from Backend.utils.Util_Getter import get_utilities
-from Backend.utils.utils import gm_check, get_guild
 
 
 #############################################################################
@@ -55,12 +52,9 @@ class InitiativeCog(commands.Cog):
         pass
 
     async def time_check_ac(self, ctx: discord.AutocompleteContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        if await check_timekeeper(ctx, engine):
-            # await engine.dispose()
+        if await check_timekeeper(ctx):
             return ["Round", "Minute", "Hour", "Day"]
         else:
-            # await engine.dispose()
             return ["Round"]
 
     # ---------------------------------------------------
@@ -91,7 +85,6 @@ class InitiativeCog(commands.Cog):
         image: str = None,
         number: int = 1,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         player_bool = False
         if player == "player":
             player_bool = True
@@ -102,10 +95,9 @@ class InitiativeCog(commands.Cog):
             number = 26
 
         try:
-            Utilities = await get_utilities(ctx, engine=engine)
+            Utilities = await get_utilities(ctx)
 
             try:
-                # new_hp = d20.roll(f"{hp}").total
                 await Utilities.add_character(
                     self.bot, f"{name}", hp, player_bool, initiative, image=image, multi=number
                 )
@@ -114,8 +106,7 @@ class InitiativeCog(commands.Cog):
                 report = ErrorReport(ctx, "/char add", e, self.bot)
                 await report.report()
 
-            # await ctx.respond("Creating Character")
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:
                 await Utilities.add_to_vault(name)
@@ -147,7 +138,6 @@ class InitiativeCog(commands.Cog):
         player: discord.User = None,
         image: str = "",
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         response = False
         if pc == "PC":
@@ -159,7 +149,7 @@ class InitiativeCog(commands.Cog):
 
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, guild=guild, engine=engine)
+                Character_Model = await get_character(name, ctx, guild=guild)
                 response = await Character_Model.edit_character(
                     name, hp, pc_bool, initiative, active, player, image, self.bot
                 )
@@ -171,7 +161,7 @@ class InitiativeCog(commands.Cog):
             if not response:
                 await ctx.respond("Error Editing Character", ephemeral=True)
             else:
-                Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx, guild=guild)
                 await Tracker_Model.update_pinned_tracker()
 
         else:
@@ -186,15 +176,13 @@ class InitiativeCog(commands.Cog):
     )
     @option("new_name", description="Name for the new NPC", input_type=str, required=True)
     async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str, number: int = 1):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
-        response = False
 
         if number > 26:
             number = 26
         embeds = []
         success = discord.Embed(title=name.title(), fields=[], color=discord.Color.dark_gold())
-        Utilities = await get_utilities(ctx, engine=engine)
+        Utilities = await get_utilities(ctx)
         for x in range(0, number):
             if number > 1:
                 modifier = f" {utils.NPC_Iterator[x]}"
@@ -205,7 +193,7 @@ class InitiativeCog(commands.Cog):
                 if response:
                     this_success = success.copy()
                     this_success.add_field(name=f"{new_name}{modifier}", value=f"Successfully copied.")
-                    Character_Model = await get_character(f"{new_name}{modifier}", ctx, engine=engine)
+                    Character_Model = await get_character(f"{new_name}{modifier}", ctx)
                     if Character_Model.player:
                         await Utilities.add_to_vault(Character_Model.char_name)
                         this_success.set_thumbnail(url=Character_Model.pic)
@@ -220,7 +208,7 @@ class InitiativeCog(commands.Cog):
                 embeds.append(failure)
 
         await ctx.send_followup(embeds=embeds)
-        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        Tracker_Model = await get_tracker_model(ctx)
         await Tracker_Model.update_pinned_tracker()
         guild = await get_guild(ctx, None)
         await update_member_list(guild.id)
@@ -233,7 +221,6 @@ class InitiativeCog(commands.Cog):
         autocomplete=npc_select,
     )
     async def delete(self, ctx: discord.ApplicationContext, name: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer(ephemeral=True)
         if await auto_complete.hard_lock(ctx, name):
             try:
@@ -247,7 +234,7 @@ class InitiativeCog(commands.Cog):
                 else:
                     result = False
                     try:
-                        Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                        Utilities = await get_utilities(ctx, guild=guild)
                         result = await Utilities.delete_character(character=name)
                     except Exception as e:
                         logging.warning(f"char delete {e}")
@@ -255,7 +242,7 @@ class InitiativeCog(commands.Cog):
                         await report.report()
                     if result:
                         await ctx.send_followup(f"{name} deleted", ephemeral=True)
-                        Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                        Tracker_Model = await get_tracker_model(ctx, guild=guild)
                         await Tracker_Model.update_pinned_tracker()
                         guild = await get_guild(ctx, None)
                         await update_member_list(guild.id)
@@ -280,10 +267,9 @@ class InitiativeCog(commands.Cog):
     )
     async def sheet(self, ctx: discord.ApplicationContext, name: str):
         await ctx.response.defer(ephemeral=True)
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         if await auto_complete.hard_lock(ctx, name):
             try:
-                Character_Model = await get_character(name, ctx, engine=engine)
+                Character_Model = await get_character(name, ctx)
                 embed = await Character_Model.get_char_sheet(bot=self.bot)
                 await ctx.send_followup(embeds=embed)
             except Exception as e:
@@ -301,11 +287,10 @@ class InitiativeCog(commands.Cog):
     @option("mode", choices=["start", "stop", "delete character", "reroll initiative"], required=True)
     @option("character", description="Character to delete", required=False)
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ""):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             guild = await get_guild(ctx, None)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
-            if not await gm_check(ctx, engine):
+            Tracker_Model = await get_tracker_model(ctx, guild=guild)
+            if not await gm_check(ctx):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
             else:
@@ -329,7 +314,7 @@ class InitiativeCog(commands.Cog):
                         )
                     else:
                         await ctx.response.defer(ephemeral=True)
-                        Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                        Utilities = await get_utilities(ctx, guild=guild)
                         result = await Utilities.delete_character(character)
                         if result:
                             await ctx.send_followup(f"{character} deleted", ephemeral=True)
@@ -360,10 +345,9 @@ class InitiativeCog(commands.Cog):
         description="Advance Initiative",
     )
     async def next(self, ctx: discord.ApplicationContext):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         try:
             await ctx.response.defer()
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Object = await get_tracker_model(ctx)
             await Tracker_Object.next()
 
         except NoResultFound:
@@ -386,7 +370,6 @@ class InitiativeCog(commands.Cog):
     )
     @option("initiative", autocomplete=initiative, description="Initiative")
     async def init(self, ctx: discord.ApplicationContext, character: str, initiative: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
         if character == guild.saved_order:
             await ctx.respond(
@@ -398,10 +381,10 @@ class InitiativeCog(commands.Cog):
             )
         else:
             try:
-                model = await get_character(character, ctx, guild=guild, engine=engine)
+                model = await get_character(character, ctx, guild=guild)
                 output = await model.set_init(initiative)
                 await ctx.respond(output)
-                Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Object = await get_tracker_model(ctx)
                 await Tracker_Object.update_pinned_tracker()
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
@@ -412,7 +395,6 @@ class InitiativeCog(commands.Cog):
     @option("name", description="Character Name", autocomplete=character_select)
     @option("mode", choices=["Damage", "Heal", "Temporary HP"])
     async def hp(self, ctx: discord.ApplicationContext, name: str, mode: str, amount: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         response = False
         await ctx.response.defer()
         try:
@@ -423,7 +405,7 @@ class InitiativeCog(commands.Cog):
 
         try:
             guild = await get_guild(ctx, None)
-            model = await get_character(name, ctx, guild=guild, engine=engine)
+            model = await get_character(name, ctx, guild=guild)
             if mode == "Temporary HP":
                 response = await model.add_thp(rolled_amount)
                 if response:
@@ -443,7 +425,7 @@ class InitiativeCog(commands.Cog):
         if not response:
             await ctx.respond("Failed", ephemeral=True)
         else:
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+            Tracker_Object = await get_tracker_model(ctx, guild=guild)
             await Tracker_Object.update_pinned_tracker()
 
     @cc.command(
@@ -479,7 +461,6 @@ class InitiativeCog(commands.Cog):
         data: str = "",
         linked_character: str = None,
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         await ctx.response.defer()
         guild = await get_guild(ctx, None)
         match flex:  # noqa
@@ -510,8 +491,7 @@ class InitiativeCog(commands.Cog):
 
         success_string = f"Condition {title} added on:"
         embeds = []
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, id=guild.id)
         if character == "All PCs":
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker.name).where(Tracker.player == true()))
@@ -531,7 +511,7 @@ class InitiativeCog(commands.Cog):
             embeds = []
             for char in item:
                 try:
-                    model = await get_character(char, ctx, guild=guild, engine=engine)
+                    model = await get_character(char, ctx, guild=guild)
                     response = await model.set_cc(
                         title, counter_bool, number, unit, auto_bool, flex=flex_bool, data=data, target=linked_character
                     )
@@ -569,7 +549,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup(embeds=embeds)
             except Exception:
                 await ctx.channel.send(embeds=embeds)
-        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        Tracker_Object = await get_tracker_model(ctx, guild=guild)
         await Tracker_Object.update_pinned_tracker()
 
     @cc.command(
@@ -582,11 +562,9 @@ class InitiativeCog(commands.Cog):
     async def modify(
         self, ctx: discord.ApplicationContext, mode: str, character: str, condition: str, value: str = None
     ):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
-        Character_Model = await get_character(character, ctx, engine=engine, guild=guild)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Character_Model = await get_character(character, ctx, guild=guild)
+        Condition = await get_condition(ctx, id=guild.id)
 
         try:
             async with async_session() as session:
@@ -651,7 +629,7 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.send_followup("Invalid Input")
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             await ctx.send_followup("Error")

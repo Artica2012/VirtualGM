@@ -1,23 +1,18 @@
 import json
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import Global
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Discord.Bot import bot
 
 
 async def get_user_tables(msg):
     user = msg["data"].get("user")
     output = {}
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
-    # print(len(all_guilds))
-    # print(all_guilds)
 
     for guild in all_guilds:
         try:

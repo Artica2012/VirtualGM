@@ -7,8 +7,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 from sqlalchemy import select, true
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 from cache import AsyncTTL
 
 from Backend.API.api_utils import (
@@ -19,9 +17,9 @@ from Backend.API.api_utils import (
     get_username_by_id,
     get_api_key,
 )
+from Backend.Database.engine import async_session
 from Discord.Bot import bot
 from Backend.Database.database_models import get_condition, Global
-from Backend.Database.engine import engine
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 
@@ -68,7 +66,7 @@ class ConditionBody(BaseModel):
 @router.get("/init/tracker")
 async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
-    Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(None, guild=guild)
     output_model = await Tracker_Model.raw_tracker_output(guild.initiative)
     guild_info = {
         "id": guild.id,
@@ -88,7 +86,6 @@ async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api
 @router.get("/init/user_tables")
 async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
     output = {}
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
@@ -124,7 +121,7 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
 @router.post("/init/next")
 async def init_start(request: InitManage, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
-    Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(None, guild=guild)
     try:
         # await Tracker_Model.advance_initiative()
         success = await Tracker_Model.block_next(None, request.user)
@@ -145,7 +142,7 @@ async def init_end(request: InitManage, background_tasks: BackgroundTasks, api_k
     GM = gm_check(str(request.user), guild)
     if GM:
         try:
-            Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+            Tracker_Model = await get_tracker_model(None, guild=guild)
             await Tracker_Model.end()
             success = True
         except Exception as e:
@@ -163,7 +160,7 @@ async def init_end(request: InitManage, background_tasks: BackgroundTasks, api_k
 @router.post("/init/set")
 async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
-    Character_Model = await get_character(request.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(request.character, None, guild=guild)
     success_string = await Character_Model.set_init(request.roll)
 
     background_tasks.add_task(update_trackers, guild)
@@ -176,7 +173,7 @@ async def init_set(request: InitSet, background_tasks: BackgroundTasks, api_key:
 @router.post("/init/hp")
 async def hp_set(body: HPSet, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     try:
         rolled_value = int(d20.roll(body.roll).total)
     except Exception:
@@ -231,10 +228,9 @@ async def get_cc_query(
     user: int, character: str, guildid: int, list: bool = True, api_key: APIKey = Depends(get_api_key)
 ):
     guild = await get_guild_by_id(guildid)
-    Character_Model = await get_character(character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(character, None, guild=guild)
     if list:
-        Condition = await get_condition(None, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Condition = await get_condition(None, id=guild.id)
         async with async_session() as session:
             result = await session.execute(
                 select(Condition.title)
@@ -250,7 +246,7 @@ async def get_cc_query(
 @router.post("/cc/new")
 async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
 
     success = await Character_Model.set_cc(
         body.title,
@@ -289,7 +285,7 @@ async def api_add_cc(body: ConditionBody, background_tasks: BackgroundTasks, api
 @router.delete("/cc/delete")
 async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     result = await Character_Model.delete_cc(body.title)
     if result and body.discord_post:
         embed = discord.Embed(
@@ -313,7 +309,7 @@ async def delete_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_
 @router.post("/cc/modify")
 async def modify_cc(body: ConditionBody, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
-    Character_Model = await get_character(body.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(body.character, None, guild=guild)
     success = False
     if body.number is not None:
         success = await Character_Model.edit_cc(body.title, body.number)

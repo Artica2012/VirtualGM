@@ -5,14 +5,11 @@ import discord
 from discord import Interaction
 from sqlalchemy import select, false, true, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.D4e.d4e_functions
 from Systems.Base.Character import Character
 from Backend.Database.database_models import get_tracker, get_condition
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.utils import get_guild
 
@@ -22,15 +19,12 @@ default_pic = (
 )
 
 
-async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
+async def get_D4e_Character(char_name, ctx, guild=None):
     # print(char_name)
     logging.info("Generating D4e_Character Class")
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     guild = await get_guild(ctx, guild)
-    tracker = await get_tracker(char_name, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    tracker = await get_tracker(char_name, id=guild.id)
+    Condition = await get_condition(ctx, id=guild.id)
     try:
         async with async_session() as session:
             result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
@@ -43,12 +37,12 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
                 .order_by(Condition.title.asc())
             )
             stat_list = result.scalars().all()
-            # print(len(stat_list))
+
             stats = {}
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
-            # print(stats)
-            return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
+
+            return D4e_Character(char_name, ctx, character, stats, guild=guild)
 
     except NoResultFound:
         try:
@@ -69,28 +63,27 @@ async def get_D4e_Character(char_name, ctx, guild=None, engine=None):
                 for item in stat_list:
                     stats[f"{item.title}"] = item.number
                 # print(stats)
-                return D4e_Character(char_name, ctx, engine, character, stats, guild=guild)
+                return D4e_Character(char_name, ctx, character, stats, guild=guild)
         except NoResultFound:
             return None
 
 
 class D4e_Character(Character):
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, stats, guild):
         self.ac = stats["AC"]
         self.fort = stats["Fort"]
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
-        super().__init__(char_name, ctx, engine, character, guild)
+        super().__init__(char_name, ctx, character, guild)
         self.pic = character.pic if character.pic is not None else default_pic
         self.default_vars = Systems.D4e.d4e_functions.default_vars
 
     async def conditions(self, no_time=False, flex=False):
         logging.info("Returning D4e Character Conditions")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
         else:
-            Condition = await get_condition(self.ctx, self.engine)
+            Condition = await get_condition(self.ctx)
         try:
             async with async_session() as session:
                 if no_time and not flex:
@@ -133,8 +126,7 @@ class D4e_Character(Character):
     async def change_hp(self, amount: int, heal: bool, post=True):
         logging.info("Edit HP")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
                 character = char_result.scalars().one()
@@ -194,8 +186,7 @@ class D4e_Character(Character):
     ):
         logging.info("edit_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
             # Give an error message if the character is the active character and making them inactive
             if self.guild.saved_order == name:
@@ -225,9 +216,8 @@ class D4e_Character(Character):
 
                 await session.commit()
 
-            response = await edit_stats(self.ctx, self.engine, name, bot)
+            response = await edit_stats(self.ctx, name, bot)
             if response:
-                # await update_pinned_tracker(ctx, engine, bot)
                 return True
             else:
                 return False
@@ -242,23 +232,15 @@ class D4e_Character(Character):
             return False
 
 
-async def edit_stats(ctx, engine, name: str, bot):
+async def edit_stats(ctx, name: str, bot):
     # print("edit_stats")
     try:
-        if engine is None:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 
-        Character_Model = await get_D4e_Character(name, ctx, guild=guild, engine=engine)
+        Character_Model = await get_D4e_Character(name, ctx, guild=guild)
         # condition_dict = {}
 
-        # for con in await Character_Model.conditions():
-        #     await asyncio.sleep(0)
-        #     print(con)
-        #     condition_dict[con.title] = con.number
-        # print("GENERATING MODAL")
-        # print(condition_dict)
-        editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, engine=engine, title=name, bot=bot)
+        editModal = D4eEditCharacterModal(character=Character_Model, ctx=ctx, title=name, bot=bot)
         # print(editModal)
         result = await ctx.send_modal(editModal)
 
@@ -270,12 +252,11 @@ async def edit_stats(ctx, engine, name: str, bot):
 
 # D&D 4e Specific
 class D4eEditCharacterModal(discord.ui.Modal):
-    def __init__(self, character, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+    def __init__(self, character, ctx: discord.ApplicationContext, bot, *args, **kwargs):
         self.character = character
         self.name = character.name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = engine
         self.bot = bot
         super().__init__(
             discord.ui.InputText(label="AC", placeholder="Armor Class", value=character.ac),
@@ -291,10 +272,8 @@ class D4eEditCharacterModal(discord.ui.Modal):
         await interaction.response.send_message(f"{self.name} Updated")
         guild = await get_guild(self.ctx, None)
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Character_Model = await get_D4e_Character(self.name, self.ctx, guild=guild, engine=self.engine)
-
-        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+        Character_Model = await get_D4e_Character(self.name, self.ctx, guild=guild)
+        Condition = await get_condition(self.ctx, id=guild.id)
 
         for item in self.children:
             async with async_session() as session:
@@ -307,9 +286,6 @@ class D4eEditCharacterModal(discord.ui.Modal):
                 condition.number = int(item.value)
                 await session.commit()
 
-        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
-        # await Tracker_Model.update_pinned_tracker()
-        # print('Tracker Updated')
         await self.ctx.channel.send(embeds=await Character_Model.get_char_sheet(bot=self.bot))
         return True
 

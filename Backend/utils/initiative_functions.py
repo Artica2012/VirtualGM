@@ -3,27 +3,21 @@ import logging
 import discord
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, get_condition, Global
-from Backend.Database.database_operations import get_asyncio_db_engine
-from Backend.Database.engine import engine
-from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
+from Backend.Database.engine import async_session
 from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
 from Backend.utils.utils import get_guild
 
 
-async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: str, condition: str, bot, guild=None):
+async def edit_cc_interface(ctx: discord.ApplicationContext, character: str, condition: str, bot, guild=None):
     logging.info("edit_cc_interface")
     view = discord.ui.View()
     try:
         guild = await get_guild(ctx, guild)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
+        Tracker = await get_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
         async with async_session() as session:
             result = await session.execute(select(Tracker.id).where(Tracker.name == character))
             char = result.scalars().one()
@@ -68,16 +62,13 @@ async def edit_cc_interface(ctx: discord.ApplicationContext, engine, character: 
         return [None, None]
 
 
-async def increment_cc(
-    ctx: discord.ApplicationContext, engine, character: str, condition: str, add: bool, bot, guild=None
-):
+async def increment_cc(ctx: discord.ApplicationContext, character: str, condition: str, add: bool, bot, guild=None):
     logging.info("increment_cc")
 
     try:
         guild = await get_guild(ctx, guild)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
 
         async with async_session() as session:
             result = await session.execute(select(Tracker.id).where(Tracker.name == character))
@@ -133,7 +124,6 @@ async def increment_cc(
 class ConditionMinus(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         self.character = character
         self.condition = condition
@@ -142,10 +132,10 @@ class ConditionMinus(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
+            Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
             await interaction.response.defer()
-            await increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
-            output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
+            await increment_cc(self.ctx, self.character, self.condition, False, self.bot)
+            output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
@@ -156,7 +146,6 @@ class ConditionMinus(discord.ui.Button):
 class ConditionAdd(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, character, condition, guild=None):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
         self.character = character
         self.condition = condition
@@ -166,9 +155,9 @@ class ConditionAdd(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
-            await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
-            output = await edit_cc_interface(self.ctx, self.engine, self.character, self.condition, self.bot)
+            Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
+            await increment_cc(self.ctx, self.character, self.condition, True, self.bot)
+            output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
             await interaction.edit_original_response(content=output[0], view=output[1])
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
@@ -178,8 +167,7 @@ class ConditionAdd(discord.ui.Button):
 
 async def update_member_list(guild_id):
     member_list = []
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    Tracker = await get_tracker(None, engine, id=guild_id)
+    Tracker = await get_tracker(None, id=guild_id)
     async with async_session() as session:
         result = await session.execute(select(Tracker))
     char_list = result.scalars().all()

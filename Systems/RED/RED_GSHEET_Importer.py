@@ -4,13 +4,10 @@ import discord
 import numpy
 import pandas as pd
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.RED.RED_Character import get_RED_Character
 from Backend.Database.database_models import get_RED_tracker
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.utils import get_guild
 
 Interpreter = {
@@ -21,7 +18,7 @@ Interpreter = {
 
 
 async def red_g_sheet_import(
-    ctx: discord.ApplicationContext, char_name: str, base_url: str, player: bool, engine=None, guild=None, image=None
+    ctx: discord.ApplicationContext, char_name: str, base_url: str, player: bool, guild=None, image=None
 ):
     try:
         parsed_url = base_url.split("/")
@@ -35,11 +32,8 @@ async def red_g_sheet_import(
         # print(df)
 
         guild = await get_guild(ctx, guild)
-        if engine is None:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
 
-        red_tracker = await get_RED_tracker(ctx, engine, id=guild.id)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        red_tracker = await get_RED_tracker(ctx, id=guild.id)
         async with async_session() as session:
             query = await session.execute(select(red_tracker).where(func.lower(red_tracker.name) == char_name.lower()))
             character = query.scalars().all()
@@ -55,9 +49,9 @@ async def red_g_sheet_import(
         decision_header = headers[0].strip()
 
         if decision_header == "CyberpunkRED:":
-            character = await red_g_sheet_character_import(ctx, char_name, df, engine, guild)
+            character = await red_g_sheet_character_import(df)
         elif decision_header == "CyberpunkRED ICE:":
-            character = await red_g_sheet_NET_import(ctx, char_name, df, engine, guild)
+            character = await red_g_sheet_NET_import(df)
         else:
             return False
 
@@ -120,9 +114,8 @@ async def red_g_sheet_import(
                     session.add(new_char)
                 await session.commit()
 
-        Character = await get_RED_Character(char_name, ctx, guild, engine)
+        Character = await get_RED_Character(char_name, ctx, guild)
         # Write the conditions
-        # await write_resitances(resistance, Character, ctx, guild, engine)    if not overwrite:
         if not overwrite:
             if guild.initiative is not None:
                 # print("In initiative")
@@ -139,7 +132,7 @@ async def red_g_sheet_import(
         return False
 
 
-async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+async def red_g_sheet_character_import(df):
     logging.info("g-sheet-char")
     try:
         df.rename(
@@ -290,7 +283,7 @@ async def red_g_sheet_character_import(ctx: discord.ApplicationContext, char_nam
     return character
 
 
-async def red_g_sheet_NET_import(ctx: discord.ApplicationContext, char_name: str, df, engine, guild):
+async def red_g_sheet_NET_import(df):
     logging.info("g-sheet-char")
     try:
         df.rename(

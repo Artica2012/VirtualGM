@@ -6,12 +6,10 @@ from fastapi.openapi.models import APIKey
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.API.api_utils import get_guild_by_id, gm_check, api_hard_lock, get_api_key
 from Backend.Database.database_models import get_tracker
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Util_Getter import get_utilities
 from cache import AsyncTTL
@@ -32,8 +30,7 @@ async def get_chars(user: str, guildid: int, all_char: bool = False, api_key: AP
     GM = gm_check(user, guild)
 
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(None, engine, id=guild.id)
+        Tracker = await get_tracker(None, id=guild.id)
         async with async_session() as session:
             if GM or all_char:
                 char_result = await session.execute(select(Tracker.name).order_by(Tracker.name.asc()))
@@ -54,10 +51,10 @@ async def get_chars(user: str, guildid: int, all_char: bool = False, api_key: AP
 @router.post("/char/delete")
 async def char_delete(char_data: CharData, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(char_data.guild)
-    Character_Model = await get_character(char_data.character, None, guild=guild, engine=engine)
+    Character_Model = await get_character(char_data.character, None, guild=guild)
     if api_hard_lock(guild, char_data.user, Character_Model):
         try:
-            Utilities = await get_utilities(None, guild, engine=engine)
+            Utilities = await get_utilities(None, guild)
             success = await Utilities.delete_character(char_data.character)
         except Exception as e:
             success = False

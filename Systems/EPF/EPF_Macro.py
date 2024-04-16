@@ -5,11 +5,10 @@ import d20
 import discord
 from sqlalchemy import select, true, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Support
 import Systems.PF2e.pf2_functions
+from Backend.Database.engine import async_session
 from Systems.Base.Macro import Macro
 from Systems.EPF.EPF_Character import get_EPF_Character, EPF_Character
 from Backend.Database.database_models import get_EPF_tracker
@@ -18,8 +17,8 @@ from Backend.utils.parsing import eval_success
 
 
 class EPF_Macro(Macro):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
         # print(f"{roll} - {dc}")
@@ -40,8 +39,7 @@ class EPF_Macro(Macro):
 
         if raw is None:
             if character.lower() in ["all pcs", "all npcs", "all characters"]:
-                EPF_tracker = await get_EPF_tracker(self.ctx, self.engine, id=self.guild.id)
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+                EPF_tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
                 try:
                     if character.lower() == "all pcs":
                         async with async_session() as session:
@@ -67,7 +65,7 @@ class EPF_Macro(Macro):
         embed_list = []
         for item in character_list:
             # print(character)
-            Character_Model = await get_character(item, self.ctx, guild=self.guild, engine=self.engine)
+            Character_Model = await get_character(item, self.ctx, guild=self.guild)
             if raw is not None:
                 # print("Raw")
                 dice_result = raw.get("result")
@@ -102,7 +100,7 @@ class EPF_Macro(Macro):
     async def raw_roll_macro(self, character, macro_name, dc, modifier):
         logging.info("EPF roll_macro")
         print(character)
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         dice_result = await Character_Model.roll_macro(macro_name, modifier)
         print(f"dice_result: {dice_result}")
         # print(dice_result)
@@ -123,12 +121,12 @@ class EPF_Macro(Macro):
 
     async def get_macro_list(self, character: str):
         logging.info("get_macro")
-        Character_Model = await get_character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         macro_list = await Character_Model.macro_list()
         return macro_list
 
     async def show_vars(self, character):
-        Character_Model = await get_character(character, self.ctx, guild=self.guild, engine=self.engine)
+        Character_Model = await get_character(character, self.ctx, guild=self.guild)
         embed = discord.Embed(
             title=Character_Model.char_name,
             fields=[
@@ -140,7 +138,7 @@ class EPF_Macro(Macro):
         return embed
 
     async def show(self, character):
-        Character_Model = await get_EPF_Character(character, self.ctx, engine=self.engine, guild=self.guild)
+        Character_Model = await get_EPF_Character(character, self.ctx, guild=self.guild)
         macro_list = await Character_Model.macro_list()
         # print(macro_list)
         view = discord.ui.View(timeout=None)
@@ -152,7 +150,6 @@ class EPF_Macro(Macro):
                 await asyncio.sleep(0)
                 button = self.MacroButton(
                     self.ctx,
-                    self.engine,
                     self.guild,
                     Character_Model,
                     macro,
@@ -167,9 +164,8 @@ class EPF_Macro(Macro):
         return view
 
     class MacroButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, engine, guild, character, macro, title):
+        def __init__(self, ctx: discord.ApplicationContext, guild, character, macro, title):
             self.ctx = ctx
-            self.engine = engine
             self.character: EPF_Character = character
             self.macro = macro
             self.guild = guild
@@ -181,7 +177,7 @@ class EPF_Macro(Macro):
             )
 
         async def callback(self, interaction: discord.Interaction):
-            Macro = EPF_Macro(self.ctx, self.engine, self.guild)
+            Macro = EPF_Macro(self.ctx, self.guild)
 
             # print(self.macro)
             output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)

@@ -5,10 +5,8 @@ from datetime import datetime
 import discord
 from sqlalchemy import select, true, or_
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-from Backend.Database.engine import engine
+from Backend.Database.engine import async_session
 from Systems.Base.Tracker import Tracker
 from Backend.Database.database_models import get_condition, get_tracker, Global
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
@@ -17,25 +15,22 @@ from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
 
 
-async def get_RED_Tracker(ctx, engine, init_list, bot, guild=None):
-    if engine is None:
-        engine = engine
+async def get_RED_Tracker(ctx, bot, guild=None):
     guild = await get_guild(ctx, guild)
-    init_list = await get_init_list(ctx, engine, guild=guild)
-    return RED_Tracker(ctx, engine, init_list, bot, guild=guild)
+    init_list = await get_init_list(ctx, guild=guild)
+    return RED_Tracker(ctx, init_list, bot, guild=guild)
 
 
-async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_init_list(ctx: discord.ApplicationContext, guild=None):
     logging.info("get_init_list")
     try:
         if guild is not None:
             try:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
+                Tracker = await get_tracker(ctx, id=guild.id)
             except Exception:
-                Tracker = await get_tracker(ctx, engine)
+                Tracker = await get_tracker(ctx)
         else:
-            Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             result = await session.execute(
@@ -56,21 +51,19 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 
 class RED_Tracker(Tracker):
-    def __int__(self, ctx, engine, init_list, bot, guild=None):
-        super().__init__(ctx, engine, init_list, bot)
-        self.guild = guild
+    def __int__(self, ctx, init_list, bot, guild=None):
+        super().__init__(ctx, init_list, bot, guild=guild)
 
-    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+    async def get_init_list(self, ctx: discord.ApplicationContext, guild=None):
         logging.info("get_init_list")
         try:
             if guild is not None:
                 try:
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Tracker = await get_tracker(ctx, id=guild.id)
                 except Exception:
-                    Tracker = await get_tracker(ctx, engine)
+                    Tracker = await get_tracker(ctx)
             else:
-                Tracker = await get_tracker(ctx, engine)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+                Tracker = await get_tracker(ctx)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -98,10 +91,9 @@ class RED_Tracker(Tracker):
         round = self.guild.round
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             logging.info(f"BAI1: guild: {self.guild.id}")
 
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker))
                 character = char_result.scalars().all()
@@ -115,7 +107,7 @@ class RED_Tracker(Tracker):
                     first_pass = True
                     for char in character:
                         await asyncio.sleep(0)
-                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        model = await get_character(char.name, self.ctx, guild=self.guild)
                         # print(model.char_name, model.init)
                         if model.init == 0:
                             await asyncio.sleep(0)
@@ -132,13 +124,9 @@ class RED_Tracker(Tracker):
             logging.info("BAI3: updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(
-                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[0].name, self.ctx, guild=self.guild)
             else:
-                current_character = await get_character(
-                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.guild.saved_order, self.ctx, guild=self.guild)
 
             # Record the initial to break an infinite loop
             iterations = 0
@@ -168,7 +156,7 @@ class RED_Tracker(Tracker):
                             logging.info("BAI7: timekeeping")
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             await current_character.check_time_cc()
                             logging.info("BAI8: cc checked")
 
@@ -195,7 +183,7 @@ class RED_Tracker(Tracker):
                         if self.guild.timekeeping:  # if timekeeping is enable on the server
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             # await current_character.check_time_cc(self.bot)
                             logging.info("BAI16: cc checked")
 
@@ -213,9 +201,7 @@ class RED_Tracker(Tracker):
                     block_done = True
 
                 turn_list.append(self.init_list[init_pos].name)
-                current_character = await get_character(
-                    self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[init_pos].name, self.ctx, guild=self.guild)
                 iterations += 1
                 if iterations >= len(self.init_list):  # stop an infinite loop
                     block_done = True
@@ -256,7 +242,6 @@ class RED_Tracker(Tracker):
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative
         if self.guild.block and self.guild.initiative is None:  # Should this be initiative is not None?
@@ -267,7 +252,7 @@ class RED_Tracker(Tracker):
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -279,8 +264,7 @@ class RED_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -293,7 +277,7 @@ class RED_Tracker(Tracker):
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             # if round = 0, were not in initiative, and act accordingly
             if self.guild.round != 0:
@@ -305,7 +289,7 @@ class RED_Tracker(Tracker):
             gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
             # Iterate through the init list
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 # If there is an inactive list, and this is at the transition, place the line marker
                 if len(total_list) > active_length and x == active_length:
@@ -387,7 +371,7 @@ class RED_Tracker(Tracker):
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            current_time = await get_time(self.ctx, guild=self.guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -436,7 +420,7 @@ class RED_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = engine.engine
+
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -447,8 +431,7 @@ class RED_Tracker(Tracker):
                 # print(interaction.message.id)
                 Tracker_model = RED_Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -459,7 +442,6 @@ class RED_Tracker(Tracker):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -470,8 +452,7 @@ class RED_Tracker(Tracker):
             try:
                 Tracker_Model = RED_Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

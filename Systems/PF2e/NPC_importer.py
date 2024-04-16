@@ -1,13 +1,10 @@
 # NPC_importer.py
 import asyncio
-import os
 
 import d20
 import discord
-from dotenv import load_dotenv
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
+from Backend.Database.engine import async_session, lookup_session
 
 from Backend.Database.database_models import (
     get_macro,
@@ -21,33 +18,11 @@ from Backend.utils.utils import get_guild
 
 # imports
 
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
 
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
-
-
-async def npc_lookup(
-    ctx: discord.ApplicationContext, engine, lookup_engine, bot, name: str, lookup: str, elite: str, image: str = None
-):
-    async_session = sessionmaker(lookup_engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
+async def npc_lookup(ctx: discord.ApplicationContext, name: str, lookup: str, elite: str, image: str = None):
+    async with lookup_session() as session:
         result = await session.execute(select(NPC).where(NPC.name == lookup))
         data = result.scalars().one()
-    # await lookup_engine.dispose()
 
     # Add the character
 
@@ -81,26 +56,21 @@ async def npc_lookup(
         init_string = f"{data.init}+{stat_mod}"
 
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
-        # print(guild.initiative)
-        # print(int(self.data.init)+stat_mod)
         initiative_num = 0
         if guild.initiative is not None:
             try:
-                # print(f"Init: {init}")
                 initiative_num = int(data.init) + stat_mod
-                # print(initiative_num)
+
             except Exception:
                 try:
                     roll = d20.roll(init_string)
                     initiative_num = roll.total
-                    # print(initiative_num)
                 except Exception:
                     initiative_num = 0
 
         async with async_session() as session:
-            Tracker = await get_tracker(ctx, engine, id=guild.id)
+            Tracker = await get_tracker(ctx, id=guild.id)
             async with session.begin():
                 tracker = Tracker(
                     name=name,
@@ -116,7 +86,7 @@ async def npc_lookup(
                 session.add(tracker)
             await session.commit()
 
-        Condition = await get_condition(ctx, engine, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == name))
             character = char_result.scalars().one()
@@ -171,7 +141,7 @@ async def npc_lookup(
 
         # Parse Macros
         attack_list = data.macros.split("::")
-        Macro = await get_macro(ctx, engine, id=guild.id)
+        Macro = await get_macro(ctx, id=guild.id)
         async with session.begin():
             for x, attack in enumerate(attack_list[:-1]):
                 await asyncio.sleep(0)

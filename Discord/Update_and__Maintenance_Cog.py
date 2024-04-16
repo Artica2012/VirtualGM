@@ -7,18 +7,13 @@ import logging
 import discord
 from discord.ext import commands, tasks
 from sqlalchemy import select, true
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.D4e.D4e_Tracker
 import Systems.D4e.d4e_functions
 from Backend.Database.database_models import Global, Character_Vault, Base, get_tracker
-from Backend.Database.engine import engine
+from Backend.Database.engine import engine, async_session
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
-
-
-# from main import tracemalloc
 
 
 # ---------------------------------------------------------------
@@ -35,7 +30,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
     @tasks.loop(minutes=1)
     async def update_status(self):
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 guild = await session.execute(select(Global))
                 result = guild.scalars().all()
@@ -67,14 +61,13 @@ class Update_and_Maintenance_Cog(commands.Cog):
         # We recreate the view as we did in the /post command.
         view = discord.ui.View(timeout=None)
 
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global).where(Global.last_tracker.isnot(None)))
             guild_list = result.scalars().all()
 
             for guild in guild_list:
                 try:
-                    Tracker_Object = await get_tracker_model(None, self.bot, engine=engine, guild=guild)
+                    Tracker_Object = await get_tracker_model(None, guild=guild)
                     Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
                     Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
                 except Exception as e:
@@ -105,7 +98,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
             guild_list = result.scalars().all()
 
             for guild in guild_list:
-                Tracker = await get_tracker(None, engine, id=guild.id)
+                Tracker = await get_tracker(None, id=guild.id)
                 async with async_session() as tracker_session:
                     result = await tracker_session.execute(select(Tracker).where(Tracker.player == true()))
                     character_list = result.scalars().all()
@@ -155,7 +148,6 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
     async def get_stats(self):
         try:
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 guild = await session.execute(select(Global))
                 result = guild.scalars().all()
@@ -198,22 +190,20 @@ class Update_and_Maintenance_Cog(commands.Cog):
             return ""
 
     async def force_refresh(self):
-        # print("Forcing Refresh")
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Global))
             all_guilds = result.scalars().all()
 
         for guild in all_guilds:
             try:
-                Tracker = await get_tracker(None, engine, id=guild.id)
+                Tracker = await get_tracker(None, id=guild.id)
                 # Condition = await get_condition(None, engine, id=guild.id)
                 async with async_session() as session:
                     result = await session.execute(select(Tracker))
                 char_list = result.scalars().all()
 
                 for char in char_list:
-                    Character_Model = await get_character(char.name, None, engine=engine, guild=guild)
+                    Character_Model = await get_character(char.name, None, guild=guild)
                     await Character_Model.update()
 
                     # if guild.system == "EPF":
@@ -234,7 +224,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     # print(Character_Model.char_name, "updated.")
 
                 try:
-                    Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
+                    Tracker_Model = await get_tracker_model(None, guild=guild)
                     await Tracker_Model.update_pinned_tracker()
                 except Exception:
                     pass
@@ -247,16 +237,14 @@ def setup(bot):
 
 
 async def guild_audit_members():
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         all_guilds = result.scalars().all()
 
     for guild in all_guilds:
         try:
-            # print(guild.id)
             member_list = []
-            Tracker = await get_tracker(None, engine, id=guild.id)
+            Tracker = await get_tracker(None, id=guild.id)
             async with async_session() as session:
                 result = await session.execute(select(Tracker))
             char_list = result.scalars().all()

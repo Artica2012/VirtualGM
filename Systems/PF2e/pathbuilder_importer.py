@@ -11,11 +11,10 @@ import aiohttp
 import discord
 from dotenv import load_dotenv
 from sqlalchemy import select, false, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import d20
 from Backend.Database.database_models import get_macro, get_tracker, get_condition
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.utils import get_guild
@@ -40,9 +39,7 @@ DATABASE = os.getenv("DATABASE")
 
 
 # Import a PF2e character from pathbuilder
-async def pathbuilder_import(
-    ctx: discord.ApplicationContext, engine, bot, name: str, pb_char_code: str, image: str = None
-):
+async def pathbuilder_import(ctx: discord.ApplicationContext, bot, name: str, pb_char_code: str, image: str = None):
     stats = {}
     macro = {}
 
@@ -210,11 +207,10 @@ async def pathbuilder_import(
 
     try:
         # Start off by checking to see if the character already exists, and if so, delete it before importing
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         guild = await get_guild(ctx, None)
-        Tracker = await get_tracker(ctx, engine, id=guild.id)
-        Condition = await get_condition(ctx, engine, id=guild.id)
-        Macro = await get_macro(ctx, engine, id=guild.id)
+        Tracker = await get_tracker(ctx, id=guild.id)
+        Condition = await get_condition(ctx, id=guild.id)
+        Macro = await get_macro(ctx, id=guild.id)
 
         initiative = 0
         if guild.initiative is not None:
@@ -261,7 +257,7 @@ async def pathbuilder_import(
                         session.add(new_char)
                     await session.commit()
 
-            Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx, guild=guild)
             await Tracker_Model.init_integrity()
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))

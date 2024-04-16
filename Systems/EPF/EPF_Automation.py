@@ -13,8 +13,8 @@ from Backend.utils.utils import get_guild
 
 
 class EPF_Automation(Automation):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def attack(self, character, target, roll, vs, attack_modifier, target_modifier, multi=False):
         Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
@@ -26,9 +26,7 @@ class EPF_Automation(Automation):
 
     async def damage(self, bot, character, target, roll, modifier, healing, damage_type: str, crit=False, multi=False):
         if roll == "Treat Wounds":
-            return await treat_wounds(
-                self.ctx, character, target, damage_type, modifier, engine=self.engine, guild=self.guild
-            )
+            return await treat_wounds(self.ctx, character, target, damage_type, modifier, guild=self.guild)
 
         Attack = await get_attack(character, roll, self.ctx, guild=self.guild)
         embed = await Attack.damage(target, modifier, healing, damage_type, crit)
@@ -75,9 +73,9 @@ class EPF_Automation(Automation):
         return await Spell.cast(target, attack_modifier, target_modifier, dmg_modifier, dmg_type_override)
 
 
-async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None):
-    Character_Model = await get_EPF_Character(character, ctx, engine=engine, guild=guild)
-    Target_Model = await get_EPF_Character(target, ctx, engine=engine, guild=guild)
+async def treat_wounds(ctx, character, target, dc, modifier, guild=None):
+    Character_Model = await get_EPF_Character(character, ctx, guild=guild)
+    Target_Model = await get_EPF_Character(target, ctx, guild=guild)
     # print("treat wounds")
     guild = await get_guild(ctx, guild)
     total = 0
@@ -155,7 +153,7 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
             time = 60
         await Target_Model.set_cc("Wounds Treated", False, time, "Minute", True)
 
-    Tracker_Model = await get_tracker_model(ctx, None, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(ctx, guild=guild)
     await Tracker_Model.update_pinned_tracker()
 
     embed = discord.Embed(

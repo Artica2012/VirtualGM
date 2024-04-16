@@ -2,39 +2,20 @@
 import asyncio
 import datetime
 import logging
-import os
 
 import d20
 import discord
-from dotenv import load_dotenv
+
 from sqlalchemy import select, false, true, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Discord import Bot
 from Backend.utils import time_keeping_functions
 from Backend.Database.database_models import get_tracker, get_condition
 from Backend.utils.error_handling_reporting import error_not_initialized
 from Backend.utils.time_keeping_functions import get_time
-
-load_dotenv(verbose=True)
-if os.environ["PRODUCTION"] == "True":
-    # TOKEN = os.getenv("TOKEN")
-    USERNAME = os.getenv("Username")
-    PASSWORD = os.getenv("Password")
-    HOSTNAME = os.getenv("Hostname")
-    PORT = os.getenv("PGPort")
-else:
-    # TOKEN = os.getenv("BETA_TOKEN")
-    USERNAME = os.getenv("BETA_Username")
-    PASSWORD = os.getenv("BETA_Password")
-    HOSTNAME = os.getenv("BETA_Hostname")
-    PORT = os.getenv("BETA_PGPort")
-
-GUILD = os.getenv("GUILD")
-SERVER_DATA = os.getenv("SERVERDATA")
-DATABASE = os.getenv("DATABASE")
+import Backend.Database.engine
+from Backend.Database.engine import async_session
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1028702442927431720/1107574197061963807/"
@@ -45,7 +26,7 @@ default_vars = {}
 
 
 class Character:
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, guild=None):
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, guild=None):
         """
         Character Class. This is the character model. The base class contains the basic character model which each
         individual system subclasses from.
@@ -54,14 +35,13 @@ class Character:
         will asynchronously query the database and then feed the data into the character model.
         :param char_name: string
         :param ctx: discord application context
-        :param engine:
         :param character: character data from the database via get_character function output
         :param guild:
         """
         self.char_name = character.name
         self.ctx = ctx
         self.guild = guild
-        self.engine = engine
+        self.engine = Backend.Database.engine.engine
         self.id = character.id
         self.name = character.name
         self.player = character.player
@@ -87,10 +67,10 @@ class Character:
 
         logging.info("Loading Character")
         if self.guild is not None:
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
         else:
-            Tracker = await get_tracker(self.ctx, self.engine)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(self.ctx)
+
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -110,11 +90,10 @@ class Character:
         :return: List of condition objects
         """
         logging.info("Returning PF2 Character Conditions")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         if self.guild is not None:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
         else:
-            Condition = await get_condition(self.ctx, self.engine)
+            Condition = await get_condition(self.ctx)
         try:
             async with async_session() as session:
                 if no_time:
@@ -142,8 +121,7 @@ class Character:
         :param amount: integer
         :return: No return value
         """
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
             character = char_result.scalars().one()
@@ -160,7 +138,6 @@ class Character:
         # print("Rolling Initiative")
         if self.char_name != self.guild.saved_order:
             try:
-                # print(f"Trying {self.init_string}")
                 init = d20.roll(self.init_string).total
             except Exception:
                 # print("Variables")
@@ -195,11 +172,10 @@ class Character:
         """
         logging.info("Edit HP")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             try:
-                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                Tracker = await get_tracker(self.ctx, id=self.guild.id)
             except AttributeError:
-                Tracker = await get_tracker(self.ctx, self.engine)
+                Tracker = await get_tracker(self.ctx)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.name))
                 character = char_result.scalars().one()
@@ -210,7 +186,7 @@ class Character:
                 thp = character.temp_hp
                 new_thp = 0
 
-                # Bottom out at 0 for everyone else
+                # Bottom out at 0
                 if heal:
                     new_hp = chp + amount
                     if new_hp > maxhp:
@@ -287,8 +263,7 @@ class Character:
 
         logging.info(f"add_thp {amount}")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
@@ -343,14 +318,12 @@ class Character:
                 # print(macro)
                 init = d20.roll(macro).total
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild is None:
                 Tracker = await get_tracker(
                     self.ctx,
-                    self.engine,
                 )
             else:
-                Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+                Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))
@@ -410,13 +383,12 @@ class Character:
         logging.info("set_cc")
         # Get the Character's data
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         if target is None:
             target_id = self.character_model.id
         else:
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 result = await session.execute(select(Tracker.id).where(func.lower(Tracker.name) == target.lower()))
                 target_id = result.scalars().one()
@@ -449,7 +421,7 @@ class Character:
                 return True
 
             else:  # If its time based, then calculate the end time, before writing it
-                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                current_time = await get_time(self.ctx, guild=self.guild)
                 if unit == "Minute":
                     end_time = current_time + datetime.timedelta(minutes=number)
                 elif unit == "Hour":
@@ -488,8 +460,7 @@ class Character:
         :return: boolean - True for success, False for failure
         """
         logging.info("delete_Cc")
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -524,8 +495,7 @@ class Character:
         """
         logging.info("edit_cc")
 
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         try:
             async with async_session() as session:
@@ -561,9 +531,8 @@ class Character:
         logging.info("Clean CC")
         if bot is None:
             bot = Bot.bot
-        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, self.guild.id)
+        current_time = await get_time(self.ctx, guild=self.guild)
+        Condition = await get_condition(self.ctx, self.guild.id)
         del_result = False
         async with async_session() as session:
             result = await session.execute(
@@ -597,8 +566,7 @@ class Character:
                 status = "PC:"
             else:
                 status = "NPC:"
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 result = await session.execute(
                     select(Condition)
@@ -653,7 +621,7 @@ class Character:
                     condition_embed.fields.append(
                         discord.EmbedField(
                             name=item.title,
-                            value=await time_keeping_functions.time_left(self.ctx, self.engine, bot, item.number),
+                            value=await time_keeping_functions.time_left(self.ctx, item.number),
                         )
                     )
             return [embed, counter_embed, condition_embed]
@@ -682,10 +650,7 @@ class Character:
         """
         logging.info("edit_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             # Give an error message if the character is the active character and making them inactive. Allow other
             # changes, but don't inactivate them
 
@@ -741,8 +706,7 @@ class Character:
         :param url: string
         :return: boolean - True for success, false for failure
         """
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == self.char_name))

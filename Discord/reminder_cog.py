@@ -1,4 +1,4 @@
-# options_cog.py
+# reminder_cog.py
 import asyncio
 import datetime as dt
 import logging
@@ -11,19 +11,15 @@ from discord import option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands, tasks
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import Reminder
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.Database.engine import async_session
 
 
 class ReminderButton(discord.ui.Button):
     def __init__(self, ctx: discord.ApplicationContext, bot, reminder: Reminder, time: str):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         self.bot = bot
 
         super().__init__(
@@ -34,7 +30,6 @@ class ReminderButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         output_string = "Roll your own save!"
         await interaction.response.send_message(output_string)
-        # await self.ctx.channel.send(output_string)
 
 
 class ReminderCog(commands.Cog):
@@ -45,8 +40,6 @@ class ReminderCog(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def reminder_check(self):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:
             result = await session.execute(select(Reminder).where(Reminder.timestamp <= datetime.now().timestamp()))
             reminder = result.scalars().all()
@@ -69,9 +62,7 @@ class ReminderCog(commands.Cog):
                 await session.delete(item)
                 await session.commit()
 
-        # await engine.dispose()
-
-    # Don't start the loop unti the bot is ready
+    # Don't start the loop until the bot is ready
     @reminder_check.before_loop
     async def before_reminder_status(self):
         await self.bot.wait_until_ready()
@@ -81,8 +72,6 @@ class ReminderCog(commands.Cog):
     @remind.command(description="Set a Reminder")
     @option("time_unit", autocomplete=discord.utils.basic_autocomplete(["Minutes", "Hours", "Days", "Months"]))
     async def me(self, ctx: discord.ApplicationContext, number: int, time_unit: str, message: str):
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         await ctx.response.defer(ephemeral=True)
         try:
             # Get the time to remind at
@@ -115,12 +104,9 @@ class ReminderCog(commands.Cog):
             report = ErrorReport(ctx, "remind_me", e, self.bot)
             await report.report()
             await ctx.send_followup("Reminder Failed", ephemeral=True)
-        # await engine.dispose()
 
     # @remind.command(description="Show Reminders")
     # async def show(self, ctx:discord.ApplicationContext):
-    #     engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    #     async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     #     await ctx.response.defer(ephemeral=True)
     #
     #     # try:

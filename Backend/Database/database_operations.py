@@ -9,13 +9,9 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy import select
 
-# imports
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-
-from Backend.WS.WebsocketHandler import socket
 from Backend.Database.database_models import Global, Base, RollLogBase, Log
-from Backend.Database.engine import engine, look_up_engine
+from Backend.Database.engine import engine, look_up_engine, async_session
+from Backend.WS.WebsocketHandler import socket
 
 load_dotenv(verbose=True)
 if os.environ["PRODUCTION"] == "True":
@@ -54,7 +50,6 @@ def get_db_engine(user, password, host, port, db):
 
 async def update_global_manager():
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         alter_string = text('ALTER TABLE "global_manager" ADD column "members" json')
         async with async_session() as session:
             await session.execute(alter_string)
@@ -64,7 +59,6 @@ async def update_global_manager():
 
 
 async def update_tracker_table():
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         guild = result.scalars().all()
@@ -82,7 +76,6 @@ async def update_tracker_table():
 
 async def update_con_table():
     total = 0
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with async_session() as session:
         result = await session.execute(select(Global))
         guild = result.scalars().all()
@@ -122,7 +115,6 @@ async def update_con_table():
 
 
 def create_reminder_table():
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     db.MetaData()
     try:
         Base.metadata.create_all(engine)
@@ -132,7 +124,6 @@ def create_reminder_table():
 
 
 def create_roll_log():
-    engine = get_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
     db.MetaData()
     try:
         RollLogBase.metadata.create_all(engine)
@@ -150,7 +141,6 @@ def async_partial(async_func, *args):
 
 async def log_roll(guild, character, message, secret=False):
     try:
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         timestamp = int(datetime.datetime.utcnow().timestamp())
         async with async_session() as session:
             async with session.begin():

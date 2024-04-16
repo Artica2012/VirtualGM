@@ -5,22 +5,19 @@ import discord
 from discord import Interaction
 from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.PF2e.pf2_functions
-from Systems.Base.Character import Character
 
 # from utils.Tracker_Getter import get_tracker_model
 from Backend.Database.database_models import get_tracker, get_condition
 
 # from utils.Char_Getter import get_character
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 
 # from utils.Tracker_Getter import get_tracker_model
 from Backend.utils.utils import get_guild
+from Systems.Base.Character import Character
 
 default_pic = (
     "https://cdn.discordapp.com/attachments/1028702442927431720/1107575116046540890/"
@@ -28,14 +25,12 @@ default_pic = (
 )
 
 
-async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
+async def get_PF2_Character(char_name, ctx, guild=None):
     logging.info("Generating PF2_Character Class")
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+
     guild = await get_guild(ctx, guild)
-    tracker = await get_tracker(ctx, engine, id=guild.id)
-    Condition = await get_condition(ctx, engine, id=guild.id)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    tracker = await get_tracker(ctx, id=guild.id)
+    Condition = await get_condition(ctx, id=guild.id)
     try:
         async with async_session() as session:
             result = await session.execute(select(tracker).where(func.lower(tracker.name) == char_name.lower()))
@@ -48,12 +43,12 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
                 .order_by(Condition.title.asc())
             )
             stat_list = result.scalars().all()
-            # print(len(stat_list))
+
             stats = {"AC": 0, "Fort": 0, "Reflex": 0, "Will": 0, "DC": 0}
             for item in stat_list:
                 stats[f"{item.title}"] = item.number
             # print(stats)
-            return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
+            return PF2_Character(char_name, ctx, character, stats, guild=guild)
 
     except NoResultFound:
         try:
@@ -74,20 +69,20 @@ async def get_PF2_Character(char_name, ctx, guild=None, engine=None):
                 for item in stat_list:
                     stats[f"{item.title}"] = item.number
                 # print(stats)
-                return PF2_Character(char_name, ctx, engine, character, stats, guild=guild)
+                return PF2_Character(char_name, ctx, character, stats, guild=guild)
 
         except NoResultFound:
             return None
 
 
 class PF2_Character(Character):
-    def __init__(self, char_name, ctx: discord.ApplicationContext, engine, character, stats, guild):
+    def __init__(self, char_name, ctx: discord.ApplicationContext, character, stats, guild):
         self.ac = stats["AC"]
         self.fort = stats["Fort"]
         self.reflex = stats["Reflex"]
         self.will = stats["Will"]
         self.dc = stats["DC"]
-        super().__init__(char_name, ctx, engine, character, guild)
+        super().__init__(char_name, ctx, character, guild)
         self.pic = character.pic if character.pic is not None else default_pic
         self.default_vars = Systems.PF2e.pf2_functions.default_vars
 
@@ -96,8 +91,7 @@ class PF2_Character(Character):
     ):
         logging.info("edit_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
 
             # Give an error message if the character is the active character and making them inactive
             if self.guild.saved_order == name and active is False:
@@ -127,7 +121,7 @@ class PF2_Character(Character):
 
                 await session.commit()
 
-                response = await edit_stats(self.ctx, self.engine, bot, name)
+                response = await edit_stats(self.ctx, bot, name)
                 if response:
                     # await update_pinned_tracker(ctx, engine, bot)
                     return True
@@ -144,16 +138,12 @@ class PF2_Character(Character):
             return False
 
 
-async def edit_stats(ctx, engine, bot, name: str):
+async def edit_stats(ctx, bot, name: str):
     try:
-        if engine is None:
-            engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
         guild = await get_guild(ctx, None)
 
-        Character_Model = await get_PF2_Character(name, ctx, guild=guild, engine=engine)
-        editModal = PF2EditCharacterModal(
-            character=Character_Model, ctx=ctx, engine=engine, bot=bot, title=Character_Model.char_name
-        )
+        Character_Model = await get_PF2_Character(name, ctx, guild=guild)
+        editModal = PF2EditCharacterModal(character=Character_Model, ctx=ctx, bot=bot, title=Character_Model.char_name)
         await ctx.send_modal(editModal)
 
         return True
@@ -163,12 +153,11 @@ async def edit_stats(ctx, engine, bot, name: str):
 
 
 class PF2EditCharacterModal(discord.ui.Modal):
-    def __init__(self, character, ctx: discord.ApplicationContext, engine, bot, *args, **kwargs):
+    def __init__(self, character, ctx: discord.ApplicationContext, bot, *args, **kwargs):
         self.character = character
         self.name = character.char_name
         self.player = ctx.user.id
         self.ctx = ctx
-        self.engine = engine
         self.bot = bot
         super().__init__(
             discord.ui.InputText(label="AC", placeholder="Armor Class", value=character.ac),
@@ -185,8 +174,7 @@ class PF2EditCharacterModal(discord.ui.Modal):
         await interaction.response.send_message(f"{self.name} Updated")
         guild = await get_guild(self.ctx, None)
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-        Condition = await get_condition(self.ctx, self.engine, id=guild.id)
+        Condition = await get_condition(self.ctx, id=guild.id)
 
         for item in self.children:
             async with async_session() as session:
@@ -199,8 +187,6 @@ class PF2EditCharacterModal(discord.ui.Modal):
                 condition.number = int(item.value)
                 await session.commit()
 
-        # Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
-        # await Tracker_Model.update_pinned_tracker()
         await self.ctx.channel.send(embeds=await self.character.get_char_sheet(bot=self.bot))
         return True
 

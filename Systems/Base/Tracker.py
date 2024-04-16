@@ -6,23 +6,21 @@ from datetime import datetime
 import discord
 from sqlalchemy import select, true, or_, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import get_tracker, Global, get_condition, get_macro
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA, get_asyncio_db_engine
 from Backend.WS.WebsocketHandler import socket
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import advance_time, output_datetime, get_time
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
+from Backend.Database.engine import async_session
+from Discord import Bot
 
 
-async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_init_list(ctx: discord.ApplicationContext, guild=None):
     """
     Returns the list of characters in initiative, in descending order
     :param ctx:
-    :param engine:
     :param guild:
     :return: init_list (list of Tracker Objects)
     """
@@ -31,12 +29,11 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
     try:
         if guild is not None:
             try:
-                Tracker = await get_tracker(ctx, engine, id=guild.id)
+                Tracker = await get_tracker(ctx, id=guild.id)
             except Exception:
-                Tracker = await get_tracker(ctx, engine)
+                Tracker = await get_tracker(ctx)
         else:
-            Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             result = await session.execute(
@@ -56,25 +53,20 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 
 class Tracker:
-    def __init__(self, ctx, engine, init_list, bot, guild=None):
+    def __init__(self, ctx, init_list, bot, guild=None):
         """
         The Tracker Class. Contains the methods for manipulating and advancing initiative.
 
         :param ctx:
-        :param engine:
         :param init_list: (output of function get_init_list)
         :param bot:
         :param guild:
         """
 
         self.ctx = ctx
-        self.engine = engine
         self.init_list = init_list
         self.guild = guild
-        self.bot = bot
-
-    # def __del__(self):
-    #     print("Destroying Tracker")
+        self.bot = Bot.bot
 
     async def next(self):
         """
@@ -107,7 +99,6 @@ class Tracker:
                 new_block = self.guild.block_data.copy()
                 new_block.remove(id)
 
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 async with async_session() as session:
                     result = await session.execute(select(Global).where(Global.id == self.guild.id))
                     guild = result.scalars().one()
@@ -155,13 +146,12 @@ class Tracker:
         await self.update()
         await self.next()
 
-    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+    async def get_init_list(self, ctx: discord.ApplicationContext, guild=None):
         """
         This is a copy of the get_init_list function as a class method. This is here to allow overrides of the
         initiative order in subclasses.  The default is unchanged from the function.
 
         :param ctx:
-        :param engine:
         :param guild:
         :return: init_list (list of tracker objects) - Returns an empty list on error.
         """
@@ -170,12 +160,11 @@ class Tracker:
         try:
             if guild is not None:
                 try:
-                    Tracker = await get_tracker(ctx, engine, id=guild.id)
+                    Tracker = await get_tracker(ctx, id=guild.id)
                 except Exception:
-                    Tracker = await get_tracker(ctx, engine)
+                    Tracker = await get_tracker(ctx)
             else:
-                Tracker = await get_tracker(ctx, engine)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+                Tracker = await get_tracker(ctx)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -201,12 +190,11 @@ class Tracker:
         :return: Character Model (Character Class) or appropriate subclass
         """
 
-        Char_Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Char_Tracker = await get_tracker(self.ctx, id=self.guild.id)
         async with async_session() as session:
             result = await session.execute(select(Char_Tracker).where(Char_Tracker.id == char_id))
         character = result.scalars().one()
-        return await get_character(character.name, self.ctx, guild=self.guild, engine=self.engine)
+        return await get_character(character.name, self.ctx, guild=self.guild)
 
     async def end(self, clean=True):
         """
@@ -217,7 +205,6 @@ class Tracker:
         :return: No return value
         """
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         try:
             tracker_channel = self.bot.get_channel(self.guild.tracker_channel)
             old_tracker_msg = await tracker_channel.fetch_message(self.guild.last_tracker)
@@ -236,8 +223,8 @@ class Tracker:
             await session.commit()
         await self.update()
         # Update the tables
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         # tracker cleanup
         # Delete condition with round timers
@@ -260,7 +247,7 @@ class Tracker:
                     select(Tracker).where(Tracker.current_hp <= 0).where(Tracker.player == false())
                 )
                 delete_list = result.scalars().all()
-            Macro = await get_macro(self.ctx, self.engine, id=self.guild.id)
+            Macro = await get_macro(self.ctx, id=self.guild.id)
             for npc in delete_list:
                 async with async_session() as session:
                     # print(character)
@@ -312,7 +299,7 @@ class Tracker:
         """
 
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
-        self.init_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        self.init_list = await self.get_init_list(self.ctx, guild=self.guild)
 
     async def init_integrity_check(self, init_pos: int, current_character: str):
         """
@@ -343,7 +330,6 @@ class Tracker:
         """
 
         logging.info("Checking Initiative Integrity")
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         async with async_session() as session:  # Pull the most updated data for the initiative
             result = await session.execute(select(Global).where(Global.id == self.guild.id))
             guild = result.scalars().one()
@@ -386,10 +372,9 @@ class Tracker:
         round = self.guild.round
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             logging.info(f"BAI1: guild: {self.guild.id}")
 
-            Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
+            Tracker = await get_tracker(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 char_result = await session.execute(select(Tracker))
                 character = char_result.scalars().all()
@@ -403,7 +388,7 @@ class Tracker:
                     first_pass = True
                     for char in character:
                         await asyncio.sleep(0)
-                        model = await get_character(char.name, self.ctx, guild=self.guild, engine=self.engine)
+                        model = await get_character(char.name, self.ctx, guild=self.guild)
                         if model.init == 0:
                             await asyncio.sleep(0)
                             try:
@@ -418,13 +403,9 @@ class Tracker:
             logging.info("BAI3: updated")
 
             if self.guild.saved_order == "":
-                current_character = await get_character(
-                    self.init_list[0].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[0].name, self.ctx, guild=self.guild)
             else:
-                current_character = await get_character(
-                    self.guild.saved_order, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.guild.saved_order, self.ctx, guild=self.guild)
 
             # Record the initial to break an infinite loop
             iterations = 0
@@ -454,7 +435,7 @@ class Tracker:
                             logging.info("BAI7: timekeeping")
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             await current_character.check_time_cc()
                             logging.info("BAI8: cc checked")
 
@@ -480,7 +461,7 @@ class Tracker:
                         if self.guild.timekeeping:  # if timekeeping is enable on the server
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             # await current_character.check_time_cc(self.bot)
                             logging.info("BAI16: cc checked")
 
@@ -500,9 +481,7 @@ class Tracker:
                 if self.init_list[init_pos].user not in turn_list:
                     turn_list.append(self.init_list[init_pos].user)
 
-                current_character = await get_character(
-                    self.init_list[init_pos].name, self.ctx, engine=self.engine, guild=self.guild
-                )
+                current_character = await get_character(self.init_list[init_pos].name, self.ctx, guild=self.guild)
                 iterations += 1
                 if iterations >= len(self.init_list):  # stop an infinite loop
                     block_done = True
@@ -554,11 +533,10 @@ class Tracker:
         logging.info(f"{current_character.char_name}, {before}")
         logging.info("Decrementing Conditions")
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         # Run through the conditions on the current character
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
             async with async_session() as session:
                 if before is not None:
                     char_result = await session.execute(
@@ -616,8 +594,7 @@ class Tracker:
         """
 
         logging.info("get_inactive_list")
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -649,7 +626,6 @@ class Tracker:
         )
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
         if self.guild.block and self.guild.initiative is not None:
@@ -660,7 +636,7 @@ class Tracker:
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -672,8 +648,7 @@ class Tracker:
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -686,7 +661,7 @@ class Tracker:
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             # if round = 0, were not in initiative, and act accordingly
             if self.guild.round != 0:
@@ -697,7 +672,7 @@ class Tracker:
             output_string = f"```{datetime_string}Initiative: {round_string}\n"
             # Iterate through the init list
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 # If there is an inactive list, and this is at the transition, place the line marker
                 if len(total_list) > active_length and x == active_length:
@@ -768,7 +743,7 @@ class Tracker:
                         if con_row.number is not None and con_row.number > 0:
                             if con_row.time:
                                 time_stamp = datetime.fromtimestamp(con_row.number)
-                                current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                                current_time = await get_time(self.ctx, guild=self.guild)
                                 time_left = time_stamp - current_time
                                 days_left = time_left.days
                                 processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -827,7 +802,6 @@ class Tracker:
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
         if self.guild.block and self.guild.initiative is not None:
@@ -838,7 +812,7 @@ class Tracker:
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -850,8 +824,7 @@ class Tracker:
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -864,7 +837,7 @@ class Tracker:
                 await report.report()
 
         try:
-            Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+            Condition = await get_condition(self.ctx, id=self.guild.id)
 
             # if round = 0, were not in initiative, and act accordingly
             if self.guild.round != 0:
@@ -876,7 +849,7 @@ class Tracker:
             gm_output_string = f"```{datetime_string}Initiative: {round_string}\n"
             # Iterate through the init list
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
                 logging.info(f"BGT4: for row x in enumerate(row_data): {x}")
                 # If there is an inactive list, and this is at the transition, place the line marker
                 if len(total_list) > active_length and x == active_length:
@@ -951,7 +924,7 @@ class Tracker:
                     if con_row.number is not None and con_row.number > 0:
                         if con_row.time:
                             time_stamp = datetime.fromtimestamp(con_row.number)
-                            current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                            current_time = await get_time(self.ctx, guild=self.guild)
                             time_left = time_stamp - current_time
                             days_left = time_left.days
                             processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -998,7 +971,6 @@ class Tracker:
 
     async def raw_tracker_output(self, selected: int):
         tracker_output = {"tracker": [], "round": "", "gm": self.guild.gm}
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
@@ -1007,7 +979,7 @@ class Tracker:
             block = False
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -1016,15 +988,13 @@ class Tracker:
 
         try:
             if self.guild.timekeeping:
-                tracker_output["datetime"] = (
-                    f"{await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                )
+                tracker_output["datetime"] = f"{await output_datetime(self.ctx, self.bot, guild=self.guild)}"
         except NoResultFound:
             logging.info("Channel Not Set Up")
         except Exception as e:
             logging.error(f"raw_tracker_output: {e}")
 
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         # if round = 0, were not in initiative, and act accordingly
         if self.guild.round != 0:
@@ -1032,7 +1002,7 @@ class Tracker:
 
         try:
             for x, row in enumerate(total_list):
-                character = await get_character(row.name, self.ctx, engine=self.engine, guild=self.guild)
+                character = await get_character(row.name, self.ctx, guild=self.guild)
 
                 if len(total_list) > active_length and x == active_length:
                     tracker_output["tracker"].append("Inactive List")  # Put in the divider
@@ -1100,7 +1070,7 @@ class Tracker:
 
                     if con_row.time:
                         time_stamp = datetime.fromtimestamp(con_row.number)
-                        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
+                        current_time = await get_time(self.ctx, guild=self.guild)
                         time_left = time_stamp - current_time
                         days_left = time_left.days
                         processed_minutes_left = divmod(time_left.seconds, 60)[0]
@@ -1209,7 +1179,6 @@ class Tracker:
         # Query the initiative position for the tracker and post it
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild.block:
                 block = True
                 # print(f"block_post_init: \n {turn_list}")
@@ -1458,7 +1427,6 @@ class Tracker:
 
         logging.info("set_pinned_tracker")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 result = await session.execute(
                     select(Global).where(
@@ -1504,11 +1472,10 @@ class Tracker:
         :return: No return value
         """
         logging.info("check_cc")
-        current_time = await get_time(self.ctx, self.engine, guild=self.guild)
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+        current_time = await get_time(self.ctx, guild=self.guild)
 
-        Tracker = await get_tracker(self.ctx, self.engine, id=self.guild.id)
-        Condition = await get_condition(self.ctx, self.engine, id=self.guild.id)
+        Tracker = await get_tracker(self.ctx, id=self.guild.id)
+        Condition = await get_condition(self.ctx, id=self.guild.id)
 
         async with async_session() as session:
             result = await session.execute(select(Condition).where(Condition.time == true()))
@@ -1538,9 +1505,6 @@ class Tracker:
 
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -1551,8 +1515,7 @@ class Tracker:
 
                 Tracker_model = Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -1567,9 +1530,6 @@ class Tracker:
         """
 
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -1580,8 +1540,7 @@ class Tracker:
             try:
                 Tracker_Model = Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

@@ -5,11 +5,9 @@ import discord
 from dotenv import load_dotenv
 from sqlalchemy import or_, select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import Global, get_tracker
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport
 
 load_dotenv(verbose=True)
@@ -61,8 +59,6 @@ NPC_Iterator = [
 
 
 async def get_guild(ctx, guild, refresh=False, id=None):
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     if guild is not None and not refresh:
         return guild
     if ctx is None and guild is None:
@@ -84,7 +80,6 @@ async def get_guild(ctx, guild, refresh=False, id=None):
                 )
 
             guild_result = result.scalars().one()
-            # await engine.dispose()
             return guild_result
     except Exception:
         if id is not None:
@@ -92,15 +87,13 @@ async def get_guild(ctx, guild, refresh=False, id=None):
             async with async_session() as session:
                 result = await session.execute(select(Global).where(Global.id == id))
                 guild_result = result.scalars().one()
-                # await engine.dispose()
                 return guild_result
         else:
             raise NoResultFound("No guild referenced")
 
 
-async def gm_check(ctx, engine):
+async def gm_check(ctx):
     logging.info("gm_check")
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     try:
         async with async_session() as session:
             result = await session.execute(
@@ -120,11 +113,10 @@ async def gm_check(ctx, engine):
         raise
 
 
-async def player_check(ctx: discord.ApplicationContext, engine, bot, character: str):
+async def player_check(ctx: discord.ApplicationContext, bot, character: str):
     logging.info("player_check")
     try:
-        Tracker = await get_tracker(ctx, engine)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        Tracker = await get_tracker(ctx)
 
         async with async_session() as session:
             char_result = await session.execute(select(Tracker).where(Tracker.name == character))
