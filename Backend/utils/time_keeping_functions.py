@@ -60,7 +60,7 @@ async def get_time(ctx: discord.ApplicationContext, guild=None):
         return None
 
 
-async def output_datetime(ctx: discord.ApplicationContext, engine, bot, guild=None):
+async def output_datetime(ctx: discord.ApplicationContext, bot, guild=None):
     if ctx is None and guild is None:
         raise LookupError("No guild reference")
     try:
@@ -172,8 +172,6 @@ async def set_datetime(
 
 async def advance_time(
     ctx: discord.ApplicationContext,
-    engine,
-    bot,
     second: int = 0,
     minute: int = 0,
     hour: int = 0,

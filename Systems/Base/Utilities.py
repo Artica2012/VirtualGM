@@ -13,7 +13,6 @@ from Backend.utils.error_handling_reporting import error_not_initialized, ErrorR
 from Backend.utils import utils
 from Backend.utils.Char_Getter import get_character
 from Backend.Database.engine import async_session
-import Backend.Database.engine
 
 
 class Utilities:
@@ -21,10 +20,9 @@ class Utilities:
     Utilites Class. Contains methods for adding and copying characters.
     """
 
-    def __init__(self, ctx, guild, engine):
+    def __init__(self, ctx, guild):
         self.ctx = ctx
         self.guild = guild
-        self.engine = Backend.Database.engine.engine
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         """

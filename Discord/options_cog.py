@@ -119,7 +119,7 @@ class OptionsCog(commands.Cog):
         try:
             if mode == "reset trackers":
                 await ctx.response.defer(ephemeral=True)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 response = await Tracker_Model.repost_trackers()
                 if response:
                     await ctx.send_followup("Trackers Placed", ephemeral=True)
@@ -201,7 +201,7 @@ class OptionsCog(commands.Cog):
                         )
                     else:
                         guild.timekeeping = toggler
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    Tracker_Model = await get_tracker_model(ctx)
                     await Tracker_Model.update_pinned_tracker()
                 elif module == "Block Initiative":
                     guild.block = toggler
@@ -314,7 +314,7 @@ async def setup_tracker(
                 await conn.run_sync(metadata.create_all)
 
             # Update the pinned trackers
-            Tracker_Model = await get_tracker_model(ctx, bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.set_pinned_tracker(channel)  # set the tracker in the player channel
             await Tracker_Model.set_pinned_tracker(gm_channel, gm=True)  # set up the gm_track in the GM channel
         except Exception:

@@ -155,7 +155,7 @@ async def treat_wounds(ctx, character, target, dc, modifier, engine, guild=None)
             time = 60
         await Target_Model.set_cc("Wounds Treated", False, time, "Minute", True)
 
-    Tracker_Model = await get_tracker_model(ctx, None, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(ctx, guild=guild)
     await Tracker_Model.update_pinned_tracker()
 
     embed = discord.Embed(

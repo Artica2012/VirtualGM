@@ -17,14 +17,14 @@ async def get_macro_object(ctx, engine=None, guild=None):
     guild = await get_guild(ctx, guild)
 
     if guild.system == "EPF":
-        return EPF_Macro(ctx, engine, guild)
+        return EPF_Macro(ctx, guild)
     elif guild.system == "D4e":
-        return D4e_Macro(ctx, engine, guild)
+        return D4e_Macro(ctx, guild)
     elif guild.system == "PF2":
-        return PF2_Macro(ctx, engine, guild)
+        return PF2_Macro(ctx, guild)
     elif guild.system == "STF":
-        return STF_Macro(ctx, engine, guild)
+        return STF_Macro(ctx, guild)
     elif guild.system == "RED":
-        return RED_Macro(ctx, engine, guild)
+        return RED_Macro(ctx, guild)
     else:
-        return Macro(ctx, engine, guild)
+        return Macro(ctx, guild)

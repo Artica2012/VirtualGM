@@ -85,7 +85,7 @@ def api_hard_lock(guild: Global, user: int, Character_Model: Systems.Base.Charac
 
 
 async def update_trackers(guild: Global):
-    Tracker_Object = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    Tracker_Object = await get_tracker_model(None, guild=guild)
     await Tracker_Object.update_pinned_tracker()
 
 

@@ -57,7 +57,7 @@ async def char_delete(char_data: CharData, api_key: APIKey = Depends(get_api_key
     Character_Model = await get_character(char_data.character, None, guild=guild)
     if api_hard_lock(guild, char_data.user, Character_Model):
         try:
-            Utilities = await get_utilities(None, guild, engine=engine)
+            Utilities = await get_utilities(None, guild)
             success = await Utilities.delete_character(char_data.character)
         except Exception as e:
             success = False

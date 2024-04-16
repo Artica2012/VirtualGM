@@ -14,14 +14,13 @@ from Backend.utils.time_keeping_functions import advance_time, output_datetime, 
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
 from Backend.Database.engine import async_session
-import Backend.Database.engine
+from Discord import Bot
 
 
-async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_init_list(ctx: discord.ApplicationContext, guild=None):
     """
     Returns the list of characters in initiative, in descending order
     :param ctx:
-    :param engine:
     :param guild:
     :return: init_list (list of Tracker Objects)
     """
@@ -54,22 +53,20 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 
 class Tracker:
-    def __init__(self, ctx, engine, init_list, bot, guild=None):
+    def __init__(self, ctx, init_list, bot, guild=None):
         """
         The Tracker Class. Contains the methods for manipulating and advancing initiative.
 
         :param ctx:
-        :param engine:
         :param init_list: (output of function get_init_list)
         :param bot:
         :param guild:
         """
 
         self.ctx = ctx
-        self.engine = Backend.Database.engine.engine
         self.init_list = init_list
         self.guild = guild
-        self.bot = bot
+        self.bot = Bot.bot
 
     async def next(self):
         """
@@ -149,13 +146,12 @@ class Tracker:
         await self.update()
         await self.next()
 
-    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+    async def get_init_list(self, ctx: discord.ApplicationContext, guild=None):
         """
         This is a copy of the get_init_list function as a class method. This is here to allow overrides of the
         initiative order in subclasses.  The default is unchanged from the function.
 
         :param ctx:
-        :param engine:
         :param guild:
         :return: init_list (list of tracker objects) - Returns an empty list on error.
         """
@@ -303,7 +299,7 @@ class Tracker:
         """
 
         self.guild = await get_guild(self.ctx, self.guild, refresh=True)
-        self.init_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        self.init_list = await self.get_init_list(self.ctx, guild=self.guild)
 
     async def init_integrity_check(self, init_pos: int, current_character: str):
         """
@@ -439,7 +435,7 @@ class Tracker:
                             logging.info("BAI7: timekeeping")
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             await current_character.check_time_cc()
                             logging.info("BAI8: cc checked")
 
@@ -465,7 +461,7 @@ class Tracker:
                         if self.guild.timekeeping:  # if timekeeping is enable on the server
                             # Advance time time by the number of seconds in the guild.time column. Default is 6
                             # seconds ala D&D standard
-                            await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                            await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                             # await current_character.check_time_cc(self.bot)
                             logging.info("BAI16: cc checked")
 
@@ -640,7 +636,7 @@ class Tracker:
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -652,8 +648,7 @@ class Tracker:
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -817,7 +812,7 @@ class Tracker:
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -829,8 +824,7 @@ class Tracker:
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -985,7 +979,7 @@ class Tracker:
             block = False
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -994,9 +988,7 @@ class Tracker:
 
         try:
             if self.guild.timekeeping:
-                tracker_output["datetime"] = (
-                    f"{await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                )
+                tracker_output["datetime"] = f"{await output_datetime(self.ctx, self.bot, guild=self.guild)}"
         except NoResultFound:
             logging.info("Channel Not Set Up")
         except Exception as e:
@@ -1513,7 +1505,6 @@ class Tracker:
 
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = Backend.Database.engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -1524,8 +1515,7 @@ class Tracker:
 
                 Tracker_model = Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -1540,7 +1530,6 @@ class Tracker:
         """
 
         def __init__(self, bot, guild=None):
-            self.engine = Backend.Database.engine.engine
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -1551,8 +1540,7 @@ class Tracker:
             try:
                 Tracker_Model = Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

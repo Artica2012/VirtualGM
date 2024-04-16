@@ -45,7 +45,7 @@ class STFCog(commands.Cog):
                         f"{Character_Model.max_stamina}\n"
                         f"Resolve Points: {Character_Model.current_resolve}```"
                     )
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    Tracker_Model = await get_tracker_model(ctx)
                     await Tracker_Model.update_pinned_tracker()
 
                 else:
@@ -69,7 +69,7 @@ class STFCog(commands.Cog):
             guild = await get_guild(ctx, None)
             if guild.system == "STF":
                 response = await stf_g_sheet_import(ctx, name, url, image=image)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.update_pinned_tracker()
 
             else:
@@ -91,7 +91,7 @@ class STFCog(commands.Cog):
                 await update_member_list(guild.id)
                 Character = await get_character(name, ctx, guild=guild)
                 if Character.player:
-                    Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                    Utilities = await get_utilities(ctx, guild=guild)
                     await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"stf_import: {e}")

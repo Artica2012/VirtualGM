@@ -10,6 +10,13 @@ from discord.ext import commands
 from sqlalchemy.exc import NoResultFound
 
 import Systems.RED.RED_GSHEET_Importer
+from Backend.utils.Automation_Getter import get_automation
+from Backend.utils.Char_Getter import get_character
+from Backend.utils.Tracker_Getter import get_tracker_model
+from Backend.utils.Util_Getter import get_utilities
+from Backend.utils.error_handling_reporting import ErrorReport
+from Backend.utils.initiative_functions import update_member_list
+from Backend.utils.utils import get_guild
 from Discord.auto_complete import (
     character_select_gm,
     auto_macro_select,
@@ -18,14 +25,6 @@ from Discord.auto_complete import (
     net_macro_select,
     red_net_character_select_gm,
 )
-from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.initiative_functions import update_member_list
-from Backend.utils.Automation_Getter import get_automation
-from Backend.utils.Char_Getter import get_character
-from Backend.utils.Tracker_Getter import get_tracker_model
-from Backend.utils.Util_Getter import get_utilities
-from Backend.utils.utils import get_guild
-from Backend.Database.engine import engine
 
 
 class REDCog(commands.Cog):
@@ -62,7 +61,7 @@ class REDCog(commands.Cog):
                     response = await Systems.RED.RED_GSHEET_Importer.red_g_sheet_import(
                         ctx, name, url, player_bool, image=image
                     )
-                    Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                    Tracker_Model = await get_tracker_model(ctx)
                     await Tracker_Model.update_pinned_tracker()
                 else:
                     response = False
@@ -88,7 +87,7 @@ class REDCog(commands.Cog):
             await update_member_list(guild.id)
             Character = await get_character(name, ctx, guild=guild)
             if Character.player:
-                Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                Utilities = await get_utilities(ctx, guild=guild)
                 await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"pb_import: {e}")
@@ -158,7 +157,7 @@ class REDCog(commands.Cog):
                     )
                 )
             await ctx.send_followup(embeds=embeds)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
         except KeyError:
             await ctx.send_followup("Error. Ensure that you have selected a valid attack.")
@@ -210,7 +209,7 @@ class REDCog(commands.Cog):
                         embeds.append(
                             discord.Embed(title=char, fields=[discord.EmbedField(name=attack, value="Invalid Target")])
                         )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.update_pinned_tracker()
             else:
                 embeds.append(
@@ -260,7 +259,7 @@ class REDCog(commands.Cog):
         except Exception:
             embed = discord.Embed(title="Error", description="'Failed to Change Cover", color=discord.Color.dark_red())
         await ctx.send_followup(embed=embed)
-        Tracker_Model = await get_tracker_model(ctx, self.bot)
+        Tracker_Model = await get_tracker_model(ctx)
         await Tracker_Model.update_pinned_tracker()
 
     @red.command(description="Reset Armor to Undamaged Value")
@@ -289,7 +288,7 @@ class REDCog(commands.Cog):
             embed = discord.Embed(title="Error", description="'Failed to Reset Arnir", color=discord.Color.dark_red())
 
         await ctx.send_followup(embed=embed)
-        Tracker_Model = await get_tracker_model(ctx, self.bot)
+        Tracker_Model = await get_tracker_model(ctx)
         await Tracker_Model.update_pinned_tracker()
 
 

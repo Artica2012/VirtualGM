@@ -61,7 +61,7 @@ class PF2Cog(commands.Cog):
                 response = False
 
             if response:
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 Character_Model = await get_character(name, ctx)
                 success.set_thumbnail(url=Character_Model.pic)
                 await ctx.send_followup(embed=success)
@@ -75,7 +75,7 @@ class PF2Cog(commands.Cog):
         elif pathbuilder_id is not None:
             try:
                 guild = await initiative.get_guild(ctx, None)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx, guild=guild)
 
                 if guild.system == "PF2":
                     response = await pathbuilder_import(ctx, engine, self.bot, name, str(pathbuilder_id), image=image)
@@ -120,7 +120,7 @@ class PF2Cog(commands.Cog):
         elif url is not None:
             try:
                 guild = await get_guild(ctx, None)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 if guild.system == "EPF":
                     response = await Systems.EPF.EPF_GSHEET_Importer.epf_g_sheet_import(ctx, name, url, image=image)
                 else:
@@ -148,7 +148,7 @@ class PF2Cog(commands.Cog):
             Character = await get_character(name, ctx, guild=guild)
             await update_member_list(guild.id)
             if Character.player == True:
-                Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                Utilities = await get_utilities(ctx, guild=guild)
                 await Utilities.add_to_vault(name)
         except Exception as e:
             logging.warning(f"pb_import: {e}")
@@ -209,7 +209,7 @@ class PF2Cog(commands.Cog):
                 await report.report()
                 return
         await ctx.send_followup(embeds=embeds)
-        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        Tracker_Model = await get_tracker_model(ctx, guild=guild)
         await Tracker_Model.update_pinned_tracker()
         guild = await get_guild(ctx, None)
         await update_member_list(guild.id)
@@ -237,7 +237,7 @@ class PF2Cog(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         response = False
         try:
-            Utilities = await get_utilities(ctx, engine=engine)
+            Utilities = await get_utilities(ctx)
             response = await Utilities.edit_attack(character, attack, dmg_stat, attk_stat, crit, dmg, proficiency)
         except Exception as e:
             await ctx.send_followup("Error importing character")

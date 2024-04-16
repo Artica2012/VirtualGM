@@ -95,7 +95,7 @@ class InitiativeCog(commands.Cog):
             number = 26
 
         try:
-            Utilities = await get_utilities(ctx, engine=engine)
+            Utilities = await get_utilities(ctx)
 
             try:
                 await Utilities.add_character(
@@ -106,7 +106,7 @@ class InitiativeCog(commands.Cog):
                 report = ErrorReport(ctx, "/char add", e, self.bot)
                 await report.report()
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
             if player_bool:
                 await Utilities.add_to_vault(name)
@@ -161,7 +161,7 @@ class InitiativeCog(commands.Cog):
             if not response:
                 await ctx.respond("Error Editing Character", ephemeral=True)
             else:
-                Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx, guild=guild)
                 await Tracker_Model.update_pinned_tracker()
 
         else:
@@ -182,7 +182,7 @@ class InitiativeCog(commands.Cog):
             number = 26
         embeds = []
         success = discord.Embed(title=name.title(), fields=[], color=discord.Color.dark_gold())
-        Utilities = await get_utilities(ctx, engine=engine)
+        Utilities = await get_utilities(ctx)
         for x in range(0, number):
             if number > 1:
                 modifier = f" {utils.NPC_Iterator[x]}"
@@ -208,7 +208,7 @@ class InitiativeCog(commands.Cog):
                 embeds.append(failure)
 
         await ctx.send_followup(embeds=embeds)
-        Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+        Tracker_Model = await get_tracker_model(ctx)
         await Tracker_Model.update_pinned_tracker()
         guild = await get_guild(ctx, None)
         await update_member_list(guild.id)
@@ -234,7 +234,7 @@ class InitiativeCog(commands.Cog):
                 else:
                     result = False
                     try:
-                        Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                        Utilities = await get_utilities(ctx, guild=guild)
                         result = await Utilities.delete_character(character=name)
                     except Exception as e:
                         logging.warning(f"char delete {e}")
@@ -242,7 +242,7 @@ class InitiativeCog(commands.Cog):
                         await report.report()
                     if result:
                         await ctx.send_followup(f"{name} deleted", ephemeral=True)
-                        Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+                        Tracker_Model = await get_tracker_model(ctx, guild=guild)
                         await Tracker_Model.update_pinned_tracker()
                         guild = await get_guild(ctx, None)
                         await update_member_list(guild.id)
@@ -289,7 +289,7 @@ class InitiativeCog(commands.Cog):
     async def manage(self, ctx: discord.ApplicationContext, mode: str, character: str = ""):
         try:
             guild = await get_guild(ctx, None)
-            Tracker_Model = await get_tracker_model(ctx, self.bot, guild=guild, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx, guild=guild)
             if not await gm_check(ctx):
                 await ctx.respond("GM Restricted Command", ephemeral=True)
                 return
@@ -314,7 +314,7 @@ class InitiativeCog(commands.Cog):
                         )
                     else:
                         await ctx.response.defer(ephemeral=True)
-                        Utilities = await get_utilities(ctx, guild=guild, engine=engine)
+                        Utilities = await get_utilities(ctx, guild=guild)
                         result = await Utilities.delete_character(character)
                         if result:
                             await ctx.send_followup(f"{character} deleted", ephemeral=True)
@@ -347,7 +347,7 @@ class InitiativeCog(commands.Cog):
     async def next(self, ctx: discord.ApplicationContext):
         try:
             await ctx.response.defer()
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Object = await get_tracker_model(ctx)
             await Tracker_Object.next()
 
         except NoResultFound:
@@ -384,7 +384,7 @@ class InitiativeCog(commands.Cog):
                 model = await get_character(character, ctx, guild=guild)
                 output = await model.set_init(initiative)
                 await ctx.respond(output)
-                Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Object = await get_tracker_model(ctx)
                 await Tracker_Object.update_pinned_tracker()
             except Exception as e:
                 await ctx.respond(f"Failed to set initiative for {character}.\n{e}", ephemeral=True)
@@ -425,7 +425,7 @@ class InitiativeCog(commands.Cog):
         if not response:
             await ctx.respond("Failed", ephemeral=True)
         else:
-            Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+            Tracker_Object = await get_tracker_model(ctx, guild=guild)
             await Tracker_Object.update_pinned_tracker()
 
     @cc.command(
@@ -549,7 +549,7 @@ class InitiativeCog(commands.Cog):
                 await ctx.send_followup(embeds=embeds)
             except Exception:
                 await ctx.channel.send(embeds=embeds)
-        Tracker_Object = await get_tracker_model(ctx, self.bot, engine=engine, guild=guild)
+        Tracker_Object = await get_tracker_model(ctx, guild=guild)
         await Tracker_Object.update_pinned_tracker()
 
     @cc.command(
@@ -629,7 +629,7 @@ class InitiativeCog(commands.Cog):
             else:
                 await ctx.send_followup("Invalid Input")
 
-            Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
         except Exception as e:
             await ctx.send_followup("Error")

@@ -7,15 +7,12 @@ import d20
 import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.Base.Tracker import Tracker, get_init_list
 from Systems.EPF import EPF_Character
 from Systems.PF2e.pf2_functions import PF2_eval_succss
 from Backend.Database.database_models import get_tracker, Global, get_condition
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import advance_time, output_datetime, get_time
 from Backend.utils.Char_Getter import get_character
@@ -24,16 +21,14 @@ from Systems.EPF.EPF_resists import roll_persist_dmg
 from Systems.EPF.EPF_Support import EPF_Success_colors
 
 
-async def get_EPF_Tracker(ctx, engine, init_list, bot, guild=None):
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def get_EPF_Tracker(ctx, init_list, bot, guild=None):
     guild = await get_guild(ctx, guild)
-    return EPF_Tracker(ctx, engine, init_list, bot, guild=guild)
+    return EPF_Tracker(ctx, init_list, bot, guild=guild)
 
 
 class EPF_Tracker(Tracker):
-    def __init__(self, ctx, engine, init_list, bot, guild=None):
-        super().__init__(ctx, engine, init_list, bot, guild)
+    def __init__(self, ctx, init_list, bot, guild=None):
+        super().__init__(ctx, init_list, bot, guild)
 
     async def advance_initiative(self):
         if self.guild.block:
@@ -56,7 +51,6 @@ class EPF_Tracker(Tracker):
         logging.info(f"{current_character.char_name}, {before}")
         logging.info("Decrementing Conditions")
 
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
         # Run through the conditions on the current character
 
         try:
@@ -217,7 +211,6 @@ class EPF_Tracker(Tracker):
         round = self.guild.round
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             logging.info(f"BAI1: guild: {self.guild.id}")
 
             if self.guild.initiative is None:
@@ -274,7 +267,7 @@ class EPF_Tracker(Tracker):
                     logging.info("BAI7: timekeeping")
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
-                    await advance_time(self.ctx, self.engine, self.bot, second=self.guild.time, guild=self.guild)
+                    await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                     await current_character.check_time_cc()
                     logging.info("BAI8: cc checked")
 
@@ -327,7 +320,7 @@ class EPF_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         # for item in total_list:
         #     print(item.name)
         active_length = len(total_list)
@@ -340,7 +333,7 @@ class EPF_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n__________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n__________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -502,7 +495,7 @@ class EPF_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         # for item in total_list:
         #     print(item.name)
         active_length = len(total_list)
@@ -515,7 +508,7 @@ class EPF_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n__________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n__________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -673,9 +666,6 @@ class EPF_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -684,14 +674,13 @@ class EPF_Tracker(Tracker):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 # print(interaction.message.id)
-                init_list = await get_init_list(self.ctx, self.engine, self.guild)
+                init_list = await get_init_list(self.ctx, self.guild)
                 for char in init_list:
                     Character_Model = await get_character(char.name, self.ctx, guild=self.guild)
                     await Character_Model.update()
                 Tracker_model = EPF_Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -702,9 +691,6 @@ class EPF_Tracker(Tracker):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -715,8 +701,7 @@ class EPF_Tracker(Tracker):
             try:
                 Tracker_Model = EPF_Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

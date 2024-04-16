@@ -6,25 +6,20 @@ import discord
 from sqlalchemy.exc import NoResultFound
 
 from Systems.Base.Tracker import Tracker, get_init_list
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.engine import engine
-from Backend.Database.database_operations import get_asyncio_db_engine
 from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
 from Backend.utils.time_keeping_functions import output_datetime, get_time
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
 
 
-async def get_STF_Tracker(ctx, engine, init_list, bot, guild=None):
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def get_STF_Tracker(ctx, init_list, bot, guild=None):
     guild = await get_guild(ctx, guild)
-    return STF_Tracker(ctx, engine, init_list, bot, guild=guild)
+    return STF_Tracker(ctx, init_list, bot, guild=guild)
 
 
 class STF_Tracker(Tracker):
-    def __init__(self, ctx, engine, init_list, bot, guild=None):
-        super().__init__(ctx, engine, init_list, bot, guild)
+    def __init__(self, ctx, init_list, bot, guild=None):
+        super().__init__(ctx, init_list, bot, guild)
 
     async def efficient_block_get_tracker(self, selected: int, gm: bool = False):
         # print("PF2 Get Tracker")
@@ -50,7 +45,7 @@ class STF_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}\n__________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n__________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -191,7 +186,6 @@ class STF_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = engine
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -200,14 +194,13 @@ class STF_Tracker(Tracker):
             try:
                 await interaction.response.send_message("Refreshed", ephemeral=True)
                 # print(interaction.message.id)
-                init_list = await get_init_list(self.ctx, self.engine, self.guild)
+                init_list = await get_init_list(self.ctx, self.guild)
                 for char in init_list:
                     Character_Model = await get_character(char.name, self.ctx, guild=self.guild)
                     await Character_Model.update()
                 Tracker_model = STF_Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -219,7 +212,6 @@ class STF_Tracker(Tracker):
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = engine
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -230,8 +222,7 @@ class STF_Tracker(Tracker):
             try:
                 Tracker_Model = Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

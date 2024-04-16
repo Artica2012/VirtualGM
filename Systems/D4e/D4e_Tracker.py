@@ -7,29 +7,25 @@ import d20
 import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
+from Backend.Database.engine import async_session
 from Systems.Base.Tracker import Tracker
 from Systems.D4e.d4e_functions import D4e_eval_success, D4e_base_roll
 from Backend.Database.database_models import Global, get_condition, get_tracker
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
-from Backend.Database.database_operations import get_asyncio_db_engine
+
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import output_datetime, get_time
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild, gm_check
 
 
-async def get_D4e_Tracker(ctx, engine, init_list, bot, guild=None):
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def get_D4e_Tracker(ctx, bot, guild=None):
     guild = await get_guild(ctx, guild)
-    init_list = await get_init_list(ctx, engine, guild)
-    return D4e_Tracker(ctx, engine, init_list, bot, guild=guild)
+    init_list = await get_init_list(ctx, guild)
+    return D4e_Tracker(ctx, init_list, bot, guild=guild)
 
 
-async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
+async def get_init_list(ctx: discord.ApplicationContext, guild=None):
     logging.info("get_init_list (D4e")
     try:
         if guild is not None:
@@ -39,7 +35,6 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
                 Tracker = await get_tracker(ctx)
         else:
             Tracker = await get_tracker(ctx)
-        async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             result = await session.execute(
@@ -62,10 +57,10 @@ async def get_init_list(ctx: discord.ApplicationContext, engine, guild=None):
 
 
 class D4e_Tracker(Tracker):
-    def __init__(self, ctx, init_list, bot, engine=None, guild=None):
-        super().__init__(ctx, init_list, bot, engine, guild)
+    def __init__(self, ctx, init_list, bot, guild=None):
+        super().__init__(ctx, init_list, bot, guild)
 
-    async def get_init_list(self, ctx: discord.ApplicationContext, engine, guild=None):
+    async def get_init_list(self, ctx: discord.ApplicationContext, guild=None):
         logging.info("get_init_list (D4e")
         try:
             if guild is not None:
@@ -75,7 +70,6 @@ class D4e_Tracker(Tracker):
                     Tracker = await get_tracker(ctx)
             else:
                 Tracker = await get_tracker(ctx)
-            async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
             async with async_session() as session:
                 result = await session.execute(
@@ -182,7 +176,6 @@ class D4e_Tracker(Tracker):
         # Query the initiative position for the tracker and post it
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             if self.guild.block:
                 block = True
             else:
@@ -287,7 +280,6 @@ class D4e_Tracker(Tracker):
         # Get the datetime
         # print("Getting D4e Tracker")
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
@@ -297,7 +289,7 @@ class D4e_Tracker(Tracker):
         round = self.guild.round
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -308,8 +300,7 @@ class D4e_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -445,7 +436,6 @@ class D4e_Tracker(Tracker):
         # Get the datetime
         # print("Getting D4e Tracker")
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         if self.guild.block and self.guild.initiative is not None:
             turn_list = await self.get_turn_list()
@@ -455,7 +445,7 @@ class D4e_Tracker(Tracker):
         round = self.guild.round
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -466,8 +456,7 @@ class D4e_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -605,9 +594,6 @@ class D4e_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
@@ -618,8 +604,7 @@ class D4e_Tracker(Tracker):
                 # print(interaction.message.id)
                 Tracker_model = D4e_Tracker(
                     self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
+                    await get_init_list(self.ctx, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -627,13 +612,9 @@ class D4e_Tracker(Tracker):
             except Exception as e:
                 # print(f"Error: {e}")
                 logging.info(e)
-            # await self.engine.dispose()
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -644,8 +625,7 @@ class D4e_Tracker(Tracker):
             try:
                 Tracker_Model = D4e_Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )
@@ -656,11 +636,6 @@ class D4e_Tracker(Tracker):
 
 
 async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
-    # print("D4e Tracker Buttons")
-    engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    # print(guild.id)
-    # print(guild.initiative)
     guild = await get_guild(ctx, guild, refresh=True)
     tracker = await get_tracker(ctx, id=guild.id)
     Condition = await get_condition(ctx, id=guild.id)
@@ -669,7 +644,7 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
     if guild.initiative is None:
         return view
 
-    init_list = await get_init_list(ctx, engine, guild=guild)
+    init_list = await get_init_list(ctx, guild=guild)
 
     async with async_session() as session:
         result = await session.execute(select(tracker).where(tracker.name == init_list[guild.initiative].name))
@@ -690,8 +665,6 @@ async def D4eTrackerButtons(ctx: discord.ApplicationContext, bot, guild=None):
 class D4eConditionButton(discord.ui.Button):
     def __init__(self, condition, ctx: discord.ApplicationContext, bot, character, guild=None):
         self.ctx = ctx
-        self.engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
-
         self.bot = bot
         self.character = character
         self.condition = condition
@@ -706,9 +679,6 @@ class D4eConditionButton(discord.ui.Button):
         await interaction.response.send_message("Saving...")
         Tracker_Model = await get_D4e_Tracker(
             self.ctx,
-            self.engine,
-            await get_init_list(self.ctx, self.engine, guild=self.guild),
-            self.bot,
             guild=self.guild,
         )
         if interaction.user.id == self.character.user or gm_check(self.ctx):
@@ -738,7 +708,3 @@ class D4eConditionButton(discord.ui.Button):
         else:
             output_string = "Roll your own save!"
             await interaction.edit_original_response(content=output_string)
-
-        # await self.engine.dispose()
-
-        # await self.ctx.channel.send(output_string)

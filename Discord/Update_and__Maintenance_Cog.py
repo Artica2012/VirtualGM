@@ -67,7 +67,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
 
             for guild in guild_list:
                 try:
-                    Tracker_Object = await get_tracker_model(None, self.bot, engine=engine, guild=guild)
+                    Tracker_Object = await get_tracker_model(None, guild=guild)
                     Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
                     Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
                 except Exception as e:
@@ -224,7 +224,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     # print(Character_Model.char_name, "updated.")
 
                 try:
-                    Tracker_Model = await get_tracker_model(None, self.bot, guild=guild, engine=engine)
+                    Tracker_Model = await get_tracker_model(None, guild=guild)
                     await Tracker_Model.update_pinned_tracker()
                 except Exception:
                     pass

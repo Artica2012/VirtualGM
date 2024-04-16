@@ -261,7 +261,7 @@ async def pathbuilder_import(
                         session.add(new_char)
                     await session.commit()
 
-            Tracker_Model = await get_tracker_model(ctx, bot, guild=guild, engine=engine)
+            Tracker_Model = await get_tracker_model(ctx, guild=guild)
             await Tracker_Model.init_integrity()
             async with async_session() as session:
                 result = await session.execute(select(Tracker).where(Tracker.name == name))

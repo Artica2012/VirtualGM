@@ -7,10 +7,9 @@ import discord
 from discord import Interaction
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.PF2e.PF2_Character
+from Backend.Database.engine import async_session
 from Systems.Base.Tracker import get_init_list
 from Systems.Base.Utilities import Utilities
 from Backend.Database.database_models import get_tracker, get_condition
@@ -26,8 +25,8 @@ from Backend.utils.utils import get_guild
 
 
 class PF2_Utilities(Utilities):
-    def __init__(self, ctx, guild, engine):
-        super().__init__(ctx, guild, engine)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         if "multi" in kwargs.keys():
@@ -43,7 +42,6 @@ class PF2_Utilities(Utilities):
                 initiative=init,
                 player=player_bool,
                 ctx=self.ctx,
-                engine=self.engine,
                 bot=bot,
                 title=name,
                 pic=image,
@@ -64,16 +62,13 @@ class PF2_Utilities(Utilities):
 
 
 class PF2AddCharacterModal(discord.ui.Modal):
-    def __init__(
-        self, name: str, hp: int, init: str, initiative, player, ctx, engine, bot, pic, guild, multi, *args, **kwargs
-    ):
+    def __init__(self, name: str, hp: int, init: str, initiative, player, ctx, bot, pic, guild, multi, *args, **kwargs):
         self.name = name
         self.hp = hp
         self.init = init
         self.initiative = initiative
         self.player = player
         self.ctx = ctx
-        self.engine = engine
         self.bot = bot
         self.pic = pic
         self.guild = guild
@@ -111,8 +106,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
         self.stop()
         await interaction.response.send_message(f"{self.name} Created")
         guild = await get_guild(self.ctx, None)
-        # Character_Model = await get_PF2_Character(self.name, self.ctx, guild=guild, engine=self.engine)
-        Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=guild, engine=self.engine)
+        Tracker_Model = await get_tracker_model(self.ctx, guild=guild)
 
         for x in range(0, self.number):
             if self.number > 1:
@@ -156,7 +150,6 @@ class PF2AddCharacterModal(discord.ui.Modal):
             else:
                 embed.set_thumbnail(url=Systems.PF2e.PF2_Character.default_pic)
 
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 Tracker = await get_tracker(self.ctx, id=guild.id)
                 async with session.begin():
@@ -231,7 +224,7 @@ class PF2AddCharacterModal(discord.ui.Modal):
                 if guild.initiative is not None:
                     if not await Tracker_Model.init_integrity_check(guild.initiative, guild.saved_order):
                         # print(f"integrity check was false: init_pos: {guild.initiative}")
-                        for pos, row in enumerate(await get_init_list(self.ctx, self.engine)):
+                        for pos, row in enumerate(await get_init_list(self.ctx)):
                             await asyncio.sleep(0)
                             if row.name == guild.saved_order:
                                 guild.initiative = pos

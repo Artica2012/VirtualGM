@@ -7,36 +7,30 @@ import d20
 import discord
 from sqlalchemy import select, or_, true
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from Backend.Database.database_models import Global, get_condition, get_tracker
-from Backend.Database.database_operations import get_asyncio_db_engine
+from Backend.Database.engine import async_session
 from Backend.utils.error_handling_reporting import ErrorReport, error_not_initialized
 from Backend.utils.time_keeping_functions import output_datetime, get_time, advance_time
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.utils import get_guild
-from Backend.Database.database_operations import USERNAME, PASSWORD, HOSTNAME, PORT, SERVER_DATA
 from Systems.Base.Tracker import Tracker, get_init_list
 
 
-async def get_PF2_Tracker(ctx, engine, init_list, bot, guild=None):
-    if engine is None:
-        engine = get_asyncio_db_engine(user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA)
+async def get_PF2_Tracker(ctx, init_list, bot, guild=None):
     guild = await get_guild(ctx, guild)
-    return PF2_Tracker(ctx, engine, init_list, bot, guild=guild)
+    return PF2_Tracker(ctx, init_list, bot, guild=guild)
 
 
 class PF2_Tracker(Tracker):
-    def __init__(self, ctx, init_list, bot, engine=None, guild=None):
-        super().__init__(ctx, init_list, bot, engine, guild)
+    def __init__(self, ctx, init_list, bot, guild=None):
+        super().__init__(ctx, bot, init_list, guild)
 
     # Builds the tracker string. Updated to work with block initiative
     async def block_get_tracker(self, selected: int, gm: bool = False):
         # print("PF2 Get Tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         logging.info(f"BGT1: Guild: {self.guild.id}")
         if self.guild.block and self.guild.initiative is not None:
@@ -46,7 +40,7 @@ class PF2_Tracker(Tracker):
             turn_list = []
             block = False
         logging.info(f"BGT2: round: {self.guild.round}")
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -57,8 +51,7 @@ class PF2_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -206,7 +199,6 @@ class PF2_Tracker(Tracker):
         logging.info("generic_block_get_tracker")
         # Get the datetime
         datetime_string = ""
-        async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
         # Get the turn List for Block Initiative. If its in block we need the whole turn list and not just
         if self.guild.block and self.guild.initiative is not None:
@@ -217,7 +209,7 @@ class PF2_Tracker(Tracker):
         logging.info(f"BGT2: round: {self.guild.round}")
 
         # Code for appending the inactive list onto the init_list
-        total_list = await self.get_init_list(self.ctx, self.engine, guild=self.guild)
+        total_list = await self.get_init_list(self.ctx, guild=self.guild)
         active_length = len(total_list)
         # print(f'Active Length: {active_length}')
         inactive_list = await self.get_inactive_list()
@@ -229,8 +221,7 @@ class PF2_Tracker(Tracker):
         try:
             if self.guild.timekeeping:
                 datetime_string = (
-                    f" {await output_datetime(self.ctx, self.engine, self.bot, guild=self.guild)}"
-                    "\n________________________\n"
+                    f" {await output_datetime(self.ctx, self.bot, guild=self.guild)}\n________________________\n"
                 )
         except NoResultFound:
             if self.ctx is not None:
@@ -391,8 +382,6 @@ class PF2_Tracker(Tracker):
         round = self.guild.round
 
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
             logging.info(f"BAI1: guild: {self.guild.id}")
 
             Tracker = await get_tracker(self.ctx, id=self.guild.id)
@@ -452,7 +441,7 @@ class PF2_Tracker(Tracker):
                     logging.info("BAI7: timekeeping")
                     # Advance time time by the number of seconds in the guild.time column. Default is 6
                     # seconds ala D&D standard
-                    await advance_time(self.ctx, self.engine, None, second=self.guild.time, guild=self.guild)
+                    await advance_time(self.ctx, second=self.guild.time, guild=self.guild)
                     # await current_character.check_time_cc(self.bot)
                     logging.info("BAI8: cc checked")
 
@@ -494,35 +483,28 @@ class PF2_Tracker(Tracker):
     class InitRefreshButton(discord.ui.Button):
         def __init__(self, ctx: discord.ApplicationContext, bot, guild=None):
             self.ctx = ctx
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
+
             self.bot = bot
             self.guild = guild
             super().__init__(style=discord.ButtonStyle.primary, emoji="🔁")
 
         async def callback(self, interaction: discord.Interaction):
-            try:
-                await interaction.response.send_message("Refreshed", ephemeral=True)
-                # print(interaction.message.id)
-                Tracker_model = PF2_Tracker(
-                    self.ctx,
-                    self.engine,
-                    await get_init_list(self.ctx, self.engine, self.guild),
-                    self.bot,
-                    guild=self.guild,
-                )
-                await Tracker_model.update_pinned_tracker()
-            except Exception as e:
-                # print(f"Error: {e}")
-                logging.info(e)
-            # await self.engine.dispose()
+            # try:
+            await interaction.response.send_message("Refreshed", ephemeral=True)
+            # print(interaction.message.id)
+            Tracker_model = PF2_Tracker(
+                self.ctx,
+                await get_init_list(self.ctx, self.guild),
+                self.bot,
+                guild=self.guild,
+            )
+            await Tracker_model.update_pinned_tracker()
+            # except Exception as e:
+            #     # print(f"Error: {e}")
+            #     logging.info(e)
 
     class NextButton(discord.ui.Button):
         def __init__(self, bot, guild=None):
-            self.engine = get_asyncio_db_engine(
-                user=USERNAME, password=PASSWORD, host=HOSTNAME, port=PORT, db=SERVER_DATA
-            )
             self.bot = bot
             self.guild = guild
             super().__init__(
@@ -533,8 +515,7 @@ class PF2_Tracker(Tracker):
             try:
                 Tracker_Model = Tracker(
                     None,
-                    self.engine,
-                    await get_init_list(None, self.engine, self.guild),
+                    await get_init_list(None, self.guild),
                     self.bot,
                     guild=self.guild,
                 )

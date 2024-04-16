@@ -5,11 +5,10 @@ import d20
 import discord
 from sqlalchemy import select, true, false
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Support
 import Systems.PF2e.pf2_functions
+from Backend.Database.engine import async_session
 from Systems.Base.Macro import Macro
 from Systems.EPF.EPF_Character import get_EPF_Character, EPF_Character
 from Backend.Database.database_models import get_EPF_tracker
@@ -18,8 +17,8 @@ from Backend.utils.parsing import eval_success
 
 
 class EPF_Macro(Macro):
-    def __init__(self, ctx, engine, guild):
-        super().__init__(ctx, engine, guild)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     def opposed_roll(self, roll: d20.RollResult, dc: d20.RollResult):
         # print(f"{roll} - {dc}")
@@ -41,7 +40,6 @@ class EPF_Macro(Macro):
         if raw is None:
             if character.lower() in ["all pcs", "all npcs", "all characters"]:
                 EPF_tracker = await get_EPF_tracker(self.ctx, id=self.guild.id)
-                async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                 try:
                     if character.lower() == "all pcs":
                         async with async_session() as session:
@@ -181,7 +179,7 @@ class EPF_Macro(Macro):
             )
 
         async def callback(self, interaction: discord.Interaction):
-            Macro = EPF_Macro(self.ctx, self.engine, self.guild)
+            Macro = EPF_Macro(self.ctx, self.guild)
 
             # print(self.macro)
             output = await Macro.roll_macro(self.character.char_name, self.macro, 0, "", guild=self.guild)

@@ -3,10 +3,9 @@ import logging
 
 from sqlalchemy import select, false, func
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 import Systems.EPF.EPF_Character
+from Backend.Database.engine import async_session
 from Systems.Base.Utilities import Utilities
 from Systems.EPF.EPF_Character import get_EPF_Character
 from Backend.Database.database_models import get_tracker, get_condition, get_macro
@@ -14,8 +13,8 @@ from Backend.utils.error_handling_reporting import error_not_initialized
 
 
 class EPF_Utilities(Utilities):
-    def __init__(self, ctx, guild, engine):
-        super().__init__(ctx, guild, engine)
+    def __init__(self, ctx, guild):
+        super().__init__(ctx, guild)
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
         await self.ctx.channel.send("Please use `/pf2 import character` or `/pf2 add_npc` to add a character")
@@ -24,8 +23,6 @@ class EPF_Utilities(Utilities):
     async def copy_character(self, name: str, new_name: str):
         logging.info("copy_character")
         try:
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
-
             Tracker = await get_tracker(self.ctx, id=self.guild.id)
             Condition = await get_condition(self.ctx, id=self.guild.id)
             Macro = await get_macro(self.ctx, id=self.guild.id)
@@ -204,7 +201,6 @@ class EPF_Utilities(Utilities):
             return False
         try:
             EPF_Tracker = await get_tracker(self.ctx, id=self.guild.id)
-            async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
             async with async_session() as session:
                 query = await session.execute(select(EPF_Tracker).where(EPF_Tracker.name == character))
                 query_char = query.scalars().one()
@@ -228,7 +224,6 @@ class EPF_Utilities(Utilities):
                 if Character.character_model.eidolon:
                     logging.info("Eidolon")
                     EPF_Tracker = await get_tracker(self.ctx, id=self.guild.id)
-                    async_session = sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
                     async with async_session() as session:
                         char_result = await session.execute(
                             select(EPF_Tracker).where(EPF_Tracker.name == Partner.char_name)
@@ -239,7 +234,7 @@ class EPF_Utilities(Utilities):
                 else:  # If its not the eidolon, then Character is the user, so delete the eidolon before
                     # deleting the character entry
                     logging.info("Partner")
-                    Partner_Util = EPF_Utilities(self.ctx, self.guild, self.engine)
+                    Partner_Util = EPF_Utilities(self.ctx, self.guild)
                     await Partner_Util.delete_character(Partner.char_name)
             except Exception as e:
                 logging.exception(e)

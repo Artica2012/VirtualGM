@@ -10,14 +10,12 @@ from Backend.Database.database_models import get_macro, get_tracker
 from Backend.utils.Char_Getter import get_character
 from Backend.utils.parsing import ParseModifiers, eval_success
 from Backend.utils.utils import relabel_roll, get_guild
-import Backend.Database.engine
 from Backend.Database.engine import async_session
 
 
 class Macro:
-    def __init__(self, ctx, engine, guild):
+    def __init__(self, ctx, guild):
         self.ctx = ctx
-        self.engine = Backend.Database.engine.engine
         self.guild = guild
         self.default_vars = {}
 
@@ -92,13 +90,11 @@ class Macro:
                         session.add(new_macro)
             await session.commit()
             await Character_Model.update()
-            # await self.engine.dispose()
             if len(error_list) > 0:
                 await self.ctx.channel.send(f"Unable to add following macros due to duplicate names:\n{error_list}")
             return True
         except Exception as e:
             logging.error(f"mass_add: {e}")
-            # await self.engine.dispose()
             return False
 
     async def delete_macro(self, character: str, macro_name: str):
@@ -341,7 +337,7 @@ class Macro:
             view = discord.ui.View(timeout=None)
             for row in macro_list:
                 await asyncio.sleep(0)
-                button = self.MacroButton(self.ctx, self.engine, Character_Model, row)
+                button = self.MacroButton(self.ctx, Character_Model, row)
                 if len(view.children) == 24:
                     await self.ctx.send_followup(f"{character.name}: Macros", view=view, ephemeral=True)
                     view.clear_items()
@@ -349,9 +345,8 @@ class Macro:
             return view
 
     class MacroButton(discord.ui.Button):
-        def __init__(self, ctx: discord.ApplicationContext, engine, character, macro):
+        def __init__(self, ctx: discord.ApplicationContext, character, macro):
             self.ctx = ctx
-            self.engine = Backend.Database.engine.engine
             self.character = character
             self.macro = macro
             super().__init__(
@@ -362,7 +357,7 @@ class Macro:
 
         async def callback(self, interaction: discord.Interaction):
             guild = await get_guild(self.ctx, None)
-            MacroClass = Macro(self.ctx, self.engine, guild)
+            MacroClass = Macro(self.ctx, guild)
             output = await MacroClass.roll_macro(self.character.char_name, self.macro.name, 0, "", guild=guild)
             if type(output) != list:
                 output = [output]

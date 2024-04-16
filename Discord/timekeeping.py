@@ -35,7 +35,7 @@ class TimekeeperCog(commands.Cog):
             )
             if result:
                 await ctx.respond("Date and Time Set", ephemeral=True)
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.check_cc()
                 await Tracker_Model.update_pinned_tracker()
             else:
@@ -59,19 +59,19 @@ class TimekeeperCog(commands.Cog):
     async def advance(self, ctx: discord.ApplicationContext, amount: int, unit: str = "minute"):
         try:
             if unit == "minute":
-                result = await advance_time(ctx, engine, self.bot, minute=amount)
+                result = await advance_time(ctx, minute=amount)
             elif unit == "hour":
-                result = await advance_time(ctx, engine, self.bot, hour=amount)
+                result = await advance_time(ctx, hour=amount)
             elif unit == "day":
-                result = await advance_time(ctx, engine, self.bot, day=amount)
+                result = await advance_time(ctx, day=amount)
             else:
                 result = False
 
             if result:
                 await ctx.respond(
-                    f"Time advanced by {amount} {unit}(s). New time is: {await output_datetime(ctx, engine, self.bot)}"
+                    f"Time advanced by {amount} {unit}(s). New time is: {await output_datetime(ctx, self.bot)}"
                 )
-                Tracker_Model = await get_tracker_model(ctx, self.bot, engine=engine)
+                Tracker_Model = await get_tracker_model(ctx)
                 await Tracker_Model.check_cc()
                 await Tracker_Model.update_pinned_tracker()
             else:

@@ -68,7 +68,7 @@ class ConditionBody(BaseModel):
 @router.get("/init/tracker")
 async def get_tracker(user: str, guildid: int, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(guildid)
-    Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(None, guild=guild)
     output_model = await Tracker_Model.raw_tracker_output(guild.initiative)
     guild_info = {
         "id": guild.id,
@@ -124,7 +124,7 @@ async def get_user_tables(user: str, api_key: APIKey = Depends(get_api_key)):
 @router.post("/init/next")
 async def init_start(request: InitManage, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(request.guild)
-    Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+    Tracker_Model = await get_tracker_model(None, guild=guild)
     try:
         # await Tracker_Model.advance_initiative()
         success = await Tracker_Model.block_next(None, request.user)
@@ -145,7 +145,7 @@ async def init_end(request: InitManage, background_tasks: BackgroundTasks, api_k
     GM = gm_check(str(request.user), guild)
     if GM:
         try:
-            Tracker_Model = await get_tracker_model(None, bot, guild=guild, engine=engine)
+            Tracker_Model = await get_tracker_model(None, guild=guild)
             await Tracker_Model.end()
             success = True
         except Exception as e:

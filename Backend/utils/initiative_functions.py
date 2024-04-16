@@ -137,7 +137,7 @@ class ConditionMinus(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
+            Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
             await interaction.response.defer()
             await increment_cc(self.ctx, self.engine, self.character, self.condition, False, self.bot)
             output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
@@ -161,7 +161,7 @@ class ConditionAdd(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
-            Tracker_Model = await get_tracker_model(self.ctx, self.bot, guild=self.guild, engine=self.engine)
+            Tracker_Model = await get_tracker_model(self.ctx, guild=self.guild)
             await increment_cc(self.ctx, self.engine, self.character, self.condition, True, self.bot)
             output = await edit_cc_interface(self.ctx, self.character, self.condition, self.bot)
             await interaction.edit_original_response(content=output[0], view=output[1])
