@@ -94,11 +94,11 @@ class AutoModel:
         return await bonus_calc(0, "dmg", self.character.character_model.bonuses)
 
     async def pd(self, data, heighten, heighten_data, Target_Model):
-        if "pd" in data.keys():
+        if "pd" in data:
             # print(data["pd"])
             roll_string = data["pd"]["roll_string"]
             if heighten > 0:
-                if "hpd" in heighten_data.keys():
+                if "hpd" in heighten_data:
                     # print("heighten_data  ", heighten_data)
                     for x in range(0, heighten):
                         for i in heighten_data["hpd"].keys():
@@ -129,7 +129,7 @@ class AutoModel:
             else:
                 bot.get_channel(self.guild.tracker_channel).send(embed=embed)
 
-        if "condition" in data.keys():
+        if "condition" in data:
             embed = discord.Embed(
                 title=data["condition"]["char_name"],
                 fields=[
@@ -262,7 +262,7 @@ class AutoModel:
         heighten_data, heighten = await self.heighten(Target_Model, success_string)
 
         if success_string == "Critical Success":
-            if "critical success" in self.attack["effect"].keys():
+            if "critical success" in self.attack["effect"]:
                 data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
                 data = await self.heighten_calc(data, heighten, heighten_data)
@@ -346,7 +346,7 @@ class AutoModel:
         total_damage = 0
 
         if success_string == "Critical Success":
-            if "critical success" in self.attack["effect"].keys():
+            if "critical success" in self.attack["effect"]:
                 data = await self.automation_parse(self.attack["effect"]["critical success"], Target_Model)
                 # print(data)
                 data = await self.heighten_calc(data, heighten, heighten_data)
@@ -360,7 +360,7 @@ class AutoModel:
                 total_damage = 0
 
         elif success_string == "Success":
-            if "success" in self.attack["effect"].keys():
+            if "success" in self.attack["effect"]:
                 data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
                 # print(data)
                 data = await self.heighten_calc(data, heighten, heighten_data)
@@ -384,7 +384,7 @@ class AutoModel:
                     half=True,
                 )
         elif success_string == "Failure":
-            if "failure" in self.attack["effect"].keys():
+            if "failure" in self.attack["effect"]:
                 data = await self.automation_parse(self.attack["effect"]["failure"], Target_Model)
                 # print(data)
                 data = await self.heighten_calc(data, heighten, heighten_data)
@@ -393,7 +393,7 @@ class AutoModel:
                     data, Target_Model, crit=False, flat_bonus=dmg_modifier, dmg_type_override=dmg_type_override
                 )
         elif success_string == "Critical Failure":
-            if "critical failure" in self.attack["effect"].keys():
+            if "critical failure" in self.attack["effect"]:
                 data = await self.automation_parse(self.attack["effect"]["critical failure"], Target_Model)
                 # print(data)
                 data = await self.heighten_calc(data, heighten, heighten_data)
@@ -427,7 +427,7 @@ class AutoModel:
         dmg_string = None
         total_damage = 0
 
-        if "success" in self.attack["effect"].keys():
+        if "success" in self.attack["effect"]:
             data = await self.automation_parse(self.attack["effect"]["success"], Target_Model)
             # print(data)
             data = await self.heighten_calc(data, heighten, heighten_data)
@@ -479,7 +479,7 @@ class AutoModel:
             self.attack["lvl"] = 1
 
         # print(success_string)
-        if "heighten" in self.attack.keys():
+        if "heighten" in self.attack:
             if "interval" in self.attack["heighten"]:
                 if self.level > self.attack["lvl"]:
                     heighten = floor((self.level - self.attack["lvl"]) / self.attack["heighten"]["interval"])
@@ -491,7 +491,7 @@ class AutoModel:
 
             if "set" in self.attack["heighten"]:
                 # print("set")
-                heighten_levels = list(self.attack["heighten"]["set"].keys())
+                heighten_levels = list(self.attack["heighten"]["set"])
                 heighten_levels.sort()
                 # print(heighten_levels)
                 for x, l in enumerate(heighten_levels):
@@ -578,43 +578,43 @@ class AutoModel:
                             data[str(item.data)] = 0
 
                 unit = "Round"
-                if "unit" in data.keys():
+                if "unit" in data:
                     if data["unit"] in ["round", "minute", "hour", "days"]:
                         unit = data["unit"].title()
 
                 auto = False
-                if "auto" in data.keys():
+                if "auto" in data:
                     auto = True
 
                 action = ""
-                if "data" in data.keys():
+                if "data" in data:
                     action = data_stat_var(data["data"], self.character)
                     action = action.strip("'")
 
-                if "duration" in data.keys():
+                if "duration" in data:
                     if int(data["duration"]) != int(data["number"]):
                         action = action + " " + f"stable {data['number']}"
                         data["number"] = data["duration"]
 
-                if "stable" in data.keys():
+                if "stable" in data:
                     action = action + " " + f"stable {data['number']}"
 
                 flex = False
-                if "flex" in data.keys():
+                if "flex" in data:
                     flex = True
 
                 target = None
-                if "target" in data.keys():
+                if "target" in data:
                     target = self.character.char_name
 
-                if "self" in data.keys():
+                if "self" in data:
                     data["char_name"] = self.character.char_name
                 else:
                     data["char_name"] = target_model.char_name
 
                 # TODO Move this out to the main method
-                if "self" in data.keys():
-                    if "target" in data.keys():
+                if "self" in data:
+                    if "target" in data:
                         target = target_model.char_name
 
                     if data["title"].title() not in await self.character.conditions():
@@ -690,7 +690,7 @@ class AutoModel:
                 output_data["hpd"] = temp
 
             elif branch.data == "damage_string":
-                if "dmg" not in output_data.keys():
+                if "dmg" not in output_data:
                     output_data["dmg"] = {}
 
                 temp = {}
@@ -746,7 +746,7 @@ class Attack(AutoModel):
         self.level = character.character_model.level
 
         if type(attack_data) == dict:
-            if "complex" in attack_data.keys():
+            if "complex" in attack_data:
                 if attack_data["complex"]:
                     self.complex = True
                 else:
@@ -958,7 +958,7 @@ class Attack(AutoModel):
         )
 
         # Damage
-        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
+        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance:
             dmg_string, total_damage = await roll_dmg_resist(
                 self.character,
                 Target_Model,
@@ -1001,7 +1001,7 @@ class Spell(AutoModel):
         # print(attack_data)
         self.level = level
         if type(attack_data) == dict:
-            if "complex" in attack_data.keys():
+            if "complex" in attack_data:
                 if attack_data["complex"]:
                     self.complex = True
                 else:
@@ -1036,7 +1036,7 @@ class Spell(AutoModel):
     async def legacy_cast_attk_dmg(
         self, Target_Model: EPF_Character, success_string: str, dmg_modifier, dmg_type_override
     ):
-        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance.keys():
+        if success_string == "Critical Success" and "critical-hits" not in Target_Model.resistance:
             dmg_string, total_damage = await legacy_roll_spell_dmg_resist(
                 self.character,
                 Target_Model,
@@ -1216,7 +1216,7 @@ async def legacy_roll_spell_dmg_resist(
     # Roll the critical damage and apply resistances
     dmg_rolls = {}
     # print(spell, crit)
-    if crit and "critical-hits" not in Target_Model.resistance.keys():
+    if crit and "critical-hits" not in Target_Model.resistance:
         spell_dmg = await Character_Model.get_spell_dmg(spell, level, flat_bonus=flat_bonus)
         # print(spell_dmg)
         for key in spell_dmg.keys():

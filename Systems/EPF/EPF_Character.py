@@ -351,7 +351,7 @@ class EPF_Character(Character):
                 case "None":
                     attk_stat = 0
             proficiency = 0
-            if "override_prof" in weapon.keys():
+            if "override_prof" in weapon:
                 proficiency = weapon["override_prof"]
             else:
                 match weapon["prof"]:
@@ -415,7 +415,7 @@ class EPF_Character(Character):
                 dmg_mod = weapon["stat"]
 
         # Applicable to NPCs
-        if "dmg_bonus" in weapon.keys():
+        if "dmg_bonus" in weapon:
             dmg_mod = dmg_mod + weapon["dmg_bonus"]
 
         die = weapon["die"]
@@ -473,7 +473,7 @@ class EPF_Character(Character):
 
     async def is_complex_attack(self, item):
         try:
-            if "complex" in self.character_model.attacks[item].keys():
+            if "complex" in self.character_model.attacks[item]:
                 if self.character_model.attacks[item]["complex"]:
                     return True
             else:
@@ -486,7 +486,7 @@ class EPF_Character(Character):
             attk = await self.get_weapon(attack)
             original_attk = attk.copy()
             # print(original_attk)
-            if "bonus" in original_attk.keys():
+            if "bonus" in original_attk:
                 bonus_list = original_attk["bonus"]
             else:
                 bonus_list = []
@@ -607,7 +607,7 @@ class EPF_Character(Character):
 
         spell_attack_bonus = await bonus_calc(0, "spellattack", self.character_model.bonuses)
 
-        if "complex" in spell_data.keys():
+        if "complex" in spell_data:
             match spell_data["trad"]:
                 case "arcane":
                     proficiency = self.character_model.arcane_prof
@@ -765,7 +765,7 @@ class EPF_Character(Character):
             # print(dmg_dict)
         # Add fixed calcs
         elif level > spell_data["level"] and spell_data["heightening"]["type"] == "fixed":
-            if level in spell_data["heightening"]["interval"].keys():
+            if level in spell_data["heightening"]["interval"]:
                 for item in spell_data["heightening"]["interval"]["value"].keys():
                     if item["applyMod"]:
                         mod_stat = self.str_mod
@@ -931,12 +931,12 @@ class EPF_Character(Character):
                     except Exception as e:
                         logging.error(f"Bad input: {item}: {e}")
             for item in data_list:
-                if "value" in item.keys():
+                if "value" in item:
                     value = item["value"]
 
-                if "stable" in item.keys():
+                if "stable" in item:
                     stable = item["stable"]
-                if "persist" in item.keys():
+                if "persist" in item:
                     if item["persist"]:
                         eot = True
 
@@ -1121,7 +1121,7 @@ class EPF_Character(Character):
 
     # Set the initiative
     async def set_init(self, init, **kwargs):
-        if "update" in kwargs.keys():
+        if "update" in kwargs:
             update = kwargs["update"]
         else:
             update = True
@@ -1344,7 +1344,7 @@ async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
                     bonus = i.split(" ")[0]
                     bonus_dmg_list.append(f"\"{item['display']}\" dmg {bonus} c")
 
-            if "mat" in item.keys():
+            if "mat" in item:
                 if item["mat"] is None:
                     mat = ""
                 else:
@@ -1406,7 +1406,7 @@ async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
 
             double_attacks = False
             # Check for two handed and fatal
-            if "traits" in edited_attack.keys():
+            if "traits" in edited_attack:
                 for trait in edited_attack["traits"]:
                     if "fatal-aim" in trait:
                         double_attacks = True
@@ -1482,11 +1482,11 @@ async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
             # print(key)
             try:
                 if type(focus_spells[key]) == dict:
-                    if "wis" in focus_spells[key].keys():
+                    if "wis" in focus_spells[key]:
                         discriminator_list = []
-                        if "focusSpells" in focus_spells[key]["wis"].keys():
+                        if "focusSpells" in focus_spells[key]["wis"]:
                             discriminator_list.append("focusSpells")
-                        if "focusCantrips" in focus_spells[key]["wis"].keys():
+                        if "focusCantrips" in focus_spells[key]["wis"]:
                             discriminator_list.append("focusCantrips")
                         for discriminator in discriminator_list:
                             for item in focus_spells[key]["wis"]["focusSpells"]:
@@ -1516,12 +1516,12 @@ async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
                                             "heightening": spell_data[1].heightening,
                                         }
                                         spell_library[item] = spell
-                    if "cha" in focus_spells[key].keys():
+                    if "cha" in focus_spells[key]:
                         # print("cha")
                         discriminator_list = []
-                        if "focusSpells" in focus_spells[key]["cha"].keys():
+                        if "focusSpells" in focus_spells[key]["cha"]:
                             discriminator_list.append("focusSpells")
-                        if "focusCantrips" in focus_spells[key]["cha"].keys():
+                        if "focusCantrips" in focus_spells[key]["cha"]:
                             discriminator_list.append("focusCantrips")
 
                         for discriminator in discriminator_list:
@@ -1557,11 +1557,11 @@ async def pb_import(ctx, char_name, pb_char_code, guild=None, image=None):
                                         }
                                         spell_library[item] = spell
 
-                    if "int" in focus_spells[key].keys():
+                    if "int" in focus_spells[key]:
                         discriminator_list = []
-                        if "focusSpells" in focus_spells[key]["int"].keys():
+                        if "focusSpells" in focus_spells[key]["int"]:
                             discriminator_list.append("focusSpells")
-                        if "focusCantrips" in focus_spells[key]["int"].keys():
+                        if "focusCantrips" in focus_spells[key]["int"]:
                             discriminator_list.append("focusCantrips")
                         for discriminator in discriminator_list:
                             for item in focus_spells[key]["int"]["focusSpells"]:
@@ -1934,8 +1934,8 @@ async def calculate(ctx, char_name, guild=None):
 
             init_skill = character.perception_mod
 
-            if "other" in bonuses.keys():
-                if "init_skill" in bonuses["other"].keys():
+            if "other" in bonuses:
+                if "init_skill" in bonuses["other"]:
                     match bonuses["other"]["init_skill"]:
                         case "perception":
                             init_skill = character.perception_mod
@@ -2017,7 +2017,7 @@ async def calculate(ctx, char_name, guild=None):
 
 async def ability_mod_calc(base: int, item: str, bonuses):
     mod = floor((base - 10) / 2)
-    if item in bonuses.keys():
+    if item in bonuses:
         for key in bonuses[item].keys():
             mod = mod + bonuses[item][key]
 
@@ -2026,7 +2026,7 @@ async def ability_mod_calc(base: int, item: str, bonuses):
 
 async def save_mod_calc(stat_mod, save: str, save_prof, level, bonuses):
     mod = stat_mod + save_prof + level
-    if save in bonuses.keys():
+    if save in bonuses:
         for key in bonuses[save].keys():
             mod = mod + bonuses[save][key]
     return mod
@@ -2043,7 +2043,7 @@ async def skill_mod_calc(stat_mod, skill: str, skill_prof, level, bonuses, ui):
     else:
         mod = stat_mod + skill_prof + level
 
-    if skill in bonuses.keys():
+    if skill in bonuses:
         for key in bonuses[skill].keys():
             mod = mod + bonuses[skill][key]
     return mod
@@ -2056,8 +2056,8 @@ async def bonus_calc(base, skill, bonuses, item_name=""):
     if item_name != "":
         specific_skill = f"{item_name},{skill}".lower()
 
-        if specific_skill in bonuses.keys():
-            if skill in bonuses.keys():
+        if specific_skill in bonuses:
+            if skill in bonuses:
                 common_keys = bonuses[specific_skill].items() & bonuses[skill].items()
 
                 for key in common_keys:
@@ -2076,7 +2076,7 @@ async def bonus_calc(base, skill, bonuses, item_name=""):
                     mod = mod + bonuses[specific_skill][key]
 
     else:
-        if skill in bonuses.keys():
+        if skill in bonuses:
             for key in bonuses[skill].keys():
                 mod = mod + bonuses[skill][key]
 
@@ -2323,14 +2323,14 @@ async def process_condition_tree(
                     elif item.type == "SPECIFIER":
                         bonus_data["specifier"] = item.value
 
-            if bonus_data["skill"] not in bonuses.keys():
+            if bonus_data["skill"] not in bonuses:
                 bonuses[bonus_data["skill"]] = {
                     f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}": bonus_data["value"]
                 }
             else:
                 if (
                     f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
-                    in bonuses[bonus_data["skill"]].keys()
+                    in bonuses[bonus_data["skill"]]
                 ):
                     if abs(bonus_data["value"]) > abs(
                         bonuses[bonus_data["skill"]][
@@ -2347,7 +2347,7 @@ async def process_condition_tree(
             # print(bonuses)
 
         elif branch.data == "init_skill":
-            if "other" in bonuses.keys():
+            if "other" in bonuses:
                 bonuses["other"]["init_skill"] = branch.children[0].value
             else:
                 bonuses["other"] = {"init_skill": branch.children[0].value}
@@ -2356,7 +2356,7 @@ async def process_condition_tree(
         elif branch.data == "hardness":
             # print("HARDNESS")
             # print(branch.children)
-            if "other" in bonuses.keys():
+            if "other" in bonuses:
                 bonuses["other"]["hardness"] = int(branch.children[0].value)
             else:
                 bonuses["other"] = {"hardness": int(branch.children[0].value)}
@@ -2370,7 +2370,7 @@ async def process_condition_tree(
                 elif item.type == "NUMBER":
                     num = item.value
 
-            if new_con_name.title() in EPF_Conditions.keys():
+            if new_con_name.title() in EPF_Conditions:
                 if new_con_name.title() not in await character_model.conditions():
                     await character_model.set_cc(new_con_name.title(), False, num, "Round", False)
 
@@ -2412,14 +2412,14 @@ async def process_condition_tree(
                     # bonus_data["item"] = item.children[0].value
             # print(bonus_data)
 
-            if f"{bonus_data['item']},{bonus_data['skill']}" not in bonuses.keys():
+            if f"{bonus_data['item']},{bonus_data['skill']}" not in bonuses:
                 bonuses[f"{bonus_data['item']},{bonus_data['skill']}"] = {
                     f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}": bonus_data["value"]
                 }
             else:
                 if (
                     f"{bonus_data['specifier']}{'+' if bonus_data['value'] > 0 else '-'}"
-                    in bonuses[f"{bonus_data['item']},{bonus_data['skill']}"].keys()
+                    in bonuses[f"{bonus_data['item']},{bonus_data['skill']}"]
                 ):
                     if abs(bonus_data["value"]) > abs(
                         bonuses[f"{bonus_data['item']},{bonus_data['skill']}"][
@@ -2478,8 +2478,8 @@ async def process_condition_tree(
 
             resistance_data[temp["word"]] = {temp["specifier"]: temp["value"]}
 
-            if temp["word"] in resistances.keys():
-                if temp["specifier"] in resistances[temp["word"]].keys():
+            if temp["word"] in resistances:
+                if temp["specifier"] in resistances[temp["word"]]:
                     if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
                         resistances[temp["word"]][temp["specifier"]] = temp["value"]
                 else:
@@ -2504,8 +2504,8 @@ async def process_condition_tree(
             resistance_data[temp["word"]] = {temp["specifier"]: temp["value"], "except": temp["exception"]}
             # print("resistance data", resistance_data)
 
-            if temp["word"] in resistances.keys():
-                if temp["specifier"] in resistances[temp["word"]].keys():
+            if temp["word"] in resistances:
+                if temp["specifier"] in resistances[temp["word"]]:
                     if temp["value"] > resistances[temp["word"]][temp["specifier"]]:
                         resistances[temp["word"]][temp["specifier"]] = {
                             "value": temp["value"],
