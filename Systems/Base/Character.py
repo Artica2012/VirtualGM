@@ -284,7 +284,7 @@ class Character:
         :param update: If true, updates the medel afterwards.
         :return: String
         """
-        if "update" in kwargs.keys():
+        if "update" in kwargs:
             update = kwargs["update"]
         else:
             update = True

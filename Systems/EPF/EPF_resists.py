@@ -13,18 +13,15 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
     if dmg_type is None:
         return dmg_roll
     dmg_type = dmg_type.lower()
-    # print(target.resistance)
-    # print(dmg_type)
-    # print(dmg_roll)
 
     if weapon is not None:
-        if "traits" in weapon.keys():
+        if "traits" in weapon:
             if "concussive" in weapon["traits"]:
-                if "piercing" in target.resistance.keys():
+                if "piercing" in target.resistance:
                     dmg_type = "bludgeoning"
-                elif "bludgeoning" in target.resistance.keys():
+                elif "bludgeoning" in target.resistance:
                     dmg_type = "piercing"
-                elif "piercing" in target.resistance.keys() and "bludgeoning" in target.resistance.keys():
+                elif "piercing" in target.resistance and "bludgeoning" in target.resistance:
                     try:
                         p_resist = target.resistance["piercing"]["r"]
                     except KeyError:
@@ -39,9 +36,9 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
                         dmg_type = "bludgeoning"
                     else:
                         dmg_type = "piercing"
-                elif "piercing" in target.resistance.keys():
+                elif "piercing" in target.resistance:
                     dmg_type = "bludgeoning"
-                elif "bludgeoning" in target.resistance.keys():
+                elif "bludgeoning" in target.resistance:
                     dmg_type = "piercing"
         try:
             mat = weapon["mat"].lower()
@@ -51,7 +48,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
         mat = ""
     # print(f"Mat: {mat}")
 
-    if "physical" in target.resistance.keys():
+    if "physical" in target.resistance:
         # print("Physical Resistance")
         if (
             dmg_type.lower() == "slashing"
@@ -88,11 +85,10 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
 
     for item in dmg_list:  # This is completely rewritten. It might be broken
         # print(item)
-        if item in target.resistance.keys():
-            if "r" in target.resistance[item].keys():
-                # print(target.resistance[item].keys())
+        if item in target.resistance:
+            if "r" in target.resistance[item]:
                 exempt = False
-                if "except" in target.resistance[item].keys():
+                if "except" in target.resistance[item]:
                     # print(target.resistance[item]["except"])
 
                     for e in exception_list:
@@ -109,7 +105,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
 
             if "w" in target.resistance[item]:
                 exempt = False
-                if "except" in target.resistance[item].keys():
+                if "except" in target.resistance[item]:
                     for e in exception_list:
                         if e in target.resistance[item]["except"]:
                             exempt = True
@@ -117,7 +113,7 @@ async def damage_calc_resist(dmg_roll, dmg_type, target: Systems.EPF.EPF_Charact
                     dmg = dmg + target.resistance[item]["w"]
 
             if "i" in target.resistance[item]:
-                if "except" in target.resistance[item].keys():
+                if "except" in target.resistance[item]:
                     exempt = False
                     for e in exception_list:
                         if e in target.resistance[item]["except"]:

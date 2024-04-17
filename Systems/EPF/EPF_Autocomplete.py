@@ -30,17 +30,17 @@ class EPF_Autocmplete(AutoComplete):
     async def character_select(self, **kwargs):
         # print("Char Select")
 
-        if "all" in kwargs.keys():
+        if "all" in kwargs:
             allnone = kwargs["all"]
         else:
             allnone = False
 
-        if "gm" in kwargs.keys():
+        if "gm" in kwargs:
             gm = kwargs["gm"]
         else:
             gm = False
 
-        if "multi" in kwargs.keys():
+        if "multi" in kwargs:
             multi = kwargs["multi"]
         else:
             multi = False
@@ -84,17 +84,17 @@ class EPF_Autocmplete(AutoComplete):
         return await EPF_Char.attack_list()
 
     async def macro_select(self, **kwargs):
-        if "attk" in kwargs.keys():
+        if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
             attk = False
 
-        if "dmg" in kwargs.keys():
+        if "dmg" in kwargs:
             dmg = kwargs["dmg"]
         else:
             dmg = False
 
-        if "auto" in kwargs.keys():
+        if "auto" in kwargs:
             auto = kwargs["auto"]
         else:
             auto = False
@@ -175,7 +175,7 @@ class EPF_Autocmplete(AutoComplete):
             return EPF_Stats
 
     async def dmg_types(self, **kwargs):
-        if "var" in kwargs.keys():
+        if "var" in kwargs:
             var = kwargs["var"]
         else:
             var = False
@@ -258,10 +258,10 @@ class EPF_Autocmplete(AutoComplete):
                 return [ceil(Character.character_model.level / 2)]
             max_level = ceil(Character.character_model.level / 2)
 
-            if "complex" in spell.keys():
-                if "interval" in spell["heighten"].keys():
+            if "complex" in spell:
+                if "interval" in spell["heighten"]:
                     interval_level = spell["heighten"]["interval"]
-                elif "set" in spell["heighten"].keys():
+                elif "set" in spell["heighten"]:
                     level_list = [min_level]
                     for key in spell["heighten"]["set"].keys():
                         level_list.append(int(key))
