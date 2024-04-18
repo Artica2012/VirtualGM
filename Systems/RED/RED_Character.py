@@ -86,15 +86,15 @@ class RED_Character(Character):
         item = item.lower()
         # print(item)
         logging.info(f"RED returning roll: {item}")
-        if item in self.stats.keys():
+        if item in self.stats:
             return f"1d10+{self.stats[item]['value']}"
-        if item in self.skills.keys():
+        if item in self.skills:
             return f"1d10+{self.skills[item]['value']}"
-        elif item in self.attacks.keys():
+        elif item in self.attacks:
             return await self.weapon_attack(item)
-        elif item in self.net.keys():
+        elif item in self.net:
             return await self.net_attack(item)
-        elif item in RED_SKills.keys():
+        elif item in RED_SKills:
             return f"1d10+{await self.get_skill(item)}"
         else:
             try:
@@ -111,7 +111,7 @@ class RED_Character(Character):
 
     async def get_skill(self, item: str):
         item = item.lower()
-        if item in self.skills.keys():
+        if item in self.skills:
             # print(self.skills[item]["value"])
             return self.skills[item]["value"]
         elif item in RED_SKills:
@@ -122,7 +122,7 @@ class RED_Character(Character):
 
     async def get_stat(self, item: str):
         item = item.lower()
-        if item in self.stats.keys():
+        if item in self.stats:
             # print(self.stats[item]["value"])
             return self.stats[item]["value"]
         else:
@@ -193,7 +193,7 @@ class RED_Character(Character):
             case _:
                 stat = self.stats["ref"]["value"]
 
-        if weapon["skill"] in self.skills.keys():
+        if weapon["skill"] in self.skills:
             skill = self.skills[weapon["skill"]]["value"]
         else:
             skill = 0
@@ -221,7 +221,7 @@ class RED_Character(Character):
 
     async def net_attack(self, item):
         net_attack = self.net[item]
-        if net_attack["skill"] in self.skills.keys():
+        if net_attack["skill"] in self.skills:
             skill = self.skills[net_attack["skill"]]["value"]
         else:
             skill = 0
@@ -271,7 +271,7 @@ class RED_Character(Character):
         try:
             # print(amount.total, location)
             # print(self.armor.keys())
-            if "cover" in self.armor.keys():
+            if "cover" in self.armor:
                 # print("dmg_armor: cover")
                 cover_hp = int(self.armor["cover"]["sp"])
                 # print(cover_hp, amount.total)
@@ -306,7 +306,7 @@ class RED_Character(Character):
                 head = int(self.armor["head"]["sp"])
                 output_string = f"       B:{body} SP/ H:{head} SP\n"
                 # print(self.armor.keys())
-                if "cover" in self.armor.keys():
+                if "cover" in self.armor:
                     # print("COVER!!!!!!!!!!!!!!!!!!")
                     cover = int(self.armor["cover"]["sp"])
                     output_string += f"       Cover:{cover}\n"
@@ -327,7 +327,7 @@ class RED_Character(Character):
                 # print(character.armor.keys())
 
                 new_armor = character.armor.copy()
-                if "cover" in character.armor.keys():
+                if "cover" in character.armor:
                     # print("cover")
                     if remove:
                         new_armor.pop("cover")
@@ -375,7 +375,7 @@ class RED_Character(Character):
         return f"Initiative set to {init} for {self.char_name}"
 
     async def set_init(self, init, **kwargs):
-        if "update" in kwargs.keys():
+        if "update" in kwargs:
             update = kwargs["update"]
         else:
             update = True
@@ -475,7 +475,7 @@ async def calc_stats(stat_name, stats, bonuses):
 
 async def calc_mods(stats: dict, skill_name: str, skills: dict, bonuses: dict):
     skill_base = skills[skill_name]["base"]
-    if skill_name["stat"] in stats.keys():
+    if skill_name["stat"] in stats:
         stat = stats[skills[skill_name]["stat"]]["value"]
     else:
         stat = 0

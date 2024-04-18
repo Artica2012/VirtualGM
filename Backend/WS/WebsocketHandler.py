@@ -74,7 +74,7 @@ class WebsocketHandler:
             logging.error(f"Error: websocket {message}{e}")
             return False
 
-        if guild_id in self.library.keys():
+        if guild_id in self.library:
             self.library[guild_id].append(websocket)
         else:
             self.library[guild_id] = [websocket]
@@ -105,7 +105,7 @@ class WebsocketHandler:
                 logging.error(f"Websocket stream_channel error: {e}")
 
     async def library_check(self, guild_id):
-        if guild_id in self.library.keys():
+        if guild_id in self.library:
             return True
         else:
             return False

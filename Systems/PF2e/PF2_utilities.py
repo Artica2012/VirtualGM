@@ -29,7 +29,7 @@ class PF2_Utilities(Utilities):
         super().__init__(ctx, guild)
 
     async def add_character(self, bot, name: str, hp: int, player_bool: bool, init: str, image: str = None, **kwargs):
-        if "multi" in kwargs.keys():
+        if "multi" in kwargs:
             multi = kwargs["multi"]
         else:
             multi = 1

@@ -152,7 +152,7 @@ class EPF_Tracker(Tracker):
         await Con_Character.change_hp(total_damage, False, post=False)
         save_roll = None
         success_string = "Failure"
-        if "save" in persist_data.keys():
+        if "save" in persist_data:
             match persist_data["save"]:  # noqa
                 case "reflex":
                     save_roll = d20.roll(await Con_Character.get_roll("Reflex"))
@@ -171,13 +171,13 @@ class EPF_Tracker(Tracker):
 
         output_string = f"Persistent Damage: {roll_string}"
 
-        if "save" not in persist_data.keys():
+        if "save" not in persist_data:
             embed = discord.Embed(
                 title=f"{Con_Character.char_name.title()}: {condition.title.title()}",
                 fields=[
                     discord.EmbedField(
                         name=(
-                            f"{'Persistent' if 'dmg_type' not in persist_data.keys() else persist_data['dmg_type'].title()} Damage"
+                            f"{'Persistent' if 'dmg_type' not in persist_data else persist_data['dmg_type'].title()} Damage"
                         ),
                         value=output_string,
                     )

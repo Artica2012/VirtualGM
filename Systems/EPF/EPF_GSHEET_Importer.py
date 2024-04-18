@@ -85,7 +85,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 except Exception:
                     initiative_num = 0
 
-        if "lore" in character.keys():
+        if "lore" in character:
             # print("lore")
             lore = character["lore"]
             # print(lore)

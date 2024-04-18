@@ -37,7 +37,7 @@ class Utilities:
         :return: boolean - True for sucess, false for failure
         """
 
-        if "multi" in kwargs.keys():
+        if "multi" in kwargs:
             multi = kwargs["multi"]
         else:
             multi = 1

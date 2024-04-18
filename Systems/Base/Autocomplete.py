@@ -32,12 +32,12 @@ class AutoComplete:
             return char_result.scalars().all()
 
     async def character_select(self, **kwargs):
-        if "gm" in kwargs.keys():
+        if "gm" in kwargs:
             gm = kwargs["gm"]
         else:
             gm = False
 
-        if "multi" in kwargs.keys():
+        if "multi" in kwargs:
             multi = kwargs["multi"]
         else:
             multi = False
@@ -72,7 +72,7 @@ class AutoComplete:
     async def vault_search(self, **kwargs):
         # print("vault search")
         output_list = []
-        if "gm" in kwargs.keys():
+        if "gm" in kwargs:
             gm = kwargs["gm"]
         else:
             gm = False
@@ -141,7 +141,7 @@ class AutoComplete:
             return macro_result.scalars().all()
 
     async def macro_select(self, **kwargs):
-        if "attk" in kwargs.keys():
+        if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
             attk = False

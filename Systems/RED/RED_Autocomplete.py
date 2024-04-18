@@ -12,17 +12,17 @@ from Backend.utils.Char_Getter import get_character
 
 class RED_Autocomplete(AutoComplete):
     async def macro_select(self, **kwargs):
-        if "attk" in kwargs.keys():
+        if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
             attk = False
 
-        if "auto" in kwargs.keys():
+        if "auto" in kwargs:
             auto = kwargs["auto"]
         else:
             auto = False
 
-        if "net" in kwargs.keys():
+        if "net" in kwargs:
             net = kwargs["net"]
         else:
             net = False
@@ -74,12 +74,12 @@ class RED_Autocomplete(AutoComplete):
             return []
 
     async def get_attributes(self, **kwargs):
-        if "attk" in kwargs.keys():
+        if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
             attk = False
 
-        if "auto" in kwargs.keys():
+        if "auto" in kwargs:
             auto = kwargs["auto"]
         else:
             auto = False
@@ -123,17 +123,17 @@ class RED_Autocomplete(AutoComplete):
             return []
 
     async def character_select(self, **kwargs):
-        if "gm" in kwargs.keys():
+        if "gm" in kwargs:
             gm = kwargs["gm"]
         else:
             gm = False
 
-        if "multi" in kwargs.keys():
+        if "multi" in kwargs:
             multi = kwargs["multi"]
         else:
             multi = False
 
-        if "net" in kwargs.keys():
+        if "net" in kwargs:
             net = kwargs["net"]
         else:
             net = False

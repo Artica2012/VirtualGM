@@ -13,12 +13,12 @@ class D4e_Autocmplete(AutoComplete):
         super().__init__(ctx, guild)
 
     async def cc_select(self, **kwargs):
-        if "no_time" in kwargs.keys():
+        if "no_time" in kwargs:
             no_time = kwargs["no_time"]
         else:
             no_time = False
 
-        if "flex" in kwargs.keys():
+        if "flex" in kwargs:
             flex = kwargs["flex"]
         else:
             flex = False

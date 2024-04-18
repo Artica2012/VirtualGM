@@ -171,10 +171,10 @@ async def get_spelllevel(user: str, guildid: int, character: str, spell: str, ap
                 return [ceil(Character_Model.character_model.level / 2)]
             max_level = ceil(Character_Model.character_model.level / 2)
 
-            if "complex" in spell.keys():
-                if "interval" in spell["heighten"].keys():
+            if "complex" in spell:
+                if "interval" in spell["heighten"]:
                     interval_level = spell["heighten"]["interval"]
-                elif "set" in spell["heighten"].keys():
+                elif "set" in spell["heighten"]:
                     level_list = [min_level]
                     for key in spell["heighten"]["set"].keys():
                         level_list.append(int(key))

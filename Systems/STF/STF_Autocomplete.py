@@ -23,7 +23,7 @@ class STF_Autocomplete(AutoComplete):
             return key_list
 
     async def macro_select(self, **kwargs):
-        if "attk" in kwargs.keys():
+        if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
             attk = False
