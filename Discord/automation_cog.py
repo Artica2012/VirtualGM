@@ -82,7 +82,7 @@ class AutomationCog(commands.Cog):
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
 
-            print("Logging")
+            # print("Logging")
             for item in embeds:
                 log_output = f"{roll}:\n{item.fields[0].value}"
                 await log_roll(guild.id, character, log_output)
@@ -131,7 +131,7 @@ class AutomationCog(commands.Cog):
                 data = await Automation.save(character, target, save, dc, modifier)
                 embeds.append(data.embed)
             await ctx.send_followup(embeds=embeds)
-            print("Logging")
+            # print("Logging")
             for item in embeds:
                 log_output = f"{save}:\n{item.fields[0].value}"
                 await log_roll(guild.id, character, log_output)
@@ -200,7 +200,7 @@ class AutomationCog(commands.Cog):
 
             Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
-            print("Logging")
+            # print("Logging")
             for item in embeds:
                 log_output = f"{user_roll_str}:\n{item.fields[0].value}"
                 await log_roll(guild.id, character, log_output)
@@ -272,7 +272,7 @@ class AutomationCog(commands.Cog):
             await ctx.send_followup(embeds=embeds)
             Tracker_Model = await get_tracker_model(ctx)
             await Tracker_Model.update_pinned_tracker()
-            print("Logging")
+            # print("Logging")
             for item in embeds:
                 log_output = f"{attack}:\n{item.fields[0].value}"
                 await log_roll(guild.id, character, log_output)

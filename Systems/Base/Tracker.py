@@ -330,22 +330,24 @@ class Tracker:
         """
 
         logging.info("Checking Initiative Integrity")
-        async with async_session() as session:  # Pull the most updated data for the initiative
-            result = await session.execute(select(Global).where(Global.id == self.guild.id))
-            guild = result.scalars().one()
 
-            if guild.initiative is not None:
-                if not await self.init_integrity_check(guild.initiative, guild.saved_order):
-                    logging.info("Integrity Check Failed")
-                    logging.info(f"Integrity Info: Saved_Order {guild.saved_order}, Init Pos={guild.initiative}")
-                    for pos, row in enumerate(self.init_list):  # Iterate through the list to find the correct position
-                        if row.name == guild.saved_order:
-                            logging.info(f"name: {row.name}, saved_order: {guild.saved_order}")
+        if self.guild.initiative is not None:
+            if not await self.init_integrity_check(self.guild.initiative, self.guild.saved_order):
+                logging.info("Integrity Check Failed")
+                logging.info(f"Integrity Info: Saved_Order {self.guild.saved_order}, Init Pos={self.guild.initiative}")
+                for pos, row in enumerate(self.init_list):  # Iterate through the list to find the correct position
+                    if row.name == self.guild.saved_order:
+                        logging.info(f"name: {row.name}, saved_order: {self.guild.saved_order}")
+
+                        async with async_session() as session:  # Pull the most updated data for the initiative
+                            result = await session.execute(select(Global).where(Global.id == self.guild.id))
+                            guild = result.scalars().one()
+
                             guild.initiative = pos  # update the initiative number in the db to the correct position
-                            logging.info(f"Pos: {pos}")
-                            logging.info(f"New Init_pos: {guild.initiative}")
-                            break  # once its fixed, stop the loop because its done
-            await session.commit()
+                            await session.commit()
+                        logging.info(f"Pos: {pos}")
+                        logging.info(f"New Init_pos: {guild.initiative}")
+                        break  # once its fixed, stop the loop because its done
 
     async def advance_initiative(self):
         """

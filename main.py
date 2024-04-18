@@ -4,8 +4,6 @@
 
 import asyncio
 import logging
-
-# imports
 import os
 import sys
 
@@ -18,18 +16,6 @@ from Backend.API.VGM_API import start_uvicorn
 from Backend.WS.WebsocketHandler import socket
 from Discord.Bot import bot
 from Systems.EPF.EPF_Automation_Data import upload_data
-
-# import tracemalloc
-
-# Set up logging
-# warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
-
-
-# environmental variables - if Production - use the token and database of the production model, if Production is False,
-# then its running locally and use the local postgres server and the beta token. This allows one .env and code for both
-# testing and production.
-
-# import database_operations
 
 
 load_dotenv(verbose=True)
@@ -46,8 +32,6 @@ else:
 TOKEN = os.environ["BOT_TOKEN"]
 GUILD = os.getenv("GUILD")
 DATABASE = os.getenv("DATABASE")
-
-# tracemalloc.start()
 
 
 # Print Status on Connected - Outputs to server log
@@ -72,7 +56,6 @@ async def on_ready():
 
 @bot.event
 async def on_disconnect():
-    # await bot.connect()
     logging.warning("Disconnected")
 
 
@@ -80,9 +63,6 @@ async def on_disconnect():
 async def on_error():
     logging.error(f"on_error: {sys.exc_info()}")
 
-
-# Initialize the database for the 4e lookup
-# lookup_parser.parser()
 
 # Load the bot
 # bot.load_extension("Query.query_results")

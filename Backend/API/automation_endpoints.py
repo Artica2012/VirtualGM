@@ -251,14 +251,14 @@ async def api_save(body: AutoRequest, background_tasks: BackgroundTasks, api_key
 async def api_damage(body: AutoRequest, background_tasks: BackgroundTasks, api_key: APIKey = Depends(get_api_key)):
     guild = await get_guild_by_id(body.guild)
     Automation = await get_automation(None, guild=guild)
-    print(body)
-    # try:
-    auto_data = await Automation.damage(
-        bot, body.character, body.target, body.roll, body.dmg_mod, body.healing, body.dmg_type, crit=body.crit
-    )
-    # except Exception as e:
-    #     # print(e)
-    #     return {"success": "failure", "output": e}
+    # print(body)
+    try:
+        auto_data = await Automation.damage(
+            bot, body.character, body.target, body.roll, body.dmg_mod, body.healing, body.dmg_type, crit=body.crit
+        )
+    except Exception as e:
+        # print(e)
+        return {"success": "failure", "output": e}
 
     if body.discord_post:
         embed = auto_data.embed
