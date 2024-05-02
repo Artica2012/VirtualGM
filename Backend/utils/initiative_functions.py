@@ -180,3 +180,9 @@ async def update_member_list(guild_id):
         active_guild = result.scalars().one()
         active_guild.members = member_list
         await session.commit()
+
+
+# Ensure name conforms to standards
+def name_check(name: str):
+    name = name.strip().replace(",", "")
+    return name

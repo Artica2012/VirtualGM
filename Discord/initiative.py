@@ -22,7 +22,7 @@ from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
 from Backend.utils.error_handling_reporting import error_not_initialized, ErrorReport
-from Backend.utils.initiative_functions import update_member_list
+from Backend.utils.initiative_functions import update_member_list, name_check
 from Backend.utils.time_keeping_functions import check_timekeeper
 from Backend.utils.utils import gm_check, get_guild
 from Discord.auto_complete import (
@@ -93,6 +93,9 @@ class InitiativeCog(commands.Cog):
 
         if number > 26:
             number = 26
+
+        # Ensure name conforms to guidelines
+        name = name_check(name)
 
         try:
             Utilities = await get_utilities(ctx)
@@ -177,6 +180,8 @@ class InitiativeCog(commands.Cog):
     @option("new_name", description="Name for the new NPC", input_type=str, required=True)
     async def copy(self, ctx: discord.ApplicationContext, name: str, new_name: str, number: int = 1):
         await ctx.response.defer(ephemeral=True)
+
+        new_name = name_check(new_name)
 
         if number > 26:
             number = 26

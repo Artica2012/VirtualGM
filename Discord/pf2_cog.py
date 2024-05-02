@@ -15,7 +15,7 @@ from Backend.utils.Char_Getter import get_character
 from Backend.utils.Tracker_Getter import get_tracker_model
 from Backend.utils.Util_Getter import get_utilities
 from Backend.utils.error_handling_reporting import ErrorReport
-from Backend.utils.initiative_functions import update_member_list
+from Backend.utils.initiative_functions import update_member_list, name_check
 from Backend.utils.utils import get_guild, NPC_Iterator
 from Discord import initiative
 from Discord.auto_complete import character_select_gm, attacks, stats, dmg_type, npc_search
@@ -48,6 +48,9 @@ class PF2Cog(commands.Cog):
         image: str = None,
     ):
         await ctx.response.defer()
+
+        name = name_check(name)
+
         success = discord.Embed(
             title=name.title(),
             fields=[discord.EmbedField(name="Success", value="Successfully Imported")],
@@ -168,6 +171,9 @@ class PF2Cog(commands.Cog):
         image: str = None,
     ):
         await ctx.response.defer()
+
+        name = name_check(name)
+
         guild = await get_guild(ctx, None)
         response = False
         if number > 26:
