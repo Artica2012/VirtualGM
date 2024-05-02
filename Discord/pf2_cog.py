@@ -309,7 +309,7 @@ class PF2Cog(commands.Cog):
             Lookup = WandererLookup()
             paginator = Paginator(pages=await Lookup.lookup(query))
             await paginator.respond(ctx.interaction, ephemeral=private)
-        except sqlalchemy.InterfaceError as e:
+        except sqlalchemy.exc.InterfaceError as e:
             await ctx.send_followup(
                 (
                     "There was a database error, please try your query again. If this continues to happen, "
