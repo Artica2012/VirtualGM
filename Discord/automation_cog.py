@@ -86,7 +86,8 @@ class AutomationCog(commands.Cog):
             for item in embeds:
                 log_output = f"{roll}:\n{item.fields[0].value}"
                 await log_roll(guild.id, character, log_output)
-
+        except AttributeError:
+            await ctx.send_followup("Error. Ensure that you selected valid targets and attributes.")
         except Exception as e:
             logging.warning(f"attack_cog attack {e}")
             report = ErrorReport(ctx, "/a attack", e, self.bot)

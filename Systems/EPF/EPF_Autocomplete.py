@@ -49,13 +49,16 @@ class EPF_Autocmplete(AutoComplete):
         try:
             character = await self.character_query(self.ctx.interaction.user.id, gm)
             if allnone:
-                character.extend(["All PCs", "All NPCs", "All Characters"])
+                if "All PCs" not in character:
+                    character.extend(["All PCs", "All NPCs", "All Characters"])
+            unique_list = []
+            [unique_list.append(item) for item in character if item.lower() not in (i.lower() for i in unique_list)]
 
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
                 if multi and val[-1] == ",":
-                    return [f"{val.title()} {option}" for option in character]
-                return [option.title() for option in character if val in option.lower()]
+                    return [f"{val.title()} {option}" for option in unique_list]
+                return [option.title() for option in unique_list if val in option.lower()]
             return character
 
         except NoResultFound:
@@ -84,6 +87,8 @@ class EPF_Autocmplete(AutoComplete):
         return await EPF_Char.attack_list()
 
     async def macro_select(self, **kwargs):
+        macro_list = []
+        attk_list = []
         if "attk" in kwargs:
             attk = kwargs["attk"]
         else:
@@ -114,8 +119,8 @@ class EPF_Autocmplete(AutoComplete):
             EPF_Char = await get_character(character, self.ctx, guild=self.guild)
             macro_list = await self.get_macro_list(character, attk)
             if EPF_Char.character_model.medicine_prof > 0 and dmg:
-                # print("Trained in Med")
-                macro_list.append("Treat Wounds")
+                if "Treat Wounds" not in macro_list:
+                    macro_list.append("Treat Wounds")
 
             if attk and auto:
                 attk_list = await self.get_attack_list(character)
@@ -127,13 +132,15 @@ class EPF_Autocmplete(AutoComplete):
 
             if self.ctx.value != "":
                 val = self.ctx.value.lower()
+                print([option for option in macro_list if val in option.lower()])
                 return [option for option in macro_list if val in option.lower()]
             else:
                 if attk:
                     attk_list = await self.get_attack_list(character)
                     if EPF_Char.character_model.medicine_prof > 0 and dmg:
-                        # print("Trained in Med")
-                        attk_list.append("Treat Wounds")
+                        if "Treat Wounds" not in attk_list:
+                            attk_list.append("Treat Wounds")
+                    print(attk_list)
                     return attk_list
                 return macro_list
         except Exception as e:

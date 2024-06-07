@@ -37,16 +37,17 @@ class D4e_Automation(Automation):
 
         Target_Model = await get_character(target, self.ctx, guild=self.guild)
         con_vs = 0
-        match vs:  # noqa
-            case "AC":
+        match vs.lower():  # noqa
+            case "ac":
                 con_vs = Target_Model.ac
-            case "Fort":
+            case "fort":
                 con_vs = Target_Model.fort
-            case "Reflex":
+            case "reflex":
                 con_vs = Target_Model.reflex
-            case "Will":
+            case "will":
                 con_vs = Target_Model.will
-
+            case _:
+                raise AttributeError
         try:
             goal_string: str = f"({con_vs}){ParseModifiers(target_modifier)}"
             goal_result = d20.roll(goal_string)

@@ -133,8 +133,11 @@ async def character_select_con(ctx: discord.AutocompleteContext):
     try:
         AutoComplete = await get_autocomplete(ctx)
         char_list: list = await AutoComplete.character_select()
-        char_list.extend(["All PCs", "All NPCs"])
-        return char_list
+        if "All PCs" not in char_list:
+            char_list.extend(["All PCs", "All NPCs"])
+        unique_list = []
+        [unique_list.append(item) for item in char_list if item.lower() not in (i.lower() for i in unique_list)]
+        return unique_list
     except Exception:
         return []
 
