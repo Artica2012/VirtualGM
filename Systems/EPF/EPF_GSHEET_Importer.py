@@ -85,7 +85,7 @@ async def epf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
                 except Exception:
                     initiative_num = 0
 
-        if "lore" in character.keys():
+        if "lore" in character:
             # print("lore")
             lore = character["lore"]
             # print(lore)
@@ -266,6 +266,13 @@ async def epf_g_sheet_character_import(df):
 
     except Exception:
         return False
+
+    for i in range(3, 6):
+        "`"
+
+        df.b[i] = int(str(df.d[i]).strip("`"))
+        df.d[i] = int(str(df.d[i]).strip("`"))
+
     # print(df)
     character = {
         "name": df.b[0],
@@ -558,11 +565,12 @@ async def epf_g_sheet_eidolon_import(ctx: discord.ApplicationContext, char_name:
         logging.warning("Import Error")
         raise
 
-    # for i in range(0, len(df.a) - 1):
-    # print(df.iloc[[i]])
+    for i in range(3, 6):
+        "`"
 
-    # print(df.d[1])
-    # print(df)
+        df.b[i] = int(str(df.d[i]).strip("`"))
+        df.d[i] = int(str(df.d[i]).strip("`"))
+
     character = {
         "name": df.b[0],
         "level": Partner.character_model.level,
@@ -781,6 +789,12 @@ async def epf_g_sheet_companion_import(df):
     except Exception:
         return False
 
+    for i in range(3, 6):
+        "`"
+
+        df.b[i] = int(str(df.d[i]).strip("`"))
+        df.d[i] = int(str(df.d[i]).strip("`"))
+
     # print(df)
     character = {
         "name": df.b[0],
@@ -936,6 +950,12 @@ async def epf_g_sheet_npc_import(df):
         # print(df)
     except Exception:
         return False
+
+    for i in range(3, 6):
+        "`"
+
+        df.b[i] = int(str(df.d[i]).strip("`"))
+        df.d[i] = int(str(df.d[i]).strip("`"))
 
     # Back Calculations
     str_mdd = int(df.b[3])

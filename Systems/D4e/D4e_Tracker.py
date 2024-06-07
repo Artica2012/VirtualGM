@@ -679,6 +679,7 @@ class D4eConditionButton(discord.ui.Button):
         await interaction.response.send_message("Saving...")
         Tracker_Model = await get_D4e_Tracker(
             self.ctx,
+            self.bot,
             guild=self.guild,
         )
         if interaction.user.id == self.character.user or gm_check(self.ctx):

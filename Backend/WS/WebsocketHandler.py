@@ -20,15 +20,15 @@ class WebsocketHandler:
         while True:
             try:
                 async for message in websocket:
-                    print(message)
+                    # print(message)
                     try:
                         msg = json.loads(message)
                         match msg["header"].lower():  # noqa
                             case "init":
                                 match msg["func"]:
                                     case "user_tables":
-                                        print("user tables")
-                                        print(msg)
+                                        # print("user tables")
+                                        # print(msg)
                                         await websocket.send(await get_user_tables(msg))
                             case "connect":
                                 await self.register(websocket, msg)
@@ -74,7 +74,7 @@ class WebsocketHandler:
             logging.error(f"Error: websocket {message}{e}")
             return False
 
-        if guild_id in self.library.keys():
+        if guild_id in self.library:
             self.library[guild_id].append(websocket)
         else:
             self.library[guild_id] = [websocket]
@@ -105,7 +105,7 @@ class WebsocketHandler:
                 logging.error(f"Websocket stream_channel error: {e}")
 
     async def library_check(self, guild_id):
-        if guild_id in self.library.keys():
+        if guild_id in self.library:
             return True
         else:
             return False
@@ -126,10 +126,12 @@ socket = WebsocketHandler()
 
 class LogSocket(WebsocketHandler):
     async def process_request(self, path, request_headers):
-        print(path)
-        print(request_headers)
+        # print(path)
+        # print(request_headers)
+        pass
 
 
 async def log_request(path, request_headers):
-    print(path)
-    print(request_headers)
+    # print(path)
+    # print(request_headers)
+    pass

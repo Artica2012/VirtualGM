@@ -414,7 +414,7 @@ class STF_Character(Character):
         # print(data)
         if data == "":
             # print(title)
-            if title in STF_Conditions.keys():
+            if title in STF_Conditions:
                 data = STF_Conditions[title]
                 # print(data)
         # print(data)

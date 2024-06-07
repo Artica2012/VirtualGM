@@ -318,9 +318,9 @@ async def write_resitances(
             await Character_Model.set_cc(
                 key, True, 1, "Round", False, data=condition_string, visible=False, update=False
             )
-        if "other" in resistance.keys():
+        if "other" in resistance:
             # print("other")
-            if "init-skill" in resistance["other"].keys():
+            if "init-skill" in resistance["other"]:
                 # print("init-skill")
                 await Character_Model.set_cc(
                     "init-skill",
@@ -332,7 +332,7 @@ async def write_resitances(
                     visible=False,
                     update=False,
                 )
-            if "hardness" in resistance["other"].keys():
+            if "hardness" in resistance["other"]:
                 await Character_Model.set_cc(
                     "hardness",
                     True,

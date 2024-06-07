@@ -49,7 +49,6 @@ async def macro_roll(roll_data: MacroData, background_tasks: BackgroundTasks, ap
     # print(roll_data)
     guild = await get_guild_by_id(roll_data.guildid)
     Macro = await get_macro_object(None, guild)
-    print(roll_data)
 
     raw_result = await Macro.raw_roll_macro(roll_data.character, roll_data.macro, roll_data.dc, roll_data.mod)
 

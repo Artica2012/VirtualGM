@@ -57,7 +57,7 @@ async def stf_g_sheet_import(ctx: discord.ApplicationContext, char_name: str, ba
 
         initiative_num = 0
         dex_mod = floor((character["dex"] - 10) / 2)
-        if "init_mod" in character.keys():
+        if "init_mod" in character:
             parsed_mod = ParseModifiers(f"{character['init_mod']}")
             init_string = f"1d20+{parsed_mod}"
         else:

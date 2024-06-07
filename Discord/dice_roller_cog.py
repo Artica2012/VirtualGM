@@ -44,7 +44,7 @@ class DiceRollerCog(commands.Cog):
                 else:
                     await ctx.respond(f"_{roll}_\n{roll_str}")
 
-                print("Logging")
+                # print("Logging")
                 if secret == "Secret":
                     secBool = True
                 else:

@@ -71,7 +71,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     Refresh_Button = Tracker_Object.InitRefreshButton(None, self.bot, guild=guild)
                     Next_Button = Tracker_Object.NextButton(self.bot, guild=guild)
                 except Exception as e:
-                    logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
+                    logging.info(f"{guild.system} on ready attach buttons: {e} {guild.id}")
 
                 try:  # Error handling to avoid locking on a bad message
                     view.clear_items()
@@ -86,7 +86,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                     await last_tracker.edit(view=view)
                     logging.info(f"{guild.system} - View Updated")
                 except Exception as e:
-                    logging.error(f"{guild.system} on ready attach buttons: {e} {guild.id}")
+                    logging.info(f"{guild.system} on ready attach buttons: {e} {guild.id}")
 
         # Character Vault
         # Create Tables that don't exist
@@ -229,7 +229,7 @@ class Update_and_Maintenance_Cog(commands.Cog):
                 except Exception:
                     pass
             except Exception as e:
-                logging.error(f"{guild.guild_id}: {e}")
+                logging.info(f"{guild.guild_id}: {e}")
 
 
 def setup(bot):
